@@ -4913,6 +4913,7 @@ class QuotationController extends Controller
         $request->validate([
             'booking_no'    => 'required|string',
             'customer_type' => 'required|string',
+            'address1'      => 'required|string|max:200',
         ]);
 
         $submittedBy = auth()->user()->displayName ?? auth()->user()->Email ?? 'system';
@@ -5955,7 +5956,6 @@ class QuotationController extends Controller
             $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
             return response()->json(['success' => true, 'persons' => $rows]);
         } catch (\Throwable $e) {
-            // Fallback — query Cust_Resource directly
             try {
                 $persons = DB::connection('sqlsrv')
                     ->table('FITSCMUAT.dbo.Cust_Resource')
@@ -5968,13 +5968,18 @@ class QuotationController extends Controller
                     ->select([
                         'Code',
                         DB::raw("Contact_PersonName_FirstName + ISNULL(' ' + Contact_PersonName_LastName, '') AS FullName"),
-                        'Contact_Email AS Email',
+                        DB::raw("ISNULL(Contact_Email_Primary, '') AS Email"),  // ← fixed
                     ])
                     ->limit(20)
                     ->get();
+
                 return response()->json(['success' => true, 'persons' => $persons]);
             } catch (\Throwable $e2) {
-                return response()->json(['success' => false, 'persons' => [], 'error' => $e2->getMessage()]);
+                return response()->json([
+                    'success' => false,
+                    'persons' => [],
+                    'error'   => $e2->getMessage()
+                ]);
             }
         }
     }
@@ -6032,15 +6037,32 @@ class QuotationController extends Controller
     public function lookupCountries(Request $request)
     {
         try {
-            $pdo  = DB::getPdo();
+            // FIX: was DB::getPdo() — wrong connection
+            $pdo  = DB::connection('sqlsrv')->getPdo();
             $stmt = $pdo->prepare("EXEC sp_CountryList @Filter = ?");
             $stmt->execute([$request->get('filter', '')]);
-            return response()->json($stmt->fetchAll(\PDO::FETCH_ASSOC));
+            $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+            // Normalise column name — sp_CountryList may return 'Country', 'CountryName',
+            // or 'Name' depending on SP version. Both frontend consumers expect CountryName + Name.
+            $normalised = array_map(function ($row) {
+                $name = $row['CountryName']
+                    ?? $row['Name']
+                    ?? $row['Country']
+                    ?? current($row)
+                    ?? '';
+                return array_merge($row, [
+                    'CountryName' => $name,
+                    'Name'        => $name,
+                ]);
+            }, $rows);
+
+            return response()->json($normalised);
         } catch (\Exception $e) {
+            Log::error('lookupCountries error: ' . $e->getMessage());
             return response()->json([]);
         }
     }
-
     public function lookupIncoTerms(Request $request)
     {
         try {
@@ -6366,12 +6388,13 @@ class QuotationController extends Controller
 
     public function getIncoTerms(Request $request)
     {
-        $filter = $request->input('filter'); // null if not provided — intentional
+        $filter = $request->input('filter', ''); // default to '' not null — some SPs reject NULL on VARCHAR params
 
         try {
-            $pdo  = DB::connection()->getPdo();
+            // FIX: was DB::connection()->getPdo() — wrong connection
+            $pdo  = DB::connection('sqlsrv')->getPdo();
             $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC dbo.sp_IncoTerms @Filter = ?");
-            $stmt->execute([$filter]); // passes NULL when no filter → SP returns all
+            $stmt->execute([$filter]);
 
             $results = [];
             do {
@@ -6380,10 +6403,10 @@ class QuotationController extends Controller
 
                     if (empty($rows)) continue;
 
-                    // Skip error rowsets returned by the SP CATCH block
+                    // Skip error rowsets from SP CATCH block
                     if (isset($rows[0]->Err_Message)) continue;
 
-                    // Grab the first rowset that looks like IncoTerms data
+                    // First rowset containing IncoTermCode is the one we want
                     if (isset($rows[0]->IncoTermCode)) {
                         $results = $rows;
                         break;
@@ -6396,7 +6419,11 @@ class QuotationController extends Controller
             return response()->json(['success' => true, 'data' => $results]);
         } catch (\Exception $e) {
             Log::error('getIncoTerms - Failed', ['error' => $e->getMessage()]);
-            return response()->json(['success' => false, 'data' => [], 'message' => $e->getMessage()], 500);
+            return response()->json([
+                'success' => false,
+                'data'    => [],
+                'message' => $e->getMessage()
+            ], 500);
         }
     }
 }

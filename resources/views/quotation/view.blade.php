@@ -113,8 +113,8 @@
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Sales Person Email</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" data-field="salesperson_email"
-                                value="{{ $quotation->salesperson_email ?? '' }}" readonly>
+                            <input type="text" class="form-control form-control-sm" data-field="SalesPersonEmail"
+                                value="{{ $quotation->SalesPersonEmail ?? '' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row mb-0">
@@ -174,12 +174,12 @@
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Origin Country</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" id="viewOriginCountryDisplay"
+                            <input type="text" class="form-control form-control-sm" id="originCountryDisplay"
                                 value="{{ $quotation->origincountry ?? '' }}" readonly>
-                            <div class="d-none" id="viewOriginCountryEditWrap">
-                                <input type="text" class="form-control form-control-sm mb-1"
-                                    id="viewOriginCountrySearch" placeholder="Search country...">
-                                <select class="form-control form-control-sm" id="viewOriginCountrySelect">
+                            <div id="originCountryEditWrap" style="display:none;">
+                                <input type="text" class="form-control form-control-sm mb-1" id="originCountrySearch"
+                                    placeholder="Search country...">
+                                <select class="form-control form-control-sm" id="originCountrySelect">
                                     <option value="">-- Select --</option>
                                 </select>
                             </div>
@@ -190,12 +190,12 @@
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Destination Country</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" id="viewDestCountryDisplay"
+                            <input type="text" class="form-control form-control-sm" id="destCountryDisplay"
                                 value="{{ $quotation->destinationcountry ?? '' }}" readonly>
-                            <div class="d-none" id="viewDestCountryEditWrap">
-                                <input type="text" class="form-control form-control-sm mb-1"
-                                    id="viewDestCountrySearch" placeholder="Search country...">
-                                <select class="form-control form-control-sm" id="viewDestCountrySelect">
+                            <div id="destCountryEditWrap" style="display:none;">
+                                <input type="text" class="form-control form-control-sm mb-1" id="destCountrySearch"
+                                    placeholder="Search country...">
+                                <select class="form-control form-control-sm" id="destCountrySelect">
                                     <option value="">-- Select --</option>
                                 </select>
                             </div>
@@ -457,7 +457,10 @@
                                 </div>
                             </div>
                             <div class="form-group row">
-                                <label class="col-sm-4 col-form-label">Address 1</label>
+                                <label class="col-sm-4 col-form-label">
+                                    Address 1 <span class="text-danger address1-required-star"
+                                        style="display:none;">*</span>
+                                </label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm"
                                         data-field="pri_partner_steet" value="{{ $quotation->pri_partner_steet ?? '' }}"
@@ -859,9 +862,18 @@
                         input.removeAttribute('readonly');
                     });
                     this.card.classList.add('card-in-edit');
-                    this.card.querySelector('.btn-card-edit').style.display = 'none';
-                    this.card.querySelector('.btn-card-save').style.display = '';
-                    this.card.querySelector('.btn-card-cancel').style.display = '';
+
+                    // Use jQuery — more reliable than style.display with AdminLTE
+                    const $card = $(this.card);
+                    $card.find('.btn-card-edit').hide();
+                    $card.find('.btn-card-save').show();
+                    $card.find('.btn-card-cancel').show();
+                    $card.find('.card-footer').show(); // guard against AdminLTE hiding it
+
+                    // Show Address 1 required star on customer card
+                    if (this.section === 'customer') {
+                        $card.find('.address1-star').show();
+                    }
                 }
 
                 cancel() {
@@ -870,13 +882,22 @@
                         input.setAttribute('readonly', true);
                     });
                     this.card.classList.remove('card-in-edit');
-                    this.card.querySelector('.btn-card-edit').style.display = '';
-                    this.card.querySelector('.btn-card-save').style.display = 'none';
-                    this.card.querySelector('.btn-card-cancel').style.display = 'none';
+
+                    const $card = $(this.card);
+                    $card.find('.btn-card-edit').show();
+                    $card.find('.btn-card-save').hide();
+                    $card.find('.btn-card-cancel').hide();
+                    $card.find('.card-footer').show();
+
+                    if (this.section === 'customer') {
+                        $card.find('.address1-star').hide();
+                    }
+
                     this.snapshot = {};
                 }
 
                 save() {
+                    const $card = $(this.card);
                     const saveBtn = this.card.querySelector('.btn-card-save');
                     const payload = {
                         _token: '{{ csrf_token() }}',
@@ -885,6 +906,15 @@
                     this._fields().forEach(input => {
                         payload[input.dataset.field] = input.value;
                     });
+
+                    // Address 1 mandatory validation
+                    if (this.section === 'customer') {
+                        const address1 = (payload['pri_partner_steet'] || '').trim();
+                        if (!address1) {
+                            toastr.error('Address 1 is required.');
+                            return;
+                        }
+                    }
 
                     saveBtn.disabled = true;
                     saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Saving...';
@@ -898,9 +928,12 @@
                                 this._fields().forEach(input => input.setAttribute('readonly',
                                     true));
                                 this.card.classList.remove('card-in-edit');
-                                this.card.querySelector('.btn-card-edit').style.display = '';
-                                this.card.querySelector('.btn-card-save').style.display = 'none';
-                                this.card.querySelector('.btn-card-cancel').style.display = 'none';
+                                $card.find('.btn-card-edit').show();
+                                $card.find('.btn-card-save').hide();
+                                $card.find('.btn-card-cancel').hide();
+                                $card.find('.card-footer').show();
+                                if (this.section === 'customer') $card.find('.address1-star')
+                            .hide();
                                 this.snapshot = {};
                                 toastr.success('Saved successfully.');
                             } else {
@@ -918,7 +951,6 @@
                     });
                 }
             }
-
             // Mount CardEditor on every card that declares data-card-section
             document.querySelectorAll('[data-card-section]').forEach(el => new CardEditor(el));
 
@@ -1049,10 +1081,12 @@
                         function fillCountrySelect(selectId, savedValue) {
                             const $sel = $('#' + selectId).empty().append(
                                 '<option value="">-- Select --</option>');
+                            const normalizedSaved = (savedValue || '').trim().toLowerCase();
                             list.forEach(function(c) {
-                                const name = c.Name || c.CountryName || '';
+                                const name = (c.Name || c.CountryName || '').trim();
+                                const isMatch = name.toLowerCase() === normalizedSaved;
                                 $sel.append(
-                                    `<option value="${name}" ${name === savedValue ? 'selected' : ''}>${name}</option>`
+                                    `<option value="${name}" ${isMatch ? 'selected' : ''}>${name}</option>`
                                 );
                             });
                         }
@@ -1422,6 +1456,85 @@
             });
 
             // ============================================================
+            // INQUIRY CARD — Sales Person autocomplete
+            // ============================================================
+            (function() {
+                const inquiryCard = document.querySelector('[data-card-section="inquiry"]');
+                if (!inquiryCard) return;
+
+                const editBtn = inquiryCard.querySelector('.btn-card-edit');
+                if (!editBtn) return;
+
+                const $displayInput = $(inquiryCard).find('input[data-field="username"]');
+                const $emailInput = $(inquiryCard).find('input[data-field="SalesPersonEmail"]');
+                let spDebounce = null;
+
+                editBtn.addEventListener('click', function() {
+                    setTimeout(initSalesPersonAutocomplete, 100);
+                });
+
+                function initSalesPersonAutocomplete() {
+                    $displayInput.off('input.sp').on('input.sp', function() {
+                        const query = $(this).val().trim();
+                        clearTimeout(spDebounce);
+                        $displayInput.next('ul.sp-suggestions').remove();
+                        if (query.length < 2) return;
+
+                        spDebounce = setTimeout(function() {
+                            $.get('{{ route('quotation.sales-persons') }}', {
+                                    filter: query
+                                })
+                                .done(function(res) {
+                                    if (!res.success || !res.persons.length) return;
+
+                                    const $ul = $('<ul class="list-group sp-suggestions">')
+                                        .css({
+                                            position: 'absolute',
+                                            zIndex: 9999,
+                                            width: $displayInput.outerWidth(),
+                                            maxHeight: '200px',
+                                            overflowY: 'auto',
+                                            background: '#fff',
+                                            border: '1px solid #ced4da',
+                                            borderRadius: '0 0 4px 4px',
+                                            marginTop: '-1px',
+                                            boxShadow: '0 4px 8px rgba(0,0,0,.1)'
+                                        });
+
+                                    $.each(res.persons, function(i, p) {
+                                        const fullName = p.FullName || p
+                                            .Contact_PersonName_FirstName || '';
+                                        $('<li class="list-group-item list-group-item-action">')
+                                            .css({
+                                                cursor: 'pointer',
+                                                padding: '0.4rem 0.75rem',
+                                                fontSize: '0.875rem'
+                                            })
+                                            .text(p.Code + ' — ' + fullName)
+                                            .on('mousedown', function(e) {
+                                                e.preventDefault();
+                                                $displayInput.val(fullName || p
+                                                    .Code);
+                                                $emailInput.val(p.Email || '');
+                                                $ul.remove();
+                                            })
+                                            .appendTo($ul);
+                                    });
+
+                                    $displayInput.after($ul);
+                                });
+                        }, 300);
+                    });
+
+                    $displayInput.off('blur.sp').on('blur.sp', function() {
+                        setTimeout(function() {
+                            $displayInput.next('ul.sp-suggestions').remove();
+                        }, 200);
+                    });
+                }
+            }());
+
+            // ============================================================
             // CARD COLLAPSE
             // ============================================================
             $('[data-card-widget="collapse"]').on('click', function() {
@@ -1438,9 +1551,29 @@
             // Collapse all on load except Revenue, Cost, Summary — exclude dupOverlay inner card
             $('.card').not('.card-success, .card-danger, .summary-card').each(function() {
                 $(this).find('.card-body').hide();
-                $(this).find('[data-card-widget="collapse"] i').removeClass('fa-chevron-up').addClass(
-                    'fa-chevron-down');
+                $(this).find('[data-card-widget="collapse"] i')
+                    .removeClass('fa-chevron-up')
+                    .addClass('fa-chevron-down');
                 $(this).addClass('collapsed-card');
+                // Prevent AdminLTE from hiding the footer — buttons must always be reachable
+                $(this).find('.card-footer').show();
+            });
+
+            // Intercept every future collapse toggle and restore footer visibility
+            $(document).on('click', '[data-card-widget="collapse"]', function() {
+                const $card = $(this).closest('.card');
+                setTimeout(function() {
+                    $card.find('.card-footer').show();
+                }, 0);
+            });
+
+            // Override AdminLTE collapse to never hide card-footer
+            $(document).on('click', '[data-card-widget="collapse"]', function() {
+                const $card = $(this).closest('.card');
+                // After AdminLTE runs (it fires synchronously), restore footer visibility
+                setTimeout(function() {
+                    $card.find('.card-footer').show();
+                }, 0);
             });
 
         });
