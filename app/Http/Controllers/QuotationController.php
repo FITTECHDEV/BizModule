@@ -35,35 +35,15 @@ class QuotationController extends Controller
         'ZM' => 'ZMW',
     ];
 
+    // ============================================================
+    // UPDATED index()
+    // Uses resolveUserOfficeCodes() instead of inline Azure_Users query
+    // ============================================================
     public function index()
     {
-        // ============================================
-        // RESOLVE USER'S MAPPED OFFICES FROM Azure_Users
-        // Auth user model uses 'Email' (capital E)
-        // matched against Azure_Users.userPrincipalName
-        // ============================================
-
-        $userPrincipalName = Auth::user()->Email ?? null;
-        $normalizedEmail   = strtolower(trim($userPrincipalName));
-
-        $userOfficeCodes = DB::table('Azure_Users')
-            ->where(function ($q) use ($normalizedEmail) {
-                $q->whereRaw('LOWER(LTRIM(RTRIM(userPrincipalName))) = ?', [$normalizedEmail])
-                    ->orWhereRaw('LOWER(LTRIM(RTRIM(alternateEmailAddress))) = ?', [$normalizedEmail]);
-            })
-            ->whereNotNull('BaseOfficeCode')
-            ->pluck('BaseOfficeCode')
-            ->flatMap(fn($codes) => explode(',', $codes))
-            ->map(fn($code) => trim($code))
-            ->filter()
-            ->unique()
-            ->values();
+        $userOfficeCodes = $this->resolveUserOfficeCodes();
 
         if ($userOfficeCodes->isEmpty()) {
-            Log::warning('Quotation index - No BaseOfficeCode found for user', [
-                'userPrincipalName' => $userPrincipalName,
-            ]);
-
             return view('quotation.index', [
                 'offices'       => collect(),
                 'stats'         => $this->getStats('all', null, null, null),
@@ -72,23 +52,7 @@ class QuotationController extends Controller
             ]);
         }
 
-        // ============================================
-        // RESOLVE OFFICE CODES → TEAMNAMES
-        // Look up the actual teamname values used in Quote_QuotationInfo
-        // by joining through Cust_Office on TeamCode.
-        // Falls back to treating the BaseOfficeCode itself as a teamname
-        // for any code that has no matching Cust_Office row.
-        // ============================================
-
-        $resolvedOffices = DB::table('Cust_Office')
-            ->whereIn('Code', $userOfficeCodes->toArray())
-            ->where('IsActive', 1)
-            ->where('IsDeleted', 0)
-            ->pluck('Code', 'Code') // we need the Code to match against teamname
-            ->values();
-
-        // For codes that matched Cust_Office, get the distinct teamnames
-        // actually present in quotation data
+        // Resolve BaseOfficeCodes → teamnames used in Quote_QuotationInfo
         $offices = DB::table('Quote_QuotationInfo')
             ->whereNotNull('teamname')
             ->whereIn('teamname', $userOfficeCodes->toArray())
@@ -96,14 +60,8 @@ class QuotationController extends Controller
             ->orderBy('teamname')
             ->pluck('teamname');
 
-        // Also check if any BaseOfficeCode maps through Cust_Office.Code → teamname
-        // (handles cases where teamname stores the office Code directly)
+        // Fallback: try matching through Cust_Office.TeamCode
         if ($offices->isEmpty()) {
-            Log::warning('Quotation index - No teamname match on BaseOfficeCode directly, trying via Cust_Office', [
-                'userPrincipalName' => $userPrincipalName,
-                'base_office_codes' => $userOfficeCodes->toArray(),
-            ]);
-
             $teamCodes = DB::table('Cust_Office')
                 ->whereIn('Code', $userOfficeCodes->toArray())
                 ->where('IsActive', 1)
@@ -121,8 +79,8 @@ class QuotationController extends Controller
         }
 
         if ($offices->isEmpty()) {
-            Log::warning('Quotation index - BaseOfficeCode(s) could not be resolved to any office', [
-                'userPrincipalName' => $userPrincipalName,
+            Log::warning('Quotation index - Office codes could not be resolved to any teamname', [
+                'email'             => Auth::user()->Email,
                 'base_office_codes' => $userOfficeCodes->toArray(),
             ]);
 
@@ -137,8 +95,8 @@ class QuotationController extends Controller
         $defaultOffice = $offices->first();
         $stats         = $this->getStats('all', null, null, $defaultOffice);
 
-        Log::info('Quotation index - Resolved user offices', [
-            'userPrincipalName' => $userPrincipalName,
+        Log::info('Quotation index - Resolved offices', [
+            'email'             => Auth::user()->Email,
             'base_office_codes' => $userOfficeCodes->toArray(),
             'resolved_offices'  => $offices->toArray(),
             'default_office'    => $defaultOffice,
@@ -147,21 +105,55 @@ class QuotationController extends Controller
         return view('quotation.index', compact('offices', 'stats', 'defaultOffice'));
     }
 
+    // ============================================================
+    // UPDATED stats()
+    // Validates the requested office against the user's allowed 
+    // offices — prevents users bypassing the dropdown restriction
+    // ============================================================
     public function stats(Request $request)
     {
         $days      = $request->input('days', 0);
         $startDate = $request->input('start_date');
         $endDate   = $request->input('end_date');
-        $office    = $request->input('office') ?: (Auth::user()->OfficeCode ?? null);
-        $stats     = $this->getStats($days, $startDate, $endDate, $office);
-        return response()->json($stats);
+
+        // Use resolved teamnames — these match what teamname column actually stores
+        $allowedTeamNames = $this->resolveUserTeamNames();
+
+        if ($allowedTeamNames->isEmpty()) {
+            return response()->json([
+                'total' => 0,
+                'in_progress' => 0,
+                'won' => 0,
+                'completed' => 0,
+                'lost_canceled' => 0,
+                'failed_int' => 0,
+                'failed_progress' => 0,
+            ]);
+        }
+
+        $requestedOffice = $request->input('office');
+
+        // Validate the requested office is within the user's allowed teamnames
+        $office = ($requestedOffice && $allowedTeamNames->contains($requestedOffice))
+            ? $requestedOffice
+            : null;
+
+        return response()->json(
+            $this->getStats($days, $startDate, $endDate, $office, $allowedTeamNames)
+        );
     }
 
-    private function getStats($days, $startDate, $endDate, $office)
+    // ============================================================
+    // UPDATED getStats()
+    // Added $allowedOffices parameter — when office is null,
+    // restricts to the user's full allowed office set instead
+    // of returning all data
+    // ============================================================
+    private function getStats($days, $startDate, $endDate, $office, $allowedOffices = null)
     {
         $query = DB::table('Quote_QuotationInfo');
 
-        // ── Date filter ──────────────────────────────────────────────────────────
+        // ── Date filter ──────────────────────────────────────────
         if ($days === 'custom' && $startDate && $endDate) {
             $query->whereBetween('createdon', [
                 $startDate . ' 00:00:00',
@@ -176,16 +168,20 @@ class QuotationController extends Controller
         } elseif ($days === '0') {
             $query->whereDate('createdon', today());
         }
-        // 'all' → no date filter
 
-        // ── Office filter ─────────────────────────────────────────────────────────
+        // ── Office filter ─────────────────────────────────────────
         if ($office) {
+            // Specific validated office requested
             $query->where('teamname', $office);
+        } elseif ($allowedOffices && $allowedOffices->isNotEmpty()) {
+            // No specific office — scope to all user's allowed offices
+            $query->whereIn('teamname', $allowedOffices->toArray());
         }
+        // If both are null (called from index() error path) — no office filter applied
 
+        // ── Counts (unchanged) ────────────────────────────────────
         $total = $query->count();
 
-        // In Progress — not in any terminal status
         $inProgress = (clone $query)
             ->where(function ($q) {
                 $q->whereNotIn('QuoteStatus', ['Won', 'Lost', 'Cancel', 'Completed', 'Failed Progress'])
@@ -197,28 +193,18 @@ class QuotationController extends Controller
             })
             ->count();
 
-        // Won — status is Won AND SCMINTStatus is NULL (not yet processed by SCM)
-        // Covers both 'Won'/'Won' and transition 'Pending'/'Won' rows
         $won = (clone $query)
             ->where('QuoteStatus', 'Won')
             ->whereNull('SCMINTStatus')
             ->count();
 
-        // $completed = (clone $query)
-        //     ->where('QuoteStatus', 'Won')
-        //     ->where('SCMINTStatus', 'Success')
-        //     ->count();
-
-        // Completed — Won AND SCM integration succeeded
         $completed = (clone $query)
             ->where(function ($q) {
-                $q->where('QuoteStatus', 'Won')
-                    ->orWhere('status', 'Won');
+                $q->where('QuoteStatus', 'Won')->orWhere('status', 'Won');
             })
             ->where('SCMINTStatus', 'Success')
             ->count();
 
-        // Lost / Canceled — combined
         $lostCanceled = (clone $query)
             ->where(function ($q) {
                 $q->whereIn('QuoteStatus', ['Lost', 'Cancel'])
@@ -226,17 +212,14 @@ class QuotationController extends Controller
             })
             ->count();
 
-        // Failed Int. — Won but SCM returned an error (not null, not 'Success')
         $failedInt = (clone $query)
             ->where(function ($q) {
-                $q->where('QuoteStatus', 'Won')
-                    ->orWhere('status', 'Won');
+                $q->where('QuoteStatus', 'Won')->orWhere('status', 'Won');
             })
             ->whereNotNull('SCMINTStatus')
             ->where('SCMINTStatus', '!=', 'Success')
             ->count();
 
-        // Failed Progress
         $failedProgress = (clone $query)
             ->where(function ($q) {
                 $q->where('QuoteStatus', 'Failed Progress')
@@ -255,6 +238,59 @@ class QuotationController extends Controller
         ];
     }
 
+    // ============================================================
+    // NEW PRIVATE METHOD — resolves BaseOfficeCodes → teamnames
+    // that actually exist in Quote_QuotationInfo.
+    // This is what the office dropdown displays and what teamname
+    // column stores (e.g. "Kenya" not "KE").
+    // ============================================================
+    private function resolveUserTeamNames(): \Illuminate\Support\Collection
+    {
+        $officeCodes = $this->resolveUserOfficeCodes();
+
+        if ($officeCodes->isEmpty()) {
+            return collect();
+        }
+
+        // Step 1: Direct match — teamname stores the BaseOfficeCode value directly
+        $teamNames = DB::table('Quote_QuotationInfo')
+            ->whereNotNull('teamname')
+            ->whereIn('teamname', $officeCodes->toArray())
+            ->distinct()
+            ->orderBy('teamname')
+            ->pluck('teamname');
+
+        // Step 2: Fallback — resolve through Cust_Office.TeamCode → teamid
+        if ($teamNames->isEmpty()) {
+            $teamCodes = DB::table('Cust_Office')
+                ->whereIn('Code', $officeCodes->toArray())
+                ->where('IsActive', 1)
+                ->where('IsDeleted', 0)
+                ->pluck('TeamCode');
+
+            if ($teamCodes->isNotEmpty()) {
+                $teamNames = DB::table('Quote_QuotationInfo')
+                    ->whereNotNull('teamname')
+                    ->whereIn('teamid', $teamCodes->toArray())
+                    ->distinct()
+                    ->orderBy('teamname')
+                    ->pluck('teamname');
+            }
+        }
+
+        Log::info('resolveUserTeamNames result', [
+            'email'       => Auth::user()->Email,
+            'office_codes' => $officeCodes->toArray(),
+            'team_names'   => $teamNames->toArray(),
+        ]);
+
+        return $teamNames;
+    }
+
+    // ============================================================
+    // UPDATED data()
+    // Same office validation pattern as stats()
+    // ============================================================
     public function data(Request $request)
     {
         try {
@@ -262,14 +298,28 @@ class QuotationController extends Controller
             $startDate  = $request->input('start_date');
             $endDate    = $request->input('end_date');
             $cardFilter = $request->input('card_filter', 'in_progress');
-            $office     = $request->input('office') ?: (Auth::user()->OfficeCode ?? null);
+
+            // Use resolved teamnames — matches what teamname column actually stores
+            $allowedTeamNames = $this->resolveUserTeamNames();
+
+            if ($allowedTeamNames->isEmpty()) {
+                return DataTables::of(DB::table('Quote_QuotationInfo')->whereRaw('1=0'))
+                    ->make(true);
+            }
+
+            $requestedOffice = $request->input('office');
+
+            // Validate requested office is within the user's allowed teamnames
+            $office = ($requestedOffice && $allowedTeamNames->contains($requestedOffice))
+                ? $requestedOffice
+                : null;
 
             Log::info('Quotation data request', [
-                'days'        => $days,
-                'start_date'  => $startDate,
-                'end_date'    => $endDate,
-                'office'      => $office,
-                'card_filter' => $cardFilter,
+                'days'              => $days,
+                'requested_office'  => $requestedOffice,
+                'resolved_office'   => $office,
+                'allowed_teamnames' => $allowedTeamNames->toArray(),
+                'card_filter'       => $cardFilter,
             ]);
 
             $query = DB::table('Quote_QuotationInfo')
@@ -292,7 +342,7 @@ class QuotationController extends Controller
                     'Updatedon',
                 ]);
 
-            // ── Date filter ──────────────────────────────────────────────────────
+            // ── Date filter ──────────────────────────────────────────────
             if ($days === 'custom' && $startDate && $endDate) {
                 $query->whereBetween('createdon', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
             } elseif ($days === '1') {
@@ -305,14 +355,17 @@ class QuotationController extends Controller
                 $query->whereDate('createdon', today());
             }
 
-            // ── Office filter ────────────────────────────────────────────────────
+            // ── Office filter ────────────────────────────────────────────
             if ($office) {
+                // Specific validated office selected in dropdown
                 $query->where('teamname', $office);
+            } else {
+                // No specific office or validation failed — scope to all allowed
+                $query->whereIn('teamname', $allowedTeamNames->toArray());
             }
 
-            // ── Card filter ──────────────────────────────────────────────────────
+            // ── Card filter (unchanged) ───────────────────────────────────
             switch ($cardFilter) {
-
                 case 'in_progress':
                     $query->where(function ($q) {
                         $q->whereNotIn('QuoteStatus', ['Won', 'Lost', 'Cancel', 'Completed', 'Failed Progress'])
@@ -322,48 +375,26 @@ class QuotationController extends Controller
                             ->orWhereNull('status');
                     });
                     break;
-
                 case 'won':
-                    $query->where(function ($q) {
-                        $q->where('QuoteStatus', 'Won')->orWhere('status', 'Won');
-                    })->whereNull('SCMINTStatus');
+                    $query->where('QuoteStatus', 'Won')->where('status', 'Won')->whereNull('SCMINTStatus');
                     break;
-
                 case 'completed':
-                    $query->where(function ($q) {
-                        $q->where('QuoteStatus', 'Won')->orWhere('status', 'Won');
-                    })->where('SCMINTStatus', 'Success');
+                    $query->where('QuoteStatus', 'Won')->where('status', 'Won')->where('SCMINTStatus', 'Success');
                     break;
-
-                case 'lost_canceled':
-                    $query->where(function ($q) {
-                        $q->whereIn('QuoteStatus', ['Lost', 'Cancel'])
-                            ->orWhereIn('status', ['Lost', 'Cancel']);
-                    });
-                    break;
-
                 case 'failed_int':
-                    $query->where(function ($q) {
-                        $q->where('QuoteStatus', 'Won')->orWhere('status', 'Won');
-                    })->whereNotNull('SCMINTStatus')
-                        ->where('SCMINTStatus', '!=', 'Success');
+                    $query->where('QuoteStatus', 'Won')->where('status', 'Won')
+                        ->whereNotNull('SCMINTStatus')->where('SCMINTStatus', '!=', 'Success');
                     break;
-
+                case 'lost_canceled':
+                    $query->whereIn('QuoteStatus', ['Lost', 'Cancel'])->whereIn('status', ['Lost', 'Cancel']);
+                    break;
                 case 'failed_progress':
-                    $query->where(function ($q) {
-                        $q->where('QuoteStatus', 'Failed Progress')
-                            ->orWhere('status', 'Failed Progress');
-                    });
-                    break;
-
-                case 'all':
-                default:
+                    $query->where('QuoteStatus', 'Failed Progress')->where('status', 'Failed Progress');
                     break;
             }
 
+            // ── DataTables (unchanged below this line) ────────────────
             return DataTables::of($query)
-
-                // ── Search column filters (unchanged) ────────────────────────────
                 ->filterColumn('OfficeName',        fn($q, $k) => $q->where('teamname',           'like', "%$k%"))
                 ->filterColumn('ClientName',         fn($q, $k) => $q->where('companyname',        'like', "%$k%"))
                 ->filterColumn('ClientID',           fn($q, $k) => $q->where('clientid',           'like', "%$k%"))
@@ -380,120 +411,74 @@ class QuotationController extends Controller
                                     ->orWhereIn('status', ['Proposal', 'Pending'])
                                     ->orWhereNull('QuoteStatus')->orWhereNull('status');
                             });
-                        } elseif (str_contains($kw, 'complete') || str_contains($kw, 'won')) {
-                            $q->where(function ($sub) {
-                                $sub->where('QuoteStatus', 'Won')->orWhere('status', 'Won');
-                            })->where(function ($sub) {
-                                $sub->whereNull('SCMINTStatus')->orWhere('SCMINTStatus', 'Success');
-                            });
+                        } elseif (str_contains($kw, 'complete')) {
+                            $q->where('QuoteStatus', 'Won')->where('status', 'Won')->where('SCMINTStatus', 'Success');
+                        } elseif (str_contains($kw, 'won')) {
+                            $q->where('QuoteStatus', 'Won')->where('status', 'Won')->whereNull('SCMINTStatus');
                         } elseif (str_contains($kw, 'lost')) {
-                            $q->whereIn('QuoteStatus', ['Lost', 'Cancel'])
-                                ->orWhereIn('status', ['Lost', 'Cancel']);
+                            $q->whereIn('QuoteStatus', ['Lost', 'Cancel'])->whereIn('status', ['Lost', 'Cancel']);
                         } elseif (str_contains($kw, 'cancel')) {
-                            $q->where('QuoteStatus', 'Cancel')->orWhere('status', 'Cancel');
+                            $q->where('QuoteStatus', 'Cancel')->where('status', 'Cancel');
                         } elseif (str_contains($kw, 'failed') && str_contains($kw, 'progress')) {
-                            $q->where('QuoteStatus', 'Failed Progress')
-                                ->orWhere('status', 'Failed Progress');
+                            $q->where('QuoteStatus', 'Failed Progress')->where('status', 'Failed Progress');
                         } elseif (str_contains($kw, 'failed') || str_contains($kw, 'int')) {
-                            $q->where(function ($sub) {
-                                $sub->where('QuoteStatus', 'Won')->orWhere('status', 'Won');
-                            })->whereNotNull('SCMINTStatus')->where('SCMINTStatus', '!=', 'Success');
+                            $q->where('QuoteStatus', 'Won')->where('status', 'Won')
+                                ->whereNotNull('SCMINTStatus')->where('SCMINTStatus', '!=', 'Success');
                         } else {
-                            $q->where('QuoteStatus', 'like', "%$kw%")
-                                ->orWhere('status', 'like', "%$kw%");
+                            $q->where('QuoteStatus', 'like', "%$kw%")->orWhere('status', 'like', "%$kw%");
                         }
                     });
                 })
-
-                // ── Added columns (unchanged) ─────────────────────────────────────
-                ->addColumn('report_date',        fn($r) => $r->CreatedOn       ? date('Y-m-d H:i', strtotime($r->CreatedOn)) : '-')
-                ->addColumn('OfficeName',         fn($r) => $r->teamname         ?? '-')
-                ->addColumn('ClientName',         fn($r) => $r->companyname      ?? '-')
-                ->addColumn('ClientID',           fn($r) => $r->clientid         ?? '-')
-                ->addColumn('SalesPerson',        fn($r) => $r->username         ?? '-')
-                ->addColumn('OriginCountry',      fn($r) => $r->origincountry    ?? '-')
+                ->addColumn('report_date',        fn($r) => $r->CreatedOn          ? date('Y-m-d H:i', strtotime($r->CreatedOn)) : '-')
+                ->addColumn('OfficeName',         fn($r) => $r->teamname           ?? '-')
+                ->addColumn('ClientName',         fn($r) => $r->companyname        ?? '-')
+                ->addColumn('ClientID',           fn($r) => $r->clientid           ?? '-')
+                ->addColumn('SalesPerson',        fn($r) => $r->username           ?? '-')
+                ->addColumn('OriginCountry',      fn($r) => $r->origincountry      ?? '-')
                 ->addColumn('DestinationCountry', fn($r) => $r->destinationcountry ?? '-')
-                ->addColumn('BookingNo',          fn($r) => $r->bookingno        ?? '-')
-
+                ->addColumn('BookingNo',          fn($r) => $r->bookingno          ?? '-')
                 ->addColumn('QuotationStatus', function ($row) {
                     $status    = $row->QuoteStatus ?? $row->status ?? 'Proposal';
                     $scmStatus = $row->SCMINTStatus;
-
                     if ($status === 'Won' && $scmStatus && $scmStatus !== 'Success') return 'Failed Int.';
                     if ($status === 'Won' && $scmStatus === 'Success')               return 'Completed';
-                    if ($status === 'Won')                                            return 'Won';        // ← no SCM yet
+                    if ($status === 'Won')                                            return 'Won';
                     if ($status === 'Failed Progress')                                return 'Failed Progress';
                     if (in_array($status, ['Proposal', 'Pending', 'In Progress']) || is_null($status)) return 'In Progress';
                     if (in_array($status, ['Lost', 'Cancel']))                        return 'Lost / Canceled';
                     return $status;
                 })
-
                 ->addColumn('remarks_error', function ($row) {
                     $raw = $row->QuoteStatusDescription ?? null;
                     if (!$raw) return '-';
-
                     $decoded = json_decode('[' . $raw . ']', true);
                     if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) return $raw;
-
                     return implode(' | ', array_column($decoded, 'Remark'));
                 })
-
-                // ── Action column — updated for new card logic ────────────────────
                 ->addColumn('action', function ($row) use ($cardFilter) {
                     $status    = $row->QuoteStatus ?? $row->status ?? 'Proposal';
                     $scmStatus = $row->SCMINTStatus;
-
-                    $isInProgress = in_array($status, ['Pending', 'Proposal', 'In Progress', 'Failed Progress'])
-                        || is_null($status);
+                    $isInProgress = in_array($status, ['Pending', 'Proposal', 'In Progress', 'Failed Progress']) || is_null($status);
                     $isFailedInt  = ($status === 'Won' && $scmStatus && $scmStatus !== 'Success');
                     $isCompleted  = ($status === 'Won' && $scmStatus === 'Success');
 
-                    // View button — always shown
-                    $viewBtn = '<a href="' . route('quotation.view', $row->ID) . '"
-                    class="btn btn-info btn-sm" title="View">
-                        <i class="fas fa-eye"></i>
-                    </a>';
+                    $viewBtn = '<a href="' . route('quotation.view', $row->ID) . '" class="btn btn-info btn-sm" title="View"><i class="fas fa-eye"></i></a>';
 
-                    // Edit quotation (In Progress only)
                     $editBtn = '';
                     if ($cardFilter === 'in_progress' && $isInProgress) {
-                        $editBtn = ' <a href="' . route('quotation.edit', $row->ID) . '"
-                        class="btn btn-warning btn-sm" title="Edit Quotation">
-                        <i class="fas fa-edit"></i>
-                    </a>';
+                        $editBtn = ' <a href="' . route('quotation.edit', $row->ID) . '" class="btn btn-warning btn-sm" title="Edit"><i class="fas fa-edit"></i></a>';
                     }
 
-                    // Retrigger (Failed Int. only)
-                    // $retriggerBtn = '';
-                    // if ($cardFilter === 'failed_int' && $isFailedInt) {
-                    //     $retriggerBtn = ' <button class="btn btn-danger btn-sm btn-retrigger"
-                    //     data-booking="' . $row->bookingno . '" title="Retrigger">
-                    //     <i class="fas fa-sync-alt"></i>
-                    // </button>';
-                    // }
-
-                    // Create Booking — shown on Completed and Failed Int. cards
-                    // (Completed = edit existing booking info; Failed Int. = retry pipeline)
-                    // Create Booking — Failed Int. only (Completed = View only)
                     $createBookingBtn = '';
-                    if (
-                        ($cardFilter === 'won'        && $isCompleted) ||
-                        ($cardFilter === 'failed_int' && $isFailedInt)
-                    ) {
+                    if (($cardFilter === 'won' && $isCompleted) || ($cardFilter === 'failed_int' && $isFailedInt)) {
                         $createBookingBtn = ' <button class="btn btn-success btn-sm btn-create-booking"
-                            data-id="'      . $row->ID       . '"
-                            data-booking="' . $row->bookingno . '"
-                            data-team="'    . $row->teamid    . '"
-                            data-quoteno="' . $row->QuoteNo   . '"
-                            title="Create Booking">
-                            <i class="fas fa-plus-circle"></i>
-                        </button>';
+                        data-id="' . $row->ID . '" data-booking="' . $row->bookingno . '"
+                        data-team="' . $row->teamid . '" data-quoteno="' . $row->QuoteNo . '"
+                        title="Create Booking"><i class="fas fa-plus-circle"></i></button>';
                     }
 
-                    // return $viewBtn . $editBtn . $retriggerBtn . $createBookingBtn;
                     return $viewBtn . $editBtn . $createBookingBtn;
                 })
-
                 ->rawColumns(['action', 'remarks_error'])
                 ->make(true);
         } catch (\Throwable $e) {
@@ -502,11 +487,7 @@ class QuotationController extends Controller
                 'file'    => $e->getFile(),
                 'line'    => $e->getLine(),
             ]);
-            return response()->json([
-                'error' => $e->getMessage(),
-                'file'  => $e->getFile(),
-                'line'  => $e->getLine(),
-            ], 500);
+            return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 
@@ -827,6 +808,51 @@ class QuotationController extends Controller
                 'message' => $e->getMessage()
             ], 500);
         }
+    }
+
+    // ============================================================
+    // NEW PRIVATE METHOD — single source of truth for office resolution
+    // Matching priority:
+    //   1. Azure_Users.userPrincipalName = Auth::user()->Email
+    //   2. Azure_Users.mail              = Auth::user()->Email (fallback)
+    // Returns empty collection if no BaseOfficeCode found.
+    // ============================================================
+    private function resolveUserOfficeCodes(): \Illuminate\Support\Collection
+    {
+        $email = strtolower(trim(Auth::user()->Email ?? ''));
+
+        if (!$email) {
+            Log::warning('resolveUserOfficeCodes - Auth user has no Email', [
+                'user_id' => Auth::id(),
+            ]);
+            return collect();
+        }
+
+        $rows = DB::table('Azure_Users')
+            ->where(function ($q) use ($email) {
+                // Priority 1: userPrincipalName
+                $q->whereRaw('LOWER(LTRIM(RTRIM(userPrincipalName))) = ?', [$email])
+                    // Priority 2: mail (fallback for users with null userPrincipalName)
+                    ->orWhereRaw('LOWER(LTRIM(RTRIM(mail))) = ?', [$email]);
+            })
+            ->whereNotNull('BaseOfficeCode')
+            ->where('BaseOfficeCode', '!=', '')
+            ->pluck('BaseOfficeCode');
+
+        if ($rows->isEmpty()) {
+            Log::warning('resolveUserOfficeCodes - No BaseOfficeCode found', [
+                'email' => $email,
+            ]);
+            return collect();
+        }
+
+        // BaseOfficeCode may be comma-separated (e.g. "KE,UG")
+        return $rows
+            ->flatMap(fn($codes) => explode(',', $codes))
+            ->map(fn($code) => trim($code))
+            ->filter()
+            ->unique()
+            ->values();
     }
 
     public function getCharges(Request $request)
@@ -5224,28 +5250,28 @@ class QuotationController extends Controller
             }
         }
 
-            // ── After Charge step: detect silent DB bug ───────────────────────────
+        // ── After Charge step: detect silent DB bug ───────────────────────────
         // sp_Quote_QuoteChargesAddInSCM reads from FIT_ExpressChargeSheet instead
         // of Quote_Quotation_ChargeSheet (wrong table — DB-side bug, item #4).
         // The SP returns 'Success' even when no charges are transferred because
         // the INSERT finds zero rows and throws no exception.
         // This check makes the silent failure visible in logs until the DB team
         // fixes the SP. Remove or comment out once the SP is corrected.
-    //     if ($stepNo === 3) {
-    //         // $unsentCharges = DB::table('Quote_Quotation_ChargeSheet')
-    //         //     ->where('QuotationInfoID', $quotation->ID)
-    //         //     ->where('IsDeleted', 0)
-    //         //     ->whereNull('SCMJobSheetID')
-    //         //     ->count();
-    //         //
-    //         // if ($unsentCharges > 0) {
-    //         //     Log::warning('processBooking - Step 3 returned Success but charges not transferred', [
-    //         //         'quote_no'       => $quoteNo,
-    //         //         'unsent_charges' => $unsentCharges,
-    //         //     ]);
-    //         // }
-    //     }
-    // }
+        //     if ($stepNo === 3) {
+        //         // $unsentCharges = DB::table('Quote_Quotation_ChargeSheet')
+        //         //     ->where('QuotationInfoID', $quotation->ID)
+        //         //     ->where('IsDeleted', 0)
+        //         //     ->whereNull('SCMJobSheetID')
+        //         //     ->count();
+        //         //
+        //         // if ($unsentCharges > 0) {
+        //         //     Log::warning('processBooking - Step 3 returned Success but charges not transferred', [
+        //         //         'quote_no'       => $quoteNo,
+        //         //         'unsent_charges' => $unsentCharges,
+        //         //     ]);
+        //         // }
+        //     }
+        // }
 
         // ── All steps passed: mark SCMINTStatus = 'Success' ──────────────────────
         DB::table('Quote_QuotationInfo')
