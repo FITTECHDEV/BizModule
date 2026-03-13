@@ -41,10 +41,11 @@
 
 
     {{-- ============================================================ --}}
-    {{-- DUPLICATE RESULT CARD — shown after successful duplication   --}}
+    {{-- DUPLICATE RESULT CARD — fixed center overlay                 --}}
     {{-- ============================================================ --}}
-    <div id="dupResultCard" style="display:none;" class="mb-3">
-        <div class="alert alert-success alert-dismissible shadow-sm" style="border-left: 5px solid #28a745;">
+    <div id="dupResultCard"
+        style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:9999; min-width:420px; max-width:560px;">
+        <div class="alert alert-success shadow-lg" style="border-left: 5px solid #28a745; border-radius:8px;">
             <div class="d-flex align-items-center">
                 <i class="fas fa-check-circle mr-3" style="font-size:2rem; color:#28a745;"></i>
                 <div class="flex-grow-1">
