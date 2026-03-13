@@ -6,7 +6,7 @@
 @section('content_header')
     <div class="d-flex justify-content-between align-items-center">
         <div>
-            <h1><i class="fas fa-file-invoice"></i> Inquiry No - {{ $quotation->QuoteNo ?? '' }}</h1>
+            <h1><i class="fas fa-file-invoice"></i> Quote No - {{ $quotation->QuoteNo ?? '' }}</h1>
             <p class="text-muted mb-0">Edit booking quotation</p>
         </div>
         <div>

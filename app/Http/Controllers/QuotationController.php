@@ -458,7 +458,9 @@ class QuotationController extends Controller
                 ->addColumn('action', function ($row) use ($cardFilter) {
                     $status    = $row->QuoteStatus ?? $row->status ?? 'Proposal';
                     $scmStatus = $row->SCMINTStatus;
+
                     $isInProgress = in_array($status, ['Pending', 'Proposal', 'In Progress', 'Failed Progress']) || is_null($status);
+                    $isWon        = ($status === 'Won' && is_null($scmStatus));        // ← ADD THIS
                     $isFailedInt  = ($status === 'Won' && $scmStatus && $scmStatus !== 'Success');
                     $isCompleted  = ($status === 'Won' && $scmStatus === 'Success');
 
@@ -470,11 +472,16 @@ class QuotationController extends Controller
                     }
 
                     $createBookingBtn = '';
-                    if (($cardFilter === 'won' && $isCompleted) || ($cardFilter === 'failed_int' && $isFailedInt)) {
+                    if (
+                        ($cardFilter === 'won'        && $isWon) ||        // ← CHANGED from $isCompleted
+                        ($cardFilter === 'failed_int' && $isFailedInt)
+                    ) {
                         $createBookingBtn = ' <button class="btn btn-success btn-sm btn-create-booking"
-                        data-id="' . $row->ID . '" data-booking="' . $row->bookingno . '"
-                        data-team="' . $row->teamid . '" data-quoteno="' . $row->QuoteNo . '"
-                        title="Create Booking"><i class="fas fa-plus-circle"></i></button>';
+                            data-id="'      . $row->ID       . '"
+                            data-booking="' . $row->bookingno . '"
+                            data-team="'    . $row->teamid    . '"
+                            data-quoteno="' . $row->QuoteNo   . '"
+                            title="Create Booking"><i class="fas fa-plus-circle"></i></button>';
                     }
 
                     return $viewBtn . $editBtn . $createBookingBtn;
@@ -4630,6 +4637,10 @@ class QuotationController extends Controller
                 $resultSetIndex++;
                 try {
                     $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+
+                    Log::debug('getServiceTemplates - row keys', [
+                        'keys' => !empty($rows) ? array_keys((array) $rows[0]) : [],
+                    ]);
 
                     Log::debug('getServiceTemplates - Result set #' . $resultSetIndex, [
                         'quotation_id' => $quotationId,
