@@ -5948,14 +5948,17 @@ class QuotationController extends Controller
         $filter = $request->input('filter', '');
         try {
             $pdo  = DB::connection('sqlsrv')->getPdo();
-            $stmt = $pdo->prepare("
-            SET NOCOUNT ON;
-            EXEC [FITSCMUAT].dbo.sp_Quote_GetSalesPersonList @Filter = ?
-        ");
+            $stmt = $pdo->prepare("EXEC [FITSCMUAT].dbo.sp_Quote_GetSalesPersonList @Filter = ?");
             $stmt->execute([$filter]);
+
             $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+            if (empty($rows) && $stmt->nextRowset()) {
+                $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+            }
+
             return response()->json(['success' => true, 'persons' => $rows]);
         } catch (\Throwable $e) {
+            // existing fallback query unchanged
             try {
                 $persons = DB::connection('sqlsrv')
                     ->table('FITSCMUAT.dbo.Cust_Resource')
@@ -5968,22 +5971,18 @@ class QuotationController extends Controller
                     ->select([
                         'Code',
                         DB::raw("Contact_PersonName_FirstName + ISNULL(' ' + Contact_PersonName_LastName, '') AS FullName"),
-                        DB::raw("ISNULL(Contact_Email_Primary, '') AS Email"),  // ← fixed
+                        DB::raw("ISNULL(Contact_Email_Primary, '') AS Email"),
                     ])
                     ->limit(20)
                     ->get();
 
                 return response()->json(['success' => true, 'persons' => $persons]);
             } catch (\Throwable $e2) {
-                return response()->json([
-                    'success' => false,
-                    'persons' => [],
-                    'error'   => $e2->getMessage()
-                ]);
+                return response()->json(['success' => false, 'persons' => [], 'error' => $e2->getMessage()]);
             }
         }
     }
-
+    
     public function saveInquiryDetails(Request $request)
     {
         $request->validate([
@@ -6037,24 +6036,44 @@ class QuotationController extends Controller
     public function lookupCountries(Request $request)
     {
         try {
-            // FIX: was DB::getPdo() — wrong connection
             $pdo  = DB::connection('sqlsrv')->getPdo();
             $stmt = $pdo->prepare("EXEC sp_CountryList @Filter = ?");
             $stmt->execute([$request->get('filter', '')]);
-            $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
-            // Normalise column name — sp_CountryList may return 'Country', 'CountryName',
-            // or 'Name' depending on SP version. Both frontend consumers expect CountryName + Name.
-            $normalised = array_map(function ($row) {
-                $name = $row['CountryName']
-                    ?? $row['Name']
-                    ?? $row['Country']
-                    ?? current($row)
-                    ?? '';
-                return array_merge($row, [
-                    'CountryName' => $name,
-                    'Name'        => $name,
+            $rows = [];
+
+            // Iterate ALL result sets — nextRowset() advances THEN we fetch
+            // do/while ensures we fetch set #1 first, then advance and fetch set #2
+            do {
+                try {
+                    $fetched = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+                    Log::info('lookupCountries set fetched', [
+                        'count'   => count($fetched),
+                        'columns' => !empty($fetched) ? array_keys($fetched[0]) : [],
+                    ]);
+                    if (!empty($fetched) && empty($rows)) {
+                        $rows = $fetched;
+                    }
+                } catch (\Exception $e) {
+                    Log::info('lookupCountries set skipped: ' . $e->getMessage());
+                }
+            } while ($stmt->nextRowset());
+
+            // If loop exhausted without finding data, rows is still []
+            // This means BOTH sets were empty — genuine SP data issue
+            Log::info('lookupCountries complete', ['count' => count($rows)]);
+
+            if (empty($rows)) {
+                Log::warning('lookupCountries — both result sets empty', [
+                    'filter' => $request->get('filter', ''),
+                    'note'   => 'SP returned 2 sets but neither had rows. Check Cust_Country table data.',
                 ]);
+                return response()->json([]);
+            }
+
+            $normalised = array_map(function ($row) {
+                $name = $row['CountryName'] ?? $row['Name'] ?? current($row) ?? '';
+                return array_merge($row, ['CountryName' => $name, 'Name' => $name]);
             }, $rows);
 
             return response()->json($normalised);
@@ -6063,6 +6082,7 @@ class QuotationController extends Controller
             return response()->json([]);
         }
     }
+
     public function lookupIncoTerms(Request $request)
     {
         try {
@@ -6090,11 +6110,29 @@ class QuotationController extends Controller
     public function lookupIndustryTypes(Request $request)
     {
         try {
-            $pdo  = DB::getPdo();
+            $pdo  = DB::connection('sqlsrv')->getPdo();
             $stmt = $pdo->prepare("EXEC sp_IndustryTypeList @Filter = ?");
             $stmt->execute([$request->get('filter', '')]);
-            return response()->json($stmt->fetchAll(\PDO::FETCH_ASSOC));
+
+            // sp_IndustryTypeList uses EXEC sp_executesql internally (dynamic SQL).
+            // Same multi-result-set problem — loop until we find the data rows.
+            $rows = [];
+            do {
+                try {
+                    $fetched = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+                    if (!empty($fetched)) {
+                        $rows = $fetched;
+                        break;
+                    }
+                } catch (\Exception $fetchEx) {
+                    // This result set has no fields — advance to next
+                }
+            } while ($stmt->nextRowset());
+
+            Log::info('lookupIndustryTypes success', ['count' => count($rows)]);
+            return response()->json($rows);
         } catch (\Exception $e) {
+            Log::error('lookupIndustryTypes error: ' . $e->getMessage());
             return response()->json([]);
         }
     }
