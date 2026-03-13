@@ -25,8 +25,9 @@
             --}}
             @php
                 $quoteStatus = $quotation->QuoteStatus ?? ($quotation->status ?? null);
-                $isInProgress = in_array($quoteStatus, ['Proposal', 'Pending']) || is_null($quoteStatus);
-            @endphp
+                $isInProgress =
+                    in_array($quoteStatus, ['Proposal', 'Pending', 'In Progress', 'Failed Progress']) ||
+                is_null($quoteStatus); @endphp
 
             @if ($isInProgress)
                 <a href="{{ route('quotation.edit', $quotation->ID) }}" class="btn btn-warning btn-sm">
@@ -68,8 +69,8 @@
 
     @php
         $quoteStatus = $quotation->QuoteStatus ?? ($quotation->status ?? null);
-        $isInProgress = in_array($quoteStatus, ['Proposal', 'Pending']) || is_null($quoteStatus);
-    @endphp
+        $isInProgress =
+        in_array($quoteStatus, ['Proposal', 'Pending', 'In Progress', 'Failed Progress']) || is_null($quoteStatus); @endphp
 
     <div class="row">
         <!-- LEFT COLUMN -->

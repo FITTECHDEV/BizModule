@@ -364,7 +364,7 @@ class QuotationController extends Controller
                 $query->whereIn('teamname', $allowedTeamNames->toArray());
             }
 
-            // ── Card filter (unchanged) ───────────────────────────────────
+            // ── Card filter ───────────────────────────────────────────────
             switch ($cardFilter) {
                 case 'in_progress':
                     $query->where(function ($q) {
@@ -375,21 +375,43 @@ class QuotationController extends Controller
                             ->orWhereNull('status');
                     });
                     break;
+
                 case 'won':
-                    $query->where('QuoteStatus', 'Won')->where('status', 'Won')->whereNull('SCMINTStatus');
+                    // getStats() only checks QuoteStatus — remove the ->where('status', 'Won') AND
+                    $query->where('QuoteStatus', 'Won')
+                        ->whereNull('SCMINTStatus');
                     break;
+
                 case 'completed':
-                    $query->where('QuoteStatus', 'Won')->where('status', 'Won')->where('SCMINTStatus', 'Success');
+                    // getStats() uses OR on QuoteStatus/status — match that
+                    $query->where(function ($q) {
+                        $q->where('QuoteStatus', 'Won')->orWhere('status', 'Won');
+                    })->where('SCMINTStatus', 'Success');
                     break;
+
                 case 'failed_int':
-                    $query->where('QuoteStatus', 'Won')->where('status', 'Won')
-                        ->whereNotNull('SCMINTStatus')->where('SCMINTStatus', '!=', 'Success');
+                    // getStats() uses OR on QuoteStatus/status — match that
+                    $query->where(function ($q) {
+                        $q->where('QuoteStatus', 'Won')->orWhere('status', 'Won');
+                    })->whereNotNull('SCMINTStatus')
+                        ->where('SCMINTStatus', '!=', 'Success');
                     break;
+
                 case 'lost_canceled':
-                    $query->whereIn('QuoteStatus', ['Lost', 'Cancel'])->whereIn('status', ['Lost', 'Cancel']);
+                    // getStats() uses OR — was AND (whereIn + whereIn), now wrapped in OR
+                    $query->where(function ($q) {
+                        $q->whereIn('QuoteStatus', ['Lost', 'Cancel'])
+                            ->orWhereIn('status', ['Lost', 'Cancel']);
+                    });
                     break;
+
                 case 'failed_progress':
-                    $query->where('QuoteStatus', 'Failed Progress')->where('status', 'Failed Progress');
+                    // getStats() uses OR — was AND (where + where), now wrapped in OR
+                    // THIS is the direct fix for "6 in card, 0 in table"
+                    $query->where(function ($q) {
+                        $q->where('QuoteStatus', 'Failed Progress')
+                            ->orWhere('status', 'Failed Progress');
+                    });
                     break;
             }
 
@@ -460,7 +482,7 @@ class QuotationController extends Controller
                     $scmStatus = $row->SCMINTStatus;
 
                     $isInProgress = in_array($status, ['Pending', 'Proposal', 'In Progress', 'Failed Progress']) || is_null($status);
-                    $isWon        = ($status === 'Won' && is_null($scmStatus));        // ← ADD THIS
+                    $isWon        = ($status === 'Won' && is_null($scmStatus));
                     $isFailedInt  = ($status === 'Won' && $scmStatus && $scmStatus !== 'Success');
                     $isCompleted  = ($status === 'Won' && $scmStatus === 'Success');
 
@@ -473,18 +495,26 @@ class QuotationController extends Controller
 
                     $createBookingBtn = '';
                     if (
-                        ($cardFilter === 'won'        && $isWon) ||        // ← CHANGED from $isCompleted
+                        ($cardFilter === 'won'        && $isWon) ||
                         ($cardFilter === 'failed_int' && $isFailedInt)
                     ) {
                         $createBookingBtn = ' <button class="btn btn-success btn-sm btn-create-booking"
-                            data-id="'      . $row->ID       . '"
-                            data-booking="' . $row->bookingno . '"
-                            data-team="'    . $row->teamid    . '"
-                            data-quoteno="' . $row->QuoteNo   . '"
-                            title="Create Booking"><i class="fas fa-plus-circle"></i></button>';
+            data-id="'      . $row->ID       . '"
+            data-booking="' . $row->bookingno . '"
+            data-team="'    . $row->teamid    . '"
+            data-quoteno="' . $row->QuoteNo   . '"
+            title="Create Booking"><i class="fas fa-plus-circle"></i></button>';
                     }
 
-                    return $viewBtn . $editBtn . $createBookingBtn;
+                    // Retrigger button — only for Failed Int. rows
+                    $retriggerBtn = '';
+                    if ($cardFilter === 'failed_int' && $isFailedInt) {
+                        $retriggerBtn = ' <button class="btn btn-secondary btn-sm btn-retrigger"
+            data-booking="' . $row->bookingno . '"
+            title="Retrigger"><i class="fas fa-sync-alt"></i></button>';
+                    }
+
+                    return $viewBtn . $editBtn . $createBookingBtn . $retriggerBtn;
                 })
                 ->rawColumns(['action', 'remarks_error'])
                 ->make(true);
@@ -4974,11 +5004,11 @@ class QuotationController extends Controller
 
         $pdo  = DB::connection('sqlsrv')->getPdo();
         $stmt = $pdo->prepare("
-        SET NOCOUNT ON;
-        DECLARE @OutputJson VARCHAR(2000);
-        EXEC dbo.sp_Quote_DetailsUpdate ?, @OutputJson = @OutputJson OUTPUT;
-        SELECT @OutputJson AS output
-    ");
+            SET NOCOUNT ON;
+            DECLARE @OutputJson VARCHAR(2000);
+            EXEC dbo.sp_Quote_DetailsUpdate ?, @OutputJson = @OutputJson OUTPUT;
+            SELECT @OutputJson AS output
+        ");
 
         $stmt->execute([$inputJson]);
         do {
