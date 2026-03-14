@@ -779,7 +779,7 @@ class QuotationController extends Controller
             } while ($stmt->nextRowset());
 
             // FIX 1: SP has a known typo — 'Sucess' instead of 'Success' — accept both
-            if (!$result || !in_array(strtolower(trim($result['Status'] ?? '')), ['success'])) {
+            if (!$result || strtolower(trim($result['Status'] ?? '')) !== 'success') {
                 $remark = $result['Remark'] ?? 'Unknown error from copy SP';
 
                 Log::error('Copy Quotation - SP Failed', [
@@ -3002,6 +3002,12 @@ class QuotationController extends Controller
     private function getCommunicationTemplatesViaSP(string $module, string $subModule, string $bookingNo): \Illuminate\Http\JsonResponse
     {
         try {
+            Log::info('getCommunicationTemplatesViaSP - params', [
+                'booking_no' => $bookingNo,
+                'module'     => $module,
+                'sub_module' => $subModule,
+            ]);
+
             $pdo  = DB::connection()->getPdo();
             $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC dbo.sp_Quote_CommunicationDetail_List ?, ?, ?");
             $stmt->execute([$bookingNo, $module, $subModule]);
@@ -3037,9 +3043,19 @@ class QuotationController extends Controller
                         ], 404);
                     }
 
+                    // SP always emits 'Select @Service, @Process, @Office' before the
+                    // template result set — skip it and advance to the next set.
+                    if (!isset($rows[0]->TemplateID) && !isset($rows[0]->TemplateName)) {
+                        Log::debug('getCommunicationTemplatesViaSP - Skipping diagnostic result set', [
+                            'booking_no' => $bookingNo,
+                            'result_set' => $resultSetIndex,
+                            'values'     => (array) $rows[0],
+                        ]);
+                        continue;
+                    }
+
                     // Valid result set — SP returns TemplateID and TemplateName
                     if (isset($rows[0]->TemplateID) && isset($rows[0]->TemplateName)) {
-                        // Normalize to Name/Description shape the frontend expects
                         $templates = array_map(fn($row) => (object)[
                             'Name'        => $row->TemplateName,
                             'Description' => '',
@@ -3049,18 +3065,25 @@ class QuotationController extends Controller
                             'booking_no'     => $bookingNo,
                             'sub_module'     => $subModule,
                             'template_count' => count($templates),
+                            'result_set'     => $resultSetIndex,
                         ]);
                         break;
                     }
                 } catch (\PDOException $e) {
+                    Log::debug('getCommunicationTemplatesViaSP - Skipping result set', [
+                        'booking_no' => $bookingNo,
+                        'result_set' => $resultSetIndex,
+                        'error'      => $e->getMessage(),
+                    ]);
                     continue;
                 }
             } while ($stmt->nextRowset());
 
             if (empty($templates)) {
                 Log::warning('getCommunicationTemplatesViaSP - No templates returned', [
-                    'booking_no' => $bookingNo,
-                    'sub_module' => $subModule,
+                    'booking_no'       => $bookingNo,
+                    'sub_module'       => $subModule,
+                    'result_sets_seen' => $resultSetIndex,
                 ]);
 
                 return response()->json([
@@ -4989,17 +5012,16 @@ class QuotationController extends Controller
      * Uses nextRowset() to skip intermediate result sets produced by
      * DROP/CREATE TABLE inside the SP — same pattern as saveCharge().
      */
-    private function executeDetailsUpdateSP(string $inputJson): array
+    private function executeCargoUpdateSP(string $inputJson): array
     {
-        // Guard: VARCHAR(2000) limit — silent truncation causes corrupt saves
         if (strlen($inputJson) > 2000) {
-            Log::error('executeDetailsUpdateSP - payload exceeds SP limit', [
+            Log::error('executeCargoUpdateSP - payload exceeds SP limit', [
                 'length'  => strlen($inputJson),
                 'preview' => substr($inputJson, 0, 300),
             ]);
             return [
-                'Status'  => 'Failed',
-                'Remark'  => '[PHP] Input payload too large (' . strlen($inputJson) . ' chars). SP limit is 2000.',
+                'Status' => 'Failed',
+                'Remark' => '[PHP] Input payload too large (' . strlen($inputJson) . ' chars). SP limit is 2000.',
             ];
         }
 
@@ -5007,35 +5029,46 @@ class QuotationController extends Controller
         $stmt = $pdo->prepare("
             SET NOCOUNT ON;
             DECLARE @OutputJson VARCHAR(2000);
-            EXEC dbo.sp_Quote_DetailsUpdate ?, @OutputJson = @OutputJson OUTPUT;
+            EXEC FITSYSUAT.dbo.sp_Quote_CargoDetailsUpdate ?, @OutputRemarkJson = @OutputJson OUTPUT;
             SELECT @OutputJson AS output
         ");
-
         $stmt->execute([$inputJson]);
+
         do {
             try {
                 $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
                 if (!empty($rows) && isset($rows[0]->output)) {
-                    $decoded = json_decode($rows[0]->output, true);
+                    $raw      = trim($rows[0]->output);
+                    $toDecode = str_starts_with($raw, '[') ? $raw : '[' . $raw . ']';
+                    $decoded  = json_decode($toDecode, true);
+
                     if (json_last_error() !== JSON_ERROR_NONE) {
-                        Log::error('executeDetailsUpdateSP - JSON decode failed', [
-                            'raw'   => $rows[0]->output,
+                        Log::error('executeCargoUpdateSP - JSON decode failed', [
+                            'raw'   => $raw,
                             'input' => $inputJson,
                         ]);
                         return ['Status' => 'Failed', 'Remark' => '[SP] Response could not be parsed'];
                     }
-                    // Normalize both shapes to singular Remark for all callers
-                    if (isset($decoded['Remarks'][0]['Remark']) && !isset($decoded['Remark'])) {
-                        $decoded['Remark'] = $decoded['Remarks'][0]['Remark'];
+
+                    $failures = array_filter($decoded, fn($r) => ($r['Status'] ?? '') === 'Failed');
+
+                    if (!empty($failures)) {
+                        $remarks = implode(', ', array_column($failures, 'Remark'));
+                        return [
+                            'Status'  => 'Failed',
+                            'Remark'  => $remarks,
+                            'Remarks' => array_values($failures),
+                        ];
                     }
-                    return $decoded;
+
+                    return $decoded[0] ?? ['Status' => 'Success'];
                 }
             } catch (\PDOException $e) {
                 // skip intermediate result sets
             }
         } while ($stmt->nextRowset());
 
-        Log::error('executeDetailsUpdateSP - no output returned', ['input' => $inputJson]);
+        Log::error('executeCargoUpdateSP - no output returned', ['input' => $inputJson]);
         return [
             'Status' => 'Failed',
             'Remark' => '[SP] No response returned from stored procedure',
@@ -5645,9 +5678,10 @@ class QuotationController extends Controller
             'transport_mode' => 'required|string',
         ]);
 
-        $submittedBy = auth()->user()->displayName ?? auth()->user()->Email ?? 'system';
+        $submittedBy = auth()->user()->displayName
+            ?? auth()->user()->Email
+            ?? 'system';
 
-        // SP expects QuoteNo (e.g. 'QT-5298'), not the numeric bookingno
         $quotation = DB::table('Quote_QuotationInfo')
             ->where('bookingno', $request->booking_no)
             ->value('QuoteNo');
@@ -5655,46 +5689,55 @@ class QuotationController extends Controller
         if (!$quotation) {
             return response()->json([
                 'success' => false,
-                'message' => 'Quotation not found for booking number: ' . $request->booking_no
+                'message' => 'Quotation not found for booking number: ' . $request->booking_no,
             ], 404);
         }
 
         $input = json_encode([
-            'OperationType'     => 'ShipmentDetails',       // was 'ShipmentUpdate'
-            'SubmittedDatetime' => now()->format('YmdHis'),
-            'SubmittedBy'       => $submittedBy,
-            'Action'            => 'Update',
-            'QuotationNo'       => $quotation,              // was $request->booking_no
-            'ShipmentModeCode'  => $request->shipment_mode,
-            'TransportModeCode'     => $request->transport_mode,
-            'IncoTermCode'      => $request->incoterm,
+            'OperationType'          => 'ShipmentDetails',
+            'SubmittedDatetime'      => now()->format('YmdHis'),
+            'SubmittedBy'            => $submittedBy,
+            'Action'                 => 'Update',
+            'QuotationNo'            => $quotation,
+            'ShipmentModeCode'       => $request->shipment_mode,
+            'TransportModeCode'      => $request->transport_mode,
+            'IncoTermCode'           => $request->incoterm ?? '',
+            'OriginCountryCode'      => $request->origincountry ?? '',
+            'DestinationCountryCode' => $request->destinationcountry ?? '',
+            'ServiceClassCode'       => $request->service_class ?? '',
         ]);
 
         if (strlen($input) > 2000) {
             return response()->json([
                 'success' => false,
-                'message' => 'Request payload too large for SP. Max 2000 characters.'
+                'message' => 'Request payload too large for SP. Max 2000 characters.',
             ], 400);
         }
 
         try {
-            $output = $this->executeDetailsUpdateSP($input);
+            $results = $this->executeDetailsUpdateSP($input); // now returns array of objects
 
-            if (($output['Status'] ?? '') === 'Failed') {
-                $remarks = collect($output['Remarks'] ?? [])->pluck('Remark')->implode(', ');
+            // Collect any failures across all returned status objects
+            $failures = array_filter($results, fn($r) => ($r['Status'] ?? '') === 'Failed');
+
+            if (!empty($failures)) {
+                $remarks = implode(', ', array_column($failures, 'Remark'));
                 return response()->json([
                     'success' => false,
-                    'message' => $remarks ?: 'Shipment update failed'
+                    'message' => $remarks ?: 'Shipment update failed',
                 ]);
             }
 
             return response()->json([
                 'success' => true,
-                'message' => 'Shipment details saved successfully'
+                'message' => 'Shipment details saved successfully',
             ]);
         } catch (\Exception $e) {
             Log::error('saveShipmentDetails error: ' . $e->getMessage());
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
         }
     }
 
@@ -5879,14 +5922,46 @@ class QuotationController extends Controller
     {
         $request->validate([
             'quote_no'     => 'required|string',
-            'commodity'    => 'required|string',
-            'cargo_volume' => 'required|numeric',
+            'commodity'    => 'nullable|string',
+            'cargo_volume' => 'nullable|numeric|min:0',
             'containers'   => 'nullable|string',
         ]);
 
         $submittedBy = substr(auth()->user()->displayName ?? auth()->user()->Email ?? 'system', 0, 25);
 
-        // Build containers array — note SP typo "Qunatity" must be preserved
+        // Mirror saveInquiryDetails — verify QuoteNo exists in DB before calling SP.
+        // This ensures the SP receives the exact string stored in the table,
+        // eliminating any casing or whitespace mismatch from the request.
+        $quoteNo = DB::connection('sqlsrv')
+            ->table('Quote_QuotationInfo')
+            ->where('QuoteNo', $request->quote_no)
+            ->value('QuoteNo');
+
+        if (!$quoteNo) {
+            Log::warning('saveCargoDetails - quotation not found', [
+                'quote_no' => $request->quote_no,
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Quotation not found'
+            ], 404);
+        }
+
+        $scopeVolume = $request->input('scope_volume', '');
+
+        if (!empty($scopeVolume)) {
+            DB::connection('sqlsrv')
+                ->table('Quote_QuotationInfo')
+                ->where('QuoteNo', $quoteNo)
+                ->update(['scopevolume' => $scopeVolume]);
+
+            Log::info('saveCargoDetails - scopevolume updated', [
+                'quote_no'     => $quoteNo,
+                'scope_volume' => $scopeVolume,
+            ]);
+        }
+
+        // Build containers array
         $containers = [];
         if ($request->containers) {
             foreach (explode(',', $request->containers) as $segment) {
@@ -5898,7 +5973,7 @@ class QuotationController extends Controller
                 if ($type && $qty > 0) {
                     $containers[] = [
                         'ContainerType' => $type,
-                        'Quantity'      => $qty,   // ← SP typo — intentional
+                        'Quantity'      => $qty,
                     ];
                 }
             }
@@ -5909,10 +5984,16 @@ class QuotationController extends Controller
             'SubmittedDatetime' => now()->format('YmdHis'),
             'SubmittedBy'       => $submittedBy,
             'Action'            => 'Update',
-            'QuotationNo'       => $request->quote_no,
-            'Commodity'         => $request->commodity,
-            'CargoVolume'       => (float) $request->cargo_volume,
+            'QuotationNo'       => $quoteNo,          // ← verified from DB, not raw request
+            'Commodity'         => $request->commodity ?? '',
+            'CargoVolume'       => (float) ($request->cargo_volume ?? 0),
             'Containers'        => $containers,
+        ]);
+
+        Log::info('saveCargoDetails - payload', [
+            'quote_no'   => $quoteNo,
+            'input_json' => $input,
+            'length'     => strlen($input),
         ]);
 
         if (strlen($input) > 2000) {
@@ -5923,13 +6004,18 @@ class QuotationController extends Controller
         }
 
         try {
-            $output = $this->executeDetailsUpdateSP($input);
+            $output = $this->executeCargoUpdateSP($input);
+
+            Log::info('saveCargoDetails - SP response', [
+                'quote_no' => $quoteNo,
+                'output'   => $output,
+            ]);
 
             if (($output['Status'] ?? '') === 'Failed') {
                 $remarks = collect($output['Remarks'] ?? [])->pluck('Remark')->implode(', ');
                 return response()->json([
                     'success' => false,
-                    'message' => $remarks ?: 'Cargo update failed'
+                    'message' => $remarks ?: ($output['Remark'] ?? 'Cargo update failed')
                 ]);
             }
 
@@ -5938,51 +6024,78 @@ class QuotationController extends Controller
                 'message' => 'Cargo details saved successfully'
             ]);
         } catch (\Exception $e) {
-            Log::error('saveCargoDetails error: ' . $e->getMessage());
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            Log::error('saveCargoDetails error', [
+                'quote_no' => $quoteNo,
+                'error'    => $e->getMessage(),
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
         }
     }
 
     public function getSalesPersons(Request $request)
     {
-        $filter = $request->input('filter', '');
+        $filter   = trim($request->input('filter', ''));
+        $officeId = trim($request->input('office_id', ''));  // UUID passed from JS
+
         try {
-            $pdo  = DB::connection('sqlsrv')->getPdo();
-            $stmt = $pdo->prepare("EXEC [FITSCMUAT].dbo.sp_Quote_GetSalesPersonList @Filter = ?");
-            $stmt->execute([$filter]);
+            $query = DB::connection('sqlsrv')
+                ->table('FITSCMUAT.dbo.Cust_Resource AS CR')
+                ->join('FITSCMUAT.dbo.Cust_ResOfficeResFuncMap AS CRO', 'CRO.ResourceId', '=', 'CR.Id')
+                ->join('FITSCMUAT.dbo.Sys_ResourceFunction AS RF',     'RF.Id',         '=', 'CRO.ResourceFunctionId')
+                ->where('CR.IsActive',  1)
+                ->where('CR.IsDeleted', 0)
+                ->where('CRO.IsActive', 1)
+                ->where('RF.Code', 'SalesMgr')
+                ->where(function ($q) use ($filter) {
+                    $q->where('CR.Contact_PersonName_FirstName', 'like', "%{$filter}%")
+                        ->orWhere('CR.Contact_PersonName_LastName', 'like', "%{$filter}%")
+                        ->orWhere('CR.Contact_Email',              'like', "%{$filter}%")
+                        ->orWhere('CR.Code',                       'like', "%{$filter}%");
+                })
+                ->select([
+                    'CR.Code',
+                    DB::raw("LTRIM(RTRIM(CR.Contact_PersonName_FirstName))
+                    + IIF(
+                        CR.Contact_PersonName_LastName IS NULL
+                        OR LTRIM(RTRIM(CR.Contact_PersonName_LastName)) IN ('', '-'),
+                        '',
+                        ' ' + LTRIM(RTRIM(CR.Contact_PersonName_LastName))
+                      ) AS FullName"),
+                    DB::raw("ISNULL(CR.Contact_Email, '') AS Email"),
+                    'CRO.OfficeId',
+                ])
+                ->distinct()
+                ->orderBy('CR.Contact_PersonName_FirstName')
+                ->limit(20);
 
-            $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
-            if (empty($rows) && $stmt->nextRowset()) {
-                $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+            // Scope to office if provided — fall back to all offices if missing
+            if ($officeId) {
+                $query->where('CRO.OfficeId', $officeId);
             }
 
-            return response()->json(['success' => true, 'persons' => $rows]);
+            $persons = $query->get();
+
+            Log::info('getSalesPersons success', [
+                'filter'   => $filter,
+                'officeId' => $officeId ?: 'all',
+                'count'    => $persons->count(),
+            ]);
+
+            return response()->json(['success' => true, 'persons' => $persons]);
         } catch (\Throwable $e) {
-            // existing fallback query unchanged
-            try {
-                $persons = DB::connection('sqlsrv')
-                    ->table('FITSCMUAT.dbo.Cust_Resource')
-                    ->where(function ($q) use ($filter) {
-                        $q->where('Code', 'like', "%$filter%")
-                            ->orWhere('Contact_PersonName_FirstName', 'like', "%$filter%")
-                            ->orWhere('Contact_Email_Primary', 'like', "%$filter%");
-                    })
-                    ->where('IsActive', 1)
-                    ->select([
-                        'Code',
-                        DB::raw("Contact_PersonName_FirstName + ISNULL(' ' + Contact_PersonName_LastName, '') AS FullName"),
-                        DB::raw("ISNULL(Contact_Email_Primary, '') AS Email"),
-                    ])
-                    ->limit(20)
-                    ->get();
+            Log::error('getSalesPersons failed', [
+                'filter'   => $filter,
+                'officeId' => $officeId,
+                'error'    => $e->getMessage(),
+            ]);
 
-                return response()->json(['success' => true, 'persons' => $persons]);
-            } catch (\Throwable $e2) {
-                return response()->json(['success' => false, 'persons' => [], 'error' => $e2->getMessage()]);
-            }
+            return response()->json(['success' => false, 'persons' => [], 'error' => $e->getMessage()]);
         }
     }
-    
+
     public function saveInquiryDetails(Request $request)
     {
         $request->validate([
@@ -6073,7 +6186,13 @@ class QuotationController extends Controller
 
             $normalised = array_map(function ($row) {
                 $name = $row['CountryName'] ?? $row['Name'] ?? current($row) ?? '';
-                return array_merge($row, ['CountryName' => $name, 'Name' => $name]);
+                $code = $row['Code'] ?? '';  // ← ADD
+
+                return array_merge($row, [
+                    'CountryName' => $name,
+                    'Name'        => $name,
+                    'CountryCode' => $code,  // ← ADD
+                ]);
             }, $rows);
 
             return response()->json($normalised);
@@ -6225,11 +6344,10 @@ class QuotationController extends Controller
             ]);
 
             // ── Call sp_Quote_QuotationCopy ───────────────────────────────────────
-            // SP handles: header insert + charge sheet copy internally.
+            // SP handles: header insert + charge sheet copy + equipment details internally.
             // SP generates QuoteNo as: LEFT(OfficeCode,2) + '-QT-' + yy + '-' + 00001
-            // SP typo: returns @Status = 'Sucess' (missing 'c').
-            $pdo  = DB::getPdo();
-            $sql  = "
+            $pdo = DB::getPdo();
+            $sql = "
             DECLARE @Status  VARCHAR(25)
             DECLARE @Remark  VARCHAR(200)
             DECLARE @QuoteNo VARCHAR(50)
@@ -6267,9 +6385,8 @@ class QuotationController extends Controller
                 ], 500);
             }
 
-            // SP has a known typo: 'Sucess' instead of 'Success' — accept both
             $spStatus = strtolower(trim($result['Status'] ?? ''));
-            if (!in_array($spStatus, ['success', 'sucess'])) {
+            if ($spStatus !== 'success') {
                 Log::error('processDuplicate - SP failed', [
                     'original_id' => $original->ID,
                     'sp_status'   => $result['Status'],
@@ -6294,7 +6411,7 @@ class QuotationController extends Controller
                 ], 500);
             }
 
-            // ── Fetch new record by QuoteNo (SP sets bookingno as integer sequence) ─
+            // ── Fetch new record by QuoteNo ───────────────────────────────────────
             // Must use QuoteNo column — NOT bookingno — because $newQuoteNo is the
             // formatted string (e.g. 'KE-QT-25-00002'), not the integer bookingno.
             $newQuotation = DB::table('Quote_QuotationInfo')
@@ -6312,26 +6429,12 @@ class QuotationController extends Controller
                 ], 500);
             }
 
-            // ── Copy equipment rows — SP does not handle these ────────────────────
-            // $equipment = DB::table('Quote_Quotation_EquipmentDetails')
-            //     ->where('QuotationInfoID', $original->ID)
-            //     ->where('IsDeleted', 0)
-            //     ->get();
-
-            // foreach ($equipment as $eq) {
-            //     $eqArray                    = (array) $eq;
-            //     $eqArray['Id']              = \Illuminate\Support\Str::uuid()->toString();
-            //     $eqArray['QuotationInfoID'] = $newQuotation->ID;
-            //     DB::table('Quote_Quotation_EquipmentDetails')->insert($eqArray);
-            // }
-
             Log::info('processDuplicate - Success', [
                 'original_bookingno' => $original->bookingno,
                 'original_quote_no'  => $original->QuoteNo,
                 'new_quote_no'       => $newQuoteNo,
                 'new_bookingno'      => $newQuotation->bookingno,
                 'new_id'             => $newQuotation->ID,
-                // 'equipment_copied'   => $equipment->count(),
                 'duplicated_by'      => $submittedBy,
             ]);
 

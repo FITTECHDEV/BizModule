@@ -193,6 +193,8 @@
                             <div class="col-sm-7">
                                 <input type="text" class="form-control form-control-sm"
                                     value="{{ $quotation->ServiceClass ?? '' }}" readonly>
+                                <input type="hidden" id="serviceClassCode"
+                                    value="{{ $quotation->ServiceClassCode ?? ($quotation->ServiceClass ?? '') }}">
                             </div>
                         </div>
 
@@ -235,10 +237,23 @@
                             </div>
                         </div>
                         <div class="form-group row">
-                            <label class="col-sm-5 col-form-label">Scope Of Volume</label>
+                            <label class="col-sm-5 col-form-label">Scope Of Volume <span
+                                    class="text-danger customer-mandatory-star" style="display:none;">*</span></label>
                             <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm"
+                                <input type="text" class="form-control form-control-sm" id="scopeVolumeDisplay"
                                     value="{{ $quotation->scopevolume ?? '' }}" readonly>
+                                <select class="form-control form-control-sm d-none" id="scopeVolumeSelect" disabled>
+                                    <option value="">-- Select --</option>
+                                    <option value="Weight (in KGS)"
+                                        {{ ($quotation->scopevolume ?? '') === 'Weight (in KGS)' ? 'selected' : '' }}>
+                                        Weight (in KGS)</option>
+                                    <option value="Volume (In CBM)"
+                                        {{ ($quotation->scopevolume ?? '') === 'Volume (In CBM)' ? 'selected' : '' }}>
+                                        Volume (In CBM)</option>
+                                    <option value="Containerized"
+                                        {{ ($quotation->scopevolume ?? '') === 'Containerized' ? 'selected' : '' }}>
+                                        Containerized</option>
+                                </select>
                             </div>
                         </div>
                         <div class="form-group row">
@@ -505,7 +520,8 @@
                                     <label class="col-sm-4 col-form-label">Company</label>
                                     <div class="col-sm-8">
                                         <input type="text" class="form-control form-control-sm"
-                                            value="{{ $quotation->companyname ?? '' }}" readonly>
+                                            data-field="companyname" value="{{ $quotation->companyname ?? '' }}"
+                                            readonly>
                                     </div>
                                 </div>
                                 <div class="form-group row">
@@ -513,6 +529,7 @@
                                             class="text-danger">*</span></label>
                                     <div class="col-sm-8">
                                         <input type="text" class="form-control form-control-sm"
+                                            data-field="pri_partner_steet"
                                             value="{{ $quotation->pri_partner_steet ?? '' }}" readonly>
                                     </div>
                                 </div>
@@ -798,8 +815,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 MODALS
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 ============================================ -->
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     MODALS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1361,8 +1378,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1805,9 +1822,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -1959,6 +1976,7 @@
         const isCopiedBooking = {{ request()->query('copied', 0) ? 'true' : 'false' }};
         const quotationId = '{{ $quotation->ID }}';
         const quoteNo = '{{ $quotation->QuoteNo ?? '' }}';
+        const officeId = '{{ $quotation->OfficeID ?? '' }}'; // ← ADD
         const tcAlreadyApplied = {{ $quotation->QuotationTCTemplate ? 'true' : 'false' }};
 
         // Mirrors QuotationController::OFFICE_BASE_CURRENCY — single source of truth via PHP
@@ -2009,7 +2027,7 @@
             let currentEditingCharge = null;
             let currentEditingType = null;
             let currencyMap = {};
-            let officeCode = '';
+            let officeCode = '{{ $quotation->OfficeCode ?? '' }}';
 
             // ============================================
             // SAVED VALUES — read once from PHP, used for pre-selection
@@ -2097,7 +2115,9 @@
             let originalShipmentMode = '';
             let originalTransportMode = '';
             let originalOriginCountry = '';
+            let originalOriginCountryName = '';
             let originalDestCountry = '';
+            let originalDestCountryName = '';
             let shipmentCountriesLoaded = false;
             let incoTermsLoaded = false;
             let originalIncoTerm = '';
@@ -2118,8 +2138,8 @@
                     if (typeof callback === 'function') callback();
                     return;
                 }
-                const savedOrigin = '{{ $quotation->origincountry ?? '' }}';
-                const savedDest = '{{ $quotation->destinationcountry ?? '' }}';
+                const savedOriginCode = '{{ $quotation->origincountrycode ?? '' }}';
+                const savedDestCode = '{{ $quotation->destinationcountrycode ?? '' }}';
 
                 $.ajax({
                     url: '{{ route('quotation.lookup.countries') }}',
@@ -2130,20 +2150,19 @@
                     success: function(data) {
                         const list = Array.isArray(data) ? data : [];
 
-                        function fill(selectId, savedValue) {
-                            const $sel = $('#' + selectId).empty().append(
-                                '<option value="">-- Select --</option>');
-                            const normalizedSaved = (savedValue || '').trim().toLowerCase();
+                        function fill(selectId, savedCode) {
+                            const $sel = $('#' + selectId).empty()
+                                .append('<option value="">-- Select --</option>');
                             list.forEach(function(c) {
-                                const name = (c.CountryName || c.Name || '').trim();
-                                const isMatch = name.toLowerCase() === normalizedSaved;
+                                const name = (c.CountryName || '').trim();
+                                const code = (c.CountryCode || '').trim();
                                 $sel.append(
-                                    `<option value="${name}" ${isMatch ? 'selected' : ''}>${name}</option>`
+                                    `<option value="${code}" data-name="${name}" ${code === savedCode ? 'selected' : ''}>${name}</option>`
                                 );
                             });
                         }
-                        fill('originCountrySelect', savedOrigin);
-                        fill('destCountrySelect', savedDest);
+                        fill('originCountrySelect', savedOriginCode);
+                        fill('destCountrySelect', savedDestCode);
                         bindShipmentCountrySearch('originCountrySearch', 'originCountrySelect');
                         bindShipmentCountrySearch('destCountrySearch', 'destCountrySelect');
                         shipmentCountriesLoaded = true;
@@ -2158,9 +2177,10 @@
                 originalShipmentMode = $('#shipmentModeSelect').val();
                 originalTransportMode = $('#transportModeSelect').val();
                 originalIncoTerm = $('#incoTermDisplay').val();
-                originalOriginCountry = $('#originCountryDisplay').val();
-                originalDestCountry = $('#destCountryDisplay').val();
-
+                originalOriginCountry = $('#originCountrySelect').val(); // code
+                originalOriginCountryName = $('#originCountryDisplay').val(); // name
+                originalDestCountry = $('#destCountrySelect').val(); // code
+                originalDestCountryName = $('#destCountryDisplay').val(); // name
                 $('#shipmentModeSelect, #transportModeSelect').prop('disabled', false);
 
                 if (!incoTermsLoaded) {
@@ -2210,9 +2230,9 @@
                 $('#incoTermDisplay').removeClass('d-none').val(originalIncoTerm);
 
                 $('#originCountryEditWrap').hide();
-                $('#originCountryDisplay').val(originalOriginCountry).show();
+                $('#originCountryDisplay').val(originalOriginCountryName).show();
                 $('#destCountryEditWrap').hide();
-                $('#destCountryDisplay').val(originalDestCountry).show();
+                $('#destCountryDisplay').val(originalDestCountryName).show();
 
                 $(this).hide();
                 $('#saveShipmentDetailsBtn').hide();
@@ -2225,6 +2245,9 @@
                 const incoTerm = $('#incoTermSelect').val();
                 const originCountry = $('#originCountrySelect').val();
                 const destCountry = $('#destCountrySelect').val();
+
+                const serviceClass = $('#serviceClassCode').val() || '';
+
 
                 if (!shipmentMode) {
                     showNotification('Please select a Shipment Mode', 'error');
@@ -2246,6 +2269,7 @@
                         incoterm: incoTerm,
                         origincountry: originCountry,
                         destinationcountry: destCountry,
+                        service_class: serviceClass,
                     },
                     beforeSend: function() {
                         $('#saveShipmentDetailsBtn').prop('disabled', true)
@@ -2268,9 +2292,13 @@
                             originalIncoTerm = incoTerm;
 
                             $('#originCountryEditWrap').hide();
-                            $('#originCountryDisplay').val(originCountry).show();
+                            $('#originCountryDisplay').val(
+                                $('#originCountrySelect option:selected').data('name')
+                            ).show();
                             $('#destCountryEditWrap').hide();
-                            $('#destCountryDisplay').val(destCountry).show();
+                            $('#destCountryDisplay').val(
+                                $('#destCountrySelect option:selected').data('name')
+                            ).show();
 
                             $('#saveShipmentDetailsBtn, #cancelShipmentDetailsBtn').hide();
                             $('#editShipmentDetailsBtn').show();
@@ -2301,32 +2329,32 @@
             console.log('Quotation Status:', quotationStatus);
             console.log('Team ID:', teamId);
 
-            // ============================================
-            // INITIALIZE OFFICE CODE ON PAGE LOAD
-            // ============================================
-            if (teamId) {
-                getOfficeCode(teamId);
-            }
+            // // ============================================
+            // // INITIALIZE OFFICE CODE ON PAGE LOAD
+            // // ============================================
+            // if (teamId) {
+            //     getOfficeCode(teamId);
+            // }
 
-            function getOfficeCode(teamId) {
-                $.ajax({
-                    url: '/quotation/office-code',
-                    type: 'GET',
-                    data: {
-                        team_id: teamId
-                    },
-                    success: function(response) {
-                        if (response.success && response.office_code) {
-                            officeCode = response.office_code.trim();
-                            console.log('Office Code loaded:', officeCode);
-                            loadTermsTemplates();
-                        }
-                    },
-                    error: function(xhr) {
-                        console.error('Failed to load office code:', xhr);
-                    }
-                });
-            }
+            // function getOfficeCode(teamId) {
+            //     $.ajax({
+            //         url: '/quotation/office-code',
+            //         type: 'GET',
+            //         data: {
+            //             team_id: teamId
+            //         },
+            //         success: function(response) {
+            //             if (response.success && response.office_code) {
+            //                 officeCode = response.office_code.trim();
+            //                 console.log('Office Code loaded:', officeCode);
+            //                 loadTermsTemplates();
+            //             }
+            //         },
+            //         error: function(xhr) {
+            //             console.error('Failed to load office code:', xhr);
+            //         }
+            //     });
+            // }
 
             // ============================================
             // MODAL CLOSE HANDLERS
@@ -2503,18 +2531,23 @@
 
                 if ($currencySelect.data('populated')) return;
 
-                if (!officeCode && bookingNo) {
-                    $.ajax({
-                        url: '/quotation/office-code',
-                        type: 'GET',
-                        data: {
-                            team_id: teamId
-                        },
-                        async: false,
-                        success: function(response) {
-                            if (response.success) officeCode = response.office_code.trim();
-                        }
-                    });
+                // if (!officeCode && bookingNo) {
+                //     $.ajax({
+                //         url: '/quotation/office-code',
+                //         type: 'GET',
+                //         data: {
+                //             team_id: teamId
+                //         },
+                //         async: false,
+                //         success: function(response) {
+                //             if (response.success) officeCode = response.office_code.trim();
+                //         }
+                //     });
+                // }
+
+                if (!officeCode) {
+                    console.error('populateCurrencyDropdown: officeCode not available');
+                    return;
                 }
 
                 if (!officeCode) {
@@ -3009,32 +3042,12 @@
                     if (officeCode) {
                         execSearch(officeCode);
                     } else {
-                        $.ajax({
-                            url: '/quotation/office-code',
-                            type: 'GET',
-                            data: {
-                                team_id: teamId
-                            },
-                            success: function(res) {
-                                if (res.success && res.office_code) {
-                                    officeCode = res.office_code.trim();
-                                    execSearch(officeCode);
-                                } else {
-                                    response([{
-                                        label: 'Could not resolve office code',
-                                        value: '',
-                                        disabled: true
-                                    }]);
-                                }
-                            },
-                            error: function() {
-                                response([{
-                                    label: 'Error resolving office code',
-                                    value: '',
-                                    disabled: true
-                                }]);
-                            }
-                        });
+                        response([{
+                            label: 'Office code not available',
+                            value: '',
+                            disabled: true
+                        }]);
+                        console.error('initializeBillToPartyAutocomplete: officeCode not available');
                     }
                 }
 
@@ -3956,30 +3969,11 @@
                 if (officeCode) {
                     fetchTemplates(officeCode);
                 } else {
-                    $.ajax({
-                        url: '/quotation/office-code',
-                        type: 'GET',
-                        data: {
-                            team_id: teamId
-                        },
-                        success: function(response) {
-                            if (response.success && response.office_code) {
-                                officeCode = response.office_code.trim();
-                                fetchTemplates(officeCode);
-                            } else {
-                                $select.empty().append(
-                                    '<option value="" disabled>⚠ Could not resolve office</option>'
-                                );
-                                $select.prop('disabled', false);
-                            }
-                        },
-                        error: function() {
-                            $select.empty().append(
-                                '<option value="" disabled>⚠ Failed to resolve office</option>'
-                            );
-                            $select.prop('disabled', false);
-                        }
-                    });
+                    $select.empty().append(
+                        '<option value="" disabled>⚠ Office code not available</option>'
+                    );
+                    $select.prop('disabled', false);
+                    console.error('loadEmailTemplates: officeCode not available');
                 }
             }
 
@@ -4001,12 +3995,12 @@
             // EMAIL TO/FROM SWAP BUTTON
             // Swaps the To and From email addresses
             // ============================================
-            $('#swapEmailBtn').on('click', function() {
-                const toVal = $('#emailTo').val();
-                const fromVal = $('#emailFrom').val();
-                $('#emailTo').val(fromVal);
-                $('#emailFrom').val(toVal);
-            });
+            // $('#swapEmailBtn').on('click', function() {
+            //     const toVal = $('#emailTo').val();
+            //     const fromVal = $('#emailFrom').val();
+            //     $('#emailTo').val(fromVal);
+            //     $('#emailFrom').val(toVal);
+            // });
 
             function populateQuoteVersionDropdown() {
                 const $select = $('#emailQuoteVersionSelect');
@@ -5589,6 +5583,10 @@
                     });
                 });
 
+                $('#scopeVolumeDisplay').hide();
+                $('#scopeVolumeSelect').removeClass('d-none').prop('disabled', false);
+                $('.customer-mandatory-star', '#cargoDetailsCard').show();
+
                 $('#cargoVolumeInput, #commodityInput').prop('readonly', false).css({
                     'background-color': '#fff',
                     'border': '1px solid #ced4da'
@@ -5613,6 +5611,10 @@
                 renderContainerRows(originalContainers, false);
                 $('#addContainerRowBtn').addClass('d-none');
 
+                $('#scopeVolumeSelect').addClass('d-none').prop('disabled', true);
+                $('#scopeVolumeDisplay').show();
+                $('.customer-mandatory-star', '#cargoDetailsCard').hide();
+
                 $(this).addClass('d-none');
                 $('#saveCargoDetailsBtn').addClass('d-none');
                 $('#editCargoDetailsBtn').removeClass('d-none');
@@ -5622,7 +5624,18 @@
             $('#saveCargoDetailsBtn').on('click', function() {
                 const cargoVolume = $('#cargoVolumeInput').val();
                 const containers = serializeContainerList();
-                const scopeVolume = '{{ $quotation->scopevolume ?? '' }}';
+                const scopeVolume = $('#scopeVolumeSelect').val() ||
+                    '{{ $quotation->scopevolume ?? '' }}';
+
+                if (!scopeVolume) {
+                    showNotification('Scope of Volume is required', 'error');
+                    return;
+                }
+                const commodity = $('#commodityInput').val().trim();
+                if (!commodity) {
+                    showNotification('Commodity is required', 'error');
+                    return;
+                }
 
                 if (scopeVolume !== 'Containerized' && (!cargoVolume || parseFloat(cargoVolume) <= 0)) {
                     showNotification('Cargo Volume must be greater than zero', 'error');
@@ -5640,6 +5653,7 @@
                     data: {
                         _token: '{{ csrf_token() }}',
                         quote_no: QUOTE_NO,
+                        scope_volume: scopeVolume,
                         commodity: $('#commodityInput').val(),
                         cargo_volume: cargoVolume || 0,
                         containers: containers
@@ -5774,7 +5788,8 @@
 
                 spDebounce = setTimeout(function() {
                     $.get('{{ route('quotation.sales-persons') }}', {
-                            filter: query
+                            filter: query,
+                            office_id: officeId
                         })
                         .done(function(res) {
                             var $list = $('#salesPersonSuggestions').empty();

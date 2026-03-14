@@ -332,7 +332,7 @@ class SyncScmProfitData extends Command
             'partner_countryname' => $record->partner_countryname,
             'industry_id' => $record->industry_id,
             'partner_industrttypecode' => $record->partner_industrytypecode,
-            'partner_industrttype' => $record->partner_industrttype,
+            'partner_industrttype' => $record->partner_industrtype,
             'partner_function' => $record->partner_function,
             'partner_steet' => $record->partner_steet,
             'partner_steet2' => $record->partner_steet2,

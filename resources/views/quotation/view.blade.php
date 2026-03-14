@@ -106,7 +106,8 @@
                         <label class="col-sm-5 col-form-label">Sales person</label>
                         <div class="col-sm-7">
                             <input type="text" class="form-control form-control-sm" data-field="username"
-                                value="{{ $quotation->username ?? '' }}" readonly>
+                                data-code="{{ $quotation->SalesPersonCode ?? '' }}" value="{{ $quotation->username ?? '' }}"
+                                readonly>
                         </div>
                     </div>
 
@@ -171,35 +172,25 @@
                     </div>
 
                     {{-- Origin Country --}}
-                    <div class="form-group row">
-                        <label class="col-sm-5 col-form-label">Origin Country</label>
-                        <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" id="originCountryDisplay"
-                                value="{{ $quotation->origincountry ?? '' }}" readonly>
-                            <div id="originCountryEditWrap" style="display:none;">
-                                <input type="text" class="form-control form-control-sm mb-1" id="originCountrySearch"
-                                    placeholder="Search country...">
-                                <select class="form-control form-control-sm" id="originCountrySelect">
-                                    <option value="">-- Select --</option>
-                                </select>
-                            </div>
-                        </div>
+                    <input type="text" class="form-control form-control-sm" id="viewOriginCountryDisplay"
+                        value="{{ $quotation->origincountry ?? '' }}" readonly>
+                    <div id="viewOriginCountryEditWrap" style="display:none;">
+                        <input type="text" class="form-control form-control-sm mb-1" id="viewOriginCountrySearch"
+                            placeholder="Search country...">
+                        <select class="form-control form-control-sm" id="viewOriginCountrySelect">
+                            <option value="">-- Select --</option>
+                        </select>
                     </div>
 
                     {{-- Destination Country --}}
-                    <div class="form-group row">
-                        <label class="col-sm-5 col-form-label">Destination Country</label>
-                        <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" id="destCountryDisplay"
-                                value="{{ $quotation->destinationcountry ?? '' }}" readonly>
-                            <div id="destCountryEditWrap" style="display:none;">
-                                <input type="text" class="form-control form-control-sm mb-1" id="destCountrySearch"
-                                    placeholder="Search country...">
-                                <select class="form-control form-control-sm" id="destCountrySelect">
-                                    <option value="">-- Select --</option>
-                                </select>
-                            </div>
-                        </div>
+                    <input type="text" class="form-control form-control-sm" id="viewDestCountryDisplay"
+                        value="{{ $quotation->destinationcountry ?? '' }}" readonly>
+                    <div id="viewDestCountryEditWrap" style="display:none;">
+                        <input type="text" class="form-control form-control-sm mb-1" id="viewDestCountrySearch"
+                            placeholder="Search country...">
+                        <select class="form-control form-control-sm" id="viewDestCountrySelect">
+                            <option value="">-- Select --</option>
+                        </select>
                     </div>
 
                     {{-- InCO Terms --}}
@@ -290,8 +281,21 @@
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Scope Of Volume</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" data-field="scopevolume"
+                            <input type="text" class="form-control form-control-sm" id="viewScopeVolumeDisplay"
                                 value="{{ $quotation->scopevolume ?? '' }}" readonly>
+                            <select class="form-control form-control-sm d-none" id="viewScopeVolumeSelect"
+                                data-field="scopevolume" disabled>
+                                <option value="">-- Select --</option>
+                                <option value="Weight (in KGS)"
+                                    {{ ($quotation->scopevolume ?? '') === 'Weight (in KGS)' ? 'selected' : '' }}>Weight
+                                    (in KGS)</option>
+                                <option value="Volume (In CBM)"
+                                    {{ ($quotation->scopevolume ?? '') === 'Volume (In CBM)' ? 'selected' : '' }}>Volume
+                                    (In CBM)</option>
+                                <option value="Containerized"
+                                    {{ ($quotation->scopevolume ?? '') === 'Containerized' ? 'selected' : '' }}>
+                                    Containerized</option>
+                            </select>
                         </div>
                     </div>
                     <div class="form-group row">
@@ -801,24 +805,17 @@
         }
 
         /* Card footer action buttons */
+        /* Card footer action buttons */
         .card-action-footer {
             background: #f8f9fa;
             border-top: 1px solid rgba(0, 0, 0, .125);
             padding: 0.5rem 1rem;
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.25rem;
         }
 
         /* Highlight inputs when card is in edit mode */
-        .card-in-edit input[data-field]:not([readonly]) {
-            background-color: #fff9e6;
-            border-color: #ffc107 !important;
-        }
-
-        .card-action-footer {
-            background: #f8f9fa;
-            border-top: 1px solid rgba(0, 0, 0, .125);
-            padding: 0.5rem 1rem;
-        }
-
         .card-in-edit input[data-field]:not([readonly]) {
             background-color: #fff9e6;
             border-color: #ffc107 !important;
@@ -874,6 +871,11 @@
                     if (this.section === 'customer') {
                         $card.find('.address1-star').show();
                     }
+
+                    if (this.section === 'cargo') {
+                        $('#viewScopeVolumeDisplay').addClass('d-none');
+                        $('#viewScopeVolumeSelect').removeClass('d-none').prop('disabled', false);
+                    }
                 }
 
                 cancel() {
@@ -894,6 +896,11 @@
                     }
 
                     this.snapshot = {};
+
+                    if (this.section === 'cargo') {
+                        $('#viewScopeVolumeSelect').addClass('d-none').prop('disabled', true);
+                        $('#viewScopeVolumeDisplay').removeClass('d-none');
+                    }
                 }
 
                 save() {
@@ -919,6 +926,124 @@
                     saveBtn.disabled = true;
                     saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Saving...';
 
+                    // ── Cargo card — dedicated save path ──────────────────────────────
+                    // saveCargoDetails expects specific keys (quote_no, scope_volume, cargo_volume)
+                    // that don't match the generic data-field names on this card.
+                    // ── Inquiry card — dedicated save path ───────────────────────────
+                    if (this.section === 'inquiry') {
+                        const $displayInput = $(this.card).find('input[data-field="username"]');
+                        const salesPersonCode = $displayInput.attr('data-code') || '';
+                        const salesPersonEmail = (payload['SalesPersonEmail'] || '').trim();
+
+                        if (!salesPersonCode) {
+                            toastr.error('Please select a Sales Person from the suggestions.');
+                            saveBtn.disabled = false;
+                            saveBtn.innerHTML = '<i class="fas fa-save mr-1"></i> Save';
+                            return;
+                        }
+                        if (!salesPersonEmail) {
+                            toastr.error('Sales Person Email is required.');
+                            saveBtn.disabled = false;
+                            saveBtn.innerHTML = '<i class="fas fa-save mr-1"></i> Save';
+                            return;
+                        }
+
+                        $.ajax({
+                            url: this.saveUrl,
+                            type: 'POST',
+                            data: {
+                                _token: '{{ csrf_token() }}',
+                                booking_no: bookingNo,
+                                sales_person_code: salesPersonCode,
+                                sales_person_email: salesPersonEmail,
+                            },
+                            success: (res) => {
+                                if (res.success) {
+                                    this._fields().forEach(input => input.setAttribute('readonly',
+                                        true));
+                                    this.card.classList.remove('card-in-edit');
+                                    $card.find('.btn-card-edit').show();
+                                    $card.find('.btn-card-save').hide();
+                                    $card.find('.btn-card-cancel').hide();
+                                    $card.find('.card-footer').show();
+                                    this.snapshot = {};
+                                    toastr.success('Inquiry details saved.');
+                                } else {
+                                    toastr.error(res.message || 'Save failed.');
+                                    saveBtn.disabled = false;
+                                    saveBtn.innerHTML = '<i class="fas fa-save mr-1"></i> Save';
+                                }
+                            },
+                            error: (xhr) => {
+                                toastr.error(xhr.responseJSON?.message || 'Unexpected error.');
+                                saveBtn.disabled = false;
+                                saveBtn.innerHTML = '<i class="fas fa-save mr-1"></i> Save';
+                            }
+                        });
+                        return;
+                    }
+
+                    // ── Cargo card — dedicated save path ──────────────────────────────
+                    if (this.section === 'cargo') {
+                        const commodity = (payload['commodity'] || '').trim();
+                        if (!commodity) {
+                            toastr.error('Commodity is required.');
+                            saveBtn.disabled = false;
+                            saveBtn.innerHTML = '<i class="fas fa-save mr-1"></i> Save';
+                            return;
+                        }
+                        const scopeVolume = $('#viewScopeVolumeSelect').val();
+                        if (!scopeVolume) {
+                            toastr.error('Scope of Volume is required.');
+                            saveBtn.disabled = false;
+                            saveBtn.innerHTML = '<i class="fas fa-save mr-1"></i> Save';
+                            return;
+                        }
+
+                        $.ajax({
+                            url: this.saveUrl,
+                            type: 'POST',
+                            data: {
+                                _token: '{{ csrf_token() }}',
+                                quote_no: '{{ $quotation->QuoteNo ?? '' }}',
+                                scope_volume: scopeVolume,
+                                commodity: commodity,
+                                cargo_volume: payload['cargovolume'] || 0,
+                                containers: ''
+                            },
+                            success: (res) => {
+                                if (res.success) {
+                                    $('#viewScopeVolumeSelect').addClass('d-none').prop('disabled',
+                                        true);
+                                    $('#viewScopeVolumeDisplay')
+                                        .val($('#viewScopeVolumeSelect option:selected').text())
+                                        .removeClass('d-none');
+                                    this._fields().forEach(input => input.setAttribute('readonly',
+                                        true));
+                                    this.card.classList.remove('card-in-edit');
+                                    $card.find('.btn-card-edit').show();
+                                    $card.find('.btn-card-save').hide();
+                                    $card.find('.btn-card-cancel').hide();
+                                    $card.find('.card-footer').show();
+                                    this.snapshot = {};
+                                    toastr.success('Cargo details saved successfully.');
+                                } else {
+                                    toastr.error(res.message || 'Save failed.');
+                                    saveBtn.disabled = false;
+                                    saveBtn.innerHTML = '<i class="fas fa-save mr-1"></i> Save';
+                                }
+                            },
+                            error: (xhr) => {
+                                toastr.error('Error: ' + (xhr.responseJSON?.message ||
+                                    'Unexpected error.'));
+                                saveBtn.disabled = false;
+                                saveBtn.innerHTML = '<i class="fas fa-save mr-1"></i> Save';
+                            }
+                        });
+                        return; // prevent generic save from firing
+                    }
+
+                    // ── Generic save — customer and all other cards ────────────────────
                     $.ajax({
                         url: this.saveUrl,
                         type: 'POST',
@@ -953,6 +1078,15 @@
             }
             // Mount CardEditor on every card that declares data-card-section
             document.querySelectorAll('[data-card-section]').forEach(el => new CardEditor(el));
+
+            // Scope of Volume change — show/hide container section on view page
+            $(document).on('change', '#viewScopeVolumeSelect', function() {
+                if ($(this).val() === 'Containerized') {
+                    $('#viewContainerSection').show();
+                } else {
+                    $('#viewContainerSection').hide();
+                }
+            });
 
             const bookingNo = '{{ $quotation->bookingno ?? '' }}';
 
@@ -1515,7 +1649,8 @@
                                             .on('mousedown', function(e) {
                                                 e.preventDefault();
                                                 $displayInput.val(fullName || p
-                                                    .Code);
+                                                    .Code).attr('data-code',
+                                                    p.Code); // ← store code
                                                 $emailInput.val(p.Email || '');
                                                 $ul.remove();
                                             })
@@ -1549,31 +1684,26 @@
                 }
             });
 
-            // Collapse all on load except Revenue, Cost, Summary — exclude dupOverlay inner card
+            // Collapse all on load except Revenue, Cost, Summary
             $('.card').not('.card-success, .card-danger, .summary-card').each(function() {
                 $(this).find('.card-body').hide();
+                $(this).find('.card-footer').hide(); // hide footer when collapsed
                 $(this).find('[data-card-widget="collapse"] i')
                     .removeClass('fa-chevron-up')
                     .addClass('fa-chevron-down');
                 $(this).addClass('collapsed-card');
-                // Prevent AdminLTE from hiding the footer — buttons must always be reachable
-                $(this).find('.card-footer').show();
             });
 
-            // Intercept every future collapse toggle and restore footer visibility
+            // Sync footer visibility with card-body on every collapse toggle
             $(document).on('click', '[data-card-widget="collapse"]', function() {
                 const $card = $(this).closest('.card');
                 setTimeout(function() {
-                    $card.find('.card-footer').show();
-                }, 0);
-            });
-
-            // Override AdminLTE collapse to never hide card-footer
-            $(document).on('click', '[data-card-widget="collapse"]', function() {
-                const $card = $(this).closest('.card');
-                // After AdminLTE runs (it fires synchronously), restore footer visibility
-                setTimeout(function() {
-                    $card.find('.card-footer').show();
+                    const isExpanded = $card.find('.card-body').is(':visible');
+                    if (isExpanded) {
+                        $card.find('.card-footer').show();
+                    } else {
+                        $card.find('.card-footer').hide();
+                    }
                 }, 0);
             });
 
