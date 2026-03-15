@@ -21,20 +21,20 @@ class SyncScmProfitData extends Command
     private $batchSize;
     private $isDryRun;
     private $stats = [
-        'processed' => 0,
-        'inserted' => 0,
-        'updated' => 0,
-        'errors' => 0,
+        'processed'    => 0,
+        'inserted'     => 0,
+        'updated'      => 0,
+        'errors'       => 0,
         'error_details' => [],
-        'start_time' => null,
-        'end_time' => null,
+        'start_time'   => null,
+        'end_time'     => null,
     ];
 
     public function handle()
     {
         $this->stats['start_time'] = Carbon::now();
         $this->batchSize = (int) $this->option('batch-size');
-        $this->isDryRun = $this->option('dry-run');
+        $this->isDryRun  = $this->option('dry-run');
 
         try {
             $this->info("Starting SCM Profit Data Sync...");
@@ -48,6 +48,7 @@ class SyncScmProfitData extends Command
 
             $this->syncData($dates);
             $this->displaySummary();
+
         } catch (\Exception $e) {
             $this->error("Critical error: " . $e->getMessage());
             Log::error('SyncScmProfitData failed', [
@@ -130,14 +131,13 @@ class SyncScmProfitData extends Command
     private function getRecordsBatch(array $dates, int $offset, int $limit): array
     {
         return DB::connection('pgsql')->select("
-        SELECT * FROM vw_scmprofit_integration
-        WHERE CAST(CreatedOn AS date) = CURRENT_DATE
-        OR CAST(UpdatedOn AS date) = CURRENT_DATE
-        ORDER BY bookingno
-        LIMIT {$limit} OFFSET {$offset}
-    ");
+            SELECT * FROM vw_scmprofit_integration
+            WHERE CAST(CreatedOn AS date) = CURRENT_DATE
+            OR CAST(UpdatedOn AS date) = CURRENT_DATE
+            ORDER BY bookingno
+            LIMIT {$limit} OFFSET {$offset}
+        ");
     }
-
 
     private function processBatch(array $records): void
     {
@@ -150,21 +150,18 @@ class SyncScmProfitData extends Command
                     $this->stats['errors']++;
                     $bookingNo = $record->bookingno ?? 'unknown';
 
-                    // Always log the error
                     Log::error('Error processing record', [
-                        'bookingno' => $bookingNo,
-                        'error' => $e->getMessage(),
-                        'trace' => $e->getTraceAsString(),
+                        'bookingno'   => $bookingNo,
+                        'error'       => $e->getMessage(),
+                        'trace'       => $e->getTraceAsString(),
                         'record_data' => json_encode($record)
                     ]);
 
-                    // Always show error in console (not just verbose mode)
                     $this->error("Error processing booking {$bookingNo}: " . $e->getMessage());
 
-                    // Store error details for summary
                     $this->stats['error_details'][] = [
                         'bookingno' => $bookingNo,
-                        'error' => $e->getMessage()
+                        'error'     => $e->getMessage()
                     ];
                 }
             }
@@ -179,7 +176,7 @@ class SyncScmProfitData extends Command
             $this->info("Processing record: " . json_encode($record));
             Log::info("🔍 Processing record", [
                 'bookingno' => $bookingNo,
-                'record' => (array) $record,
+                'record'    => (array) $record,
             ]);
         }
 
@@ -195,7 +192,7 @@ class SyncScmProfitData extends Command
         if ($this->option('debug')) {
             Log::info("🔎 Existence check", [
                 'bookingno' => $bookingNo,
-                'exists' => $existingRecord
+                'exists'    => $existingRecord
             ]);
         }
 
@@ -206,9 +203,9 @@ class SyncScmProfitData extends Command
             $this->line("DRY RUN: Would {$action} BookingNo: {$bookingNo}");
             if ($this->option('debug')) {
                 Log::info("📝 DRY RUN", [
-                    'action' => $action,
+                    'action'    => $action,
                     'bookingno' => $bookingNo,
-                    'data' => $data
+                    'data'      => $data
                 ]);
             }
             return;
@@ -222,9 +219,9 @@ class SyncScmProfitData extends Command
 
             if ($this->option('debug')) {
                 Log::info("✏️ Update result", [
-                    'bookingno' => $bookingNo,
+                    'bookingno'     => $bookingNo,
                     'rows_affected' => $affected,
-                    'data' => $data
+                    'data'          => $data
                 ]);
 
                 $updatedRow = DB::connection('sqlsrv')
@@ -243,6 +240,7 @@ class SyncScmProfitData extends Command
             if ($this->getOutput()->isVerbose()) {
                 $this->info("Updated BookingNo: {$bookingNo}");
             }
+
         } else {
             DB::connection('sqlsrv')
                 ->table('CRM_SCMprofit_integration')
@@ -251,7 +249,7 @@ class SyncScmProfitData extends Command
             if ($this->option('debug')) {
                 Log::info("➕ Inserted record", [
                     'bookingno' => $bookingNo,
-                    'data' => $data
+                    'data'      => $data
                 ]);
             }
 
@@ -266,111 +264,128 @@ class SyncScmProfitData extends Command
     private function transformRecord($record): array
     {
         return [
-            'bookingno' => $record->bookingno,
-            'companyname' => $record->companyname,
-            'clientid' => $record->clientid,
-            'source_id' => $record->source_id,
-            'source' => $record->source,
-            'medium_id' => $record->medium_id,
-            'medium' => $record->medium,
-            'stage_id' => $record->stage_id,
-            'status' => $record->status,
-            'userid' => $record->userid,
-            'userpartnerid' => $record->userpartnerid,
-            'username' => $record->username,
-            'teamid' => $record->teamid,
-            'teamname' => $record->teamname,
-            'stateid' => $record->stateid,
-            'statename' => $record->statename,
-            'countryid' => $record->countryid,
-            'countrycode' => $record->countrycode,
-            'countryname' => $record->countryname,
-            'industryid' => $record->industryid,
-            'industryname' => $record->industryname,
-            'serviceverticalid' => $record->serviceverticalid,
-            'serviceverticalname' => $record->serviceverticalname,
-            'origin_country_id' => $record->origin_country_id,
-            'origin_country_code' => $record->origin_country_code,
-            'origincountry' => $record->origincountry,
-            'dest_country_id' => $record->dest_country_id,
-            'destination_country_code' => $record->destination_country_code,
-            'destinationcountry' => $record->destinationcountry,
-            'source_name' => $record->source_name,
-            'process' => $record->process,
-            'storage' => $record->storage,
-            'other' => $record->other,
-            'state' => $record->state,
-            'quotationo' => $record->quotationo,
-            'scope_of_volume' => $record->scope_of_volume,
-            'quoted_revenue' => $record->quoted_revenue,
-            'won_status' => $record->won_status,
-            'commodity' => $record->commodity,
-            'cargo_volume' => $record->cargo_volume,
-            'phone_sanitized' => $record->phone_sanitized,
-            'email_normalized' => $record->email_normalized,
-            'companyname_crm' => $record->companyname_crm,
-            'type' => $record->type,
-            'contact_name' => $record->contact_name,
-            'partner_name' => $record->partner_name,
-            'function' => $record->function,
-            'email_from' => $record->email_from,
-            'phone' => $record->phone,
-            'mobile' => $record->mobile,
-            'street' => $record->street,
-            'street2' => $record->street2,
-            'zip' => $record->zip,
-            'city' => $record->city,
-            'date_deadline' => $this->parseDate($record->date_deadline),
-            'expected_revenue' => $record->expected_revenue,
-            'prorated_revenue' => $record->prorated_revenue,
-            'date_closed' => $this->parseDate($record->date_closed),
-            'partnermaster_name' => $record->partnermaster_name,
-            'partner_stateid' => $record->partner_stateid,
-            'partner_statename' => $record->partner_statename,
-            'partner_countryid' => $record->partner_countryid,
-            'partner_country_code' => $record->partner_country_code,
-            'partner_countryname' => $record->partner_countryname,
-            'industry_id' => $record->industry_id,
-            'partner_industrttypecode' => $record->partner_industrytypecode,
-            'partner_industrttype' => $record->partner_industrtype,
-            'partner_function' => $record->partner_function,
-            'partner_steet' => $record->partner_steet,
-            'partner_steet2' => $record->partner_steet2,
-            'partner_zip' => $record->partner_zip,
-            'partner_city' => $record->partner_city,
-            'partner_email' => $record->partner_email,
-            'partner_phone' => $record->partner_phone,
-            'partner_mobile' => $record->partner_mobile,
-            'createdon' => $this->parseDate($record->createdon),
-            'updatedon' => $this->parseDate($record->updatedon),
-            'pri_id' => $record->pri_id,
-            'pri_partnermaster_name' => $record->pri_partnermaster_name,
-            'pri_partner_stateid' => $record->pri_partner_stateid,
-            'pri_partner_statename' => $record->pri_partner_statename,
-            'pri_partner_countryid' => $record->pri_partner_countryid,
-            'pri_partner_countrycode' => $record->pri_partner_countrycode,
-            'pri_partner_countryname' => $record->pri_partner_countryname,
-            'pri_rrp_industryid' => $record->pri_rrp_industryid,
-            'pri_partner_industrttypecode' => $record->pri_partner_industrttypecode,
-            'pri_partner_industrttype' => $record->pri_partner_industrttype,
-            'pri_partner_function' => $record->pri_partner_function,
-            'pri_partner_steet' => $record->pri_partner_steet,
-            'pri_partner_steet2' => $record->pri_partner_steet2,
-            'pri_partner_zip' => $record->pri_partner_zip,
-            'pri_partner_city' => $record->pri_partner_city,
-            'pri_partner_email' => $record->pri_partner_email,
-            'pri_partner_phone' => $record->pri_partner_phone,
-            'pri_partner_mobile' => $record->pri_partner_mobile,
-            'ServiceVertical' => $record->servicevertical,
-            'SVName' => $record->svname,
-            'TransportMode' => $record->transportmode,
-            'ServiceClass' => $record->serviceclass,
-            'SalesPersonCode' => $record->salespersoncode,
-            'shipmentmode'   => $record->shipmentmode,
-            'incoterm'       => $record->incoterm,
-            'scopevolume'    => $record->scopevolume,
-            'cargovolume'    => $record->cargovolume,
-            'containerlist'  => $record->containerlist,
+            'bookingno'                    => $record->bookingno,
+            'companyname'                  => $record->companyname,
+            'clientid'                     => $record->clientid,
+            'source_id'                    => $record->source_id,
+            'source'                       => $record->source,
+            'medium_id'                    => $record->medium_id,
+            'medium'                       => $record->medium,
+            'stage_id'                     => $record->stage_id,
+            'status'                       => $record->status,
+            'userid'                       => $record->userid,
+            'userpartnerid'                => $record->userpartnerid,
+            'username'                     => $record->username,
+            'teamid'                       => $record->teamid,
+            'teamname'                     => $record->teamname,
+            'stateid'                      => $record->stateid,
+            'statename'                    => $record->statename,
+            'countryid'                    => $record->countryid,
+            'countrycode'                  => $record->countrycode,
+            'countryname'                  => $record->countryname,
+            'industryid'                   => $record->industryid,
+            'industryname'                 => $record->industryname,
+            'serviceverticalid'            => $record->serviceverticalid,
+            'serviceverticalname'          => $record->serviceverticalname,
+            'origin_country_id'            => $record->origin_country_id,
+            'origin_country_code'          => $record->origin_country_code,
+            'origincountry'                => $record->origincountry,
+            'dest_country_id'              => $record->dest_country_id,
+            'destination_country_code'     => $record->destination_country_code,
+            'destinationcountry'           => $record->destinationcountry,
+            'source_name'                  => $record->source_name,
+            'process'                      => $record->process,
+            'storage'                      => $record->storage,
+            'other'                        => $record->other,
+            'state'                        => $record->state,
+            'quotationo'                   => $record->quotationo,
+            'scope_of_volume'              => $record->scope_of_volume,
+            'quoted_revenue'               => $record->quoted_revenue,
+            'won_status'                   => $record->won_status,
+            'commodity'                    => $record->commodity,
+            'cargo_volume'                 => $record->cargo_volume,
+            'phone_sanitized'              => $record->phone_sanitized,
+            'email_normalized'             => $record->email_normalized,
+            'companyname_crm'              => $record->companyname_crm,
+            'type'                         => $record->type,
+            'contact_name'                 => $record->contact_name,
+            'partner_name'                 => $record->partner_name,
+            'function'                     => $record->function,
+            'email_from'                   => $record->email_from,
+            'phone'                        => $record->phone,
+            'mobile'                       => $record->mobile,
+            'street'                       => $record->street,
+            'street2'                      => $record->street2,
+            'zip'                          => $record->zip,
+            'city'                         => $record->city,
+            'date_deadline'                => $this->parseDate($record->date_deadline),
+            'expected_revenue'             => $record->expected_revenue,
+            'prorated_revenue'             => $record->prorated_revenue,
+            'date_closed'                  => $this->parseDate($record->date_closed),
+            'partnermaster_name'           => $record->partnermaster_name,
+            'partner_stateid'              => $record->partner_stateid,
+            'partner_statename'            => $record->partner_statename,
+            'partner_countryid'            => $record->partner_countryid,
+            'partner_country_code'         => $record->partner_country_code,
+            'partner_countryname'          => $record->partner_countryname,
+            'industry_id'                  => $record->industry_id,
+
+            // FIX #1: PG source is partner_industrytypecode (correct spelling)
+            // SQL Server target column has baked-in typo: partner_industrttypecode
+            'partner_industrttypecode'     => $record->partner_industrytypecode,
+
+            // FIX #2: PG source is partner_industrytype (correct spelling)
+            // SQL Server target column has baked-in typo: partner_industrttype
+            // was incorrectly mapped to $record->partner_industrttype — property does not exist on PG view
+            'partner_industrttype'         => $record->partner_industrytype,
+
+            'partner_function'             => $record->partner_function,
+            'partner_steet'                => $record->partner_steet,
+            'partner_steet2'               => $record->partner_steet2,
+            'partner_zip'                  => $record->partner_zip,
+            'partner_city'                 => $record->partner_city,
+            'partner_email'                => $record->partner_email,
+            'partner_phone'                => $record->partner_phone,
+            'partner_mobile'               => $record->partner_mobile,
+            'createdon'                    => $this->parseDate($record->createdon),
+            'updatedon'                    => $this->parseDate($record->updatedon),
+            'pri_id'                       => $record->pri_id,
+            'pri_partnermaster_name'       => $record->pri_partnermaster_name,
+            'pri_partner_stateid'          => $record->pri_partner_stateid,
+            'pri_partner_statename'        => $record->pri_partner_statename,
+            'pri_partner_countryid'        => $record->pri_partner_countryid,
+            'pri_partner_countrycode'      => $record->pri_partner_countrycode,
+            'pri_partner_countryname'      => $record->pri_partner_countryname,
+            'pri_rrp_industryid'           => $record->pri_rrp_industryid,
+
+            // FIX #3: PG source is pri_partner_industrytypecode (correct spelling)
+            // SQL Server target column has baked-in typo: pri_partner_industrttypecode
+            // was incorrectly mapped to $record->pri_partner_industrttypecode — property does not exist on PG view
+            'pri_partner_industrttypecode' => $record->pri_partner_industrytypecode,
+
+            // FIX #4: PG source is pri_partner_industrytype (correct spelling)
+            // SQL Server target column has baked-in typo: pri_partner_industrttype
+            // was incorrectly mapped to $record->pri_partner_industrttype — property does not exist on PG view
+            'pri_partner_industrttype'     => $record->pri_partner_industrytype,
+
+            'pri_partner_function'         => $record->pri_partner_function,
+            'pri_partner_steet'            => $record->pri_partner_steet,
+            'pri_partner_steet2'           => $record->pri_partner_steet2,
+            'pri_partner_zip'              => $record->pri_partner_zip,
+            'pri_partner_city'             => $record->pri_partner_city,
+            'pri_partner_email'            => $record->pri_partner_email,
+            'pri_partner_phone'            => $record->pri_partner_phone,
+            'pri_partner_mobile'           => $record->pri_partner_mobile,
+            'ServiceVertical'              => $record->servicevertical,
+            'SVName'                       => $record->svname,
+            'TransportMode'                => $record->transportmode,
+            'ServiceClass'                 => $record->serviceclass,
+            'SalesPersonCode'              => $record->salespersoncode,
+            'shipmentmode'                 => $record->shipmentmode,
+            'incoterm'                     => $record->incoterm,
+            'scopevolume'                  => $record->scopevolume,
+            'cargovolume'                  => $record->cargovolume,
+            'containerlist'                => $record->containerlist,
         ];
     }
 
@@ -383,7 +398,10 @@ class SyncScmProfitData extends Command
         try {
             return Carbon::parse($date)->format('Y-m-d H:i:s');
         } catch (\Exception $e) {
-            Log::warning('Invalid date format', ['date' => $date, 'error' => $e->getMessage()]);
+            Log::warning('Invalid date format', [
+                'date'  => $date,
+                'error' => $e->getMessage()
+            ]);
             return null;
         }
     }

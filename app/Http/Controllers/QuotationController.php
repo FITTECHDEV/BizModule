@@ -2875,29 +2875,104 @@ class QuotationController extends Controller
     public function retrigger(Request $request)
     {
         $bookingNo = $request->input('booking_no');
+
         if (!$bookingNo) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Booking number is required'
-            ], 400);
+            return response()->json(['success' => false, 'message' => 'Booking number is required'], 400);
         }
 
-        try {
-            // TODO: Implement retrigger logic using stored procedure
-            Log::info('Retrigger requested for booking: ' . $bookingNo);
+        $quotation = DB::table('Quote_QuotationInfo')
+            ->where('bookingno', $bookingNo)
+            ->first(['ID', 'QuoteNo', 'SCMBookingID']);
 
+        if (!$quotation) {
+            return response()->json(['success' => false, 'message' => 'Quotation not found'], 404);
+        }
+
+        if (empty($quotation->SCMBookingID)) {
             return response()->json([
-                'success' => true,
-                'message' => 'Retrigger initiated for booking: ' . $bookingNo
+                'success' => false,
+                'message' => 'SCM has not yet confirmed this booking. SCMBookingID is not set. '
+                    . 'Wait for SCM to process the booking XML before retriggering.',
+            ], 422);
+        }
+
+        $submittedBy = Auth::user()->displayName ?? Auth::user()->Email ?? 'system';
+        $quoteNo     = $quotation->QuoteNo;
+        $steps       = [];
+
+        Log::info('retrigger - Starting Steps 3 and 4', [
+            'booking_no'     => $bookingNo,
+            'quote_no'       => $quoteNo,
+            'scm_booking_id' => $quotation->SCMBookingID,
+            'user'           => $submittedBy,
+        ]);
+
+        $retriggerSteps = [
+            3 => ['type' => 'Charge',   'label' => 'Charge Transfer'],
+            4 => ['type' => 'Document', 'label' => 'Document Transfer'],
+        ];
+
+        foreach ($retriggerSteps as $stepNo => $stepDef) {
+            $result = $this->runBookingProcessMain($quoteNo, $stepDef['type']);
+
+            $steps[] = [
+                'step'   => $stepNo,
+                'label'  => $stepDef['label'],
+                'status' => $result['status'],
+                'remark' => $result['remark'],
+            ];
+
+            Log::info('retrigger - Step result', [
+                'quote_no' => $quoteNo,
+                'step'     => $stepNo,
+                'type'     => $stepDef['type'],
+                'status'   => $result['status'],
+                'remark'   => $result['remark'],
             ]);
-        } catch (\Exception $e) {
 
-            Log::error('Retrigger failed: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Retrigger failed: ' . $e->getMessage()
-            ], 500);
+            if ($result['status'] !== 'Success') {
+                $this->markAsFailed($quotation->ID, $stepDef['label'], $result['remark'], $submittedBy);
+
+                foreach ($retriggerSteps as $remainingNo => $remainingDef) {
+                    if ($remainingNo > $stepNo) {
+                        $steps[] = [
+                            'step'   => $remainingNo,
+                            'label'  => $remainingDef['label'],
+                            'status' => 'Skipped',
+                            'remark' => 'Skipped due to previous step failure',
+                        ];
+                    }
+                }
+
+                return response()->json([
+                    'success'      => false,
+                    'failed_step'  => $stepNo,
+                    'failed_label' => $stepDef['label'],
+                    'steps'        => $steps,
+                    'message'      => $result['remark'],
+                ]);
+            }
         }
+
+        DB::table('Quote_QuotationInfo')
+            ->where('ID', $quotation->ID)
+            ->update([
+                'SCMINTStatus'   => 'Success',
+                'LastModifiedBy' => $submittedBy,
+                'updatedon'      => now(),
+            ]);
+
+        Log::info('retrigger - Completed successfully', [
+            'booking_no' => $bookingNo,
+            'quote_no'   => $quoteNo,
+            'user'       => $submittedBy,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Retrigger completed successfully',
+            'steps'   => $steps,
+        ]);
     }
 
     public function getCommunicationTemplates(Request $request)
@@ -4934,21 +5009,78 @@ class QuotationController extends Controller
     public function saveCustomerDetails(Request $request)
     {
         $request->validate([
-            'booking_no'    => 'required|string',
-            'customer_type' => 'required|string',
-            'address1'      => 'required|string|max:200',
+            'booking_no' => 'required_without:id|string|nullable',
+            'id'         => 'required_without:booking_no|string|nullable',
         ]);
 
         $submittedBy = auth()->user()->displayName ?? auth()->user()->Email ?? 'system';
 
-        // ✅ Fix 1: $quotation must be resolved before $input is built
-        $quotation = DB::connection('sqlsrv')
-            ->table('Quote_QuotationInfo')
-            ->where('bookingno', $request->booking_no)
-            ->value('QuoteNo');
+        if ($request->filled('booking_no')) {
+            $quotation = DB::connection('sqlsrv')
+                ->table('Quote_QuotationInfo')
+                ->where('bookingno', $request->booking_no)
+                ->first(['ID', 'QuoteNo', 'bookingno', 'CustomerType', 'AgentType', 'clientid']);
+        } else {
+            $quotation = DB::connection('sqlsrv')
+                ->table('Quote_QuotationInfo')
+                ->where('ID', $request->id)
+                ->first(['ID', 'QuoteNo', 'bookingno', 'CustomerType', 'AgentType', 'clientid']);
+        }
 
         if (!$quotation) {
             return response()->json(['success' => false, 'message' => 'Quotation not found'], 404);
+        }
+
+        $bookingNo = $quotation->bookingno;
+        $quoteNo   = $quotation->QuoteNo;
+
+        $resolve = fn(...$keys) => collect($keys)
+            ->map(fn($k) => trim($request->input($k, '')))
+            ->first(fn($v) => $v !== '') ?? '';
+
+        $company       = $resolve('company',        'companyname');
+        $address1      = $resolve('address1',       'pri_partner_steet');
+        $address2      = $resolve('address2',       'pri_partner_steet2');
+        $city          = $resolve('city',           'pri_partner_city');
+        $zipCode       = $resolve('zip_code',       'pri_partner_zip');
+        $state         = $resolve('state',          'pri_partner_statename');
+        $contactPerson = $resolve('contact_person', 'pri_partnermaster_name');
+        $email         = $resolve('email',          'pri_partner_email');
+        $phone         = $resolve('phone',          'pri_partner_phone');
+        $clientId      = $resolve('client_id',      'clientid');
+        $industryName  = $resolve('industry',       'industryname');
+
+        $customerType = $resolve('customer_type', 'CustomerType')
+            ?: ($quotation->CustomerType ?? '');
+        $agentType    = $resolve('agent_type',    'AgentType')
+            ?: ($quotation->AgentType    ?? '');
+
+        // FIX: Frontend now sends the country CODE directly (from sp_CountryList,
+        // same source sp_Quote_DetailsUpdate validates against).
+        // The old approach resolved name → code via local Cust_Country (FITSYSUAT),
+        // whose codes can differ from those in FITSCMUAT — causing the SP rejection.
+        $countryCode = trim($resolve('country', 'pri_partner_countryname'));
+
+        if (empty($countryCode)) {
+            return response()->json(['success' => false, 'message' => 'Country is required'], 422);
+        }
+
+        // Industry still resolved name → code because the dropdown stores names
+        // and sp_Quote_DetailsUpdate expects the industry code, not the name.
+        $industryCode = '';
+        if (!empty($industryName)) {
+            $industryRecord = DB::table('FITSCMUAT.dbo.Cust_Industry')
+                ->whereRaw("LTRIM(RTRIM(Name)) = ?", [$industryName])
+                ->first(['Code']);
+
+            if (!$industryRecord) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Industry '{$industryName}' could not be resolved to an industry code.",
+                ], 422);
+            }
+
+            $industryCode = trim($industryRecord->Code);
         }
 
         $input = json_encode([
@@ -4956,56 +5088,187 @@ class QuotationController extends Controller
             'SubmittedDatetime' => now()->format('YmdHis'),
             'SubmittedBy'       => $submittedBy,
             'Action'            => 'Update',
-            'QuotationNo'       => $quotation,
-            'ClientID'          => $request->client_id ?? '',
-            'Company'           => $request->company ?? '',
-            'Address1'          => $request->address1 ?? '',
-            'Address2'          => $request->address2 ?? '',
-            'City'              => $request->city ?? '',
-            'ZipCode'           => $request->zip_code ?? '',
-            'State'             => $request->state ?? '',
-            'CountryCode'       => '', // ⚠️ SP BUG: country validation logic is inverted — always fails if provided
-            'ContactPerson'     => $request->contact_person ?? '',
-            'EmailID'           => $request->email ?? '',
-            'PhoneNo'           => $request->phone ?? '',
-            'IndustryCode'      => $request->industry_code ?? '',
-            'Industry'          => $request->industry ?? '',
-            'CustomerType'      => $request->customer_type,
-            'AgentType'         => $request->agent_type ?? '',
+            'QuotationNo'       => $quoteNo,
+            'ClientID'          => $clientId,
+            'Company'           => $company,
+            'Address1'          => $address1,
+            'Address2'          => $address2,
+            'City'              => $city,
+            'ZipCode'           => $zipCode,
+            'State'             => $state,
+            'CountryCode'       => $countryCode,
+            'ContactPerson'     => $contactPerson,
+            // FIX: Pass null for empty email — the SP validates format on any non-null
+            // value, so an empty string "" triggers "Email ID format is invalid".
+            // Null is correctly treated as "not provided" and skips validation.
+            'EmailID'           => $email ?: null,
+            'PhoneNo'           => $phone,
+            'IndustryCode'      => $industryCode,
+            'Industry'          => $industryName,
+            'CustomerType'      => $customerType,
+            'AgentType'         => $agentType,
         ]);
 
-        // ✅ Fix 2: guard moved to after $input is built (needs $quotation to exist first)
         if (strlen($input) > 2000) {
             return response()->json([
                 'success' => false,
-                'message' => '[PHP] Request payload too large for SP. Max 2000 characters.'
+                'message' => 'Request payload too large for SP. Max 2000 characters.',
             ], 400);
         }
 
         try {
             $output = $this->executeDetailsUpdateSP($input);
 
+            Log::info('saveCustomerDetails - SP response', [
+                'booking_no' => $bookingNo,
+                'quote_no'   => $quoteNo,
+                'output'     => $output,
+                'input_sent' => json_decode($input, true),
+            ]);
+
             if (($output['Status'] ?? '') === 'Failed') {
-                // ✅ Fix 3: read normalized singular Remark (executeDetailsUpdateSP normalizes this now)
+                $rawRemarks = array_values(array_filter(
+                    array_map(fn($r) => trim($r['Remark'] ?? ''), $output['Remarks'] ?? []),
+                    fn($r) => $r !== ''
+                ));
+
+                $userMessage = !empty($rawRemarks)
+                    ? implode(' | ', $rawRemarks)
+                    : trim($output['Remark'] ?? 'An unknown error occurred.');
+
+                Log::error('saveCustomerDetails - SP returned failure', [
+                    'booking_no' => $bookingNo,
+                    'quote_no'   => $quoteNo,
+                    'sp_remark'  => $userMessage,
+                    'input_sent' => json_decode($input, true),
+                ]);
+
                 return response()->json([
                     'success' => false,
-                    'message' => $output['Remark'] ?? 'Customer update failed'
+                    'message' => $userMessage,
                 ]);
             }
 
+            Log::info('saveCustomerDetails - Success', [
+                'booking_no'    => $bookingNo,
+                'quote_no'      => $quoteNo,
+                'country_code'  => $countryCode,
+                'industry_code' => $industryCode ?: 'not provided',
+                'user'          => $submittedBy,
+            ]);
+
             return response()->json([
                 'success' => true,
-                'message' => 'Customer details saved successfully'
+                'message' => 'Customer details saved successfully',
             ]);
         } catch (\Exception $e) {
-            Log::error('saveCustomerDetails error: ' . $e->getMessage());
+            Log::error('saveCustomerDetails - Exception', [
+                'booking_no' => $bookingNo,
+                'error'      => $e->getMessage(),
+                'file'       => $e->getFile(),
+                'line'       => $e->getLine(),
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => '[PHP] ' . $e->getMessage()
+                'message' => $e->getMessage(),
             ], 500);
         }
     }
 
+    /**
+     * Shared PDO helper for sp_Quote_DetailsUpdate.
+     * Used by: saveShipmentDetails, saveInquiryDetails, saveCustomerDetails, createBooking.
+     *
+     * The SP returns a JSON array via OUTPUT parameter — e.g:
+     *   [{"Status":"Success","Remark":"..."},{"Status":"Failed","Remark":"..."}]
+     *
+     * Returns the first element as an associative array with at minimum:
+     *   ['Status' => 'Success'|'Failed', 'Remark' => '...']
+     */
+    private function executeDetailsUpdateSP(string $inputJson): array
+    {
+        if (strlen($inputJson) > 2000) {
+            Log::error('executeDetailsUpdateSP - payload exceeds SP limit', [
+                'length'  => strlen($inputJson),
+                'preview' => substr($inputJson, 0, 300),
+            ]);
+            return [
+                'Status' => 'Failed',
+                'Remark' => '[PHP] Input payload too large (' . strlen($inputJson) . ' chars). SP limit is 2000.',
+            ];
+        }
+
+        $pdo  = DB::connection('sqlsrv')->getPdo();
+        $stmt = $pdo->prepare("
+        SET NOCOUNT ON;
+        DECLARE @OutputJson VARCHAR(2000);
+        EXEC dbo.sp_Quote_DetailsUpdate ?, @OutputJson = @OutputJson OUTPUT;
+        SELECT @OutputJson AS OutputJson
+    ");
+        $stmt->execute([$inputJson]);
+
+        // Walk result sets — SP may emit intermediate sets before the OUTPUT SELECT
+        do {
+            try {
+                $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+
+                if (empty($rows) || !isset($rows[0]->OutputJson)) {
+                    continue;
+                }
+
+                $raw = trim($rows[0]->OutputJson ?? '');
+
+                if (empty($raw)) {
+                    Log::error('executeDetailsUpdateSP - SP returned empty OutputJson', [
+                        'input' => $inputJson,
+                    ]);
+                    return ['Status' => 'Failed', 'Remark' => '[SP] Empty response returned'];
+                }
+
+                // SP may return a single object or a JSON array — normalise to array
+                $toDecode = str_starts_with($raw, '[') ? $raw : '[' . $raw . ']';
+                $decoded  = json_decode($toDecode, true);
+
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    Log::error('executeDetailsUpdateSP - JSON decode failed', [
+                        'raw'   => $raw,
+                        'error' => json_last_error_msg(),
+                        'input' => $inputJson,
+                    ]);
+                    return ['Status' => 'Failed', 'Remark' => '[SP] Response could not be parsed: ' . json_last_error_msg()];
+                }
+
+                // Surface any failure entries first
+                $failures = array_filter($decoded, fn($r) => ($r['Status'] ?? '') === 'Failed');
+
+                if (!empty($failures)) {
+                    $first   = array_values($failures)[0];
+                    $remarks = implode(', ', array_column($failures, 'Remark'));
+                    return [
+                        'Status'  => 'Failed',
+                        'Remark'  => $remarks,
+                        'Remarks' => array_values($failures),
+                    ];
+                }
+
+                // All entries are Success — return the first
+                return $decoded[0] ?? ['Status' => 'Success', 'Remark' => ''];
+            } catch (\PDOException $e) {
+                // Intermediate result set with no fetchable rows — advance and continue
+                continue;
+            }
+        } while ($stmt->nextRowset());
+
+        Log::error('executeDetailsUpdateSP - no OutputJson found in any result set', [
+            'input' => $inputJson,
+        ]);
+
+        return [
+            'Status' => 'Failed',
+            'Remark' => '[SP] No response returned from stored procedure',
+        ];
+    }
 
     /**
      * Shared PDO helper for sp_Quote_DetailsUpdate.
@@ -5197,7 +5460,6 @@ class QuotationController extends Controller
 
         $submittedBy = Auth::user()->displayName ?? Auth::user()->Email ?? 'system';
 
-        // ── Resolve QuoteNo ───────────────────────────────────────────────────────
         $quotation = DB::table('Quote_QuotationInfo')
             ->where('ID', $request->id)
             ->first(['ID', 'QuoteNo', 'bookingno', 'QuoteStatus', 'teamid', 'OfficeCode']);
@@ -5292,7 +5554,6 @@ class QuotationController extends Controller
                     $submittedBy
                 );
 
-                // Mark remaining steps as skipped
                 foreach ($processSteps as $remainingNo => $remainingDef) {
                     if ($remainingNo > $stepNo) {
                         $steps[] = [
@@ -5312,41 +5573,18 @@ class QuotationController extends Controller
                 ]);
             }
 
-            // ── After XML step: log SCMBookingXML was saved ───────────────────────
-            // sp_Quote_QuoteBookingCreateInSCM only writes SCMBookingXML back to
-            // Quote_QuotationInfo. SCMBookingID is populated asynchronously by SCM
-            // via the handleBookingIntegrationResponse callback — it is not available
-            // at this point and must not be checked here.
             if ($stepNo === 2) {
-                Log::info('processBooking - XML step completed, SCMBookingXML saved', [
+                // sp_Quote_QuoteBookingCreateInSCM saves XML to SCMBookingXML only.
+                // SCM reads this asynchronously and calls back via handleBookingIntegrationResponse,
+                // which writes SCMBookingID. Steps 3 and 4 require SCMBookingID to be set.
+                // If SCM has not yet called back, Steps 3 and 4 will fail with "Booking Is Still
+                // No Created" — use the retrigger button after SCM has processed the XML.
+                Log::info('processBooking - XML saved, proceeding to Charge step', [
                     'quote_no' => $quoteNo,
-                    'note'     => 'SCMBookingID will be populated asynchronously by SCM callback',
+                    'note'     => 'SCMBookingID written by SCM callback — may not be set yet in UAT',
                 ]);
             }
         }
-
-        // ── After Charge step: detect silent DB bug ───────────────────────────
-        // sp_Quote_QuoteChargesAddInSCM reads from FIT_ExpressChargeSheet instead
-        // of Quote_Quotation_ChargeSheet (wrong table — DB-side bug, item #4).
-        // The SP returns 'Success' even when no charges are transferred because
-        // the INSERT finds zero rows and throws no exception.
-        // This check makes the silent failure visible in logs until the DB team
-        // fixes the SP. Remove or comment out once the SP is corrected.
-        //     if ($stepNo === 3) {
-        //         // $unsentCharges = DB::table('Quote_Quotation_ChargeSheet')
-        //         //     ->where('QuotationInfoID', $quotation->ID)
-        //         //     ->where('IsDeleted', 0)
-        //         //     ->whereNull('SCMJobSheetID')
-        //         //     ->count();
-        //         //
-        //         // if ($unsentCharges > 0) {
-        //         //     Log::warning('processBooking - Step 3 returned Success but charges not transferred', [
-        //         //         'quote_no'       => $quoteNo,
-        //         //         'unsent_charges' => $unsentCharges,
-        //         //     ]);
-        //         // }
-        //     }
-        // }
 
         // ── All steps passed: mark SCMINTStatus = 'Success' ──────────────────────
         DB::table('Quote_QuotationInfo')
@@ -5362,7 +5600,6 @@ class QuotationController extends Controller
             'user'     => $submittedBy,
         ]);
 
-        // Re-read final state for response
         $saved = DB::table('Quote_QuotationInfo')
             ->where('ID', $request->id)
             ->first(['SCMBookingID', 'SCMBookingNo']);
@@ -5375,6 +5612,7 @@ class QuotationController extends Controller
             'scm_booking_id' => $saved->SCMBookingID ?? null,
         ]);
     }
+
 
     /**
      * Writes SCMINTStatus = 'Failed' and appends the step + error message to
@@ -5434,7 +5672,6 @@ class QuotationController extends Controller
         string $submittedBy
     ): array {
         try {
-            // Truncate to 25 chars to match SP varchar(25) declaration
             $submittedBy = substr($submittedBy, 0, 25);
 
             $inputJson = json_encode([
@@ -5456,63 +5693,11 @@ class QuotationController extends Controller
                 'input_json' => $inputJson,
             ]);
 
-            $pdo  = DB::connection()->getPdo();
-            $stmt = $pdo->prepare("
-                SET NOCOUNT ON;
-                DECLARE @OutputJson VARCHAR(2000);
-                EXEC dbo.sp_Quote_DetailsUpdate ?, @OutputJson = @OutputJson OUTPUT;
-                SELECT @OutputJson AS OutputJson
-            ");
-            $stmt->execute([$inputJson]);
-
-            // Walk result sets — SP may emit intermediate sets
-            $outputJson = null;
-            do {
-                try {
-                    $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
-                    if (!empty($rows) && isset($rows[0]->OutputJson)) {
-                        $outputJson = $rows[0]->OutputJson;
-                        break;
-                    }
-                } catch (\PDOException $e) {
-                    continue;
-                }
-            } while ($stmt->nextRowset());
-
-            if ($outputJson === null) {
-                Log::error('runBookingInfoUpdate - No output returned', ['quote_no' => $quoteNo]);
-                return ['status' => 'Failed', 'remark' => 'No response from booking info SP'];
-            }
-
-            $output = json_decode($outputJson, true);
-
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                Log::error('runBookingInfoUpdate - JSON decode failed', [
-                    'quote_no'   => $quoteNo,
-                    'raw_output' => $outputJson,
-                ]);
-                return ['status' => 'Failed', 'remark' => 'Failed to parse booking info SP response'];
-            }
-
-            // Fetch the raw OfficeCode for diagnostic purposes
-            $rawOfficeCode = DB::selectOne(
-                "SELECT OfficeCode, LEN(OfficeCode) as OfficeCodeLen, QuoteNo 
-     FROM Quote_QuotationInfo WHERE QuoteNo = ?",
-                [$quoteNo]
-            );
+            $output = $this->executeDetailsUpdateSP($inputJson);
 
             Log::info('runBookingInfoUpdate - Output', [
-                'quote_no'          => $quoteNo,
-                'output'            => $output,
-                'sp_called'         => 'sp_Quote_DetailsUpdate',
-                'input_json'        => $inputJson,
-                'diagnostic' => [
-                    'raw_office_code'     => $rawOfficeCode->OfficeCode ?? 'N/A',
-                    'office_code_length'  => $rawOfficeCode->OfficeCodeLen ?? 'N/A',
-                    'trimmed_office_code' => trim($rawOfficeCode->OfficeCode ?? ''),
-                    'has_trailing_space'  => isset($rawOfficeCode->OfficeCode)
-                        && $rawOfficeCode->OfficeCode !== trim($rawOfficeCode->OfficeCode),
-                ]
+                'quote_no' => $quoteNo,
+                'output'   => $output,
             ]);
 
             return [
@@ -6155,8 +6340,6 @@ class QuotationController extends Controller
 
             $rows = [];
 
-            // Iterate ALL result sets — nextRowset() advances THEN we fetch
-            // do/while ensures we fetch set #1 first, then advance and fetch set #2
             do {
                 try {
                     $fetched = $stmt->fetchAll(\PDO::FETCH_ASSOC);
@@ -6172,26 +6355,23 @@ class QuotationController extends Controller
                 }
             } while ($stmt->nextRowset());
 
-            // If loop exhausted without finding data, rows is still []
-            // This means BOTH sets were empty — genuine SP data issue
-            Log::info('lookupCountries complete', ['count' => count($rows)]);
-
             if (empty($rows)) {
                 Log::warning('lookupCountries — both result sets empty', [
                     'filter' => $request->get('filter', ''),
-                    'note'   => 'SP returned 2 sets but neither had rows. Check Cust_Country table data.',
                 ]);
                 return response()->json([]);
             }
 
             $normalised = array_map(function ($row) {
                 $name = $row['CountryName'] ?? $row['Name'] ?? current($row) ?? '';
-                $code = $row['Code'] ?? '';  // ← ADD
+
+                // FIX: SP returns 'CountCode' not 'Code' — check both for safety
+                $code = $row['CountCode'] ?? $row['Code'] ?? '';
 
                 return array_merge($row, [
                     'CountryName' => $name,
                     'Name'        => $name,
-                    'CountryCode' => $code,  // ← ADD
+                    'CountryCode' => $code,
                 ]);
             }, $rows);
 
@@ -6201,7 +6381,7 @@ class QuotationController extends Controller
             return response()->json([]);
         }
     }
-
+    
     public function lookupIncoTerms(Request $request)
     {
         try {
