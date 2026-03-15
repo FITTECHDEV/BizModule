@@ -5052,26 +5052,44 @@ class QuotationController extends Controller
 
         $customerType = $resolve('customer_type', 'CustomerType')
             ?: ($quotation->CustomerType ?? '');
-        $agentType    = $resolve('agent_type',    'AgentType')
+        $agentType    = $resolve('agent_type', 'AgentType')
             ?: ($quotation->AgentType    ?? '');
 
-        // FIX: Frontend now sends the country CODE directly (from sp_CountryList,
-        // same source sp_Quote_DetailsUpdate validates against).
-        // The old approach resolved name → code via local Cust_Country (FITSYSUAT),
-        // whose codes can differ from those in FITSCMUAT — causing the SP rejection.
-        $countryCode = trim($resolve('country', 'pri_partner_countryname'));
+        // ── Country resolution ───────────────────────────────────────────────────
+        // Frontend sends CountryID (UUID from sp_CountryList e.g. "E698431C-...").
+        // sp_Quote_DetailsUpdate expects this UUID in the CountryCode field.
+        // No secondary lookup needed — validate and pass straight through.
+        $countryId = trim($resolve('country', 'pri_partner_countryname'));
 
-        if (empty($countryCode)) {
+        if (empty($countryId)) {
             return response()->json(['success' => false, 'message' => 'Country is required'], 422);
         }
 
-        // Industry still resolved name → code because the dropdown stores names
-        // and sp_Quote_DetailsUpdate expects the industry code, not the name.
+        Log::info('saveCustomerDetails - country', ['country_id' => $countryId]);
+
+        // ── Industry resolution ──────────────────────────────────────────────────
+        // Dropdown stores Name — SP expects the industry Code.
         $industryCode = '';
         if (!empty($industryName)) {
-            $industryRecord = DB::table('FITSCMUAT.dbo.Cust_Industry')
-                ->whereRaw("LTRIM(RTRIM(Name)) = ?", [$industryName])
-                ->first(['Code']);
+            try {
+                $pdo   = DB::connection('sqlsrv')->getPdo();
+                $stmtI = $pdo->prepare("
+                SELECT TOP 1 Code
+                FROM [FITSCMUAT].[dbo].[Cust_Industry]
+                WHERE LTRIM(RTRIM(Name)) = ?
+            ");
+                $stmtI->execute([$industryName]);
+                $industryRecord = $stmtI->fetch(\PDO::FETCH_OBJ);
+            } catch (\Exception $e) {
+                Log::error('saveCustomerDetails - industry lookup failed', [
+                    'industry' => $industryName,
+                    'error'    => $e->getMessage(),
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Industry lookup failed: ' . $e->getMessage(),
+                ], 500);
+            }
 
             if (!$industryRecord) {
                 return response()->json([
@@ -5096,11 +5114,8 @@ class QuotationController extends Controller
             'City'              => $city,
             'ZipCode'           => $zipCode,
             'State'             => $state,
-            'CountryCode'       => $countryCode,
+            'CountryCode'       => $countryId,   // UUID passed directly — no lookup needed
             'ContactPerson'     => $contactPerson,
-            // FIX: Pass null for empty email — the SP validates format on any non-null
-            // value, so an empty string "" triggers "Email ID format is invalid".
-            // Null is correctly treated as "not provided" and skips validation.
             'EmailID'           => $email ?: null,
             'PhoneNo'           => $phone,
             'IndustryCode'      => $industryCode,
@@ -5120,10 +5135,11 @@ class QuotationController extends Controller
             $output = $this->executeDetailsUpdateSP($input);
 
             Log::info('saveCustomerDetails - SP response', [
-                'booking_no' => $bookingNo,
-                'quote_no'   => $quoteNo,
-                'output'     => $output,
-                'input_sent' => json_decode($input, true),
+                'booking_no'   => $bookingNo,
+                'quote_no'     => $quoteNo,
+                'output'       => $output,
+                'country_id'   => $countryId,
+                'input_sent'   => json_decode($input, true),
             ]);
 
             if (($output['Status'] ?? '') === 'Failed') {
@@ -5138,21 +5154,17 @@ class QuotationController extends Controller
 
                 Log::error('saveCustomerDetails - SP returned failure', [
                     'booking_no' => $bookingNo,
-                    'quote_no'   => $quoteNo,
                     'sp_remark'  => $userMessage,
                     'input_sent' => json_decode($input, true),
                 ]);
 
-                return response()->json([
-                    'success' => false,
-                    'message' => $userMessage,
-                ]);
+                return response()->json(['success' => false, 'message' => $userMessage]);
             }
 
             Log::info('saveCustomerDetails - Success', [
                 'booking_no'    => $bookingNo,
                 'quote_no'      => $quoteNo,
-                'country_code'  => $countryCode,
+                'country_id'    => $countryId,
                 'industry_code' => $industryCode ?: 'not provided',
                 'user'          => $submittedBy,
             ]);
@@ -6223,13 +6235,13 @@ class QuotationController extends Controller
     public function getSalesPersons(Request $request)
     {
         $filter   = trim($request->input('filter', ''));
-        $officeId = trim($request->input('office_id', ''));  // UUID passed from JS
+        $officeId = trim($request->input('office_id', ''));
 
         try {
             $query = DB::connection('sqlsrv')
                 ->table('FITSCMUAT.dbo.Cust_Resource AS CR')
                 ->join('FITSCMUAT.dbo.Cust_ResOfficeResFuncMap AS CRO', 'CRO.ResourceId', '=', 'CR.Id')
-                ->join('FITSCMUAT.dbo.Sys_ResourceFunction AS RF',     'RF.Id',         '=', 'CRO.ResourceFunctionId')
+                ->join('FITSCMUAT.dbo.Sys_ResourceFunction AS RF', 'RF.Id', '=', 'CRO.ResourceFunctionId')
                 ->where('CR.IsActive',  1)
                 ->where('CR.IsDeleted', 0)
                 ->where('CRO.IsActive', 1)
@@ -6240,8 +6252,12 @@ class QuotationController extends Controller
                         ->orWhere('CR.Contact_Email',              'like', "%{$filter}%")
                         ->orWhere('CR.Code',                       'like', "%{$filter}%");
                 })
+                // FIX 1: Add Contact_PersonName_FirstName to the SELECT so DISTINCT
+                // allows ORDER BY on it. SQL Server requires every ORDER BY column
+                // to appear in the SELECT list when DISTINCT is used.
                 ->select([
                     'CR.Code',
+                    'CR.Contact_PersonName_FirstName', // ← ADDED: needed by ORDER BY + DISTINCT
                     DB::raw("LTRIM(RTRIM(CR.Contact_PersonName_FirstName))
                     + IIF(
                         CR.Contact_PersonName_LastName IS NULL
@@ -6252,11 +6268,12 @@ class QuotationController extends Controller
                     DB::raw("ISNULL(CR.Contact_Email, '') AS Email"),
                     'CRO.OfficeId',
                 ])
+                // FIX 2: Keep DISTINCT — it now works because the ORDER BY column
+                // (Contact_PersonName_FirstName) is explicitly in the SELECT list above.
                 ->distinct()
                 ->orderBy('CR.Contact_PersonName_FirstName')
                 ->limit(20);
 
-            // Scope to office if provided — fall back to all offices if missing
             if ($officeId) {
                 $query->where('CRO.OfficeId', $officeId);
             }
@@ -6277,10 +6294,13 @@ class QuotationController extends Controller
                 'error'    => $e->getMessage(),
             ]);
 
-            return response()->json(['success' => false, 'persons' => [], 'error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'persons' => [],
+                'error'   => $e->getMessage(),
+            ]);
         }
     }
-
     public function saveInquiryDetails(Request $request)
     {
         $request->validate([
@@ -6330,7 +6350,6 @@ class QuotationController extends Controller
     // ============================================================
     // LOOKUP METHODS — used by duplicate modal dropdowns
     // ============================================================
-
     public function lookupCountries(Request $request)
     {
         try {
@@ -6339,49 +6358,42 @@ class QuotationController extends Controller
             $stmt->execute([$request->get('filter', '')]);
 
             $rows = [];
-
             do {
                 try {
                     $fetched = $stmt->fetchAll(\PDO::FETCH_ASSOC);
-                    Log::info('lookupCountries set fetched', [
-                        'count'   => count($fetched),
-                        'columns' => !empty($fetched) ? array_keys($fetched[0]) : [],
-                    ]);
                     if (!empty($fetched) && empty($rows)) {
                         $rows = $fetched;
                     }
                 } catch (\Exception $e) {
-                    Log::info('lookupCountries set skipped: ' . $e->getMessage());
+                    // skip unfetchable result sets (temp table drops)
                 }
             } while ($stmt->nextRowset());
 
             if (empty($rows)) {
-                Log::warning('lookupCountries — both result sets empty', [
-                    'filter' => $request->get('filter', ''),
-                ]);
+                Log::warning('lookupCountries — SP returned no rows');
                 return response()->json([]);
             }
 
+            // SP confirmed columns: CountryID (UUID = CC.id), CountCode (ISO), CountryName
             $normalised = array_map(function ($row) {
-                $name = $row['CountryName'] ?? $row['Name'] ?? current($row) ?? '';
-
-                // FIX: SP returns 'CountCode' not 'Code' — check both for safety
-                $code = $row['CountCode'] ?? $row['Code'] ?? '';
-
-                return array_merge($row, [
-                    'CountryName' => $name,
-                    'Name'        => $name,
-                    'CountryCode' => $code,
-                ]);
+                return [
+                    'CountryID'   => trim($row['CountryID']   ?? ''), // UUID — sent to SP as CountryCode
+                    'CountryCode' => trim($row['CountCode']   ?? ''), // ISO e.g. "KE" — used for pre-selection
+                    'CountryName' => trim($row['CountryName'] ?? ''), // display label
+                ];
             }, $rows);
 
             return response()->json($normalised);
         } catch (\Exception $e) {
-            Log::error('lookupCountries error: ' . $e->getMessage());
+            Log::error('lookupCountries error: ' . $e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
             return response()->json([]);
         }
     }
-    
+
+
     public function lookupIncoTerms(Request $request)
     {
         try {
@@ -6745,6 +6757,122 @@ class QuotationController extends Controller
                 'data'    => [],
                 'message' => $e->getMessage()
             ], 500);
+        }
+    }
+
+    public function getClientList(Request $request)
+    {
+        $filter = trim($request->input('filter', ''));
+
+        if (strlen($filter) < 2) {
+            return response()->json(['success' => true, 'clients' => []]);
+        }
+
+        try {
+            $pdo  = DB::connection('sqlsrv')->getPdo();
+            $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC dbo.sp_ClientList @Filter = ?");
+            $stmt->execute([$filter]);
+
+            $clients = [];
+            do {
+                try {
+                    $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+
+                    if (empty($rows)) continue;
+
+                    // Skip SP error result sets
+                    $firstVal = array_values((array) $rows[0])[0] ?? '';
+                    if (is_string($firstVal) && str_starts_with($firstVal, 'Error')) continue;
+
+                    if (isset($rows[0]->ClientID)) {
+                        $clients = $rows;
+                        break;
+                    }
+                } catch (\PDOException $e) {
+                    continue;
+                }
+            } while ($stmt->nextRowset());
+
+            Log::info('getClientList', ['filter' => $filter, 'count' => count($clients)]);
+
+            return response()->json(['success' => true, 'clients' => $clients]);
+        } catch (\Exception $e) {
+            Log::error('getClientList failed', ['filter' => $filter, 'error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'clients' => [], 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function getClientDetails(Request $request)
+    {
+        $clientId = trim($request->input('client_id', ''));
+
+        if (!$clientId) {
+            return response()->json(['success' => false, 'message' => 'Client ID is required'], 400);
+        }
+
+        try {
+            $pdo  = DB::connection('sqlsrv')->getPdo();
+            // sp_ClientDetails uses OUTPUT parameters — wrap in a DECLARE block
+            // and SELECT the outputs so PDO can fetch them as a result set.
+            $stmt = $pdo->prepare("
+            DECLARE @Status        VARCHAR(10),
+                    @Remark        VARCHAR(100),
+                    @EmailID       VARCHAR(200),
+                    @IndustryType  VARCHAR(200),
+                    @IndustryTypeID UNIQUEIDENTIFIER;
+
+            EXEC dbo.sp_ClientDetails
+                @ClientID       = ?,
+                @Status         = @Status        OUTPUT,
+                @Remark         = @Remark        OUTPUT,
+                @EmailID        = @EmailID       OUTPUT,
+                @IndustryType   = @IndustryType  OUTPUT,
+                @IndustryTypeID = @IndustryTypeID OUTPUT;
+
+            SELECT
+                @Status         AS Status,
+                @Remark         AS Remark,
+                @EmailID        AS EmailID,
+                @IndustryType   AS IndustryType,
+                @IndustryTypeID AS IndustryTypeID;
+        ");
+            $stmt->execute([$clientId]);
+
+            $result = null;
+            do {
+                try {
+                    $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+                    if (!empty($rows) && isset($rows[0]->Status)) {
+                        $result = $rows[0];
+                        break;
+                    }
+                } catch (\PDOException $e) {
+                    continue;
+                }
+            } while ($stmt->nextRowset());
+
+            if (!$result) {
+                return response()->json(['success' => false, 'message' => 'No response from SP'], 500);
+            }
+
+            if ($result->Status !== 'Success') {
+                return response()->json(['success' => false, 'message' => $result->Remark ?? 'Failed'], 422);
+            }
+
+            Log::info('getClientDetails', [
+                'client_id'    => $clientId,
+                'industry'     => $result->IndustryType ?? '',
+                'has_email'    => !empty($result->EmailID),
+            ]);
+
+            return response()->json([
+                'success'  => true,
+                'email'    => trim($result->EmailID    ?? ''),
+                'industry' => trim($result->IndustryType ?? ''),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('getClientDetails failed', ['client_id' => $clientId, 'error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
 }

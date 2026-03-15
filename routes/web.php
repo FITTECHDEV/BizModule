@@ -751,6 +751,10 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
         ->name('quotation.agent-types');
     Route::get('/quotation/customer-types', [App\Http\Controllers\QuotationController::class, 'getCustomerTypes'])
         ->name('quotation.customer-types');
+    Route::get('/quotation/client-list', [App\Http\Controllers\QuotationController::class, 'getClientList'])
+        ->name('quotation.client-list');
+    Route::get('/quotation/client-details', [App\Http\Controllers\QuotationController::class, 'getClientDetails'])
+        ->name('quotation.client-details');
     Route::get('/quotation/email-history', [App\Http\Controllers\QuotationController::class, 'getEmailHistory'])
         ->name('quotation.email.history');
     Route::get('/quotation/shipment-modes', [App\Http\Controllers\QuotationController::class, 'getShipmentModes'])
