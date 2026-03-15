@@ -813,8 +813,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 MODALS
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 ============================================ -->
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             MODALS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1376,8 +1376,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1820,9 +1820,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -2141,9 +2141,8 @@
                     if (typeof callback === 'function') callback();
                     return;
                 }
-                const savedOriginCode = '{{ $quotation->origincountrycode ?? '' }}';
-                const savedDestCode = '{{ $quotation->destinationcountrycode ?? '' }}';
-
+                const savedOriginCode = '{{ $quotation->origin_country_code ?? '' }}';
+                const savedDestCode = '{{ $quotation->destination_country_code ?? '' }}';
                 $.ajax({
                     url: '{{ route('quotation.lookup.countries') }}',
                     type: 'GET',
@@ -5398,38 +5397,46 @@
             });
 
             // ============================================
-            // COPIED BOOKING — UNLOCK EDITABLE FIELDS
+            // ============================================
+            // COPIED BOOKING — PUT ALL CARDS INTO EDIT MODE
+            // Triggers the Edit button on each card so all
+            // dropdowns load and fields become editable,
+            // exactly matching the normal edit page flow.
             // ============================================
             if (isCopiedBooking) {
-                const editableCards = ['#customerDetailsCard', '#shipmentDetailsCard', '#cargoDetailsCard'];
 
-                editableCards.forEach(function(cardId) {
+                // Expand all three cards first so they are visible
+                const cardsToExpand = [
+                    '#customerDetailsCard',
+                    '#shipmentDetailsCard',
+                    '#cargoDetailsCard'
+                ];
+
+                cardsToExpand.forEach(function(cardId) {
                     const $card = $(cardId);
-
                     $card.find('.card-body').show();
                     $card.find('[data-card-widget="collapse"] i')
-                        .removeClass('fa-chevron-down').addClass('fa-chevron-up');
+                        .removeClass('fa-chevron-down')
+                        .addClass('fa-chevron-up');
                     $card.removeClass('collapsed-card');
-
-                    $card.find('input[readonly]').each(function() {
-                        $(this).removeAttr('readonly').css({
-                            'background-color': '#fff',
-                            'border': '1px solid #ced4da',
-                            'border-radius': '4px',
-                            'padding': '0.25rem 0.5rem',
-                            'cursor': 'text'
-                        });
-                    });
                 });
 
-                $('.content-header h1, .content-header .d-flex').first().after(`
-                    <div class="alert alert-info alert-dismissible fade show mx-3 mt-2" role="alert">
-                        <i class="fas fa-copy mr-1"></i>
-                        <strong>Copied Booking</strong> — Customer, Shipment and Cargo details are now editable.
-                        Update them before sending this quotation.
-                        <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
-                    </div>
-                `);
+                // Trigger each card's Edit button with a staggered delay.
+                // Staggering prevents simultaneous AJAX calls from racing each other.
+                // Customer first — its dropdowns (countries, industries) are independent.
+                // Shipment second — loads InCo Terms, modes, country selects.
+                // Cargo last — loads equipment types.
+                setTimeout(function() {
+                    $('#editCustomerDetailsBtn').trigger('click');
+                }, 200);
+
+                setTimeout(function() {
+                    $('#editShipmentDetailsBtn').trigger('click');
+                }, 400);
+
+                setTimeout(function() {
+                    $('#editCargoDetailsBtn').trigger('click');
+                }, 600);
             }
 
             // ============================================

@@ -827,6 +827,10 @@
     <script>
         $(document).ready(function() {
 
+            const bookingNo = '{{ $quotation->bookingno ?? '' }}';
+            const QUOTE_NO_VIEW = '{{ $quotation->QuoteNo ?? '' }}';
+            const SCOPE_OF_VOLUME = '{{ $quotation->scopevolume ?? '' }}';
+
             // ============================================================
             // CARD EDITOR — per-card Edit / Save / Cancel
             // ============================================================
@@ -860,16 +864,14 @@
                     });
                     this.card.classList.add('card-in-edit');
 
-                    // Use jQuery — more reliable than style.display with AdminLTE
                     const $card = $(this.card);
                     $card.find('.btn-card-edit').hide();
                     $card.find('.btn-card-save').show();
                     $card.find('.btn-card-cancel').show();
-                    $card.find('.card-footer').show(); // guard against AdminLTE hiding it
+                    $card.find('.card-footer').show();
 
-                    // Show Address 1 required star on customer card
                     if (this.section === 'customer') {
-                        $card.find('.address1-star').show();
+                        $card.find('.address1-required-star').show();
                     }
 
                     if (this.section === 'cargo') {
@@ -892,7 +894,7 @@
                     $card.find('.card-footer').show();
 
                     if (this.section === 'customer') {
-                        $card.find('.address1-star').hide();
+                        $card.find('.address1-required-star').hide();
                     }
 
                     this.snapshot = {};
@@ -914,22 +916,10 @@
                         payload[input.dataset.field] = input.value;
                     });
 
-                    // Address 1 mandatory validation
-                    if (this.section === 'customer') {
-                        const address1 = (payload['pri_partner_steet'] || '').trim();
-                        if (!address1) {
-                            toastr.error('Address 1 is required.');
-                            return;
-                        }
-                    }
-
                     saveBtn.disabled = true;
                     saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Saving...';
 
-                    // ── Cargo card — dedicated save path ──────────────────────────────
-                    // saveCargoDetails expects specific keys (quote_no, scope_volume, cargo_volume)
-                    // that don't match the generic data-field names on this card.
-                    // ── Inquiry card — dedicated save path ───────────────────────────
+                    // ── Inquiry ───────────────────────────────────────────────────────
                     if (this.section === 'inquiry') {
                         const $displayInput = $(this.card).find('input[data-field="username"]');
                         const salesPersonCode = $displayInput.attr('data-code') || '';
@@ -959,12 +949,10 @@
                             },
                             success: (res) => {
                                 if (res.success) {
-                                    this._fields().forEach(input => input.setAttribute('readonly',
-                                        true));
+                                    this._fields().forEach(i => i.setAttribute('readonly', true));
                                     this.card.classList.remove('card-in-edit');
                                     $card.find('.btn-card-edit').show();
-                                    $card.find('.btn-card-save').hide();
-                                    $card.find('.btn-card-cancel').hide();
+                                    $card.find('.btn-card-save, .btn-card-cancel').hide();
                                     $card.find('.card-footer').show();
                                     this.snapshot = {};
                                     toastr.success('Inquiry details saved.');
@@ -983,7 +971,7 @@
                         return;
                     }
 
-                    // ── Cargo card — dedicated save path ──────────────────────────────
+                    // ── Cargo ─────────────────────────────────────────────────────────
                     if (this.section === 'cargo') {
                         const commodity = (payload['commodity'] || '').trim();
                         if (!commodity) {
@@ -1018,12 +1006,10 @@
                                     $('#viewScopeVolumeDisplay')
                                         .val($('#viewScopeVolumeSelect option:selected').text())
                                         .removeClass('d-none');
-                                    this._fields().forEach(input => input.setAttribute('readonly',
-                                        true));
+                                    this._fields().forEach(i => i.setAttribute('readonly', true));
                                     this.card.classList.remove('card-in-edit');
                                     $card.find('.btn-card-edit').show();
-                                    $card.find('.btn-card-save').hide();
-                                    $card.find('.btn-card-cancel').hide();
+                                    $card.find('.btn-card-save, .btn-card-cancel').hide();
                                     $card.find('.card-footer').show();
                                     this.snapshot = {};
                                     toastr.success('Cargo details saved successfully.');
@@ -1034,31 +1020,84 @@
                                 }
                             },
                             error: (xhr) => {
-                                toastr.error('Error: ' + (xhr.responseJSON?.message ||
-                                    'Unexpected error.'));
+                                toastr.error(xhr.responseJSON?.message || 'Unexpected error.');
                                 saveBtn.disabled = false;
                                 saveBtn.innerHTML = '<i class="fas fa-save mr-1"></i> Save';
                             }
                         });
-                        return; // prevent generic save from firing
+                        return;
                     }
 
-                    // ── Generic save — customer and all other cards ────────────────────
+                    // ── Customer ──────────────────────────────────────────────────────
+                    // View page has no Country/CustomerType dropdowns so those values
+                    // are passed from PHP unchanged. SP is still called for validation.
+                    if (this.section === 'customer') {
+                        const address1 = (payload['pri_partner_steet'] || '').trim();
+                        if (!address1) {
+                            toastr.error('Address 1 is required.');
+                            saveBtn.disabled = false;
+                            saveBtn.innerHTML = '<i class="fas fa-save mr-1"></i> Save';
+                            return;
+                        }
+
+                        $.ajax({
+                            url: '{{ route('quotation.customer.save') }}',
+                            type: 'POST',
+                            data: {
+                                _token: '{{ csrf_token() }}',
+                                id: '{{ $quotation->ID }}',
+                                company: payload['companyname'] || '',
+                                address1: payload['pri_partner_steet'] || '',
+                                address2: payload['pri_partner_steet2'] || '',
+                                city: payload['pri_partner_city'] || '',
+                                state: payload['pri_partner_statename'] || '',
+                                zip_code: payload['pri_partner_zip'] || '',
+                                contact_person: payload['pri_partnermaster_name'] || '',
+                                email: payload['pri_partner_email'] || '',
+                                phone: payload['pri_partner_phone'] || '',
+                                client_id: payload['clientid'] || '',
+                                industry: payload['industryname'] || '',
+                                customer_type: '{{ addslashes($quotation->CustomerType ?? '') }}',
+                                agent_type: '{{ addslashes($quotation->AgentType ?? '') }}',
+                                country: '{{ addslashes($quotation->pri_partner_countrycode ?? '') }}',
+                            },
+                            success: (res) => {
+                                if (res.success) {
+                                    this._fields().forEach(i => i.setAttribute('readonly', true));
+                                    this.card.classList.remove('card-in-edit');
+                                    $card.find('.btn-card-edit').show();
+                                    $card.find('.btn-card-save, .btn-card-cancel').hide();
+                                    $card.find('.card-footer').show();
+                                    $card.find('.address1-required-star').hide();
+                                    this.snapshot = {};
+                                    toastr.success('Customer details saved successfully.');
+                                } else {
+                                    toastr.error(res.message || 'Save failed.');
+                                    saveBtn.disabled = false;
+                                    saveBtn.innerHTML = '<i class="fas fa-save mr-1"></i> Save';
+                                }
+                            },
+                            error: (xhr) => {
+                                toastr.error(xhr.responseJSON?.message || 'Unexpected error.');
+                                saveBtn.disabled = false;
+                                saveBtn.innerHTML = '<i class="fas fa-save mr-1"></i> Save';
+                            }
+                        });
+                        return;
+                    }
+
+                    // ── Generic save — any other card ─────────────────────────────────
                     $.ajax({
                         url: this.saveUrl,
                         type: 'POST',
                         data: payload,
                         success: (res) => {
                             if (res.success) {
-                                this._fields().forEach(input => input.setAttribute('readonly',
-                                    true));
+                                this._fields().forEach(i => i.setAttribute('readonly', true));
                                 this.card.classList.remove('card-in-edit');
                                 $card.find('.btn-card-edit').show();
-                                $card.find('.btn-card-save').hide();
-                                $card.find('.btn-card-cancel').hide();
+                                $card.find('.btn-card-save, .btn-card-cancel').hide();
                                 $card.find('.card-footer').show();
-                                if (this.section === 'customer') $card.find('.address1-star')
-                                    .hide();
                                 this.snapshot = {};
                                 toastr.success('Saved successfully.');
                             } else {
@@ -1068,34 +1107,26 @@
                             }
                         },
                         error: (xhr) => {
-                            toastr.error('Error: ' + (xhr.responseJSON?.message ||
-                                'Unexpected error.'));
+                            toastr.error(xhr.responseJSON?.message || 'Unexpected error.');
                             saveBtn.disabled = false;
                             saveBtn.innerHTML = '<i class="fas fa-save mr-1"></i> Save';
                         }
                     });
                 }
             }
+
             // Mount CardEditor on every card that declares data-card-section
             document.querySelectorAll('[data-card-section]').forEach(el => new CardEditor(el));
 
-            // Scope of Volume change — show/hide container section on view page
+            // Scope of Volume change — show/hide container section
             $(document).on('change', '#viewScopeVolumeSelect', function() {
-                if ($(this).val() === 'Containerized') {
-                    $('#viewContainerSection').show();
-                } else {
-                    $('#viewContainerSection').hide();
-                }
+                $('#viewContainerSection').toggle($(this).val() === 'Containerized');
             });
-
-            const bookingNo = '{{ $quotation->bookingno ?? '' }}';
 
             // ============================================================
             // VIEW PAGE — Load containers (read-only table)
+            // FIX: was response.data — correct key is response.containers
             // ============================================================
-            const QUOTE_NO_VIEW = '{{ $quotation->QuoteNo ?? '' }}';
-            const SCOPE_OF_VOLUME = '{{ $quotation->scopevolume ?? '' }}';
-
             if (QUOTE_NO_VIEW && SCOPE_OF_VOLUME === 'Containerized') {
                 $.ajax({
                     url: '{{ route('quotation.containers') }}',
@@ -1106,18 +1137,18 @@
                     success: function(response) {
                         const tbody = $('#viewContainerTableBody');
                         tbody.empty();
-                        if (response.success && response.data && response.data.length) {
-                            response.data.forEach(function(row) {
+                        if (response.success && response.containers && response.containers.length) {
+                            response.containers.forEach(function(row) {
                                 tbody.append(`
-                        <tr>
-                            <td>${row.EquipmentType || ''}</td>
-                            <td class="text-center">${row.Quantity || 0}</td>
-                        </tr>`);
+                                    <tr>
+                                        <td>${row.EquipmentType || ''}</td>
+                                        <td class="text-center">${row.Quantity || 0}</td>
+                                    </tr>`);
                             });
                         } else {
                             tbody.append(
                                 '<tr><td colspan="2" class="text-center text-muted">No containers added</td></tr>'
-                            );
+                                );
                         }
                     },
                     error: function() {
@@ -1130,6 +1161,7 @@
 
             // ============================================================
             // SHIPMENT DETAILS — Edit / Save / Cancel
+            // FIX: correct column names for country pre-selection
             // ============================================================
             const savedShipmentMode = '{{ $quotation->shipmentmode ?? '' }}';
             const savedTransportMode = '{{ $quotation->TransportMode ?? '' }}';
@@ -1141,16 +1173,28 @@
             let viewShipmentSnapshot = {};
             let viewShipmentDropdownsLoaded = false;
 
+            // FIX: replace CSS toggle approach with DOM remove/restore
+            // Browsers ignore display:none on <option> elements
             function bindCountrySearch(searchId, selectId) {
+                const $select = $('#' + selectId);
+                const allOptions = $select.find('option').clone();
+
                 $('#' + searchId).on('input', function() {
-                    const term = $(this).val().toLowerCase();
-                    const $opts = $('#' + selectId + ' option');
-                    $opts.each(function() {
-                        $(this).toggle($(this).val() === '' || $(this).text().toLowerCase()
-                            .includes(term));
+                    const term = $(this).val().toLowerCase().trim();
+                    const currentVal = $select.val();
+
+                    $select.empty();
+                    allOptions.each(function() {
+                        const optText = $(this).text().toLowerCase();
+                        const optVal = $(this).val();
+                        if (optVal === '' || optText.includes(term)) {
+                            $select.append($(this).clone());
+                        }
                     });
-                    const $sel = $('#' + selectId);
-                    if ($sel.find('option:selected').css('display') === 'none') $sel.val('');
+
+                    if ($select.find(`option[value="${currentVal}"]`).length) {
+                        $select.val(currentVal);
+                    }
                 });
             }
 
@@ -1175,11 +1219,12 @@
                     url: '{{ route('quotation.shipment-modes') }}',
                     type: 'GET',
                     success: function(r) {
-                        const $sel = $('#viewShipmentModeSelect').empty().append(
-                            '<option value="">-- Select --</option>');
+                        const $sel = $('#viewShipmentModeSelect').empty()
+                            .append('<option value="">-- Select --</option>');
                         (r.success ? r.data : []).forEach(function(item) {
                             $sel.append(
-                                `<option value="${item.Code}" ${item.Code === savedShipmentMode ? 'selected' : ''}>${item.Code}</option>`
+                                `<option value="${item.Code}"
+                                 ${item.Code === savedShipmentMode ? 'selected' : ''}>${item.Code}</option>`
                             );
                         });
                     },
@@ -1191,11 +1236,12 @@
                     url: '{{ route('quotation.transport-modes') }}',
                     type: 'GET',
                     success: function(r) {
-                        const $sel = $('#viewTransportModeSelect').empty().append(
-                            '<option value="">-- Select --</option>');
+                        const $sel = $('#viewTransportModeSelect').empty()
+                            .append('<option value="">-- Select --</option>');
                         (r.success ? r.data : []).forEach(function(item) {
                             $sel.append(
-                                `<option value="${item.Code}" ${item.Code === savedTransportMode ? 'selected' : ''}>${item.Name}</option>`
+                                `<option value="${item.Code}"
+                                 ${item.Code === savedTransportMode ? 'selected' : ''}>${item.Name}</option>`
                             );
                         });
                     },
@@ -1203,6 +1249,8 @@
                 });
 
                 // Countries
+                // FIX: use CountryName from lookupCountries response (not c.Name)
+                // FIX: pre-select against savedOriginCountry/savedDestCountry (stored names)
                 $.ajax({
                     url: '{{ route('quotation.lookup.countries') }}',
                     type: 'GET',
@@ -1213,37 +1261,42 @@
                         const list = Array.isArray(countries) ? countries : [];
 
                         function fillCountrySelect(selectId, savedValue) {
-                            const $sel = $('#' + selectId).empty().append(
-                                '<option value="">-- Select --</option>');
+                            const $sel = $('#' + selectId).empty()
+                                .append('<option value="">-- Select --</option>');
                             const normalizedSaved = (savedValue || '').trim().toLowerCase();
+
                             list.forEach(function(c) {
-                                const name = (c.Name || c.CountryName || '').trim();
-                                const isMatch = name.toLowerCase() === normalizedSaved;
+                                const name = (c.CountryName || '').trim();
                                 $sel.append(
-                                    `<option value="${name}" ${isMatch ? 'selected' : ''}>${name}</option>`
+                                    `<option value="${name}"
+                                     ${name.toLowerCase() === normalizedSaved ? 'selected' : ''}>${name}</option>`
                                 );
                             });
                         }
+
                         fillCountrySelect('viewOriginCountrySelect', savedOriginCountry);
                         fillCountrySelect('viewDestCountrySelect', savedDestCountry);
+
+                        // Bind search AFTER options are populated
                         bindCountrySearch('viewOriginCountrySearch', 'viewOriginCountrySelect');
                         bindCountrySearch('viewDestCountrySearch', 'viewDestCountrySelect');
                     },
                     complete: oneDone
                 });
 
-                // InCo Terms — uses quotation.inco-terms (now correctly above wildcards)
+                // InCo Terms
                 $.ajax({
                     url: '{{ route('quotation.inco-terms') }}',
                     type: 'GET',
                     success: function(r) {
-                        const $sel = $('#viewIncoTermSelect').empty().append(
-                            '<option value="">-- Select --</option>');
-                        const list = r.success ? (r.data || []) : [];
-                        list.forEach(function(item) {
+                        const $sel = $('#viewIncoTermSelect').empty()
+                            .append('<option value="">-- Select --</option>');
+                        (r.success ? r.data : []).forEach(function(item) {
                             const code = item.IncoTermCode || item.Code || '';
+                            const name = item.Name || code;
                             $sel.append(
-                                `<option value="${code}" ${code === savedIncoTerm ? 'selected' : ''}>${code}</option>`
+                                `<option value="${code}"
+                                 ${code === savedIncoTerm ? 'selected' : ''}>${code} — ${name}</option>`
                             );
                         });
                     },
@@ -1258,13 +1311,14 @@
                         filter: ''
                     },
                     success: function(classes) {
-                        const $sel = $('#viewServiceClassSelect').empty().append(
-                            '<option value="">-- Select --</option>');
+                        const $sel = $('#viewServiceClassSelect').empty()
+                            .append('<option value="">-- Select --</option>');
                         (Array.isArray(classes) ? classes : []).forEach(function(item) {
                             const code = item.Code || '';
                             const display = item.Name || item.Description || code;
                             $sel.append(
-                                `<option value="${code}" ${code === savedServiceClass ? 'selected' : ''}>${display}</option>`
+                                `<option value="${code}"
+                                 ${code === savedServiceClass ? 'selected' : ''}>${display}</option>`
                             );
                         });
                     },
@@ -1283,14 +1337,14 @@
                 };
 
                 loadViewShipmentDropdowns(function() {
-                    $('#viewShipmentModeDisplay,#viewTransportModeDisplay,#viewIncoTermDisplay,#viewServiceClassDisplay')
+                    $('#viewShipmentModeDisplay, #viewTransportModeDisplay, #viewIncoTermDisplay, #viewServiceClassDisplay')
                         .addClass('d-none');
-                    $('#viewOriginCountryDisplay,#viewDestCountryDisplay').addClass('d-none');
-                    $('#viewShipmentModeSelect,#viewTransportModeSelect,#viewIncoTermSelect,#viewServiceClassSelect')
+                    $('#viewOriginCountryDisplay, #viewDestCountryDisplay').addClass('d-none');
+                    $('#viewShipmentModeSelect, #viewTransportModeSelect, #viewIncoTermSelect, #viewServiceClassSelect')
                         .removeClass('d-none').prop('disabled', false);
-                    $('#viewOriginCountryEditWrap,#viewDestCountryEditWrap').removeClass('d-none');
+                    $('#viewOriginCountryEditWrap, #viewDestCountryEditWrap').removeClass('d-none');
                     $('#viewShipmentEditBtn').hide();
-                    $('#viewShipmentSaveBtn,#viewShipmentCancelBtn').show();
+                    $('#viewShipmentSaveBtn, #viewShipmentCancelBtn').show();
                 });
             });
 
@@ -1301,14 +1355,13 @@
                 $('#viewDestCountrySelect').val(viewShipmentSnapshot.destCountry);
                 $('#viewIncoTermSelect').val(viewShipmentSnapshot.incoTerm);
                 $('#viewServiceClassSelect').val(viewShipmentSnapshot.serviceClass);
-                $('#viewOriginCountrySearch,#viewDestCountrySearch').val('');
-                $('#viewOriginCountrySelect option,#viewDestCountrySelect option').show();
-                $('#viewShipmentModeSelect,#viewTransportModeSelect,#viewIncoTermSelect,#viewServiceClassSelect')
+                $('#viewOriginCountrySearch, #viewDestCountrySearch').val('');
+                $('#viewShipmentModeSelect, #viewTransportModeSelect, #viewIncoTermSelect, #viewServiceClassSelect')
                     .addClass('d-none').prop('disabled', true);
-                $('#viewOriginCountryEditWrap,#viewDestCountryEditWrap').addClass('d-none');
-                $('#viewShipmentModeDisplay,#viewTransportModeDisplay,#viewIncoTermDisplay,#viewServiceClassDisplay')
+                $('#viewOriginCountryEditWrap, #viewDestCountryEditWrap').addClass('d-none');
+                $('#viewShipmentModeDisplay, #viewTransportModeDisplay, #viewIncoTermDisplay, #viewServiceClassDisplay')
                     .removeClass('d-none');
-                $('#viewOriginCountryDisplay,#viewDestCountryDisplay').removeClass('d-none');
+                $('#viewOriginCountryDisplay, #viewDestCountryDisplay').removeClass('d-none');
                 $(this).hide();
                 $('#viewShipmentSaveBtn').hide();
                 $('#viewShipmentEditBtn').show();
@@ -1357,70 +1410,49 @@
                         _token: '{{ csrf_token() }}',
                         booking_no: bookingNo,
                         shipment_mode: shipmentMode,
-                        transport_mode: transportMode
+                        transport_mode: transportMode,
+                        incoterm: incoTerm,
+                        origincountry: originCountry,
+                        destinationcountry: destCountry,
+                        service_class: serviceClass,
                     },
-                    success: function(r1) {
-                        if (!r1.success) {
-                            toastr.error(r1.message || 'Shipment mode save failed.');
+                    success: function(r) {
+                        if (!r.success) {
+                            toastr.error(r.message || 'Shipment save failed.');
                             $btn.prop('disabled', false).html(
                                 '<i class="fas fa-save mr-1"></i> Save');
                             return;
                         }
-                        $.ajax({
-                            url: '{{ route('quotation.update', $quotation->ID) }}',
-                            type: 'POST',
-                            data: {
-                                _token: '{{ csrf_token() }}',
-                                origincountry: originCountry,
-                                destinationcountry: destCountry,
-                                // incoterm: incoTerm,
-                                ServiceClass: serviceClass
-                            },
-                            success: function(r2) {
-                                if (r2.success) {
-                                    $('#viewShipmentModeDisplay').val(shipmentMode);
-                                    $('#viewTransportModeDisplay').val($(
-                                        '#viewTransportModeSelect option:selected'
-                                    ).text().trim());
-                                    $('#viewOriginCountryDisplay').val(
-                                        originCountry);
-                                    $('#viewDestCountryDisplay').val(destCountry);
-                                    $('#viewIncoTermDisplay').val(incoTerm);
-                                    $('#viewServiceClassDisplay').val(serviceClass);
-                                    $('#viewShipmentModeSelect,#viewTransportModeSelect,#viewIncoTermSelect,#viewServiceClassSelect')
-                                        .addClass('d-none').prop('disabled', true);
-                                    $('#viewOriginCountryEditWrap,#viewDestCountryEditWrap')
-                                        .addClass('d-none');
-                                    $('#viewShipmentModeDisplay,#viewTransportModeDisplay,#viewIncoTermDisplay,#viewServiceClassDisplay')
-                                        .removeClass('d-none');
-                                    $('#viewOriginCountryDisplay,#viewDestCountryDisplay')
-                                        .removeClass('d-none');
-                                    $('#viewOriginCountrySearch,#viewDestCountrySearch')
-                                        .val('');
-                                    $('#viewShipmentSaveBtn,#viewShipmentCancelBtn')
-                                        .hide();
-                                    $('#viewShipmentEditBtn').show();
-                                    toastr.success(
-                                        'Shipment details saved successfully.');
-                                } else {
-                                    toastr.error(r2.message ||
-                                        'Failed to save country / incoterm / service class.'
-                                    );
-                                }
-                            },
-                            error: function(xhr) {
-                                toastr.error(xhr.responseJSON?.message ||
-                                    'Unexpected error saving shipment details.');
-                            },
-                            complete: function() {
-                                $btn.prop('disabled', false).html(
-                                    '<i class="fas fa-save mr-1"></i> Save');
-                            }
-                        });
+
+                        // Update display inputs
+                        $('#viewShipmentModeDisplay').val(shipmentMode);
+                        $('#viewTransportModeDisplay').val(
+                            $('#viewTransportModeSelect option:selected').text().trim()
+                        );
+                        $('#viewOriginCountryDisplay').val(originCountry);
+                        $('#viewDestCountryDisplay').val(destCountry);
+                        $('#viewIncoTermDisplay').val(incoTerm);
+                        $('#viewServiceClassDisplay').val(serviceClass);
+
+                        // Swap back to read-only display
+                        $('#viewShipmentModeSelect, #viewTransportModeSelect, #viewIncoTermSelect, #viewServiceClassSelect')
+                            .addClass('d-none').prop('disabled', true);
+                        $('#viewOriginCountryEditWrap, #viewDestCountryEditWrap').addClass(
+                            'd-none');
+                        $('#viewShipmentModeDisplay, #viewTransportModeDisplay, #viewIncoTermDisplay, #viewServiceClassDisplay')
+                            .removeClass('d-none');
+                        $('#viewOriginCountryDisplay, #viewDestCountryDisplay').removeClass(
+                            'd-none');
+                        $('#viewOriginCountrySearch, #viewDestCountrySearch').val('');
+                        $('#viewShipmentSaveBtn, #viewShipmentCancelBtn').hide();
+                        $('#viewShipmentEditBtn').show();
+                        toastr.success('Shipment details saved successfully.');
                     },
                     error: function(xhr) {
                         toastr.error(xhr.responseJSON?.message ||
-                            'Unexpected error saving shipment mode.');
+                            'Unexpected error saving shipment details.');
+                    },
+                    complete: function() {
                         $btn.prop('disabled', false).html(
                             '<i class="fas fa-save mr-1"></i> Save');
                     }
@@ -1460,7 +1492,6 @@
                             '<i class="fas fa-copy mr-1"></i> Duplicate');
                         toastr.error('Error: ' + (xhr.responseJSON?.message ||
                             'Unexpected error (HTTP ' + xhr.status + ')'));
-                        console.error('Duplicate error:', xhr.responseJSON || xhr.responseText);
                     }
                 });
             });
@@ -1518,17 +1549,19 @@
                 charges.forEach(function(c) {
                     total += parseFloat(c.amtInBaseCurr || 0);
                     tbody.append(`<tr>
-                <td>${c.chargeName || c.chargeCode || ''}</td>
-                <td class="text-right">${parseFloat(c.rate || 0).toFixed(2)}</td>
-                <td class="text-right col-extra">${parseFloat(c.quantity || 0).toFixed(2)}</td>
-                <td class="col-extra">${c.basedOnUOM || ''}</td>
-                <td class="col-extra">${c.chgCurr || 'KES'}</td>
-                <td class="text-right">${parseFloat(c.amtInChgCurr || 0).toFixed(2)}</td>
-                <td class="text-right">${parseFloat(c.amtInBaseCurr || 0).toFixed(2)}</td>
-            </tr>`);
+                        <td>${c.chargeName || c.chargeCode || ''}</td>
+                        <td class="text-right">${parseFloat(c.rate || 0).toFixed(2)}</td>
+                        <td class="text-right col-extra">${parseFloat(c.quantity || 0).toFixed(2)}</td>
+                        <td class="col-extra">${c.basedOnUOM || ''}</td>
+                        <td class="col-extra">${c.chgCurr || 'KES'}</td>
+                        <td class="text-right">${parseFloat(c.amtInChgCurr || 0).toFixed(2)}</td>
+                        <td class="text-right">${parseFloat(c.amtInBaseCurr || 0).toFixed(2)}</td>
+                    </tr>`);
                 });
                 $('#revenueTotalHeaderAmount').text(total.toFixed(2));
-                if (!$('.show-items-link[data-table="revenue"]').data('expanded')) tbody.find('.col-extra').hide();
+                if (!$('.show-items-link[data-table="revenue"]').data('expanded')) {
+                    tbody.find('.col-extra').hide();
+                }
             }
 
             function renderCostChargesView(charges) {
@@ -1544,17 +1577,19 @@
                 charges.forEach(function(c) {
                     total += parseFloat(c.amtInBaseCurr || 0);
                     tbody.append(`<tr>
-                <td>${c.chargeName || c.chargeCode || ''}</td>
-                <td class="text-right">${parseFloat(c.rate || 0).toFixed(2)}</td>
-                <td class="text-right col-extra">${parseFloat(c.quantity || 0).toFixed(2)}</td>
-                <td class="col-extra">${c.basedOnUOM || ''}</td>
-                <td class="col-extra">${c.chgCurr || 'KES'}</td>
-                <td class="text-right">${parseFloat(c.amtInChgCurr || 0).toFixed(2)}</td>
-                <td class="text-right">${parseFloat(c.amtInBaseCurr || 0).toFixed(2)}</td>
-            </tr>`);
+                        <td>${c.chargeName || c.chargeCode || ''}</td>
+                        <td class="text-right">${parseFloat(c.rate || 0).toFixed(2)}</td>
+                        <td class="text-right col-extra">${parseFloat(c.quantity || 0).toFixed(2)}</td>
+                        <td class="col-extra">${c.basedOnUOM || ''}</td>
+                        <td class="col-extra">${c.chgCurr || 'KES'}</td>
+                        <td class="text-right">${parseFloat(c.amtInChgCurr || 0).toFixed(2)}</td>
+                        <td class="text-right">${parseFloat(c.amtInBaseCurr || 0).toFixed(2)}</td>
+                    </tr>`);
                 });
                 $('#costTotalHeaderAmount').text(total.toFixed(2));
-                if (!$('.show-items-link[data-table="cost"]').data('expanded')) tbody.find('.col-extra').hide();
+                if (!$('.show-items-link[data-table="cost"]').data('expanded')) {
+                    tbody.find('.col-extra').hide();
+                }
             }
 
             function updateViewSummary(revenueCharges, costCharges) {
@@ -1650,7 +1685,7 @@
                                                 e.preventDefault();
                                                 $displayInput.val(fullName || p
                                                     .Code).attr('data-code',
-                                                    p.Code); // ← store code
+                                                    p.Code);
                                                 $emailInput.val(p.Email || '');
                                                 $ul.remove();
                                             })
@@ -1687,23 +1722,19 @@
             // Collapse all on load except Revenue, Cost, Summary
             $('.card').not('.card-success, .card-danger, .summary-card').each(function() {
                 $(this).find('.card-body').hide();
-                $(this).find('.card-footer').hide(); // hide footer when collapsed
+                $(this).find('.card-footer').hide();
                 $(this).find('[data-card-widget="collapse"] i')
                     .removeClass('fa-chevron-up')
                     .addClass('fa-chevron-down');
                 $(this).addClass('collapsed-card');
             });
 
-            // Sync footer visibility with card-body on every collapse toggle
+            // Sync footer visibility with card collapse state
             $(document).on('click', '[data-card-widget="collapse"]', function() {
                 const $card = $(this).closest('.card');
                 setTimeout(function() {
                     const isExpanded = $card.find('.card-body').is(':visible');
-                    if (isExpanded) {
-                        $card.find('.card-footer').show();
-                    } else {
-                        $card.find('.card-footer').hide();
-                    }
+                    $card.find('.card-footer').toggle(isExpanded);
                 }, 0);
             });
 
