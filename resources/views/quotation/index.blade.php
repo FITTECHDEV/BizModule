@@ -1078,8 +1078,8 @@
                         } else {
                             // No templates configured in SCM for this service type + office
                             var msg = (res.code === 'NO_TEMPLATES_CONFIGURED') ?
-                                'No service templates configured for this quotation\'s service type and office. Contact your SCM administrator.' :
-                                (res.message || 'No templates available');
+                                'No templates available for this office.' :
+                                (res.message || 'No templates available for this office.');
                             $select.append('<option value="" disabled>No templates available</option>');
                             $('#cb_service_template').closest('.form-group').append(
                                 '<small class="text-danger cb-config-warning mt-1 d-block">' +
