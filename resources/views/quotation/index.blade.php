@@ -1076,7 +1076,17 @@
                                 }));
                             });
                         } else {
+                            // No templates configured in SCM for this service type + office
+                            var msg = (res.code === 'NO_TEMPLATES_CONFIGURED') ?
+                                'No service templates configured for this quotation\'s service type and office. Contact your SCM administrator.' :
+                                (res.message || 'No templates available');
                             $select.append('<option value="" disabled>No templates available</option>');
+                            $('#cb_service_template').closest('.form-group').append(
+                                '<small class="text-danger cb-config-warning mt-1 d-block">' +
+                                '<i class="fas fa-exclamation-triangle mr-1"></i>' + msg +
+                                '</small>'
+                            );
+                            $('#submitCreateBookingBtn').prop('disabled', true);
                         }
                     })
                     .fail(function() {
@@ -1191,6 +1201,9 @@
                 $('.location-suggestions').remove();
                 $('#createBookingForm').removeClass('cb-locked');
                 $('#cbEditLink').addClass('d-none');
+                // Reset submit button and clear any config warnings from previous open
+                $('#submitCreateBookingBtn').prop('disabled', false);
+                $('.cb-config-warning').remove();
             }
 
             function setDropdownLoading(selector) {

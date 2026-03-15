@@ -4792,11 +4792,28 @@ class QuotationController extends Controller
 
                     // SP failure message
                     if (is_string($firstVal) && str_starts_with($firstVal, 'Failed')) {
+                        // Map SP failure messages to user-friendly explanations
+                        $userMessage = $firstVal;
+                        if (str_contains($firstVal, 'Service Details')) {
+                            $userMessage = 'Service type is not configured on this quotation (SVName is missing or unrecognised).';
+                        } elseif (str_contains($firstVal, 'Process Details')) {
+                            $userMessage = 'Process type is not configured on this quotation (Export/Import/Local required).';
+                        } elseif (str_contains($firstVal, 'Office Details')) {
+                            $userMessage = 'Office could not be resolved for this quotation.';
+                        } elseif (str_contains($firstVal, 'does not exists')) {
+                            $userMessage = 'Quotation not found in the system.';
+                        }
+
                         Log::warning('getServiceTemplates - SP returned failure', [
                             'quotation_id' => $quotationId,
-                            'message'      => $firstVal,
+                            'sp_message'   => $firstVal,
+                            'user_message' => $userMessage,
                         ]);
-                        return response()->json(['success' => false, 'message' => $firstVal], 422);
+                        return response()->json([
+                            'success' => false,
+                            'code'    => 'SP_GUARD_FAILED',
+                            'message' => $userMessage,
+                        ], 422);
                     }
 
                     // Actual template data — SP returns lowercase 'id' and 'Name'
@@ -4821,6 +4838,20 @@ class QuotationController extends Controller
                 'template_count'   => count($results),
                 'result_sets_seen' => $resultSetIndex,
             ]);
+
+            // Empty result set means no templates configured in SCM for this
+            // service type + process + office combination — not an SP error.
+            // Return a specific code so the frontend can show an actionable message.
+            if (empty($results)) {
+                Log::warning('getServiceTemplates - No templates found in SCM', [
+                    'quotation_id' => $quotationId,
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'code'    => 'NO_TEMPLATES_CONFIGURED',
+                    'message' => 'No service templates are configured for this quotation\'s service type and office. Please contact your SCM administrator.',
+                ], 404);
+            }
 
             return response()->json([
                 'success'   => true,
@@ -5006,6 +5037,199 @@ class QuotationController extends Controller
         }
     }
 
+    // public function saveCustomerDetails(Request $request)
+    // {
+    //     $request->validate([
+    //         'booking_no' => 'required_without:id|string|nullable',
+    //         'id'         => 'required_without:booking_no|string|nullable',
+    //     ]);
+
+    //     $submittedBy = auth()->user()->displayName ?? auth()->user()->Email ?? 'system';
+
+    //     if ($request->filled('booking_no')) {
+    //         $quotation = DB::connection('sqlsrv')
+    //             ->table('Quote_QuotationInfo')
+    //             ->where('bookingno', $request->booking_no)
+    //             ->first(['ID', 'QuoteNo', 'bookingno', 'CustomerType', 'AgentType', 'clientid']);
+    //     } else {
+    //         $quotation = DB::connection('sqlsrv')
+    //             ->table('Quote_QuotationInfo')
+    //             ->where('ID', $request->id)
+    //             ->first(['ID', 'QuoteNo', 'bookingno', 'CustomerType', 'AgentType', 'clientid']);
+    //     }
+
+    //     if (!$quotation) {
+    //         return response()->json(['success' => false, 'message' => 'Quotation not found'], 404);
+    //     }
+
+    //     $bookingNo = $quotation->bookingno;
+    //     $quoteNo   = $quotation->QuoteNo;
+
+    //     $resolve = fn(...$keys) => collect($keys)
+    //         ->map(fn($k) => trim($request->input($k, '')))
+    //         ->first(fn($v) => $v !== '') ?? '';
+
+    //     $company       = $resolve('company',        'companyname');
+    //     $address1      = $resolve('address1',       'pri_partner_steet');
+    //     $address2      = $resolve('address2',       'pri_partner_steet2');
+    //     $city          = $resolve('city',           'pri_partner_city');
+    //     $zipCode       = $resolve('zip_code',       'pri_partner_zip');
+    //     $state         = $resolve('state',          'pri_partner_statename');
+    //     $contactPerson = $resolve('contact_person', 'pri_partnermaster_name');
+    //     $email         = $resolve('email',          'pri_partner_email');
+    //     $phone         = $resolve('phone',          'pri_partner_phone');
+    //     $clientId      = $resolve('client_id',      'clientid');
+    //     $industryName  = $resolve('industry',       'industryname');
+
+    //     $customerType = $resolve('customer_type', 'CustomerType')
+    //         ?: ($quotation->CustomerType ?? '');
+    //     $agentType    = $resolve('agent_type', 'AgentType')
+    //         ?: ($quotation->AgentType    ?? '');
+
+    //     // ── Country resolution ───────────────────────────────────────────────────
+    //     // Frontend sends CountryID (UUID from sp_CountryList e.g. "E698431C-...").
+    //     // sp_Quote_DetailsUpdate expects this UUID in the CountryCode field.
+    //     // No secondary lookup needed — validate and pass straight through.
+    //     $countryId = trim($resolve('country', 'pri_partner_countryname'));
+
+    //     if (empty($countryId)) {
+    //         return response()->json(['success' => false, 'message' => 'Country is required'], 422);
+    //     }
+
+    //     Log::info('saveCustomerDetails - country', ['country_id' => $countryId]);
+
+    //     // ── Industry resolution ──────────────────────────────────────────────────
+    //     // Dropdown stores Name — SP expects the industry Code.
+    //     $industryCode = '';
+    //     if (!empty($industryName)) {
+    //         try {
+    //             $pdo   = DB::connection('sqlsrv')->getPdo();
+    //             $stmtI = $pdo->prepare("
+    //             SELECT TOP 1 Code
+    //             FROM [FITSCMUAT].[dbo].[Cust_Industry]
+    //             WHERE LTRIM(RTRIM(Name)) = ?
+    //         ");
+    //             $stmtI->execute([$industryName]);
+    //             $industryRecord = $stmtI->fetch(\PDO::FETCH_OBJ);
+    //         } catch (\Exception $e) {
+    //             Log::error('saveCustomerDetails - industry lookup failed', [
+    //                 'industry' => $industryName,
+    //                 'error'    => $e->getMessage(),
+    //             ]);
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'Industry lookup failed: ' . $e->getMessage(),
+    //             ], 500);
+    //         }
+
+    //         if (!$industryRecord) {
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => "Industry '{$industryName}' could not be resolved to an industry code.",
+    //             ], 422);
+    //         }
+
+    //         $industryCode = trim($industryRecord->Code);
+    //     }
+
+    //     $input = json_encode([
+    //         'OperationType'     => 'CustomerUpdate',
+    //         'SubmittedDatetime' => now()->format('YmdHis'),
+    //         'SubmittedBy'       => $submittedBy,
+    //         'Action'            => 'Update',
+    //         'QuotationNo'       => $quoteNo,
+    //         'ClientID'          => $clientId,
+    //         'Company'           => $company,
+    //         'Address1'          => $address1,
+    //         'Address2'          => $address2,
+    //         'City'              => $city,
+    //         'ZipCode'           => $zipCode,
+    //         'State'             => $state,
+    //         'CountryCode'       => $countryId,   // UUID passed directly — no lookup needed
+    //         'ContactPerson'     => $contactPerson,
+    //         'EmailID'           => $email ?: null,
+    //         'PhoneNo'           => $phone,
+    //         'IndustryCode'      => $industryCode,
+    //         'Industry'          => $industryName,
+    //         'CustomerType'      => $customerType,
+    //         'AgentType'         => $agentType,
+    //     ]);
+
+    //     if (strlen($input) > 2000) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Request payload too large for SP. Max 2000 characters.',
+    //         ], 400);
+    //     }
+
+    //     try {
+    //         $output = $this->executeDetailsUpdateSP($input);
+
+    //         Log::info('saveCustomerDetails - SP response', [
+    //             'booking_no'   => $bookingNo,
+    //             'quote_no'     => $quoteNo,
+    //             'output'       => $output,
+    //             'country_id'   => $countryId,
+    //             'input_sent'   => json_decode($input, true),
+    //         ]);
+
+    //         if (($output['Status'] ?? '') === 'Failed') {
+    //             $rawRemarks = array_values(array_filter(
+    //                 array_map(fn($r) => trim($r['Remark'] ?? ''), $output['Remarks'] ?? []),
+    //                 fn($r) => $r !== ''
+    //             ));
+
+    //             $userMessage = !empty($rawRemarks)
+    //                 ? implode(' | ', $rawRemarks)
+    //                 : trim($output['Remark'] ?? 'An unknown error occurred.');
+
+    //             Log::error('saveCustomerDetails - SP returned failure', [
+    //                 'booking_no' => $bookingNo,
+    //                 'sp_remark'  => $userMessage,
+    //                 'input_sent' => json_decode($input, true),
+    //             ]);
+
+    //             return response()->json(['success' => false, 'message' => $userMessage]);
+    //         }
+
+    //         Log::info('saveCustomerDetails - Success', [
+    //             'booking_no'    => $bookingNo,
+    //             'quote_no'      => $quoteNo,
+    //             'country_id'    => $countryId,
+    //             'industry_code' => $industryCode ?: 'not provided',
+    //             'user'          => $submittedBy,
+    //         ]);
+
+    //         return response()->json([
+    //             'success' => true,
+    //             'message' => 'Customer details saved successfully',
+    //         ]);
+    //     } catch (\Exception $e) {
+    //         Log::error('saveCustomerDetails - Exception', [
+    //             'booking_no' => $bookingNo,
+    //             'error'      => $e->getMessage(),
+    //             'file'       => $e->getFile(),
+    //             'line'       => $e->getLine(),
+    //         ]);
+
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => $e->getMessage(),
+    //         ], 500);
+    //     }
+    // }
+
+
+    /**
+     * Shared PDO helper for sp_Quote_DetailsUpdate.
+     * Used by: saveShipmentDetails, saveInquiryDetails, saveCustomerDetails, createBooking.
+     *
+     * The SP returns a JSON array via OUTPUT parameter — e.g:
+     *   [{"Status":"Success","Remark":"..."},{"Status":"Failed","Remark":"..."}]
+     *
+     * Returns the first element as an associative array with at minimum:
+     *   ['Status' => 'Success'|'Failed', 'Remark' => '...']
+     */
     public function saveCustomerDetails(Request $request)
     {
         $request->validate([
@@ -5015,6 +5239,7 @@ class QuotationController extends Controller
 
         $submittedBy = auth()->user()->displayName ?? auth()->user()->Email ?? 'system';
 
+        // ── Resolve quotation ────────────────────────────────────────────────────
         if ($request->filled('booking_no')) {
             $quotation = DB::connection('sqlsrv')
                 ->table('Quote_QuotationInfo')
@@ -5045,127 +5270,157 @@ class QuotationController extends Controller
         $zipCode       = $resolve('zip_code',       'pri_partner_zip');
         $state         = $resolve('state',          'pri_partner_statename');
         $contactPerson = $resolve('contact_person', 'pri_partnermaster_name');
-        $email         = $resolve('email',          'pri_partner_email');
+        $emailId       = $resolve('email',          'pri_partner_email');
         $phone         = $resolve('phone',          'pri_partner_phone');
-        $clientId      = $resolve('client_id',      'clientid');
         $industryName  = $resolve('industry',       'industryname');
+        $customerType  = $resolve('customer_type',  'CustomerType') ?: ($quotation->CustomerType ?? '');
+        $agentType     = $resolve('agent_type',     'AgentType')    ?: ($quotation->AgentType    ?? '');
 
-        $customerType = $resolve('customer_type', 'CustomerType')
-            ?: ($quotation->CustomerType ?? '');
-        $agentType    = $resolve('agent_type', 'AgentType')
-            ?: ($quotation->AgentType    ?? '');
+        // ClientID: use autocomplete selection if available, otherwise keep existing
+        $clientId = $resolve('client_id', 'clientid') ?: ($quotation->clientid ?? '');
+
+        // ── Validation ───────────────────────────────────────────────────────────
+        if (empty($address1)) {
+            return response()->json(['success' => false, 'message' => 'Address Line 1 is mandatory'], 422);
+        }
+
+        if (empty($customerType)) {
+            return response()->json(['success' => false, 'message' => 'Customer Type cannot be blank'], 422);
+        }
+
+        if (!empty($emailId) && !filter_var($emailId, FILTER_VALIDATE_EMAIL)) {
+            return response()->json(['success' => false, 'message' => 'Email ID format is invalid'], 422);
+        }
 
         // ── Country resolution ───────────────────────────────────────────────────
-        // Frontend sends CountryID (UUID from sp_CountryList e.g. "E698431C-...").
-        // sp_Quote_DetailsUpdate expects this UUID in the CountryCode field.
-        // No secondary lookup needed — validate and pass straight through.
-        $countryId = trim($resolve('country', 'pri_partner_countryname'));
+        // Frontend sends 2-digit ISO code via data-code attribute (e.g. "KE").
+        // We write countrycode (ISO) and countryname (full name) only.
+        // pri_partner_countryid is a bigint whose source cannot be reliably resolved
+        // from PHP — skipped intentionally.
+        $countryCode = trim($resolve('country', 'pri_partner_countryname'));
 
-        if (empty($countryId)) {
+        if (empty($countryCode)) {
             return response()->json(['success' => false, 'message' => 'Country is required'], 422);
         }
 
-        Log::info('saveCustomerDetails - country', ['country_id' => $countryId]);
+        $countryRow = DB::connection('sqlsrv')
+            ->table('Cust_Country')
+            ->whereRaw('LTRIM(RTRIM(Code)) = ?', [$countryCode])
+            ->first(['ID', 'Code', 'Name']);
+
+        if (!$countryRow) {
+            return response()->json([
+                'success' => false,
+                'message' => "Country code '{$countryCode}' was not found in the system.",
+            ], 422);
+        }
 
         // ── Industry resolution ──────────────────────────────────────────────────
-        // Dropdown stores Name — SP expects the industry Code.
-        $industryCode = '';
-        if (!empty($industryName)) {
-            try {
-                $pdo   = DB::connection('sqlsrv')->getPdo();
-                $stmtI = $pdo->prepare("
-                SELECT TOP 1 Code
-                FROM [FITSCMUAT].[dbo].[Cust_Industry]
-                WHERE LTRIM(RTRIM(Name)) = ?
-            ");
-                $stmtI->execute([$industryName]);
-                $industryRecord = $stmtI->fetch(\PDO::FETCH_OBJ);
-            } catch (\Exception $e) {
-                Log::error('saveCustomerDetails - industry lookup failed', [
-                    'industry' => $industryName,
-                    'error'    => $e->getMessage(),
-                ]);
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Industry lookup failed: ' . $e->getMessage(),
-                ], 500);
-            }
+        // We write industrytypecode (Code) and industrytype (Name) only.
+        // pri_rrp_industryid is a bigint stored as 0 in existing records —
+        // the SP never populated it correctly either, so we skip it.
+        if (empty($industryName)) {
+            return response()->json(['success' => false, 'message' => 'Industry is mandatory'], 422);
+        }
 
-            if (!$industryRecord) {
+        $industryRow = DB::connection('sqlsrv')
+            ->table('FITSCMUAT.dbo.Cust_Industry')
+            ->whereRaw('LTRIM(RTRIM(Name)) = ?', [$industryName])
+            ->first(['ID', 'Code', 'Name']);
+
+        if (!$industryRow) {
+            return response()->json([
+                'success' => false,
+                'message' => "Industry '{$industryName}' could not be resolved to an industry code.",
+            ], 422);
+        }
+
+        $industryCode = trim($industryRow->Code);
+
+        // ── AgentType resolution ─────────────────────────────────────────────────
+        // AgentTypeId is uniqueidentifier — binds correctly as a plain string.
+        $agentId = null;
+        if (stripos($customerType, 'Agent') !== false) {
+            if (empty($agentType)) {
                 return response()->json([
                     'success' => false,
-                    'message' => "Industry '{$industryName}' could not be resolved to an industry code.",
+                    'message' => 'Agent Type is mandatory when Customer Type contains Agent',
                 ], 422);
             }
 
-            $industryCode = trim($industryRecord->Code);
+            $agentRow = DB::connection('sqlsrv')
+                ->table('FITSCMUAT.dbo.Cust_ClientParentGroup')
+                ->whereRaw('LTRIM(RTRIM(Name)) = ?', [$agentType])
+                ->first(['Id']);
+
+            if (!$agentRow) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Agent Type '{$agentType}' was not found in the system.",
+                ], 422);
+            }
+
+            $agentId = $agentRow->Id;
         }
 
-        $input = json_encode([
-            'OperationType'     => 'CustomerUpdate',
-            'SubmittedDatetime' => now()->format('YmdHis'),
-            'SubmittedBy'       => $submittedBy,
-            'Action'            => 'Update',
-            'QuotationNo'       => $quoteNo,
-            'ClientID'          => $clientId,
-            'Company'           => $company,
-            'Address1'          => $address1,
-            'Address2'          => $address2,
-            'City'              => $city,
-            'ZipCode'           => $zipCode,
-            'State'             => $state,
-            'CountryCode'       => $countryId,   // UUID passed directly — no lookup needed
-            'ContactPerson'     => $contactPerson,
-            'EmailID'           => $email ?: null,
-            'PhoneNo'           => $phone,
-            'IndustryCode'      => $industryCode,
-            'Industry'          => $industryName,
-            'CustomerType'      => $customerType,
-            'AgentType'         => $agentType,
+        Log::info('saveCustomerDetails - Writing directly to Quote_QuotationInfo', [
+            'booking_no'    => $bookingNo,
+            'quote_no'      => $quoteNo,
+            'country_code'  => $countryCode,
+            'country_name'  => $countryRow->Name,
+            'industry_code' => $industryCode,
+            'customer_type' => $customerType,
+            'agent_type'    => $agentType ?: 'N/A',
+            'client_id'     => $clientId  ?: 'N/A',
+            'user'          => $submittedBy,
         ]);
 
-        if (strlen($input) > 2000) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Request payload too large for SP. Max 2000 characters.',
-            ], 400);
-        }
-
         try {
-            $output = $this->executeDetailsUpdateSP($input);
+            // ── Build update payload ─────────────────────────────────────────────
+            // Only overwrite a column when the incoming value is non-empty,
+            // matching the SP's IIF(LEN(ISNULL(@field,''))<=0, existing, new) pattern.
+            $update = [
+                'LastModifiedBy' => $submittedBy,
+                'updatedon'      => now(),
+            ];
 
-            Log::info('saveCustomerDetails - SP response', [
-                'booking_no'   => $bookingNo,
-                'quote_no'     => $quoteNo,
-                'output'       => $output,
-                'country_id'   => $countryId,
-                'input_sent'   => json_decode($input, true),
-            ]);
-
-            if (($output['Status'] ?? '') === 'Failed') {
-                $rawRemarks = array_values(array_filter(
-                    array_map(fn($r) => trim($r['Remark'] ?? ''), $output['Remarks'] ?? []),
-                    fn($r) => $r !== ''
-                ));
-
-                $userMessage = !empty($rawRemarks)
-                    ? implode(' | ', $rawRemarks)
-                    : trim($output['Remark'] ?? 'An unknown error occurred.');
-
-                Log::error('saveCustomerDetails - SP returned failure', [
-                    'booking_no' => $bookingNo,
-                    'sp_remark'  => $userMessage,
-                    'input_sent' => json_decode($input, true),
-                ]);
-
-                return response()->json(['success' => false, 'message' => $userMessage]);
+            if (!empty($company))        $update['companyname']             = $company;
+            if (!empty($clientId))       $update['clientid']                = $clientId;
+            if (!empty($contactPerson))  $update['pri_partnermaster_name']  = $contactPerson;
+            if (!empty($state))          $update['pri_partner_statename']   = $state;
+            if (!empty($address1))       $update['pri_partner_steet']       = $address1;
+            if (!empty($address2))       $update['pri_partner_steet2']      = $address2;
+            if (!empty($city))           $update['pri_partner_city']        = $city;
+            if (!empty($zipCode))        $update['pri_partner_zip']         = $zipCode;
+            if (!empty($emailId))        $update['pri_partner_email']       = $emailId;
+            if (!empty($phone)) {
+                $update['pri_partner_phone']  = $phone;
+                $update['pri_partner_mobile'] = $phone;
             }
+            if (!empty($customerType))   $update['CustomerType']            = $customerType;
+            if (!empty($agentType) && $agentId) {
+                $update['AgentType']   = $agentType;
+                $update['AgentTypeId'] = $agentId; // uniqueidentifier — binds correctly as string
+            }
+
+            // Country — varchar columns only; skip pri_partner_countryid (bigint, source unknown)
+            $update['pri_partner_countrycode'] = $countryRow->Code; // "KE"
+            $update['pri_partner_countryname'] = $countryRow->Name; // "Kenya"
+
+            // Industry — varchar columns only; skip pri_rrp_industryid (bigint, always 0 in DB)
+            $update['pri_partner_industrytypecode'] = $industryCode;  // "PRSH"
+            $update['pri_partner_industrytype']     = $industryName;  // "Perishables"
+
+            DB::connection('sqlsrv')
+                ->table('Quote_QuotationInfo')
+                ->where('QuoteNo', $quoteNo)
+                ->update($update);
 
             Log::info('saveCustomerDetails - Success', [
                 'booking_no'    => $bookingNo,
                 'quote_no'      => $quoteNo,
-                'country_id'    => $countryId,
-                'industry_code' => $industryCode ?: 'not provided',
+                'country_code'  => $countryCode,
+                'industry_code' => $industryCode,
                 'user'          => $submittedBy,
             ]);
 
@@ -5174,7 +5429,7 @@ class QuotationController extends Controller
                 'message' => 'Customer details saved successfully',
             ]);
         } catch (\Exception $e) {
-            Log::error('saveCustomerDetails - Exception', [
+            Log::error('saveCustomerDetails - DB update failed', [
                 'booking_no' => $bookingNo,
                 'error'      => $e->getMessage(),
                 'file'       => $e->getFile(),
@@ -5188,99 +5443,6 @@ class QuotationController extends Controller
         }
     }
 
-    /**
-     * Shared PDO helper for sp_Quote_DetailsUpdate.
-     * Used by: saveShipmentDetails, saveInquiryDetails, saveCustomerDetails, createBooking.
-     *
-     * The SP returns a JSON array via OUTPUT parameter — e.g:
-     *   [{"Status":"Success","Remark":"..."},{"Status":"Failed","Remark":"..."}]
-     *
-     * Returns the first element as an associative array with at minimum:
-     *   ['Status' => 'Success'|'Failed', 'Remark' => '...']
-     */
-    private function executeDetailsUpdateSP(string $inputJson): array
-    {
-        if (strlen($inputJson) > 2000) {
-            Log::error('executeDetailsUpdateSP - payload exceeds SP limit', [
-                'length'  => strlen($inputJson),
-                'preview' => substr($inputJson, 0, 300),
-            ]);
-            return [
-                'Status' => 'Failed',
-                'Remark' => '[PHP] Input payload too large (' . strlen($inputJson) . ' chars). SP limit is 2000.',
-            ];
-        }
-
-        $pdo  = DB::connection('sqlsrv')->getPdo();
-        $stmt = $pdo->prepare("
-        SET NOCOUNT ON;
-        DECLARE @OutputJson VARCHAR(2000);
-        EXEC dbo.sp_Quote_DetailsUpdate ?, @OutputJson = @OutputJson OUTPUT;
-        SELECT @OutputJson AS OutputJson
-    ");
-        $stmt->execute([$inputJson]);
-
-        // Walk result sets — SP may emit intermediate sets before the OUTPUT SELECT
-        do {
-            try {
-                $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
-
-                if (empty($rows) || !isset($rows[0]->OutputJson)) {
-                    continue;
-                }
-
-                $raw = trim($rows[0]->OutputJson ?? '');
-
-                if (empty($raw)) {
-                    Log::error('executeDetailsUpdateSP - SP returned empty OutputJson', [
-                        'input' => $inputJson,
-                    ]);
-                    return ['Status' => 'Failed', 'Remark' => '[SP] Empty response returned'];
-                }
-
-                // SP may return a single object or a JSON array — normalise to array
-                $toDecode = str_starts_with($raw, '[') ? $raw : '[' . $raw . ']';
-                $decoded  = json_decode($toDecode, true);
-
-                if (json_last_error() !== JSON_ERROR_NONE) {
-                    Log::error('executeDetailsUpdateSP - JSON decode failed', [
-                        'raw'   => $raw,
-                        'error' => json_last_error_msg(),
-                        'input' => $inputJson,
-                    ]);
-                    return ['Status' => 'Failed', 'Remark' => '[SP] Response could not be parsed: ' . json_last_error_msg()];
-                }
-
-                // Surface any failure entries first
-                $failures = array_filter($decoded, fn($r) => ($r['Status'] ?? '') === 'Failed');
-
-                if (!empty($failures)) {
-                    $first   = array_values($failures)[0];
-                    $remarks = implode(', ', array_column($failures, 'Remark'));
-                    return [
-                        'Status'  => 'Failed',
-                        'Remark'  => $remarks,
-                        'Remarks' => array_values($failures),
-                    ];
-                }
-
-                // All entries are Success — return the first
-                return $decoded[0] ?? ['Status' => 'Success', 'Remark' => ''];
-            } catch (\PDOException $e) {
-                // Intermediate result set with no fetchable rows — advance and continue
-                continue;
-            }
-        } while ($stmt->nextRowset());
-
-        Log::error('executeDetailsUpdateSP - no OutputJson found in any result set', [
-            'input' => $inputJson,
-        ]);
-
-        return [
-            'Status' => 'Failed',
-            'Remark' => '[SP] No response returned from stored procedure',
-        ];
-    }
 
     /**
      * Shared PDO helper for sp_Quote_DetailsUpdate.
