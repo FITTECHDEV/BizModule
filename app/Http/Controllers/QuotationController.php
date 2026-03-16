@@ -2762,7 +2762,7 @@ class QuotationController extends Controller
         $bookingNo    = $request->input('booking_no');
         $termsText    = $request->input('terms_condition');
         $templateName = $request->input('template_name');
-        $submittedBy = Auth::check()
+        $submittedBy  = Auth::check()
             ? (Auth::user()->displayName ?? Auth::user()->Email ?? 'system')
             : 'system';
 
@@ -2770,13 +2770,43 @@ class QuotationController extends Controller
             return response()->json(['success' => false, 'message' => 'Booking number is required'], 400);
         }
 
+        // ── Normalize template name to exactly what Cust_CommunicationDetails stores ──
+        // sp_Quote_QuotationFormat uses INNER JOIN On CC.Name = QI.QuotationTCTemplate
+        // Any whitespace difference causes the join to fail → SP returns empty HTML.
+        if ($templateName) {
+            $exactName = DB::table('Cust_CommunicationDetails')
+                ->whereRaw("LTRIM(RTRIM(Name)) = ?", [trim($templateName)])
+                ->where('IsActive', 1)
+                ->value('Name'); // returns the raw DB-stored string including trailing spaces
+
+            if (!$exactName) {
+                Log::error('saveTermsCondition - template not found in Cust_CommunicationDetails', [
+                    'booking_no'        => $bookingNo,
+                    'template_name_raw' => $templateName,
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => "Terms & Conditions template '{$templateName}' was not found. Please re-select and try again.",
+                ], 422);
+            }
+
+            if ($exactName !== $templateName) {
+                Log::info('saveTermsCondition - template name normalized', [
+                    'booking_no' => $bookingNo,
+                    'original'   => $templateName,
+                    'normalized' => $exactName,
+                ]);
+            }
+
+            $templateName = $exactName;
+        }
+
         try {
-            // ── Update quotation header ──
+            // ── Write QuotationTCTemplate only — no other column stores T&C text ──
             $updated = DB::table('Quote_QuotationInfo')
                 ->where('bookingno', $bookingNo)
                 ->update([
                     'QuotationTCTemplate' => $templateName,
-                    'terms_condition'     => $termsText,   // persist content so Blade preview works on reload
                     'LastModifiedBy'      => $submittedBy,
                     'updatedon'           => now(),
                 ]);
@@ -2785,21 +2815,19 @@ class QuotationController extends Controller
                 return response()->json(['success' => false, 'message' => 'No matching quotation found'], 404);
             }
 
-            // ── Get quotation UUID ──
             $quotation = DB::table('Quote_QuotationInfo')
                 ->where('bookingno', $bookingNo)
                 ->first(['ID']);
 
-            // ── Save T&C content as a file ──
+            // ── Save T&C HTML to disk ──
             $folder   = 'quotations/' . $bookingNo . '/tc';
             $fileName = 'TC_' . $bookingNo . '_' . now()->format('Ymd_His') . '.html';
             $filePath = $folder . '/' . $fileName;
             \Storage::disk('public')->put($filePath, $termsText ?? '');
 
-            // $fullPath = \Storage::disk('public')->path($filePath);
             $docName = $templateName ?? $fileName;
-            // ── Upsert into Quote_Quotation_Document (PK is QuotationInfoID + DocumentType + Name) ──
 
+            // ── Upsert into Quote_Quotation_Document ──
             DB::statement("
             MERGE dbo.Quote_Quotation_Document AS target
             USING (
@@ -2821,7 +2849,7 @@ class QuotationController extends Controller
             VALUES
                 (NEWID(), :quotationId2, 'TermsCondition', :name2, 1, 0, :filePath2,
                 :createdBy, :createdOn, :modifiedBy2, :modifiedOn2, 0);
-            ", [
+        ", [
                 'quotationId'  => $quotation->ID,
                 'name'         => $docName,
                 'filePath'     => $filePath,
@@ -2836,6 +2864,10 @@ class QuotationController extends Controller
                 'modifiedOn2'  => now(),
             ]);
 
+            // ── Insert version record — only columns that actually exist in Cust_DocumentDeails ──
+            // Actual schema: Id, DocumentType, ReferenceID, ReferenceNo,
+            //                SubmittedDate, VersionNo, FileName, Path, CreatedOn
+            // 'ReferenceType' does NOT exist — removed.
             $nextVersion = DB::table('Cust_DocumentDeails')
                 ->where('ReferenceID', $quotation->ID)
                 ->where('DocumentType', 'TermsCondition')
@@ -2844,7 +2876,6 @@ class QuotationController extends Controller
             DB::table('Cust_DocumentDeails')->insert([
                 'Id'            => DB::raw('NEWID()'),
                 'DocumentType'  => 'TermsCondition',
-                'ReferenceType' => 'Quotation',            // defensive — prevents NOT NULL constraint failures
                 'ReferenceID'   => $quotation->ID,
                 'ReferenceNo'   => (string) $bookingNo,
                 'SubmittedDate' => now(),
@@ -2863,7 +2894,6 @@ class QuotationController extends Controller
 
             return response()->json(['success' => true, 'message' => 'Terms & Conditions saved successfully']);
         } catch (\Exception $e) {
-
             Log::error('saveTermsCondition - Failed', [
                 'booking_no' => $bookingNo,
                 'error'      => $e->getMessage(),
@@ -3087,14 +3117,14 @@ class QuotationController extends Controller
     private function getCommunicationTemplatesViaSP(string $module, string $subModule, string $bookingNo): \Illuminate\Http\JsonResponse
     {
         try {
-
-            // ── Self-heal trailing space in OfficeCode ───────────────────────────
+            // ── Force-trim OfficeCode unconditionally ─────────────────────────────
+            // whereRaw guard doesn't detect trailing spaces on all SQL Server
+            // collations. Always RTRIM — no-op when already clean.
             DB::table('Quote_QuotationInfo')
                 ->where('QuoteNo', $bookingNo)
-                ->whereRaw("OfficeCode != RTRIM(OfficeCode)")
                 ->update(['OfficeCode' => DB::raw("RTRIM(OfficeCode)")]);
 
-            // ── Log current record state after heal ──────────────────────────────
+            // ── Log current record state after heal ───────────────────────────────
             $record = DB::table('Quote_QuotationInfo')
                 ->where('QuoteNo', $bookingNo)
                 ->first(['QuoteNo', 'SVName', 'process', 'OfficeCode']);
@@ -3107,22 +3137,6 @@ class QuotationController extends Controller
                 'office_code'      => $record->OfficeCode  ?? 'NULL',
                 'office_bracketed' => '[' . ($record->OfficeCode ?? '') . ']',
             ]);
-
-            Log::info('getCommunicationTemplatesViaSP - params', [
-                'booking_no' => $bookingNo,
-                'module'     => $module,
-                'sub_module' => $subModule,
-            ]);
-
-            // ── Self-heal trailing space in OfficeCode ───────────────────────────
-            // Root cause: Cust_Office.Code stores 'KE ' (trailing space) and gets
-            // written to OfficeCode without RTRIM. The SP does CD.OfficeCode = @Office
-            // with no TRIM so 'KE ' never matches 'KE' in Cust_CommunicationDetails.
-            // The whereRaw guard means this is a no-op for already-clean records.
-            DB::table('Quote_QuotationInfo')
-                ->where('QuoteNo', $bookingNo)
-                ->whereRaw("OfficeCode != RTRIM(OfficeCode)")
-                ->update(['OfficeCode' => DB::raw("RTRIM(OfficeCode)")]);
 
             Log::info('getCommunicationTemplatesViaSP - params', [
                 'booking_no' => $bookingNo,
@@ -3148,7 +3162,6 @@ class QuotationController extends Controller
 
                     $firstVal = array_values((array) $rows[0])[0] ?? '';
 
-                    // SP returns 'Failed - ...' on guard failures
                     if (is_string($firstVal) && str_starts_with($firstVal, 'Failed')) {
                         Log::warning('getCommunicationTemplatesViaSP - SP guard failed', [
                             'booking_no' => $bookingNo,
@@ -3165,8 +3178,6 @@ class QuotationController extends Controller
                         ], 404);
                     }
 
-                    // SP always emits 'Select @Service, @Process, @Office' before the
-                    // template result set — skip it and advance to the next set.
                     if (!isset($rows[0]->TemplateID) && !isset($rows[0]->TemplateName)) {
                         Log::debug('getCommunicationTemplatesViaSP - Skipping diagnostic result set', [
                             'booking_no' => $bookingNo,
@@ -3176,7 +3187,6 @@ class QuotationController extends Controller
                         continue;
                     }
 
-                    // Valid result set — SP returns TemplateID and TemplateName
                     if (isset($rows[0]->TemplateID) && isset($rows[0]->TemplateName)) {
                         $templates = array_map(fn($row) => (object)[
                             'Name'        => $row->TemplateName,
@@ -3523,9 +3533,6 @@ class QuotationController extends Controller
 
             // ============================================
             // GUARD: QuoteNo must be set
-            // sp_Quote_QuotationFormat uses an INNER JOIN on QuotationTCTemplate,
-            // so it will silently return empty HTML if T&C has not been applied.
-            // The UI already enforces this — this guard is a backend safety net.
             // ============================================
             $quoteNo = trim((string) ($quotation->QuoteNo ?? ''));
 
@@ -3537,19 +3544,23 @@ class QuotationController extends Controller
                 ], 422);
             }
 
+            // ── Force-trim OfficeCode unconditionally ─────────────────────────────
+            // whereRaw guard ("OfficeCode != RTRIM(OfficeCode)") does not reliably
+            // detect trailing spaces on all SQL Server collations — the update
+            // silently never fires. Always RTRIM so sp_Quote_QuotationFormat's
+            // office name lookup (where CO.Code = @OfficeCode) finds a match
+            // and the header block renders correctly.
+            DB::table('Quote_QuotationInfo')
+                ->where('ID', $id)
+                ->update(['OfficeCode' => DB::raw("RTRIM(OfficeCode)")]);
+
+            Log::info('PDF Generation - OfficeCode after heal', [
+                'quote_no'    => $quoteNo,
+                'office_code' => DB::table('Quote_QuotationInfo')->where('ID', $id)->value('OfficeCode'),
+            ]);
+
             // ============================================
             // CALL sp_Quote_QuotationFormat
-            //
-            // SP signature:
-            //   @QuotationNo VARCHAR(25) INPUT
-            //   @QuoteFormat VARCHAR(MAX) OUTPUT
-            //
-            // On internal SQL error the SP CATCH block sets:
-            //   @QuoteFormat = 'Failed (Reason) - <message>'
-            // instead of raising — we detect and surface this explicitly.
-            //
-            // DECLARE uses VARCHAR(MAX) to match the SP OUTPUT param type.
-            // Using VARCHAR(N) would silently truncate large HTML documents.
             // ============================================
             $html    = null;
             $spError = null;
@@ -3565,8 +3576,6 @@ class QuotationController extends Controller
 
                 $stmt->execute([$quoteNo]);
 
-                // Walk all result sets — the SP creates/drops #VATDetails
-                // which can produce empty intermediate result sets before the SELECT.
                 $setIndex = 0;
                 do {
                     $setIndex++;
@@ -3580,7 +3589,6 @@ class QuotationController extends Controller
                         if (isset($rows[0]->QuoteFormat)) {
                             $raw = (string) $rows[0]->QuoteFormat;
 
-                            // SP CATCH block returns error as a string — detect it
                             if (str_starts_with(trim($raw), 'Failed (Reason)')) {
                                 $spError = $raw;
                             } else {
@@ -3589,7 +3597,6 @@ class QuotationController extends Controller
                             break;
                         }
                     } catch (\PDOException $e) {
-                        // Normal for SPs that use temp tables — skip and continue
                         Log::debug('PDF Generation - Skipping intermediate result set #' . $setIndex, [
                             'quote_no' => $quoteNo,
                             'error'    => $e->getMessage(),
@@ -3610,7 +3617,6 @@ class QuotationController extends Controller
                 ], 500);
             }
 
-            // Surface the SP's own diagnostic message — far more useful than a generic error
             if (!empty($spError)) {
                 Log::error('PDF Generation - SP returned failure string', [
                     'quote_no' => $quoteNo,
@@ -3622,12 +3628,11 @@ class QuotationController extends Controller
                 ], 500);
             }
 
-            // Empty HTML most commonly means T&C template is not applied (INNER JOIN returns no rows)
             if (empty($html) || trim($html) === '') {
                 Log::error('PDF Generation - SP returned empty HTML', [
-                    'quote_no'               => $quoteNo,
-                    'tc_template_set'        => !empty($quotation->QuotationTCTemplate),
-                    'tc_template_value'      => $quotation->QuotationTCTemplate ?? 'NULL',
+                    'quote_no'          => $quoteNo,
+                    'tc_template_set'   => !empty($quotation->QuotationTCTemplate),
+                    'tc_template_value' => $quotation->QuotationTCTemplate ?? 'NULL',
                 ]);
                 return response()->json([
                     'success' => false,
@@ -3644,10 +3649,6 @@ class QuotationController extends Controller
 
             // ============================================
             // FIX LOGO PATH
-            // The SP embeds a web-relative path: public/img/logo.png
-            // Dompdf requires an absolute filesystem path to render images.
-            // public_path() resolves to the absolute path on the current server
-            // without hardcoding anything environment-specific.
             // ============================================
             $html = str_replace(
                 'public/img/logo.png',
@@ -3698,8 +3699,6 @@ class QuotationController extends Controller
 
             // ============================================
             // DETERMINE VERSION NUMBER
-            // Count only QuotationPDF documents — avoids T&C
-            // subfolder files inflating the version number.
             // ============================================
             $folder = 'quotations/' . $quotation->bookingno;
 
@@ -3767,8 +3766,6 @@ class QuotationController extends Controller
 
             // ============================================
             // RECORD IN DATABASE
-            // Non-fatal — PDF is already on disk; a failed
-            // insert should not block the user response.
             // ============================================
             try {
                 DB::table('Quote_Quotation_Document')->insert([
@@ -3793,11 +3790,7 @@ class QuotationController extends Controller
                     'file'     => $fileName,
                 ]);
             } catch (\Exception $e) {
-                // Non-fatal: log but do not return an error response.
-                // The file is on disk and can be served; the DB record can be recreated.
-            } catch (\Exception $e) {
                 // Non-fatal: PDF is on disk and can be served.
-                // Inform the user via a warning key so they know the version list may not update.
                 Log::error('PDF Generation - DB insert failed (non-fatal, PDF is on disk)', [
                     'quote_no' => $quoteNo,
                     'error'    => $e->getMessage(),
@@ -3813,6 +3806,7 @@ class QuotationController extends Controller
                     'warning' => 'PDF generated but version record could not be saved. Please refresh if the version does not appear.',
                 ]);
             }
+
             Log::info('PDF Generation - Completed successfully', [
                 'booking_no'  => $quotation->bookingno,
                 'quote_no'    => $quoteNo,
