@@ -69,12 +69,15 @@ class QuotationController extends Controller
                 ->pluck('TeamCode');
 
             if ($teamCodes->isNotEmpty()) {
-                $offices = DB::table('Quote_QuotationInfo')
-                    ->whereNotNull('teamname')
-                    ->whereIn('teamid', $teamCodes->toArray())
-                    ->distinct()
-                    ->orderBy('teamname')
-                    ->pluck('teamname');
+                // FIX: pluck Cust_Office.Name instead of teamname
+                // teamname stores mixed values (person names + office names)
+                // Cust_Office.Name is the reliable source for office display names
+                $offices = DB::table('Cust_Office')
+                    ->whereIn('TeamCode', $teamCodes->toArray())
+                    ->where('IsActive', 1)
+                    ->where('IsDeleted', 0)
+                    ->orderBy('Name')
+                    ->pluck('Name');
             }
         }
 
@@ -133,10 +136,16 @@ class QuotationController extends Controller
 
         $requestedOffice = $request->input('office');
 
-        // Validate the requested office is within the user's allowed teamnames
-        $office = ($requestedOffice && $allowedTeamNames->contains($requestedOffice))
-            ? $requestedOffice
-            : null;
+        // Validate with normalized comparison — teamname stores mixed values,
+        // so we match via Cust_Office.Name instead
+        $office = null;
+        if ($requestedOffice) {
+            $office = DB::table('Cust_Office')
+                ->where('Name', $requestedOffice)
+                ->where('IsActive', 1)
+                ->where('IsDeleted', 0)
+                ->value('Name');
+        }
 
         return response()->json(
             $this->getStats($days, $startDate, $endDate, $office, $allowedTeamNames)
@@ -171,11 +180,30 @@ class QuotationController extends Controller
 
         // ── Office filter ─────────────────────────────────────────
         if ($office) {
-            // Specific validated office requested
-            $query->where('teamname', $office);
+            $teamCode = DB::table('Cust_Office')
+                ->where('Name', $office)
+                ->where('IsActive', 1)
+                ->where('IsDeleted', 0)
+                ->value('TeamCode');
+
+            if ($teamCode) {
+                $query->where('teamid', $teamCode);
+            } else {
+                $query->where('teamname', $office);
+            }
         } elseif ($allowedOffices && $allowedOffices->isNotEmpty()) {
-            // No specific office — scope to all user's allowed offices
-            $query->whereIn('teamname', $allowedOffices->toArray());
+            // Resolve teamids from Cust_Office to avoid matching person names in teamname
+            $allowedTeamCodes = DB::table('Cust_Office')
+                ->whereIn('Name', $allowedOffices->toArray())
+                ->where('IsActive', 1)
+                ->where('IsDeleted', 0)
+                ->pluck('TeamCode');
+
+            if ($allowedTeamCodes->isNotEmpty()) {
+                $query->whereIn('teamid', $allowedTeamCodes->toArray());
+            } else {
+                $query->whereIn('teamname', $allowedOffices->toArray()); // fallback
+            }
         }
         // If both are null (called from index() error path) — no office filter applied
 
@@ -252,39 +280,24 @@ class QuotationController extends Controller
             return collect();
         }
 
-        // Step 1: Direct match — teamname stores the BaseOfficeCode value directly
-        $teamNames = DB::table('Quote_QuotationInfo')
-            ->whereNotNull('teamname')
-            ->whereIn('teamname', $officeCodes->toArray())
-            ->distinct()
-            ->orderBy('teamname')
-            ->pluck('teamname');
-
-        // Step 2: Fallback — resolve through Cust_Office.TeamCode → teamid
-        if ($teamNames->isEmpty()) {
-            $teamCodes = DB::table('Cust_Office')
-                ->whereIn('Code', $officeCodes->toArray())
-                ->where('IsActive', 1)
-                ->where('IsDeleted', 0)
-                ->pluck('TeamCode');
-
-            if ($teamCodes->isNotEmpty()) {
-                $teamNames = DB::table('Quote_QuotationInfo')
-                    ->whereNotNull('teamname')
-                    ->whereIn('teamid', $teamCodes->toArray())
-                    ->distinct()
-                    ->orderBy('teamname')
-                    ->pluck('teamname');
-            }
-        }
+        // Resolve Cust_Office.Name values for the user's office codes.
+        // These are clean office display names (e.g. "FIT - Kenya")
+        // used as the reliable identifier instead of teamname,
+        // which stores mixed values (office names AND person names).
+        $officeNames = DB::table('Cust_Office')
+            ->whereIn('Code', $officeCodes->map(fn($c) => trim($c))->toArray())
+            ->where('IsActive', 1)
+            ->where('IsDeleted', 0)
+            ->orderBy('Name')
+            ->pluck('Name');
 
         Log::info('resolveUserTeamNames result', [
-            'email'       => Auth::user()->Email,
+            'email'        => Auth::user()->Email,
             'office_codes' => $officeCodes->toArray(),
-            'team_names'   => $teamNames->toArray(),
+            'office_names' => $officeNames->toArray(),
         ]);
 
-        return $teamNames;
+        return $officeNames;
     }
 
     // ============================================================
@@ -357,11 +370,31 @@ class QuotationController extends Controller
 
             // ── Office filter ────────────────────────────────────────────
             if ($office) {
-                // Specific validated office selected in dropdown
-                $query->where('teamname', $office);
+                // Resolve teamid from Cust_Office — avoids matching person names in teamname
+                $teamCode = DB::table('Cust_Office')
+                    ->where('Name', $office)
+                    ->where('IsActive', 1)
+                    ->where('IsDeleted', 0)
+                    ->value('TeamCode');
+
+                if ($teamCode) {
+                    $query->where('teamid', $teamCode);
+                } else {
+                    $query->where('teamname', $office); // fallback
+                }
             } else {
-                // No specific office or validation failed — scope to all allowed
-                $query->whereIn('teamname', $allowedTeamNames->toArray());
+                // No specific office — scope to all allowed teamids
+                $allowedTeamCodes = DB::table('Cust_Office')
+                    ->whereIn('Name', $allowedTeamNames->toArray())
+                    ->where('IsActive', 1)
+                    ->where('IsDeleted', 0)
+                    ->pluck('TeamCode');
+
+                if ($allowedTeamCodes->isNotEmpty()) {
+                    $query->whereIn('teamid', $allowedTeamCodes->toArray());
+                } else {
+                    $query->whereIn('teamname', $allowedTeamNames->toArray()); // fallback
+                }
             }
 
             // ── Card filter ───────────────────────────────────────────────
@@ -668,6 +701,7 @@ class QuotationController extends Controller
             ], 500);
         }
     }
+
     public function view($id)
     {
         $quotation = QuotationInfo::where('ID', $id)->firstOrFail();
@@ -896,213 +930,201 @@ class QuotationController extends Controller
     {
         $bookingNo = $request->input('booking_no');
         if (!$bookingNo) {
+            return response()->json(['success' => false, 'message' => 'Booking number is required'], 400);
+        }
+
+        try {
+            $quotation = DB::table('Quote_QuotationInfo')
+                ->where('bookingno', $bookingNo)
+                ->first(['ID']);
+
+            if (!$quotation) {
+                return response()->json(['success' => false, 'message' => 'Quotation not found'], 404);
+            }
+
+            $pdo     = DB::connection()->getPdo();
+            $revenue = $this->fetchChargeListFromSP($pdo, $quotation->ID, 1);
+            $cost    = $this->fetchChargeListFromSP($pdo, $quotation->ID, 0);
+
+            Log::info('getCharges - Success', [
+                'booking_no'    => $bookingNo,
+                'revenue_count' => count($revenue),
+                'cost_count'    => count($cost),
+            ]);
+
+            return response()->json(['success' => true, 'revenue' => $revenue, 'cost' => $cost]);
+        } catch (\RuntimeException $e) {
+            // SP-level error — surface clearly for DBA investigation
+            Log::error('getCharges - SP error (DBA action required)', [
+                'booking_no' => $bookingNo,
+                'sp_error'   => $e->getMessage(),
+            ]);
             return response()->json([
                 'success' => false,
-                'message' => 'Booking number is required'
+                'message' => $e->getMessage(),
+                'dba_action_required' => true,
+            ], 500);
+        } catch (\Exception $e) {
+            Log::error('getCharges failed', ['booking_no' => $bookingNo, 'error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    private function fetchChargeListFromSP(\PDO $pdo, string $quotationId, int $isRevenue): array
+    {
+        $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC dbo.sp_Quote_Quotation_ChargeList ?, ?, NULL");
+        $stmt->execute([$quotationId, $isRevenue]);
+
+        $rows = [];
+        do {
+            try {
+                $fetched  = $stmt->fetchAll(\PDO::FETCH_OBJ);
+                if (empty($fetched)) continue;
+
+                $firstVal = array_values((array) $fetched[0])[0] ?? '';
+                if (is_string($firstVal) && str_starts_with($firstVal, 'Failed')) {
+                    Log::error('fetchChargeListFromSP - SP failure', [
+                        'quotation_id' => $quotationId,
+                        'is_revenue'   => $isRevenue,
+                        'message'      => $firstVal,
+                    ]);
+                    throw new \RuntimeException('sp_Quote_Quotation_ChargeList: ' . $firstVal);
+                }
+
+                if (isset($fetched[0]->Id)) {
+                    $rows = $fetched;
+                    break;
+                }
+            } catch (\PDOException $e) {
+                continue;
+            }
+        } while ($stmt->nextRowset());
+
+        return array_map(fn($row) => [
+            'id'            => $row->Id,
+            'chargeCode'    => $row->ChargeCode       ?? '',
+            'chargeName'    => $row->ChargeDesp        ?? '',
+            'rate'          => (float) ($row->EstChargeRate   ?? 0),
+            'quantity'      => 0,   // not in list SP — fetched on edit
+            'amtInChgCurr'  => (float) ($row->EstChargeAmount ?? 0),
+            'amtInBaseCurr' => (float) ($row->EstBaseAmount   ?? 0),
+            'exChangeRate'  => (float) ($row->BaseExchRate    ?? 1),
+            'chgCurr'       => $row->EstChargeCurrCode ?? 'KES',
+            'basedOnCode'   => '',  // not in list SP — fetched on edit
+            'basedOnUOM'    => $row->UOMCode           ?? '',
+            'chargeRemark'  => '',  // not in list SP — fetched on edit
+            'partyCode'     => '',  // not in list SP — fetched on edit
+            'revenueOrCost' => $isRevenue ? 'Revenue' : 'Cost',
+            'sourceType'    => 'manual',
+        ], $rows);
+    }
+
+    public function getChargeDetails(Request $request)
+    {
+        $bookingNo = $request->input('booking_no');
+        $chargeId  = $request->input('charge_id');
+
+        if (!$bookingNo || !$chargeId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'booking_no and charge_id are required'
             ], 400);
         }
 
         try {
-            // Get quotation context for better error logging
             $quotation = DB::table('Quote_QuotationInfo')
                 ->where('bookingno', $bookingNo)
-                ->first(['ID', 'teamid', 'ServiceVerticalname', 'origincountry', 'destinationcountry']);
+                ->first(['ID']);
 
             if (!$quotation) {
-                Log::warning('Quotation not found for charges', ['booking_no' => $bookingNo]);
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Quotation not found'
-                ], 404);
+                return response()->json(['success' => false, 'message' => 'Quotation not found'], 404);
             }
 
-            // Get office code for context
+            // Fetch fields the SP does not return — IsRevenue needed to call SP correctly
+            $supplement = DB::selectOne("
+    SELECT
+        QC.IsRevenue,
+        QC.Quantity,
+        ISNULL(QC.Remarks,    '')       AS ChargeRemark,
+        ISNULL(CP.Code,       '')       AS PartyCode,
+        ISNULL(QC.ChargeType, 'manual') AS SourceType,
+        ISNULL(CB.Code,       '')       AS BasedOnCode
+    FROM Quote_Quotation_ChargeSheet QC WITH (NOLOCK)
+    LEFT JOIN Cust_ChargecodeBasedOn     CB WITH (NOLOCK) ON CB.Id = QC.BasedOnId
+    LEFT JOIN [FITSCMUAT].dbo.Cust_Party CP WITH (NOLOCK) ON CP.Id = QC.PartyID
+    WHERE QC.Id = ? AND QC.IsDeleted = 0
+", [$chargeId]);
 
-            $office = DB::table('Cust_Office')
-                ->where('TeamCode', $quotation->teamid)
-                ->where('IsActive', 1)
-                ->where('IsDeleted', 0)
-                ->first(['Code']);
+            if (!$supplement) {
+                return response()->json(['success' => false, 'message' => 'Charge not found'], 404);
+            }
 
-            $officeCode = $office ? trim($office->Code) : 'Unknown';
+            $isRevenue = (int) $supplement->IsRevenue;
 
-            Log::info('Loading charges with context', [
-                'booking_no' => $bookingNo,
-                'quotation_id' => $quotation->ID,
-                'office_code' => $officeCode,
-                'service_type' => $quotation->ServiceVerticalname ?? 'N/A',
-                'origin' => $quotation->origincountry ?? 'N/A',
-                'destination' => $quotation->destinationcountry ?? 'N/A',
-            ]);
+            // Call SP with specific QuoteChargeID
+            $pdo  = DB::connection()->getPdo();
+            $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC dbo.sp_Quote_Quotation_ChargeList ?, ?, ?");
+            $stmt->execute([$quotation->ID, $isRevenue, $chargeId]);
 
-            $charges = DB::select("
+            $spRow = null;
+            do {
+                try {
+                    $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+                    if (empty($rows)) continue;
 
-            SELECT 
-                QC.Id as QuoteChargeID,
-                BC.Code as ChargeCode,
-                BC.Name as ChargeName,
-                QC.Quantity,
-                QC.EstChargeRate as Rate,
-                QC.EstChargeAmount as AmtInChgCurr,
-                QC.EstBaseAmount as AmtInBaseCurr,
-                QC.BaseExchRate as ExChangeRate,
-                CC.Code as ChgCurr,
-                CB.Code as BasedOnCode,
-                CB.BasedOn as BasedOn,
-                SU.Code as BasedOnUOM,
-                QC.Remarks as ChargeRemark,
-                QC.IsRevenue,
-                CP.Code as PartyCode,
-                QC.ChargeType as SourceType
-            FROM Quote_Quotation_ChargeSheet QC WITH (NOLOCK)
-            INNER JOIN Quote_QuotationInfo QI WITH (NOLOCK) ON QI.id = QC.QuotationInfoID
-            LEFT JOIN [FITSCMUAT].dbo.Bill_ChargeCode BC WITH (NOLOCK) ON BC.Id = QC.ChargeCodeId
-            LEFT JOIN [FITSCMUAT].dbo.Cust_Currency CC WITH (NOLOCK) ON CC.Id = QC.EstChargeCurrencyId
-            LEFT JOIN Cust_ChargecodeBasedOn CB WITH (NOLOCK) ON CB.Id = QC.BasedOnId
-            LEFT JOIN [FITSCMUAT].dbo.Sys_UOM SU WITH (NOLOCK) ON SU.Id = QC.UOMId
-            LEFT JOIN [FITSCMUAT].dbo.Cust_Party CP WITH (NOLOCK) ON CP.Id = QC.PartyID
-            WHERE QI.bookingno = ?
-                AND QC.IsDeleted = 0
-            ", [$bookingNo]);
-
-            Log::info('Charges query executed', [
-                'booking_no' => $bookingNo,
-                'result_count' => count($charges),
-                'first_result_keys' => !empty($charges) ? array_keys((array)$charges[0]) : []
-            ]);
-
-            // ============================================
-            // ENHANCED ERROR DETECTION (FROM SCM SYSTEM)
-            // ============================================
-
-            if (!empty($charges) && is_object($charges[0])) {
-                $properties = get_object_vars($charges[0]);
-
-                // Check for error indicators in property names or values
-                foreach ($properties as $key => $value) {
-
-                    // Error conditions:
-                    // 1. Empty/blank property name (unnamed column - SQL error indicator)
-                    // 2. Property value contains "Error Message"
-
-                    // 3. Property value contains "Failed"
-                    if (
-                        empty($key) ||
-                        $key === '' ||
-                        (is_string($value) && (
-                            strpos($value, 'Error Message') !== false ||
-                            strpos($value, 'Failed -') !== false
-                        ))
-                    ) {
-
-                        Log::error('Charges query returned error object:', [
-                            'booking_no' => $bookingNo,
-                            'quotation_id' => $quotation->ID,
-                            'office_code' => $officeCode,
-                            'error_property_name' => $key,
-                            'error_message' => $value,
-                            'all_properties' => $properties,
-                            'context' => [
-                                'service_type' => $quotation->ServiceVerticalname ?? 'N/A',
-                                'origin' => $quotation->origincountry ?? 'N/A',
-                                'destination' => $quotation->destinationcountry ?? 'N/A',
-                            ],
-
-                            'probable_cause' => 'Database schema mismatch, missing joins, or stored procedure error'
+                    $firstVal = array_values((array) $rows[0])[0] ?? '';
+                    if (is_string($firstVal) && str_starts_with($firstVal, 'Failed')) {
+                        Log::error('getChargeDetails - SP failure (DBA action required)', [
+                            'charge_id' => $chargeId,
+                            'message'   => $firstVal,
                         ]);
-
                         return response()->json([
-                            'success' => false,
-                            'message' => 'Failed to load charges: Database query error detected',
-                            'error_details' => config('app.debug') ? $value : null
+                            'success'             => false,
+                            'message'             => 'sp_Quote_Quotation_ChargeList: ' . $firstVal,
+                            'dba_action_required' => true,
                         ], 500);
                     }
-                }
-            }
 
-            $revenue = [];
-            $cost = [];
-            foreach ($charges as $charge) {
-                // Skip if charge lacks required properties
-
-                if (!property_exists($charge, 'QuoteChargeID') || !property_exists($charge, 'ChargeName')) {
-                    Log::warning('Skipping invalid charge entry:', [
-                        'booking_no' => $bookingNo,
-                        'charge_properties' => array_keys((array)$charge)
-                    ]);
-
+                    if (isset($rows[0]->Id)) {
+                        $spRow = $rows[0];
+                        break;
+                    }
+                } catch (\PDOException $e) {
                     continue;
                 }
+            } while ($stmt->nextRowset());
 
-                $chargeData = [
-                    'id' => $charge->QuoteChargeID,
-                    'chargeCode' => $charge->ChargeCode,
-                    'chargeName' => $charge->ChargeName,
-                    'quantity' => (float)$charge->Quantity,
-                    'rate' => (float)$charge->Rate,
-                    'amtInChgCurr' => (float)$charge->AmtInChgCurr,
-                    'amtInBaseCurr' => (float)$charge->AmtInBaseCurr,
-                    'exChangeRate' => (float)$charge->ExChangeRate,
-                    'chgCurr' => $charge->ChgCurr,
-                    'basedOnCode' => $charge->BasedOnCode,
-                    'basedOn' => $charge->BasedOn,
-                    'basedOnUOM' => $charge->BasedOnUOM,
-                    'chargeRemark' => $charge->ChargeRemark,
-                    'partyCode' => $charge->PartyCode,
-                    'sourceType' => $charge->SourceType
-                ];
-
-                if ($charge->IsRevenue) {
-                    $revenue[] = $chargeData;
-                } else {
-                    $cost[] = $chargeData;
-                }
+            if (!$spRow) {
+                return response()->json(['success' => false, 'message' => 'Charge not found via SP'], 404);
             }
 
-            Log::info('Charges loaded successfully', [
-                'booking_no' => $bookingNo,
-                'revenue_count' => count($revenue),
-                'cost_count' => count($cost),
-                'total_revenue' => array_sum(array_column($revenue, 'amtInBaseCurr')),
-                'total_cost' => array_sum(array_column($cost, 'amtInBaseCurr'))
-            ]);
-
             return response()->json([
-                'success' => true,
-                'revenue' => $revenue,
-                'cost' => $cost
+                'success'       => true,
+                'id'            => $spRow->Id,
+                'chargeCode'    => $spRow->ChargeCode       ?? '',
+                'chargeName'    => $spRow->ChargeDesp        ?? '',
+                'rate'          => (float) ($spRow->EstChargeRate    ?? 0),
+                'quantity'      => (float) ($supplement->Quantity    ?? 0),
+                'amtInChgCurr'  => (float) ($spRow->EstChargeAmount  ?? 0),
+                'amtInBaseCurr' => (float) ($spRow->EstBaseAmount    ?? 0),
+                'exChangeRate'  => (float) ($spRow->BaseExchRate     ?? 1),
+                'chgCurr'       => $spRow->EstChargeCurrCode ?? 'KES',
+                'basedOnCode'   => $supplement->BasedOnCode  ?? '',
+                'basedOnUOM'    => $spRow->UOMCode           ?? '',
+                'chargeRemark'  => $supplement->ChargeRemark ?? '',
+                'partyCode'     => $supplement->PartyCode    ?? '',
+                'revenueOrCost' => $isRevenue ? 'Revenue' : 'Cost',
+                'sourceType'    => $supplement->SourceType   ?? 'manual',
+                'increaseBy'    => (float) ($supplement->IncreaseBy  ?? 0),
+                'increaseType'  => $supplement->IncreaseType ?? 'Percentage',
             ]);
-        } catch (\Illuminate\Database\QueryException $e) {
-
-            Log::error('Charges query exception:', [
-                'booking_no' => $bookingNo,
-                'error_message' => $e->getMessage(),
-                'error_code' => $e->getCode(),
-                'sql' => $e->getSql() ?? 'N/A',
-                'bindings' => $e->getBindings() ?? [],
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Database error while loading charges',
-                'error_details' => config('app.debug') ? $e->getMessage() : null
-            ], 500);
         } catch (\Exception $e) {
-
-            Log::error('Get charges failed with general exception:', [
+            Log::error('getChargeDetails failed', [
                 'booking_no' => $bookingNo,
-                'error_message' => $e->getMessage(),
-                'error_file' => $e->getFile(),
-                'error_line' => $e->getLine(),
-                'trace' => $e->getTraceAsString()
+                'charge_id'  => $chargeId,
+                'error'      => $e->getMessage(),
             ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to load charges: ' . $e->getMessage()
-            ], 500);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
 
@@ -1215,6 +1237,16 @@ class QuotationController extends Controller
             // ============================================
             // PREPARE STORED PROCEDURE INPUT
             // ============================================
+            $quoteNo = DB::table('Quote_QuotationInfo')
+                ->where('bookingno', $bookingNo)
+                ->value('QuoteNo');
+
+            if (!$quoteNo) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'QuoteNo not found for booking: ' . $bookingNo,
+                ], 404);
+            }
 
             $inputJson = json_encode([
                 'OperationType' => 'QuotationAddorEditCharge',
@@ -1222,9 +1254,8 @@ class QuotationController extends Controller
                 'SubmittedBy' => Auth::check()
                     ? (Auth::user()->displayName ?? Auth::user()->Email ?? 'system')
                     : 'system',
-
                 'Action' => $request->input('action', 'Add'),
-                'BookingNo' => $bookingNo,
+                'QuotationNo' => $quoteNo,
                 'QuoteChargeID' => $request->input('quote_charge_id', ''),
                 'PartyCode' => $request->input('party_code', ''),
                 'RevenueOrCost' => $request->input('revenue_or_cost'),
@@ -1731,12 +1762,23 @@ class QuotationController extends Controller
                 ? (Auth::user()->displayName ?? Auth::user()->Email ?? 'system')
                 : 'system';
 
+            $quoteNo = DB::table('Quote_QuotationInfo')
+                ->where('bookingno', $bookingNo)
+                ->value('QuoteNo');
+
+            if (!$quoteNo) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'QuoteNo not found for booking: ' . $bookingNo,
+                ], 404);
+            }
+
             $inputJson = json_encode([
                 'OperationType' => 'QuotationAddorEditCharge',
                 'SubmittedDatetime' => now()->format('YmdHis'),
                 'SubmittedBy' => $submittedBy,
                 'Action' => 'Delete',
-                'BookingNo' => $bookingNo,
+                'QuotationNo' => $quoteNo,
                 'QuoteChargeID' => $chargeId,
                 'PartyCode' => $charge->PartyCode ?? '',
                 'RevenueOrCost' => $charge->IsRevenue ? 'Revenue' : 'Cost',
@@ -5100,7 +5142,7 @@ class QuotationController extends Controller
         if ($request->filled('booking_no')) {
             $quotation = DB::connection('sqlsrv')
                 ->table('Quote_QuotationInfo')
-                ->where('bookingno', $request->booking_no)
+                ->where('QuoteNo', $request->booking_no)
                 ->first(['ID', 'QuoteNo', 'bookingno', 'CustomerType', 'AgentType', 'clientid']);
         } else {
             $quotation = DB::connection('sqlsrv')
@@ -6435,6 +6477,8 @@ class QuotationController extends Controller
             ]);
         }
     }
+
+
     public function saveInquiryDetails(Request $request)
     {
         $request->validate([
