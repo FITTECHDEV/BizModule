@@ -2776,6 +2776,7 @@ class QuotationController extends Controller
                 ->where('bookingno', $bookingNo)
                 ->update([
                     'QuotationTCTemplate' => $templateName,
+                    'terms_condition'     => $termsText,   // persist content so Blade preview works on reload
                     'LastModifiedBy'      => $submittedBy,
                     'updatedon'           => now(),
                 ]);
@@ -2843,12 +2844,13 @@ class QuotationController extends Controller
             DB::table('Cust_DocumentDeails')->insert([
                 'Id'            => DB::raw('NEWID()'),
                 'DocumentType'  => 'TermsCondition',
+                'ReferenceType' => 'Quotation',            // defensive — prevents NOT NULL constraint failures
                 'ReferenceID'   => $quotation->ID,
                 'ReferenceNo'   => (string) $bookingNo,
                 'SubmittedDate' => now(),
                 'VersionNo'     => $nextVersion + 1,
                 'FileName'      => $fileName,
-                'Path'          => $filePath,   // relative path, not $fullPath
+                'Path'          => $filePath,
                 'CreatedOn'     => now(),
             ]);
 
@@ -2977,6 +2979,14 @@ class QuotationController extends Controller
 
     public function getCommunicationTemplates(Request $request)
     {
+
+
+        Log::info('getCommunicationTemplates - incoming', [
+            'all'        => $request->all(),
+            'sub_module' => $request->input('sub_module'),
+            'booking_no' => $request->input('booking_no'),
+        ]);
+
         $module     = $request->input('module', 'Quotation');
         $subModule  = $request->input('sub_module');
         $officeCode = trim($request->input('office_code', ''));
@@ -3077,6 +3087,43 @@ class QuotationController extends Controller
     private function getCommunicationTemplatesViaSP(string $module, string $subModule, string $bookingNo): \Illuminate\Http\JsonResponse
     {
         try {
+
+            // ── Self-heal trailing space in OfficeCode ───────────────────────────
+            DB::table('Quote_QuotationInfo')
+                ->where('QuoteNo', $bookingNo)
+                ->whereRaw("OfficeCode != RTRIM(OfficeCode)")
+                ->update(['OfficeCode' => DB::raw("RTRIM(OfficeCode)")]);
+
+            // ── Log current record state after heal ──────────────────────────────
+            $record = DB::table('Quote_QuotationInfo')
+                ->where('QuoteNo', $bookingNo)
+                ->first(['QuoteNo', 'SVName', 'process', 'OfficeCode']);
+
+            Log::info('getCommunicationTemplatesViaSP - record state after heal', [
+                'booking_no'       => $bookingNo,
+                'quote_no'         => $record->QuoteNo    ?? 'NULL',
+                'svname'           => $record->SVName      ?? 'NULL',
+                'process'          => $record->process     ?? 'NULL',
+                'office_code'      => $record->OfficeCode  ?? 'NULL',
+                'office_bracketed' => '[' . ($record->OfficeCode ?? '') . ']',
+            ]);
+
+            Log::info('getCommunicationTemplatesViaSP - params', [
+                'booking_no' => $bookingNo,
+                'module'     => $module,
+                'sub_module' => $subModule,
+            ]);
+
+            // ── Self-heal trailing space in OfficeCode ───────────────────────────
+            // Root cause: Cust_Office.Code stores 'KE ' (trailing space) and gets
+            // written to OfficeCode without RTRIM. The SP does CD.OfficeCode = @Office
+            // with no TRIM so 'KE ' never matches 'KE' in Cust_CommunicationDetails.
+            // The whereRaw guard means this is a no-op for already-clean records.
+            DB::table('Quote_QuotationInfo')
+                ->where('QuoteNo', $bookingNo)
+                ->whereRaw("OfficeCode != RTRIM(OfficeCode)")
+                ->update(['OfficeCode' => DB::raw("RTRIM(OfficeCode)")]);
+
             Log::info('getCommunicationTemplatesViaSP - params', [
                 'booking_no' => $bookingNo,
                 'module'     => $module,
@@ -3748,14 +3795,24 @@ class QuotationController extends Controller
             } catch (\Exception $e) {
                 // Non-fatal: log but do not return an error response.
                 // The file is on disk and can be served; the DB record can be recreated.
+            } catch (\Exception $e) {
+                // Non-fatal: PDF is on disk and can be served.
+                // Inform the user via a warning key so they know the version list may not update.
                 Log::error('PDF Generation - DB insert failed (non-fatal, PDF is on disk)', [
                     'quote_no' => $quoteNo,
                     'error'    => $e->getMessage(),
                     'file'     => $e->getFile(),
                     'line'     => $e->getLine(),
                 ]);
-            }
 
+                return response()->json([
+                    'success' => true,
+                    'version' => $nextVersion,
+                    'label'   => 'Version ' . $nextVersion,
+                    'url'     => route('quotation.download-pdf', [$id, $nextVersion]),
+                    'warning' => 'PDF generated but version record could not be saved. Please refresh if the version does not appear.',
+                ]);
+            }
             Log::info('PDF Generation - Completed successfully', [
                 'booking_no'  => $quotation->bookingno,
                 'quote_no'    => $quoteNo,
@@ -3901,27 +3958,18 @@ class QuotationController extends Controller
 
             $versions = [];
 
-            foreach ($documents as $index => $doc) {
-                // Version number = position in DB (1-based), not parsed from filename.
-                // This is the authoritative source used for email attachment selection.
-                $versionNo = $index + 1;
+            $versionCounter = 0; // sequential counter — only incremented for files that exist on disk
 
+            foreach ($documents as $doc) {
                 $relativePath = $this->normalizeFilePath($doc->FilePath);
                 $fileExists   = \Storage::disk('public')->exists($relativePath);
 
-                Log::info('getQuotationVersions - Version entry', [
-                    'quotation_id' => $id,
-                    'version_no'   => $versionNo,
-                    'file_name'    => $doc->Name,
-                    'file_path'    => $relativePath,
-                    'file_exists'  => $fileExists,
-                ]);
-
-                // Skip versions whose file no longer exists on disk
+                // Skip versions whose file no longer exists on disk.
+                // Do NOT increment versionCounter here — the counter must only reflect
+                // downloadable versions so that downloadPdf()->skip($version - 1) resolves correctly.
                 if (!$fileExists) {
                     Log::warning('getQuotationVersions - File missing on disk, skipping', [
                         'quotation_id' => $id,
-                        'version_no'   => $versionNo,
                         'file_name'    => $doc->Name,
                         'raw_path'     => $doc->FilePath,
                         'relative'     => $relativePath,
@@ -3929,16 +3977,24 @@ class QuotationController extends Controller
                     continue;
                 }
 
+                $versionCounter++;
+
+                Log::info('getQuotationVersions - Version entry', [
+                    'quotation_id' => $id,
+                    'version_no'   => $versionCounter,
+                    'file_name'    => $doc->Name,
+                    'file_path'    => $relativePath,
+                ]);
+
                 $versions[] = [
-                    'version'    => $versionNo,
-                    'label'      => 'Version ' . $versionNo,
-                    'url'        => route('quotation.download-pdf', [$id, $versionNo]),
+                    'version'    => $versionCounter,
+                    'label'      => 'Version ' . $versionCounter,
+                    'url'        => route('quotation.download-pdf', [$id, $versionCounter]),
                     'created_on' => $doc->CreatedOn,
                     'file_name'  => $doc->Name,
                     'doc_id'     => $doc->Id,
                 ];
             }
-
             Log::info('getQuotationVersions - Completed', [
                 'quotation_id'   => $id,
                 'total_db_docs'  => $documents->count(),
@@ -5036,6 +5092,8 @@ class QuotationController extends Controller
             return response()->json(['success' => false, 'data' => [], 'message' => $e->getMessage()]);
         }
     }
+
+
     public function saveCustomerDetails(Request $request)
     {
         $request->validate([
@@ -5087,14 +5145,14 @@ class QuotationController extends Controller
             ?: ($quotation->AgentType ?? '');
 
         /*
-    |--------------------------------------------------------------------------
-    | Country Resolution (FIX)
-    |--------------------------------------------------------------------------
-    | Frontend sends CountryId (UUID).
-    | Stored Procedure expects the country Code (KE, DE, etc).
-    | Convert Id → Code from cust_country table.
-    |--------------------------------------------------------------------------
-    */
+        |--------------------------------------------------------------------------
+        | Country Resolution (FIX)
+        |--------------------------------------------------------------------------
+        | Frontend sends CountryId (UUID).
+        | Stored Procedure expects the country Code (KE, DE, etc).
+        | Convert Id → Code from cust_country table.
+        |--------------------------------------------------------------------------
+        */
 
         $countryId = trim($resolve('country', 'pri_partner_countryname'));
 
@@ -5137,10 +5195,10 @@ class QuotationController extends Controller
         ]);
 
         /*
-    |--------------------------------------------------------------------------
-    | Industry Resolution
-    |--------------------------------------------------------------------------
-    */
+        |--------------------------------------------------------------------------
+        | Industry Resolution
+        |--------------------------------------------------------------------------
+        */
 
         $industryCode = '';
 

@@ -822,8 +822,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         MODALS
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         ============================================ -->
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     MODALS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1385,8 +1385,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1829,9 +1829,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -2034,7 +2034,30 @@
             let currentEditingCharge = null;
             let currentEditingType = null;
             let currencyMap = {};
-            let officeCode = '{{ $quotation->OfficeCode ?? '' }}';
+let officeCode = '{{ trim($quotation->OfficeCode ?? '') }}';
+
+            // ── Single source of truth for Generate Quote gate ────────────────────────
+            // All paths that touch the button must go through setGenerateBtn().
+            // Direct calls to .prop('disabled', ...) on #generateQuoteBtn are banned
+            // outside this function — that's how the state got scattered before.
+            const termsState = {
+                applied: false, // true only after a successful save-terms call
+                generating: false, // true while the POST is in flight
+            };
+
+            function setGenerateBtn() {
+                const $btn = $('#generateQuoteBtn');
+                const canGenerate = termsState.applied && !termsState.generating;
+                $btn.prop('disabled', !canGenerate);
+
+                if (termsState.generating) {
+                    $btn.attr('title', 'Generating…');
+                } else if (!termsState.applied) {
+                    $btn.attr('title', 'Please select a Terms & Conditions template first');
+                } else {
+                    $btn.removeAttr('title');
+                }
+            }
 
             // Hidden field to hold the ClientID selected from Company Name autocomplete
             $('input[data-field="companyname"]').closest('.form-group').find('.col-sm-8')
@@ -2330,11 +2353,12 @@
 
             // ── T&C Gate ─────────────────────────────────────────────
             // Unblock Generate Quote immediately if T&C was previously applied
+            // Seed termsState from server-rendered flag so the gate
+            // reflects reality on page load without an extra API round-trip.
             if (tcAlreadyApplied) {
-                $('#generateQuoteBtn')
-                    .prop('disabled', false)
-                    .removeAttr('title');
+                termsState.applied = true;
             }
+            setGenerateBtn(); // single authoritative call — no direct .prop() here
 
             console.log('Booking Number:', bookingNo);
             console.log('Quotation Status:', quotationStatus);
@@ -3841,6 +3865,7 @@
                             );
                         }
                     },
+
                     error: function(xhr) {
                         console.error('loadVersions error:', xhr.status, xhr.responseText);
                         $('#quotationVersionsList').html(
@@ -3854,11 +3879,12 @@
             // GENERATE QUOTE BUTTON
             // ============================================
             $('#generateQuoteBtn').on('click', function() {
-                const $btn = $(this);
-                let generationSucceeded = false;
+                if (!termsState.applied || termsState.generating) return; // defensive guard
 
-                $btn.prop('disabled', true)
-                    .html('<i class="fas fa-spinner fa-spin mr-1"></i> Generating...');
+                const $btn = $(this);
+                termsState.generating = true;
+                setGenerateBtn();
+                $btn.html('<i class="fas fa-spinner fa-spin mr-1"></i> Generating...');
 
                 $.ajax({
                     url: GENERATE_PDF_URL,
@@ -3868,26 +3894,35 @@
                     },
                     success: function(response) {
                         if (response.success) {
-                            generationSucceeded = true;
                             showNotification('Quote generated — ' + response.label, 'success');
+                            showNotification('Quote generated — ' + response.label, 'success');
+                            if (response.warning) {
+                                showNotification(response.warning, 'warning');
+                            }
                             loadVersions();
 
+                            // Reset gate — requirement 4: user must reselect before generating again
+                            termsState.applied = false;
+                            termsState.generating = false;
+
                             if ($('#termsDropdownWrapper').is(':visible')) {
-                                // Multi-template: reset dropdown and lock Generate until
-                                // user selects a new template (auto-apply fires on change)
+                                // Multi-template: reset dropdown and show re-select hint
                                 $('#termsTemplateSelect').val('');
                                 $('#termsDescriptionPreview').val('');
                                 $('#termsDescriptionWrapper').hide();
                                 $('#applyTermsBtn').prop('disabled', true);
                                 $('#termsReSelectMsg').show();
+                                setGenerateBtn();
                             } else {
-                                // Single-template: silently re-apply so Generate
-                                // re-enables automatically via loadTermsTemplates()
+                                // Single-template: reload so auto-save fires again and re-enables button
                                 loadTermsTemplates();
                             }
                         } else {
                             showNotification(response.message || 'Failed to generate quote.',
                                 'error');
+                            // On failure, restore applied state so user can retry without reselecting
+                            termsState.generating = false;
+                            setGenerateBtn();
                         }
                     },
                     error: function(xhr) {
@@ -3896,28 +3931,21 @@
                             'An error occurred while generating the quote.',
                             'error'
                         );
+                        termsState.generating = false;
+                        setGenerateBtn();
                     },
                     complete: function() {
-                        // Restore button label always.
-                        // Only re-enable if generation FAILED — success path keeps it locked
-                        // until T&C is re-selected.
+                        // jQuery fires complete AFTER success/error — termsState.generating
+                        // is already false here. Button label restored; state managed above.
                         $btn.html('<i class="fas fa-file-alt mr-1"></i> Generate Quote');
-                        if (!generationSucceeded) {
-                            // Failed or errored — let user retry
-                            $btn.prop('disabled', false).removeAttr('title');
-                        } else {
-                            // Succeeded — keep disabled, set tooltip explaining why
-                            $btn.prop('disabled', true)
-                                .attr('title',
-                                    'Select a Terms & Conditions template to generate a new version'
-                                );
-                        }
                     }
                 });
             });
 
             // Load versions on page init
             loadVersions();
+            loadTermsTemplates();
+
 
             // ============================================
             // EMAIL QUOTE — TEMPLATE LOADING
@@ -5123,6 +5151,10 @@
                     return;
                 }
 
+                // Reset gate on every reload — requirement 5
+                termsState.applied = false;
+                setGenerateBtn();
+
                 $.ajax({
                     url: '{{ route('quotation.communication.templates') }}',
                     type: 'GET',
@@ -5138,16 +5170,14 @@
 
                         if (response.success && response.templates.length > 0) {
 
-                            // ── SINGLE TEMPLATE: auto-apply, no dropdown needed ──────────
+                            // ── SINGLE TEMPLATE: auto-apply ──────────────────────────
                             if (response.templates.length === 1) {
                                 const t = response.templates[0];
 
-                                // Hide dropdown, show badge
                                 $('#termsDropdownWrapper').hide();
                                 $('#termsAutoAppliedName').text(t.Name);
                                 $('#termsAutoAppliedBadge').show();
 
-                                // Fetch description then silently save
                                 $.ajax({
                                     url: '{{ route('quotation.communication.description') }}',
                                     type: 'GET',
@@ -5162,20 +5192,17 @@
 
                                         const description = descResponse.description;
                                         $('#termsDescriptionPreview').val(description);
-                                        // Show preview read-only (no Apply button needed)
                                         $('#termsDescriptionWrapper').show();
                                         $('#applyTermsBtn').hide();
 
-                                        // Only auto-save if T&C hasn't been applied yet
+                                        // Already applied server-side — just unlock
                                         if (tcAlreadyApplied) {
-                                            // Already applied — just unlock Generate Quote
-                                            $('#generateQuoteBtn')
-                                                .prop('disabled', false)
-                                                .removeAttr('title');
+                                            termsState.applied = true;
+                                            setGenerateBtn();
                                             return;
                                         }
 
-                                        // Silently save the single T&C
+                                        // Auto-save the single template silently
                                         $.ajax({
                                             url: '{{ route('quotation.communication.save-terms') }}',
                                             type: 'POST',
@@ -5187,10 +5214,9 @@
                                             },
                                             success: function(saveResponse) {
                                                 if (saveResponse.success) {
-                                                    // Unlock Generate Quote
-                                                    $('#generateQuoteBtn')
-                                                        .prop('disabled', false)
-                                                        .removeAttr('title');
+                                                    termsState.applied =
+                                                        true; // ← gate opened here
+                                                    setGenerateBtn();
                                                 } else {
                                                     showNotification(
                                                         'Auto-apply T&C failed: ' +
@@ -5200,25 +5226,29 @@
                                                         ),
                                                         'warning'
                                                     );
+                                                    // termsState.applied stays false — button stays disabled
+                                                    setGenerateBtn();
                                                 }
                                             },
                                             error: function() {
                                                 showNotification(
                                                     'Failed to auto-apply Terms & Conditions',
                                                     'warning');
+                                                setGenerateBtn();
                                             }
                                         });
                                     },
                                     error: function() {
                                         showNotification('Failed to load T&C description',
                                             'warning');
+                                        setGenerateBtn();
                                     }
                                 });
 
-                                return; // ← skip the multi-template path below
+                                return; // skip multi-template path
                             }
 
-                            // ── MULTIPLE TEMPLATES: show dropdown as before ──────────────
+                            // ── MULTIPLE TEMPLATES: show dropdown ────────────────────
                             $select.append('<option value="">-- Select Template --</option>');
                             response.templates.forEach(function(t) {
                                 $select.append(`<option value="${t.Name}">${t.Name}</option>`);
@@ -5228,51 +5258,42 @@
                             $('#termsAutoAppliedBadge').hide();
 
                             @if ($quotation->QuotationTCTemplate)
-                                // Pre-populate preview if T&C was previously applied
                                 $('#termsDescriptionPreview').val(
                                     '{{ addslashes($quotation->terms_condition ?? '') }}');
                                 if ($('#termsDescriptionPreview').val()) {
                                     $('#termsDescriptionWrapper').show();
                                 }
+                                // Previously applied — gate re-opens on page load for multi-template too
+                                if (tcAlreadyApplied) {
+                                    termsState.applied = true;
+                                    setGenerateBtn();
+                                }
                             @endif
 
                         } else {
-                            // Error states — unchanged
-                            if (response.code === 'NOT_CONFIGURED') {
-                                $select.append(
-                                    `<option value="" disabled>⚠ T&C not configured for office: ${codeToUse}</option>`
-                                );
-                            } else if (response.code === 'OFFICE_NOT_FOUND') {
-                                $select.append(
-                                    `<option value="" disabled>⚠ Office not found: ${codeToUse}</option>`
-                                );
-                            } else {
-                                $select.append(
-                                    `<option value="" disabled>-- No templates available --</option>`
-                                );
-                            }
+                            // Error states — surface clearly, button stays disabled
+                            const msg = response.code === 'NOT_CONFIGURED' ?
+                                `⚠ T&C not configured for office: ${codeToUse}` :
+                                response.code === 'OFFICE_NOT_FOUND' ?
+                                `⚠ Office not found: ${codeToUse}` :
+                                '-- No templates available --';
+                            $select.append(`<option value="" disabled>${msg}</option>`);
+                            setGenerateBtn();
                         }
                     },
                     error: function(xhr) {
-                        const response = xhr.responseJSON;
+                        const res = xhr.responseJSON;
                         const $select = $('#termsTemplateSelect');
                         $select.empty();
 
-                        if (response && response.code === 'NOT_CONFIGURED') {
-                            $select.append(
-                                `<option value="" disabled>⚠ T&C not configured for office: ${codeToUse}</option>`
-                            );
-                        } else if (response && response.code === 'OFFICE_NOT_FOUND') {
-                            $select.append(
-                                `<option value="" disabled>⚠ Office not found: ${codeToUse}</option>`
-                            );
-                        } else {
-                            $select.append(
-                                `<option value="" disabled>-- Failed to load templates --</option>`
-                            );
-                        }
-
-                        console.warn('loadTermsTemplates error:', response?.message || xhr.status);
+                        const msg = res?.code === 'NOT_CONFIGURED' ?
+                            `⚠ T&C not configured for office: ${codeToUse}` :
+                            res?.code === 'OFFICE_NOT_FOUND' ?
+                            `⚠ Office not found: ${codeToUse}` :
+                            '-- Failed to load templates --';
+                        $select.append(`<option value="" disabled>${msg}</option>`);
+                        console.warn('loadTermsTemplates error:', res?.message || xhr.status);
+                        setGenerateBtn();
                     }
                 });
             }
@@ -5280,21 +5301,19 @@
             $('#termsTemplateSelect').on('change', function() {
                 const selectedName = $(this).val();
 
-                // Hide re-select instruction and disable Generate until auto-apply succeeds
+                // Reset gate whenever user picks a new template
+                termsState.applied = false;
+                setGenerateBtn();
+
                 $('#termsReSelectMsg').hide();
-                $('#generateQuoteBtn').prop('disabled', true).attr('title',
-                    'Please wait — applying Terms & Conditions...');
                 $('#applyTermsBtn').prop('disabled', true);
 
                 if (!selectedName) {
                     $('#termsDescriptionWrapper').hide();
                     $('#termsDescriptionPreview').val('');
-                    $('#generateQuoteBtn').prop('disabled', true).attr('title',
-                        'Please select a Terms & Conditions template first');
-                    return;
+                    return; // button already disabled via setGenerateBtn above
                 }
 
-                // Step 1: Fetch the T&C description
                 $.ajax({
                     url: '{{ route('quotation.communication.description') }}',
                     type: 'GET',
@@ -5312,16 +5331,14 @@
                         if (!response.success) {
                             $('#termsDescriptionPreview').val('Failed to load description.');
                             showNotification('Could not load T&C description', 'warning');
-                            $('#generateQuoteBtn').prop('disabled', true).attr('title',
-                                'T&C description failed to load');
-                            return;
+                            return; // button stays disabled
                         }
 
                         const description = response.description;
                         $('#termsDescriptionPreview').val(description);
                         $('#applyTermsBtn').prop('disabled', false);
 
-                        // Step 2: Auto-apply the selected T&C silently
+                        // Auto-apply on selection — no separate Apply click needed for the common case
                         $.ajax({
                             url: '{{ route('quotation.communication.save-terms') }}',
                             type: 'POST',
@@ -5333,33 +5350,27 @@
                             },
                             success: function(saveResponse) {
                                 if (saveResponse.success) {
-                                    // T&C saved — unlock Generate Quote
-                                    $('#generateQuoteBtn')
-                                        .prop('disabled', false)
-                                        .removeAttr('title');
+                                    termsState.applied = true; // ← gate opens here
+                                    setGenerateBtn();
                                 } else {
                                     showNotification(saveResponse.message ||
                                         'Failed to apply Terms & Conditions',
                                         'error');
-                                    $('#generateQuoteBtn').prop('disabled', true)
-                                        .attr('title',
-                                            'T&C apply failed — please retry');
+                                    setGenerateBtn(); // stays disabled
                                 }
                             },
                             error: function() {
                                 showNotification(
                                     'Failed to apply Terms & Conditions',
                                     'error');
-                                $('#generateQuoteBtn').prop('disabled', true).attr(
-                                    'title', 'T&C apply failed — please retry');
+                                setGenerateBtn();
                             }
                         });
                     },
                     error: function() {
                         $('#termsDescriptionPreview').val('Error loading description.');
                         showNotification('Error loading T&C description', 'error');
-                        $('#generateQuoteBtn').prop('disabled', true).attr('title',
-                            'T&C description failed to load');
+                        setGenerateBtn();
                     }
                 });
             });
@@ -5394,11 +5405,9 @@
                         if (response.success) {
                             showNotification('Terms & Conditions applied successfully',
                                 'success');
-
-                            // ── Unblock Generate Quote now that T&C is applied ──
-                            $('#generateQuoteBtn')
-                                .prop('disabled', false)
-                                .removeAttr('title');
+                            termsState.applied =
+                                true; // ← consistent with all other save-terms paths
+                            setGenerateBtn();
                         } else {
                             showNotification(response.message || 'Failed to apply Terms',
                                 'error');

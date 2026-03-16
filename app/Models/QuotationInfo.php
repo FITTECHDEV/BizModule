@@ -28,7 +28,7 @@ class QuotationInfo extends Model
         'status',
         'userid',
         'username',
-        'useremail',            // column exists (outside schema doc)
+        'useremail',
         'SalesPersonEmail',
         'SalesPersonCode',
         'teamid',
@@ -50,13 +50,13 @@ class QuotationInfo extends Model
         'OfficeCode',
         'QuotationTCTemplate',
         'QuotationEmailTemplate',
-        'contact_name',             // ← {Contact_name} template variable
-        'pri_partnermaster_name',   // ← FIXED: was pri_partnername
-        'pri_partner_industrytype', // ← {pri_partner_industrytype} template variable
-        'pri_partner_steet',        // DB typo preserved intentionally
-        'pri_partner_steet2',       // DB typo preserved intentionally
+        'contact_name',
+        'pri_partnermaster_name',
+        'pri_partner_industrytype',
+        'pri_partner_steet',
+        'pri_partner_steet2',
         'pri_partner_city',
-        'pri_partner_statename',    // ← FIXED: was pri_partner_state + {pri_partner_statename} template variable
+        'pri_partner_statename',
         'pri_partner_zip',
         'pri_partner_countryname',
         'pri_partner_phone',
@@ -68,4 +68,14 @@ class QuotationInfo extends Model
         'SCMINTStatus',
         'SCMBookingXML',
     ];
+
+    // ── Accessors ────────────────────────────────────────────────────────────
+    // Trim trailing/leading spaces from OfficeCode on every read.
+    // Root cause: Cust_Office.Code stores 'KE ' (with trailing space) and this
+    // gets written directly to Quote_QuotationInfo.OfficeCode without RTRIM.
+    // Fixing here ensures all consumers (blade, controller, SP calls) get clean value.
+    public function getOfficeCodeAttribute(?string $value): string
+    {
+        return trim($value ?? '');
+    }
 }
