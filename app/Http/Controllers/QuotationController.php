@@ -5132,6 +5132,10 @@ class QuotationController extends Controller
 
     public function saveCustomerDetails(Request $request)
     {
+        Log::info('saveCustomerDetails - raw request', [
+            'all' => $request->all(),
+        ]);
+        
         $request->validate([
             'booking_no' => 'required_without:id|string|nullable',
             'id'         => 'required_without:booking_no|string|nullable',
