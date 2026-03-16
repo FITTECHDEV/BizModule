@@ -5148,44 +5148,17 @@ class QuotationController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        $countryId = trim($resolve('country', 'pri_partner_countryname'));
+        $countryCode = trim($resolve('country', 'pri_partner_countryname'));
 
-        if (empty($countryId)) {
+        if (empty($countryCode)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Country is required'
             ], 422);
         }
 
-        try {
-
-            $countryCode = DB::connection('sqlsrv')
-                ->table('cust_country')
-                ->where('Id', $countryId)
-                ->value('Code');
-        } catch (\Exception $e) {
-
-            Log::error('saveCustomerDetails - country lookup failed', [
-                'country_id' => $countryId,
-                'error'      => $e->getMessage(),
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Country lookup failed'
-            ], 500);
-        }
-
-        if (!$countryCode) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Invalid country selected'
-            ], 422);
-        }
-
-        Log::info('saveCustomerDetails - country resolved', [
-            'country_id'   => $countryId,
-            'country_code' => $countryCode
+        Log::info('saveCustomerDetails - country code received', [
+            'country_code' => $countryCode,
         ]);
 
         /*
@@ -5236,10 +5209,10 @@ class QuotationController extends Controller
         }
 
         /*
-    |--------------------------------------------------------------------------
-    | Build JSON payload for SP
-    |--------------------------------------------------------------------------
-    */
+        |--------------------------------------------------------------------------
+        | Build JSON payload for SP
+        |--------------------------------------------------------------------------
+        */
 
         $input = json_encode([
             'OperationType'     => 'CustomerUpdate',
@@ -5254,7 +5227,7 @@ class QuotationController extends Controller
             'City'              => $city,
             'ZipCode'           => $zipCode,
             'State'             => $state,
-            'CountryCode'       => $countryCode,   // FIXED
+            'CountryCode'       => $countryCode,
             'ContactPerson'     => $contactPerson,
             'EmailID'           => $email ?: null,
             'PhoneNo'           => $phone,
@@ -5279,7 +5252,6 @@ class QuotationController extends Controller
             Log::info('saveCustomerDetails - SP response', [
                 'booking_no'   => $bookingNo,
                 'quote_no'     => $quoteNo,
-                'country_id'   => $countryId,
                 'country_code' => $countryCode,
                 'output'       => $output,
                 'input_sent'   => json_decode($input, true),
@@ -5309,7 +5281,6 @@ class QuotationController extends Controller
             }
 
             Log::info('saveCustomerDetails - Success', [
-                'booking_no'    => $bookingNo,
                 'quote_no'      => $quoteNo,
                 'country_code'  => $countryCode,
                 'industry_code' => $industryCode ?: 'not provided',
@@ -5336,231 +5307,6 @@ class QuotationController extends Controller
             ], 500);
         }
     }
-
-
-    /**
-     * Shared PDO helper for sp_Quote_DetailsUpdate.
-     * Used by: saveShipmentDetails, saveInquiryDetails, saveCustomerDetails, createBooking.
-     *
-     * The SP returns a JSON array via OUTPUT parameter — e.g:
-     *   [{"Status":"Success","Remark":"..."},{"Status":"Failed","Remark":"..."}]
-     *
-     * Returns the first element as an associative array with at minimum:
-     *   ['Status' => 'Success'|'Failed', 'Remark' => '...']
-     */
-    // public function saveCustomerDetails(Request $request)
-    // {
-    //     $request->validate([
-    //         'booking_no' => 'required_without:id|string|nullable',
-    //         'id'         => 'required_without:booking_no|string|nullable',
-    //     ]);
-
-    //     $submittedBy = auth()->user()->displayName ?? auth()->user()->Email ?? 'system';
-
-    //     // ── Resolve quotation ────────────────────────────────────────────────────
-    //     if ($request->filled('booking_no')) {
-    //         $quotation = DB::connection('sqlsrv')
-    //             ->table('Quote_QuotationInfo')
-    //             ->where('bookingno', $request->booking_no)
-    //             ->first(['ID', 'QuoteNo', 'bookingno', 'CustomerType', 'AgentType', 'clientid']);
-    //     } else {
-    //         $quotation = DB::connection('sqlsrv')
-    //             ->table('Quote_QuotationInfo')
-    //             ->where('ID', $request->id)
-    //             ->first(['ID', 'QuoteNo', 'bookingno', 'CustomerType', 'AgentType', 'clientid']);
-    //     }
-
-    //     if (!$quotation) {
-    //         return response()->json(['success' => false, 'message' => 'Quotation not found'], 404);
-    //     }
-
-    //     $bookingNo = $quotation->bookingno;
-    //     $quoteNo   = $quotation->QuoteNo;
-
-    //     $resolve = fn(...$keys) => collect($keys)
-    //         ->map(fn($k) => trim($request->input($k, '')))
-    //         ->first(fn($v) => $v !== '') ?? '';
-
-    //     $company       = $resolve('company',        'companyname');
-    //     $address1      = $resolve('address1',       'pri_partner_steet');
-    //     $address2      = $resolve('address2',       'pri_partner_steet2');
-    //     $city          = $resolve('city',           'pri_partner_city');
-    //     $zipCode       = $resolve('zip_code',       'pri_partner_zip');
-    //     $state         = $resolve('state',          'pri_partner_statename');
-    //     $contactPerson = $resolve('contact_person', 'pri_partnermaster_name');
-    //     $emailId       = $resolve('email',          'pri_partner_email');
-    //     $phone         = $resolve('phone',          'pri_partner_phone');
-    //     $industryName  = $resolve('industry',       'industryname');
-    //     $customerType  = $resolve('customer_type',  'CustomerType') ?: ($quotation->CustomerType ?? '');
-    //     $agentType     = $resolve('agent_type',     'AgentType')    ?: ($quotation->AgentType    ?? '');
-
-    //     // ClientID: use autocomplete selection if available, otherwise keep existing
-    //     $clientId = $resolve('client_id', 'clientid') ?: ($quotation->clientid ?? '');
-
-    //     // ── Validation ───────────────────────────────────────────────────────────
-    //     if (empty($address1)) {
-    //         return response()->json(['success' => false, 'message' => 'Address Line 1 is mandatory'], 422);
-    //     }
-
-    //     if (empty($customerType)) {
-    //         return response()->json(['success' => false, 'message' => 'Customer Type cannot be blank'], 422);
-    //     }
-
-    //     if (!empty($emailId) && !filter_var($emailId, FILTER_VALIDATE_EMAIL)) {
-    //         return response()->json(['success' => false, 'message' => 'Email ID format is invalid'], 422);
-    //     }
-
-    //     // ── Country resolution ───────────────────────────────────────────────────
-    //     // Frontend sends 2-digit ISO code via data-code attribute (e.g. "KE").
-    //     // We write countrycode (ISO) and countryname (full name) only.
-    //     // pri_partner_countryid is a bigint whose source cannot be reliably resolved
-    //     // from PHP — skipped intentionally.
-    //     $countryCode = trim($resolve('country', 'pri_partner_countryname'));
-
-    //     if (empty($countryCode)) {
-    //         return response()->json(['success' => false, 'message' => 'Country is required'], 422);
-    //     }
-
-    //     $countryRow = DB::connection('sqlsrv')
-    //         ->table('Cust_Country')
-    //         ->whereRaw('LTRIM(RTRIM(Code)) = ?', [$countryCode])
-    //         ->first(['ID', 'Code', 'Name']);
-
-    //     if (!$countryRow) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => "Country code '{$countryCode}' was not found in the system.",
-    //         ], 422);
-    //     }
-
-    //     // ── Industry resolution ──────────────────────────────────────────────────
-    //     // We write industrytypecode (Code) and industrytype (Name) only.
-    //     // pri_rrp_industryid is a bigint stored as 0 in existing records —
-    //     // the SP never populated it correctly either, so we skip it.
-    //     if (empty($industryName)) {
-    //         return response()->json(['success' => false, 'message' => 'Industry is mandatory'], 422);
-    //     }
-
-    //     $industryRow = DB::connection('sqlsrv')
-    //         ->table('FITSCMUAT.dbo.Cust_Industry')
-    //         ->whereRaw('LTRIM(RTRIM(Name)) = ?', [$industryName])
-    //         ->first(['ID', 'Code', 'Name']);
-
-    //     if (!$industryRow) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => "Industry '{$industryName}' could not be resolved to an industry code.",
-    //         ], 422);
-    //     }
-
-    //     $industryCode = trim($industryRow->Code);
-
-    //     // ── AgentType resolution ─────────────────────────────────────────────────
-    //     // AgentTypeId is uniqueidentifier — binds correctly as a plain string.
-    //     $agentId = null;
-    //     if (stripos($customerType, 'Agent') !== false) {
-    //         if (empty($agentType)) {
-    //             return response()->json([
-    //                 'success' => false,
-    //                 'message' => 'Agent Type is mandatory when Customer Type contains Agent',
-    //             ], 422);
-    //         }
-
-    //         $agentRow = DB::connection('sqlsrv')
-    //             ->table('FITSCMUAT.dbo.Cust_ClientParentGroup')
-    //             ->whereRaw('LTRIM(RTRIM(Name)) = ?', [$agentType])
-    //             ->first(['Id']);
-
-    //         if (!$agentRow) {
-    //             return response()->json([
-    //                 'success' => false,
-    //                 'message' => "Agent Type '{$agentType}' was not found in the system.",
-    //             ], 422);
-    //         }
-
-    //         $agentId = $agentRow->Id;
-    //     }
-
-    //     Log::info('saveCustomerDetails - Writing directly to Quote_QuotationInfo', [
-    //         'booking_no'    => $bookingNo,
-    //         'quote_no'      => $quoteNo,
-    //         'country_code'  => $countryCode,
-    //         'country_name'  => $countryRow->Name,
-    //         'industry_code' => $industryCode,
-    //         'customer_type' => $customerType,
-    //         'agent_type'    => $agentType ?: 'N/A',
-    //         'client_id'     => $clientId  ?: 'N/A',
-    //         'user'          => $submittedBy,
-    //     ]);
-
-    //     try {
-    //         // ── Build update payload ─────────────────────────────────────────────
-    //         // Only overwrite a column when the incoming value is non-empty,
-    //         // matching the SP's IIF(LEN(ISNULL(@field,''))<=0, existing, new) pattern.
-    //         $update = [
-    //             'LastModifiedBy' => $submittedBy,
-    //             'updatedon'      => now(),
-    //         ];
-
-    //         if (!empty($company))        $update['companyname']             = $company;
-    //         if (!empty($clientId))       $update['clientid']                = $clientId;
-    //         if (!empty($contactPerson))  $update['pri_partnermaster_name']  = $contactPerson;
-    //         if (!empty($state))          $update['pri_partner_statename']   = $state;
-    //         if (!empty($address1))       $update['pri_partner_steet']       = $address1;
-    //         if (!empty($address2))       $update['pri_partner_steet2']      = $address2;
-    //         if (!empty($city))           $update['pri_partner_city']        = $city;
-    //         if (!empty($zipCode))        $update['pri_partner_zip']         = $zipCode;
-    //         if (!empty($emailId))        $update['pri_partner_email']       = $emailId;
-    //         if (!empty($phone)) {
-    //             $update['pri_partner_phone']  = $phone;
-    //             $update['pri_partner_mobile'] = $phone;
-    //         }
-    //         if (!empty($customerType))   $update['CustomerType']            = $customerType;
-    //         if (!empty($agentType) && $agentId) {
-    //             $update['AgentType']   = $agentType;
-    //             $update['AgentTypeId'] = $agentId; // uniqueidentifier — binds correctly as string
-    //         }
-
-    //         // Country — varchar columns only; skip pri_partner_countryid (bigint, source unknown)
-    //         $update['pri_partner_countrycode'] = $countryRow->Code; // "KE"
-    //         $update['pri_partner_countryname'] = $countryRow->Name; // "Kenya"
-
-    //         // Industry — varchar columns only; skip pri_rrp_industryid (bigint, always 0 in DB)
-    //         $update['pri_partner_industrytypecode'] = $industryCode;  // "PRSH"
-    //         $update['pri_partner_industrytype']     = $industryName;  // "Perishables"
-
-    //         DB::connection('sqlsrv')
-    //             ->table('Quote_QuotationInfo')
-    //             ->where('QuoteNo', $quoteNo)
-    //             ->update($update);
-
-    //         Log::info('saveCustomerDetails - Success', [
-    //             'booking_no'    => $bookingNo,
-    //             'quote_no'      => $quoteNo,
-    //             'country_code'  => $countryCode,
-    //             'industry_code' => $industryCode,
-    //             'user'          => $submittedBy,
-    //         ]);
-
-    //         return response()->json([
-    //             'success' => true,
-    //             'message' => 'Customer details saved successfully',
-    //         ]);
-    //     } catch (\Exception $e) {
-    //         Log::error('saveCustomerDetails - DB update failed', [
-    //             'booking_no' => $bookingNo,
-    //             'error'      => $e->getMessage(),
-    //             'file'       => $e->getFile(),
-    //             'line'       => $e->getLine(),
-    //         ]);
-
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => $e->getMessage(),
-    //         ], 500);
-    //     }
-    // }
-
 
     /**
      * Shared PDO helper for sp_Quote_DetailsUpdate.
