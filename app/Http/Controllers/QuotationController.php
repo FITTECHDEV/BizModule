@@ -6768,7 +6768,7 @@ class QuotationController extends Controller
                 'success'        => true,
                 'new_booking_no' => $newQuoteNo,
                 'new_id'         => $newQuotation->ID,
-                'redirect_url'   => route('quotation.edit', $newQuotation->ID) . '?copied=1',
+                'redirect_url'   => route('quotation.edit', $newQuotation->ID),
             ]);
         } catch (\Exception $e) {
             Log::error('processDuplicate - Failed', [

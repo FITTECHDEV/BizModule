@@ -77,8 +77,7 @@
         <div class="col-md-4">
 
             <!-- Booking Details -->
-            <div class="card card-primary" data-card-section="inquiry"
-                data-save-url="{{ route('quotation.inquiry.save') }}">
+            <div class="card card-primary">
                 <div class="card-header">
                     <h3 class="card-title">Inquiry Details</h3>
                     <div class="card-tools">
@@ -103,42 +102,28 @@
                         </div>
                     </div>
                     <div class="form-group row">
-                        <label class="col-sm-5 col-form-label">Sales person</label>
-                        <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" data-field="username"
-                                data-code="{{ $quotation->SalesPersonCode ?? '' }}" value="{{ $quotation->username ?? '' }}"
-                                readonly>
-                        </div>
-                    </div>
-
-                    <div class="form-group row">
-                        <label class="col-sm-5 col-form-label">Sales Person Email</label>
-                        <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" data-field="SalesPersonEmail"
-                                value="{{ $quotation->SalesPersonEmail ?? '' }}" readonly>
-                        </div>
-                    </div>
-                    <div class="form-group row mb-0">
                         <label class="col-sm-5 col-form-label">Office</label>
                         <div class="col-sm-7">
                             <input type="text" class="form-control form-control-sm" data-field="teamname"
                                 value="{{ $quotation->teamname ?? '' }}" readonly>
                         </div>
                     </div>
-                </div>
-                @if ($isInProgress)
-                    <div class="card-footer card-action-footer">
-                        <button type="button" class="btn btn-warning btn-xs btn-card-edit">
-                            <i class="fas fa-edit mr-1"></i> Edit
-                        </button>
-                        <button type="button" class="btn btn-success btn-xs btn-card-save" style="display:none;">
-                            <i class="fas fa-save mr-1"></i> Save
-                        </button>
-                        <button type="button" class="btn btn-secondary btn-xs btn-card-cancel" style="display:none;">
-                            <i class="fas fa-times mr-1"></i> Cancel
-                        </button>
+                    <div class="form-group row">
+                        <label class="col-sm-5 col-form-label">Sales Person</label>
+                        <div class="col-sm-7">
+                            <input type="text" class="form-control form-control-sm" data-field="username"
+                                data-code="{{ $quotation->SalesPersonCode ?? '' }}" value="{{ $quotation->username ?? '' }}"
+                                readonly>
+                        </div>
                     </div>
-                @endif
+                    <div class="form-group row mb-0">
+                        <label class="col-sm-5 col-form-label">Sales Person Email</label>
+                        <div class="col-sm-7">
+                            <input type="text" class="form-control form-control-sm" data-field="SalesPersonEmail"
+                                value="{{ $quotation->SalesPersonEmail ?? '' }}" readonly>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Shipment Details -->
@@ -172,25 +157,21 @@
                     </div>
 
                     {{-- Origin Country --}}
-                    <input type="text" class="form-control form-control-sm" id="viewOriginCountryDisplay"
-                        value="{{ $quotation->origincountry ?? '' }}" readonly>
-                    <div id="viewOriginCountryEditWrap" style="display:none;">
-                        <input type="text" class="form-control form-control-sm mb-1" id="viewOriginCountrySearch"
-                            placeholder="Search country...">
-                        <select class="form-control form-control-sm" id="viewOriginCountrySelect">
-                            <option value="">-- Select --</option>
-                        </select>
+                    <div class="form-group row">
+                        <label class="col-sm-5 col-form-label">Origin Country</label>
+                        <div class="col-sm-7">
+                            <input type="text" class="form-control form-control-sm" id="viewOriginCountryDisplay"
+                                value="{{ $quotation->origincountry ?? '' }}" readonly>
+                        </div>
                     </div>
 
                     {{-- Destination Country --}}
-                    <input type="text" class="form-control form-control-sm" id="viewDestCountryDisplay"
-                        value="{{ $quotation->destinationcountry ?? '' }}" readonly>
-                    <div id="viewDestCountryEditWrap" style="display:none;">
-                        <input type="text" class="form-control form-control-sm mb-1" id="viewDestCountrySearch"
-                            placeholder="Search country...">
-                        <select class="form-control form-control-sm" id="viewDestCountrySelect">
-                            <option value="">-- Select --</option>
-                        </select>
+                    <div class="form-group row">
+                        <label class="col-sm-5 col-form-label">Destination Country</label>
+                        <div class="col-sm-7">
+                            <input type="text" class="form-control form-control-sm"
+                                value="{{ $quotation->destinationcountry ?? '' }}" readonly>
+                        </div>
                     </div>
 
                     {{-- InCO Terms --}}
@@ -199,9 +180,6 @@
                         <div class="col-sm-7">
                             <input type="text" class="form-control form-control-sm" id="viewIncoTermDisplay"
                                 value="{{ $quotation->incoterm ?? '' }}" readonly>
-                            <select class="form-control form-control-sm d-none" id="viewIncoTermSelect" disabled>
-                                <option value="">-- Select --</option>
-                            </select>
                         </div>
                     </div>
 
@@ -211,9 +189,6 @@
                         <div class="col-sm-7">
                             <input type="text" class="form-control form-control-sm" id="viewShipmentModeDisplay"
                                 value="{{ $quotation->shipmentmode ?? '' }}" readonly>
-                            <select class="form-control form-control-sm d-none" id="viewShipmentModeSelect" disabled>
-                                <option value="">-- Select --</option>
-                            </select>
                         </div>
                     </div>
 
@@ -223,9 +198,6 @@
                         <div class="col-sm-7">
                             <input type="text" class="form-control form-control-sm" id="viewTransportModeDisplay"
                                 value="{{ $quotation->TransportMode ?? '' }}" readonly>
-                            <select class="form-control form-control-sm d-none" id="viewTransportModeSelect" disabled>
-                                <option value="">-- Select --</option>
-                            </select>
                         </div>
                     </div>
 
@@ -235,33 +207,14 @@
                         <div class="col-sm-7">
                             <input type="text" class="form-control form-control-sm" id="viewServiceClassDisplay"
                                 value="{{ $quotation->ServiceClass ?? '' }}" readonly>
-                            <select class="form-control form-control-sm d-none" id="viewServiceClassSelect" disabled>
-                                <option value="">-- Select --</option>
-                            </select>
                         </div>
                     </div>
 
                 </div>
-                @if ($isInProgress)
-                    <div class="card-footer card-action-footer">
-                        <button type="button" class="btn btn-warning btn-xs" id="viewShipmentEditBtn">
-                            <i class="fas fa-edit mr-1"></i> Edit
-                        </button>
-                        <button type="button" class="btn btn-success btn-xs" id="viewShipmentSaveBtn"
-                            style="display:none;">
-                            <i class="fas fa-save mr-1"></i> Save
-                        </button>
-                        <button type="button" class="btn btn-secondary btn-xs" id="viewShipmentCancelBtn"
-                            style="display:none;">
-                            <i class="fas fa-times mr-1"></i> Cancel
-                        </button>
-                    </div>
-                @endif
             </div>
 
             <!-- Cargo Details -->
-            <div class="card card-primary" data-card-section="cargo"
-                data-save-url="{{ route('quotation.cargo.save') }}">
+            <div class="card card-primary">
                 <div class="card-header">
                     <h3 class="card-title">Cargo Details</h3>
                     <div class="card-tools">
@@ -283,19 +236,6 @@
                         <div class="col-sm-7">
                             <input type="text" class="form-control form-control-sm" id="viewScopeVolumeDisplay"
                                 value="{{ $quotation->scopevolume ?? '' }}" readonly>
-                            <select class="form-control form-control-sm d-none" id="viewScopeVolumeSelect"
-                                data-field="scopevolume" disabled>
-                                <option value="">-- Select --</option>
-                                <option value="Weight (in KGS)"
-                                    {{ ($quotation->scopevolume ?? '') === 'Weight (in KGS)' ? 'selected' : '' }}>Weight
-                                    (in KGS)</option>
-                                <option value="Volume (In CBM)"
-                                    {{ ($quotation->scopevolume ?? '') === 'Volume (In CBM)' ? 'selected' : '' }}>Volume
-                                    (In CBM)</option>
-                                <option value="Containerized"
-                                    {{ ($quotation->scopevolume ?? '') === 'Containerized' ? 'selected' : '' }}>
-                                    Containerized</option>
-                            </select>
                         </div>
                     </div>
                     <div class="form-group row">
@@ -327,19 +267,6 @@
                         </div>
                     </div>
                 </div>
-                @if ($isInProgress)
-                    <div class="card-footer card-action-footer">
-                        <button type="button" class="btn btn-warning btn-xs btn-card-edit">
-                            <i class="fas fa-edit mr-1"></i> Edit
-                        </button>
-                        <button type="button" class="btn btn-success btn-xs btn-card-save" style="display:none;">
-                            <i class="fas fa-save mr-1"></i> Save
-                        </button>
-                        <button type="button" class="btn btn-secondary btn-xs btn-card-cancel" style="display:none;">
-                            <i class="fas fa-times mr-1"></i> Cancel
-                        </button>
-                    </div>
-                @endif
             </div>
 
             <!-- Quotation Document -->
@@ -440,8 +367,8 @@
         <div class="col-md-8">
 
             <!-- Customer Details -->
-            <div class="card card-primary" data-card-section="customer"
-                data-save-url="{{ route('quotation.customer.save') }}">
+            <div class="card card-primary">
+
                 <div class="card-header">
                     <h3 class="card-title">Customer Details</h3>
                     <div class="card-tools">
@@ -461,10 +388,7 @@
                                 </div>
                             </div>
                             <div class="form-group row">
-                                <label class="col-sm-4 col-form-label">
-                                    Address 1 <span class="text-danger address1-required-star"
-                                        style="display:none;">*</span>
-                                </label>
+                                <label class="col-sm-4 col-form-label">Address 1</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm"
                                         data-field="pri_partner_steet" value="{{ $quotation->pri_partner_steet ?? '' }}"
@@ -564,19 +488,6 @@
                         </div>
                     </div>
                 </div>
-                @if ($isInProgress)
-                    <div class="card-footer card-action-footer">
-                        <button type="button" class="btn btn-warning btn-xs btn-card-edit">
-                            <i class="fas fa-edit mr-1"></i> Edit
-                        </button>
-                        <button type="button" class="btn btn-success btn-xs btn-card-save" style="display:none;">
-                            <i class="fas fa-save mr-1"></i> Save
-                        </button>
-                        <button type="button" class="btn btn-secondary btn-xs btn-card-cancel" style="display:none;">
-                            <i class="fas fa-times mr-1"></i> Cancel
-                        </button>
-                    </div>
-                @endif
             </div>
 
             {{--
@@ -832,298 +743,6 @@
             const SCOPE_OF_VOLUME = '{{ $quotation->scopevolume ?? '' }}';
 
             // ============================================================
-            // CARD EDITOR — per-card Edit / Save / Cancel
-            // ============================================================
-            class CardEditor {
-                constructor(cardEl) {
-                    this.card = cardEl;
-                    this.section = cardEl.dataset.cardSection;
-                    this.saveUrl = cardEl.dataset.saveUrl;
-                    this.snapshot = {};
-                    this._bind();
-                }
-
-                _fields() {
-                    return Array.from(this.card.querySelectorAll('[data-field]'));
-                }
-
-                _bind() {
-                    this.card.querySelector('.btn-card-edit')
-                        ?.addEventListener('click', () => this.enterEdit());
-                    this.card.querySelector('.btn-card-save')
-                        ?.addEventListener('click', () => this.save());
-                    this.card.querySelector('.btn-card-cancel')
-                        ?.addEventListener('click', () => this.cancel());
-                }
-
-                enterEdit() {
-                    this.snapshot = {};
-                    this._fields().forEach(input => {
-                        this.snapshot[input.dataset.field] = input.value;
-                        input.removeAttribute('readonly');
-                    });
-                    this.card.classList.add('card-in-edit');
-
-                    const $card = $(this.card);
-                    $card.find('.btn-card-edit').hide();
-                    $card.find('.btn-card-save').show();
-                    $card.find('.btn-card-cancel').show();
-                    $card.find('.card-footer').show();
-
-                    if (this.section === 'customer') {
-                        $card.find('.address1-required-star').show();
-                    }
-
-                    if (this.section === 'cargo') {
-                        $('#viewScopeVolumeDisplay').addClass('d-none');
-                        $('#viewScopeVolumeSelect').removeClass('d-none').prop('disabled', false);
-                    }
-                }
-
-                cancel() {
-                    this._fields().forEach(input => {
-                        input.value = this.snapshot[input.dataset.field] ?? input.value;
-                        input.setAttribute('readonly', true);
-                    });
-                    this.card.classList.remove('card-in-edit');
-
-                    const $card = $(this.card);
-                    $card.find('.btn-card-edit').show();
-                    $card.find('.btn-card-save').hide();
-                    $card.find('.btn-card-cancel').hide();
-                    $card.find('.card-footer').show();
-
-                    if (this.section === 'customer') {
-                        $card.find('.address1-required-star').hide();
-                    }
-
-                    this.snapshot = {};
-
-                    if (this.section === 'cargo') {
-                        $('#viewScopeVolumeSelect').addClass('d-none').prop('disabled', true);
-                        $('#viewScopeVolumeDisplay').removeClass('d-none');
-                    }
-                }
-
-                save() {
-                    const $card = $(this.card);
-                    const saveBtn = this.card.querySelector('.btn-card-save');
-                    const payload = {
-                        _token: '{{ csrf_token() }}',
-                        id: '{{ $quotation->ID }}'
-                    };
-                    this._fields().forEach(input => {
-                        payload[input.dataset.field] = input.value;
-                    });
-
-                    saveBtn.disabled = true;
-                    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Saving...';
-
-                    // ── Inquiry ───────────────────────────────────────────────────────
-                    if (this.section === 'inquiry') {
-                        const $displayInput = $(this.card).find('input[data-field="username"]');
-                        const salesPersonCode = $displayInput.attr('data-code') || '';
-                        const salesPersonEmail = (payload['SalesPersonEmail'] || '').trim();
-
-                        if (!salesPersonCode) {
-                            toastr.error('Please select a Sales Person from the suggestions.');
-                            saveBtn.disabled = false;
-                            saveBtn.innerHTML = '<i class="fas fa-save mr-1"></i> Save';
-                            return;
-                        }
-                        if (!salesPersonEmail) {
-                            toastr.error('Sales Person Email is required.');
-                            saveBtn.disabled = false;
-                            saveBtn.innerHTML = '<i class="fas fa-save mr-1"></i> Save';
-                            return;
-                        }
-
-                        $.ajax({
-                            url: this.saveUrl,
-                            type: 'POST',
-                            data: {
-                                _token: '{{ csrf_token() }}',
-                                booking_no: bookingNo,
-                                sales_person_code: salesPersonCode,
-                                sales_person_email: salesPersonEmail,
-                            },
-                            success: (res) => {
-                                if (res.success) {
-                                    this._fields().forEach(i => i.setAttribute('readonly', true));
-                                    this.card.classList.remove('card-in-edit');
-                                    $card.find('.btn-card-edit').show();
-                                    $card.find('.btn-card-save, .btn-card-cancel').hide();
-                                    $card.find('.card-footer').show();
-                                    this.snapshot = {};
-                                    toastr.success('Inquiry details saved.');
-                                } else {
-                                    toastr.error(res.message || 'Save failed.');
-                                    saveBtn.disabled = false;
-                                    saveBtn.innerHTML = '<i class="fas fa-save mr-1"></i> Save';
-                                }
-                            },
-                            error: (xhr) => {
-                                toastr.error(xhr.responseJSON?.message || 'Unexpected error.');
-                                saveBtn.disabled = false;
-                                saveBtn.innerHTML = '<i class="fas fa-save mr-1"></i> Save';
-                            }
-                        });
-                        return;
-                    }
-
-                    // ── Cargo ─────────────────────────────────────────────────────────
-                    if (this.section === 'cargo') {
-                        const commodity = (payload['commodity'] || '').trim();
-                        if (!commodity) {
-                            toastr.error('Commodity is required.');
-                            saveBtn.disabled = false;
-                            saveBtn.innerHTML = '<i class="fas fa-save mr-1"></i> Save';
-                            return;
-                        }
-                        const scopeVolume = $('#viewScopeVolumeSelect').val();
-                        if (!scopeVolume) {
-                            toastr.error('Scope of Volume is required.');
-                            saveBtn.disabled = false;
-                            saveBtn.innerHTML = '<i class="fas fa-save mr-1"></i> Save';
-                            return;
-                        }
-
-                        $.ajax({
-                            url: this.saveUrl,
-                            type: 'POST',
-                            data: {
-                                _token: '{{ csrf_token() }}',
-                                quote_no: '{{ $quotation->QuoteNo ?? '' }}',
-                                scope_volume: scopeVolume,
-                                commodity: commodity,
-                                cargo_volume: payload['cargovolume'] || 0,
-                                containers: ''
-                            },
-                            success: (res) => {
-                                if (res.success) {
-                                    $('#viewScopeVolumeSelect').addClass('d-none').prop('disabled',
-                                        true);
-                                    $('#viewScopeVolumeDisplay')
-                                        .val($('#viewScopeVolumeSelect option:selected').text())
-                                        .removeClass('d-none');
-                                    this._fields().forEach(i => i.setAttribute('readonly', true));
-                                    this.card.classList.remove('card-in-edit');
-                                    $card.find('.btn-card-edit').show();
-                                    $card.find('.btn-card-save, .btn-card-cancel').hide();
-                                    $card.find('.card-footer').show();
-                                    this.snapshot = {};
-                                    toastr.success('Cargo details saved successfully.');
-                                } else {
-                                    toastr.error(res.message || 'Save failed.');
-                                    saveBtn.disabled = false;
-                                    saveBtn.innerHTML = '<i class="fas fa-save mr-1"></i> Save';
-                                }
-                            },
-                            error: (xhr) => {
-                                toastr.error(xhr.responseJSON?.message || 'Unexpected error.');
-                                saveBtn.disabled = false;
-                                saveBtn.innerHTML = '<i class="fas fa-save mr-1"></i> Save';
-                            }
-                        });
-                        return;
-                    }
-
-                    // ── Customer ──────────────────────────────────────────────────────
-                    // View page has no Country/CustomerType dropdowns so those values
-                    // are passed from PHP unchanged. SP is still called for validation.
-                    if (this.section === 'customer') {
-                        const address1 = (payload['pri_partner_steet'] || '').trim();
-                        if (!address1) {
-                            toastr.error('Address 1 is required.');
-                            saveBtn.disabled = false;
-                            saveBtn.innerHTML = '<i class="fas fa-save mr-1"></i> Save';
-                            return;
-                        }
-
-                        $.ajax({
-                            url: '{{ route('quotation.customer.save') }}',
-                            type: 'POST',
-                            data: {
-                                _token: '{{ csrf_token() }}',
-                                id: '{{ $quotation->ID }}',
-                                company: payload['companyname'] || '',
-                                address1: payload['pri_partner_steet'] || '',
-                                address2: payload['pri_partner_steet2'] || '',
-                                city: payload['pri_partner_city'] || '',
-                                state: payload['pri_partner_statename'] || '',
-                                zip_code: payload['pri_partner_zip'] || '',
-                                contact_person: payload['pri_partnermaster_name'] || '',
-                                email: payload['pri_partner_email'] || '',
-                                phone: payload['pri_partner_phone'] || '',
-                                client_id: payload['clientid'] || '',
-                                industry: payload['industryname'] || '',
-                                customer_type: '{{ addslashes($quotation->CustomerType ?? '') }}',
-                                agent_type: '{{ addslashes($quotation->AgentType ?? '') }}',
-                                country: '{{ addslashes($quotation->pri_partner_countrycode ?? '') }}',
-                            },
-                            success: (res) => {
-                                if (res.success) {
-                                    this._fields().forEach(i => i.setAttribute('readonly', true));
-                                    this.card.classList.remove('card-in-edit');
-                                    $card.find('.btn-card-edit').show();
-                                    $card.find('.btn-card-save, .btn-card-cancel').hide();
-                                    $card.find('.card-footer').show();
-                                    $card.find('.address1-required-star').hide();
-                                    this.snapshot = {};
-                                    toastr.success('Customer details saved successfully.');
-                                } else {
-                                    toastr.error(res.message || 'Save failed.');
-                                    saveBtn.disabled = false;
-                                    saveBtn.innerHTML = '<i class="fas fa-save mr-1"></i> Save';
-                                }
-                            },
-                            error: (xhr) => {
-                                toastr.error(xhr.responseJSON?.message || 'Unexpected error.');
-                                saveBtn.disabled = false;
-                                saveBtn.innerHTML = '<i class="fas fa-save mr-1"></i> Save';
-                            }
-                        });
-                        return;
-                    }
-
-                    // ── Generic save — any other card ─────────────────────────────────
-                    $.ajax({
-                        url: this.saveUrl,
-                        type: 'POST',
-                        data: payload,
-                        success: (res) => {
-                            if (res.success) {
-                                this._fields().forEach(i => i.setAttribute('readonly', true));
-                                this.card.classList.remove('card-in-edit');
-                                $card.find('.btn-card-edit').show();
-                                $card.find('.btn-card-save, .btn-card-cancel').hide();
-                                $card.find('.card-footer').show();
-                                this.snapshot = {};
-                                toastr.success('Saved successfully.');
-                            } else {
-                                toastr.error(res.message || 'Save failed.');
-                                saveBtn.disabled = false;
-                                saveBtn.innerHTML = '<i class="fas fa-save mr-1"></i> Save';
-                            }
-                        },
-                        error: (xhr) => {
-                            toastr.error(xhr.responseJSON?.message || 'Unexpected error.');
-                            saveBtn.disabled = false;
-                            saveBtn.innerHTML = '<i class="fas fa-save mr-1"></i> Save';
-                        }
-                    });
-                }
-            }
-
-            // Mount CardEditor on every card that declares data-card-section
-            document.querySelectorAll('[data-card-section]').forEach(el => new CardEditor(el));
-
-            // Scope of Volume change — show/hide container section
-            $(document).on('change', '#viewScopeVolumeSelect', function() {
-                $('#viewContainerSection').toggle($(this).val() === 'Containerized');
-            });
-
-            // ============================================================
             // VIEW PAGE — Load containers (read-only table)
             // FIX: was response.data — correct key is response.containers
             // ============================================================
@@ -1148,7 +767,7 @@
                         } else {
                             tbody.append(
                                 '<tr><td colspan="2" class="text-center text-muted">No containers added</td></tr>'
-                                );
+                            );
                         }
                     },
                     error: function() {
@@ -1624,86 +1243,6 @@
                     $(this).data('expanded', true);
                 }
             });
-
-            // ============================================================
-            // INQUIRY CARD — Sales Person autocomplete
-            // ============================================================
-            (function() {
-                const inquiryCard = document.querySelector('[data-card-section="inquiry"]');
-                if (!inquiryCard) return;
-
-                const editBtn = inquiryCard.querySelector('.btn-card-edit');
-                if (!editBtn) return;
-
-                const $displayInput = $(inquiryCard).find('input[data-field="username"]');
-                const $emailInput = $(inquiryCard).find('input[data-field="SalesPersonEmail"]');
-                let spDebounce = null;
-
-                editBtn.addEventListener('click', function() {
-                    setTimeout(initSalesPersonAutocomplete, 100);
-                });
-
-                function initSalesPersonAutocomplete() {
-                    $displayInput.off('input.sp').on('input.sp', function() {
-                        const query = $(this).val().trim();
-                        clearTimeout(spDebounce);
-                        $displayInput.next('ul.sp-suggestions').remove();
-                        if (query.length < 2) return;
-
-                        spDebounce = setTimeout(function() {
-                            $.get('{{ route('quotation.sales-persons') }}', {
-                                    filter: query
-                                })
-                                .done(function(res) {
-                                    if (!res.success || !res.persons.length) return;
-
-                                    const $ul = $('<ul class="list-group sp-suggestions">')
-                                        .css({
-                                            position: 'absolute',
-                                            zIndex: 9999,
-                                            width: $displayInput.outerWidth(),
-                                            maxHeight: '200px',
-                                            overflowY: 'auto',
-                                            background: '#fff',
-                                            border: '1px solid #ced4da',
-                                            borderRadius: '0 0 4px 4px',
-                                            marginTop: '-1px',
-                                            boxShadow: '0 4px 8px rgba(0,0,0,.1)'
-                                        });
-
-                                    $.each(res.persons, function(i, p) {
-                                        const fullName = p.FullName || p
-                                            .Contact_PersonName_FirstName || '';
-                                        $('<li class="list-group-item list-group-item-action">')
-                                            .css({
-                                                cursor: 'pointer',
-                                                padding: '0.4rem 0.75rem',
-                                                fontSize: '0.875rem'
-                                            })
-                                            .text(p.Code + ' — ' + fullName)
-                                            .on('mousedown', function(e) {
-                                                e.preventDefault();
-                                                $displayInput.val(fullName || p
-                                                    .Code).attr('data-code',
-                                                    p.Code);
-                                                $emailInput.val(p.Email || '');
-                                                $ul.remove();
-                                            })
-                                            .appendTo($ul);
-                                    });
-
-                                    $displayInput.after($ul);
-                                });
-                        }, 300);
-                    });
-
-                    $displayInput.off('blur.sp').on('blur.sp', function() {
-                        setTimeout(function() {
-                            $displayInput.next('ul.sp-suggestions').remove();
-                        }, 200);
-                    });
-                }
-            }());
 
             // ============================================================
             // CARD COLLAPSE
