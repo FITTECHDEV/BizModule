@@ -131,28 +131,29 @@
                                     value="{{ $quotation->process ?? '' }}" readonly>
                             </div>
                         </div>
+                        {{-- Origin Country field: --}}
                         <div class="form-group row">
                             <label class="col-sm-5 col-form-label">Origin Country</label>
                             <div class="col-sm-7">
                                 <input type="text" class="form-control form-control-sm" id="originCountryDisplay"
                                     value="{{ $quotation->origincountry ?? '' }}" readonly>
                                 <div id="originCountryEditWrap" style="display:none;">
-                                    <input type="text" class="form-control form-control-sm mb-1"
-                                        id="originCountrySearch" placeholder="Search country...">
+                                    {{-- REMOVED: <input type="text" id="originCountrySearch"> --}}
                                     <select class="form-control form-control-sm" id="originCountrySelect">
                                         <option value="">-- Select --</option>
                                     </select>
                                 </div>
                             </div>
                         </div>
+
+                        {{-- Destination Country field: --}}
                         <div class="form-group row">
                             <label class="col-sm-5 col-form-label">Destination Country</label>
                             <div class="col-sm-7">
                                 <input type="text" class="form-control form-control-sm" id="destCountryDisplay"
                                     value="{{ $quotation->destinationcountry ?? '' }}" readonly>
                                 <div id="destCountryEditWrap" style="display:none;">
-                                    <input type="text" class="form-control form-control-sm mb-1"
-                                        id="destCountrySearch" placeholder="Search country...">
+                                    {{-- REMOVED: <input type="text" id="destCountrySearch"> --}}
                                     <select class="form-control form-control-sm" id="destCountrySelect">
                                         <option value="">-- Select --</option>
                                     </select>
@@ -191,8 +192,12 @@
                         <div class="form-group row mb-0">
                             <label class="col-sm-5 col-form-label">Service Class</label>
                             <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm"
+                                <input type="text" class="form-control form-control-sm" id="serviceClassDisplay"
                                     value="{{ $quotation->ServiceClass ?? '' }}" readonly>
+                                <select class="form-control form-control-sm d-none" id="serviceClassSelect" disabled>
+                                    <option value="">-- Select --</option>
+                                </select>
+                                {{-- keep this hidden field for the save payload --}}
                                 <input type="hidden" id="serviceClassCode"
                                     value="{{ $quotation->ServiceClassCode ?? ($quotation->ServiceClass ?? '') }}">
                             </div>
@@ -822,8 +827,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             MODALS
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             ============================================ -->
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     MODALS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1385,8 +1390,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1829,9 +1834,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -2153,14 +2158,38 @@
             let incoTermsLoaded = false;
             let originalIncoTerm = '';
 
-            // ── Shared helper ────────────────────────────────────────────────────────
-            function bindShipmentCountrySearch(searchId, selectId) {
-                $('#' + searchId).off('input.sc').on('input.sc', function() {
-                    const term = $(this).val().toLowerCase();
-                    $('#' + selectId + ' option').each(function() {
-                        $(this).toggle($(this).val() === '' || $(this).text().toLowerCase()
-                            .includes(term));
-                    });
+            let serviceClassesLoaded = false;
+            let originalServiceClass = '';
+            let originalServiceClassDisplay = '';
+
+            function loadServiceClasses(callback) {
+                if (serviceClassesLoaded) {
+                    if (typeof callback === 'function') callback();
+                    return;
+                }
+                const savedCode = '{{ $quotation->ServiceClass ?? '' }}';
+                $.ajax({
+                    url: '{{ route('quotation.lookup.serviceClasses') }}',
+                    type: 'GET',
+                    data: {
+                        filter: ''
+                    },
+                    success: function(data) {
+                        const list = Array.isArray(data) ? data : [];
+                        const $sel = $('#serviceClassSelect').empty()
+                            .append('<option value="">-- Select --</option>');
+                        list.forEach(function(item) {
+                            const code = (item.Code || item.ServiceClass || '').trim();
+                            const name = (item.Name || item.Description || code).trim();
+                            $sel.append(
+                                `<option value="${code}" ${code === savedCode ? 'selected' : ''}>${name}</option>`
+                            );
+                        });
+                        serviceClassesLoaded = true;
+                    },
+                    complete: function() {
+                        if (typeof callback === 'function') callback();
+                    }
                 });
             }
 
@@ -2193,8 +2222,6 @@
                         }
                         fill('originCountrySelect', savedOriginCode);
                         fill('destCountrySelect', savedDestCode);
-                        bindShipmentCountrySearch('originCountrySearch', 'originCountrySelect');
-                        bindShipmentCountrySearch('destCountrySearch', 'destCountrySelect');
                         shipmentCountriesLoaded = true;
                     },
                     complete: function() {
@@ -2235,12 +2262,21 @@
                 $('#incoTermDisplay').addClass('d-none');
                 $('#incoTermSelect').removeClass('d-none').prop('disabled', false);
 
+                originalServiceClass = $('#serviceClassSelect').val();
+                originalServiceClassDisplay = $('#serviceClassDisplay').val();
+
                 loadShipmentCountries(function() {
                     $('#originCountryDisplay').hide();
                     $('#originCountryEditWrap').show();
                     $('#destCountryDisplay').hide();
                     $('#destCountryEditWrap').show();
                 });
+
+                loadServiceClasses(function() {
+                    $('#serviceClassDisplay').addClass('d-none');
+                    $('#serviceClassSelect').removeClass('d-none').prop('disabled', false);
+                });
+
 
                 $(this).hide();
                 $('#saveShipmentDetailsBtn, #cancelShipmentDetailsBtn').show();
@@ -2252,12 +2288,15 @@
                 $('#incoTermSelect').val(originalIncoTerm);
                 $('#originCountrySelect').val(originalOriginCountry);
                 $('#destCountrySelect').val(originalDestCountry);
-                $('#originCountrySearch, #destCountrySearch').val('');
 
                 $('#shipmentModeSelect, #transportModeSelect').prop('disabled', true);
 
                 $('#incoTermSelect').addClass('d-none').prop('disabled', true);
                 $('#incoTermDisplay').removeClass('d-none').val(originalIncoTerm);
+
+                $('#serviceClassSelect').val(originalServiceClass).addClass('d-none').prop('disabled',
+                    true);
+                $('#serviceClassDisplay').val(originalServiceClassDisplay).removeClass('d-none');
 
                 $('#originCountryEditWrap').hide();
                 $('#originCountryDisplay').val(originalOriginCountryName).show();
@@ -2275,9 +2314,7 @@
                 const incoTerm = $('#incoTermSelect').val();
                 const originCountry = $('#originCountrySelect').val();
                 const destCountry = $('#destCountrySelect').val();
-
-                const serviceClass = $('#serviceClassCode').val() || '';
-
+                const serviceClass = $('#serviceClassSelect').val();
 
                 if (!shipmentMode) {
                     showNotification('Please select a Shipment Mode', 'error');
@@ -2329,6 +2366,15 @@
                             $('#destCountryDisplay').val(
                                 $('#destCountrySelect option:selected').data('name')
                             ).show();
+
+
+                            $('#serviceClassSelect').addClass('d-none').prop('disabled', true);
+                            $('#serviceClassDisplay').val(
+                                $('#serviceClassSelect option:selected').text()
+                            ).removeClass('d-none');
+                            originalServiceClass = serviceClass;
+                            originalServiceClassDisplay = $(
+                                '#serviceClassSelect option:selected').text();
 
                             $('#saveShipmentDetailsBtn, #cancelShipmentDetailsBtn').hide();
                             $('#editShipmentDetailsBtn').show();
@@ -4874,10 +4920,11 @@
             });
 
             $('#customerTypeSelect').on('change', function() {
+                const selectedType = $(this).val();
                 syncAgentTypeState();
 
-                if ($(this).val() === 'New Agent') {
-                    // Snapshot current field values into the TEMP variable — never touches originalCustomerSnapshot
+                if (selectedType === 'New Agent') {
+                    // Snapshot current values into the TEMP variable
                     newAgentTempSnapshot = {};
                     $('#customerDetailsCard .card-body').find('input:not([type="hidden"])').each(
                         function() {
@@ -4890,7 +4937,7 @@
                     newAgentTempSnapshot['__countrySelect'] = $('#customerCountrySelect').val();
                     newAgentTempSnapshot['__industrySelect'] = $('#customerIndustrySelect').val();
 
-                    // Clear all text inputs
+                    // Clear and enable ALL fields for New Agent
                     $('#customerDetailsCard .card-body').find('input:not([type="hidden"])')
                         .val('').prop('readonly', false)
                         .css({
@@ -4899,7 +4946,7 @@
                         });
 
                 } else {
-                    // Switching away from New Agent — restore from TEMP (not from the Cancel snapshot)
+                    // Restore from TEMP snapshot if switching away from New Agent
                     if (Object.keys(newAgentTempSnapshot).length) {
                         $('#customerDetailsCard .card-body').find('input:not([type="hidden"])').each(
                             function() {
@@ -4915,17 +4962,19 @@
                         newAgentTempSnapshot = {};
                     }
 
-                    // FIX 2: Only clear the yellow highlight — do NOT set readonly here.
-                    // The user is still in edit mode; Cancel owns the readonly reset.
-                    // Re-enable the two explicitly-editable fields in case they were cleared
-                    // by the New Agent branch above.
-                    $('#customerDetailsCard .card-body').find('input:not([type="hidden"])')
+                    // For ALL other types: lock every field except Company Name (Address 1 edit already
+                    // captured in originalCustomerSnapshot and protected by the save validation).
+                    // Only Company Name remains editable.
+                    $('#customerDetailsCard .card-body')
+                        .find('input:not([type="hidden"])')
                         .css({
                             'background-color': '',
                             'border-color': ''
-                        });
+                        })
+                        .prop('readonly', true);
+
+                    // Re-enable only Company Name
                     $('input[data-field="companyname"]').prop('readonly', false);
-                    $('input[data-field="pri_partner_steet"]').prop('readonly', false);
                 }
             });
 

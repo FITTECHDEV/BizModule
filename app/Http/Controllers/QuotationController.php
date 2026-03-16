@@ -5317,8 +5317,9 @@ class QuotationController extends Controller
             ]);
 
             return response()->json([
-                'success' => true,
-                'message' => 'Customer details saved successfully',
+                'success'  => true,
+                'message'  => 'Customer details saved successfully',
+                'quote_no' => $quoteNo,   // e.g. "KE-QT-26-00004"
             ]);
         } catch (\Exception $e) {
 
