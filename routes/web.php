@@ -765,6 +765,7 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
         ->name('quotation.transport-modes');
     Route::get('/quotation/containers', [App\Http\Controllers\QuotationController::class, 'getContainers'])
         ->name('quotation.containers');
+        
 
     // ✅ MOVED UP — were incorrectly placed after {id} wildcards
     Route::get('/quotation/inco-terms', [App\Http\Controllers\QuotationController::class, 'getIncoTerms'])

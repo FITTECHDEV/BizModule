@@ -827,8 +827,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         MODALS
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         ============================================ -->
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     MODALS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1390,8 +1390,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1834,9 +1834,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -2052,9 +2052,12 @@
 
             function setGenerateBtn() {
                 const $btn = $('#generateQuoteBtn');
-                $btn.prop('disabled', termsState.generating);
+                const shouldDisable = termsState.generating || !termsState.applied;
+                $btn.prop('disabled', shouldDisable);
                 if (termsState.generating) {
                     $btn.attr('title', 'Generating…');
+                } else if (!termsState.applied) {
+                    $btn.attr('title', 'Select a Terms & Conditions template first');
                 } else {
                     $btn.removeAttr('title');
                 }
@@ -3953,7 +3956,7 @@
             // GENERATE QUOTE BUTTON
             // ============================================
             $('#generateQuoteBtn').on('click', function() {
-                if (termsState.generating) return;
+                if (termsState.generating || !termsState.applied) return;
 
                 const $btn = $(this);
                 termsState.generating = true;
@@ -3969,13 +3972,12 @@
                     success: function(response) {
                         if (response.success) {
                             showNotification('Quote generated — ' + response.label, 'success');
-                            showNotification('Quote generated — ' + response.label, 'success');
                             if (response.warning) {
                                 showNotification(response.warning, 'warning');
                             }
                             loadVersions();
 
-                            // Reset gate — requirement 4: user must reselect before generating again
+                            // Reset gate — user must reselect before generating again
                             termsState.applied = false;
                             termsState.generating = false;
 
@@ -4009,8 +4011,6 @@
                         setGenerateBtn();
                     },
                     complete: function() {
-                        // jQuery fires complete AFTER success/error — termsState.generating
-                        // is already false here. Button label restored; state managed above.
                         $btn.html('<i class="fas fa-file-alt mr-1"></i> Generate Quote');
                     }
                 });
@@ -4019,7 +4019,6 @@
             // Load versions on page init
             loadVersions();
             loadTermsTemplates();
-
 
             // ============================================
             // EMAIL QUOTE — TEMPLATE LOADING
@@ -4053,7 +4052,8 @@
                                 response.templates.forEach(function(t) {
                                     emailTemplateMap[t.Name] = t.Description || '';
                                     $select.append(
-                                        `<option value="${t.Name}">${t.Name}</option>`);
+                                        `<option value="${t.Name}">${t.Name}</option>`
+                                    );
                                 });
                             } else {
                                 const msg = response.code === 'NOT_CONFIGURED' ?
@@ -4071,8 +4071,10 @@
                                 res?.code === 'OFFICE_NOT_FOUND' ?
                                 `⚠ Office not found: ${resolvedOfficeCode}` :
                                 '-- Failed to load templates --';
-                            $select.empty().append(`<option value="" disabled>${msg}</option>`);
-                            console.warn('loadEmailTemplates error:', res?.message || xhr.status);
+                            $select.empty().append(
+                                `<option value="" disabled>${msg}</option>`);
+                            console.warn('loadEmailTemplates error:', res?.message || xhr
+                                .status);
                         },
                         complete: function() {
                             $select.prop('disabled', false);
@@ -4128,11 +4130,13 @@
                         if (response.success && response.versions?.length) {
                             response.versions.forEach(function(v) {
                                 $select.append(
-                                    `<option value="${v.url}">${v.label}</option>`);
+                                    `<option value="${v.url}">${v.label}</option>`
+                                );
                             });
                         } else {
                             $select.append(
-                                '<option value="" disabled>No quotes generated yet</option>');
+                                '<option value="" disabled>No quotes generated yet</option>'
+                            );
                         }
                     },
                     error: function() {
@@ -4191,7 +4195,9 @@
                     },
                     beforeSend: function() {
                         $('#sendEmailQuoteBtn').prop('disabled', true)
-                            .html('<i class="fas fa-spinner fa-spin mr-1"></i> Sending...');
+                            .html(
+                                '<i class="fas fa-spinner fa-spin mr-1"></i> Sending...'
+                            );
                     },
                     success: function(response) {
                         if (response.success) {
@@ -4199,7 +4205,8 @@
                             $('#emailQuoteModal').modal('hide');
                             loadEmailHistory();
                         } else {
-                            showNotification(response.message || 'Failed to send email',
+                            showNotification(response.message ||
+                                'Failed to send email',
                                 'error');
                         }
                     },
@@ -4280,7 +4287,8 @@
 
                 if (!emails.length) {
                     tbody.html(
-                        '<tr><td colspan="3" class="text-center text-muted">No emails sent yet</td></tr>');
+                        '<tr><td colspan="3" class="text-center text-muted">No emails sent yet</td></tr>'
+                    );
                     return;
                 }
 
@@ -4295,12 +4303,13 @@
                 });
             }
 
-            $('#emailQuoteModal .close, #emailQuoteModal button[data-dismiss="modal"]').on('click', function(
-                e) {
-                e.preventDefault();
-                e.stopPropagation();
-                $('#emailQuoteModal').modal('hide');
-            });
+            $('#emailQuoteModal .close, #emailQuoteModal button[data-dismiss="modal"]').on('click',
+                function(
+                    e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    $('#emailQuoteModal').modal('hide');
+                });
 
             $('#emailQuoteModal').on('hidden.bs.modal', function() {
                 $('#emailTemplateSelect').val('');
@@ -4328,7 +4337,8 @@
                 $('#cb_place_of_delivery_code, #cb_place_of_delivery_id').val('');
                 ['cb_place_of_receipt', 'cb_place_of_delivery'].forEach(function(id) {
                     const $el = $('#' + id);
-                    if ($el.hasClass('ui-autocomplete-input')) $el.autocomplete('destroy');
+                    if ($el.hasClass('ui-autocomplete-input')) $el.autocomplete(
+                        'destroy');
                 });
             });
 
@@ -4339,7 +4349,8 @@
                 loadForwarders();
                 // Small delay ensures modal DOM is visible before autocomplete binds
                 setTimeout(function() {
-                    initLocationAutocomplete('cb_place_of_receipt', 'cb_place_of_receipt_code',
+                    initLocationAutocomplete('cb_place_of_receipt',
+                        'cb_place_of_receipt_code',
                         'cb_place_of_receipt_id');
                     initLocationAutocomplete('cb_place_of_delivery',
                         'cb_place_of_delivery_code',
@@ -4373,7 +4384,8 @@
                         }
                     },
                     error: function() {
-                        $select.empty().append('<option value="" disabled>Failed to load</option>');
+                        $select.empty().append(
+                            '<option value="" disabled>Failed to load</option>');
                         showNotification('Failed to load service templates', 'error');
                     },
                     complete: function() {
@@ -4404,11 +4416,13 @@
                             });
                         } else {
                             $select.append(
-                                '<option value="" disabled>No parties available</option>');
+                                '<option value="" disabled>No parties available</option>'
+                            );
                         }
                     },
                     error: function() {
-                        $select.empty().append('<option value="" disabled>Failed to load</option>');
+                        $select.empty().append(
+                            '<option value="" disabled>Failed to load</option>');
                         showNotification('Failed to load bill to parties', 'error');
                     },
                     complete: function() {
@@ -4439,11 +4453,13 @@
                             });
                         } else {
                             $select.append(
-                                '<option value="" disabled>No forwarders available</option>');
+                                '<option value="" disabled>No forwarders available</option>'
+                            );
                         }
                     },
                     error: function() {
-                        $select.empty().append('<option value="" disabled>Failed to load</option>');
+                        $select.empty().append(
+                            '<option value="" disabled>Failed to load</option>');
                         showNotification('Failed to load forwarders', 'error');
                     },
                     complete: function() {
@@ -4479,7 +4495,8 @@
                             type: 'GET',
                             data: {
                                 filter: request.term,
-                                include_country: $('#cb_include_country').is(':checked') ?
+                                include_country: $('#cb_include_country').is(
+                                        ':checked') ?
                                     1 : 0,
                                 country_code: ''
                             },
@@ -4487,7 +4504,8 @@
                                 if (data.success && data.locations.length) {
                                     response(data.locations.map(function(l) {
                                         return {
-                                            label: l.LocationCode + ' — ' +
+                                            label: l.LocationCode +
+                                                ' — ' +
                                                 l
                                                 .LocationName,
                                             value: l.LocationName,
@@ -4581,7 +4599,8 @@
                         quote_id: quotationId,
                         service_template: serviceTemplate,
                         bill_to_party: billToParty,
-                        bill_to_party_id: $('#cb_bill_to_party option:selected').data('id'),
+                        bill_to_party_id: $('#cb_bill_to_party option:selected').data(
+                            'id'),
                         forwarder: forwarder,
                         forwarder_id: $('#cb_forwarder option:selected').data('id'),
                         include_country: $('#cb_include_country').is(':checked') ? 1 : 0,
@@ -4593,25 +4612,30 @@
                     beforeSend: function() {
                         $('#submitCreateBookingBtn').prop('disabled', true)
                             .html(
-                                '<i class="fas fa-spinner fa-spin mr-1"></i> Creating...');
+                                '<i class="fas fa-spinner fa-spin mr-1"></i> Creating...'
+                            );
                     },
                     success: function(response) {
                         if (response.success) {
-                            showNotification('Booking created successfully', 'success');
+                            showNotification('Booking created successfully',
+                                'success');
                             $('#createBookingModal').modal('hide');
                         } else {
-                            showNotification(response.message || 'Failed to create booking',
+                            showNotification(response.message ||
+                                'Failed to create booking',
                                 'error');
                         }
                     },
                     error: function(xhr) {
                         showNotification(
-                            xhr.responseJSON?.message || 'Failed to create booking',
+                            xhr.responseJSON?.message ||
+                            'Failed to create booking',
                             'error'
                         );
                     },
                     complete: function() {
-                        $('#submitCreateBookingBtn').prop('disabled', false).html('Create');
+                        $('#submitCreateBookingBtn').prop('disabled', false).html(
+                            'Create');
                     }
                 });
             });
@@ -4645,7 +4669,8 @@
                     success: function(response) {
                         $select.empty().append('<option value="">-- Select --</option>');
 
-                        if (response.success && Array.isArray(response.data) && response.data
+                        if (response.success && Array.isArray(response.data) && response
+                            .data
                             .length >
                             0) {
                             response.data.forEach(function(item) {
@@ -4660,7 +4685,8 @@
                             $select.append(
                                 '<option value="" disabled>⚠ No customer types available</option>'
                             );
-                            console.warn('fetchCustomerTypes: SP returned empty or failed response',
+                            console.warn(
+                                'fetchCustomerTypes: SP returned empty or failed response',
                                 response);
                         }
                     },
@@ -4700,14 +4726,17 @@
                         'X-CSRF-TOKEN': '{{ csrf_token() }}'
                     },
                     success: function(response) {
-                        $select.empty().append('<option value="">-- Select Agent Type --</option>');
+                        $select.empty().append(
+                            '<option value="">-- Select Agent Type --</option>');
 
-                        if (response.success && Array.isArray(response.data) && response.data
+                        if (response.success && Array.isArray(response.data) && response
+                            .data
                             .length >
                             0) {
                             response.data.forEach(function(item) {
                                 const name = item.Name ?? item.name ?? '';
-                                const isSelected = String(name) === String(SAVED_AGENT_TYPE);
+                                const isSelected = String(name) === String(
+                                    SAVED_AGENT_TYPE);
 
                                 $select.append(
                                     `<option value="${name}" ${isSelected ? 'selected' : ''}>${name}</option>`
@@ -4717,14 +4746,16 @@
                             $select.append(
                                 '<option value="" disabled>-- No agent types available --</option>'
                             );
-                            console.warn('fetchAgentTypes: SP returned empty or failed response',
+                            console.warn(
+                                'fetchAgentTypes: SP returned empty or failed response',
                                 response);
                         }
                     },
                     error: function(xhr) {
                         $select.empty()
                             .append('<option value="">-- Select Agent Type --</option>')
-                            .append('<option value="" disabled>-- Failed to load --</option>');
+                            .append(
+                                '<option value="" disabled>-- Failed to load --</option>');
                         console.error('fetchAgentTypes: AJAX error', xhr);
                     },
                     complete: function() {
@@ -4804,7 +4835,8 @@
 
                         (Array.isArray(data) ? data : []).forEach(function(c) {
                             const name = (c.CountryName || '').trim();
-                            const isoCode = (c.CountryCode || '').trim(); // e.g. "KE"
+                            const isoCode = (c.CountryCode || '')
+                                .trim(); // e.g. "KE"
                             const countryId = (c.CountryID || '').trim(); // UUID
 
                             // Pre-select by ISO code match against savedCustomerCountryCode
@@ -4912,8 +4944,10 @@
                 $('#agentTypeSelect').val(originalAgentType);
 
                 // Restore explicitly-keyed fields
-                $('input[data-field="companyname"]').val(originalCustomerSnapshot.companyName ?? '');
-                $('input[data-field="pri_partner_steet"]').val(originalCustomerSnapshot.address1 ?? '');
+                $('input[data-field="companyname"]').val(originalCustomerSnapshot.companyName ??
+                    '');
+                $('input[data-field="pri_partner_steet"]').val(originalCustomerSnapshot
+                    .address1 ?? '');
 
                 // Restore positionally-keyed fields — same selectors as Edit snapshot
                 const $leftInputs = $(
@@ -4932,17 +4966,21 @@
                 $rightInputs.eq(3).val(originalCustomerSnapshot.emailId ?? '');
 
                 // Restore country — swap back to display input
-                $('#customerCountryDisplay').val(originalCustomerSnapshot.countryDisplay ?? '').show();
+                $('#customerCountryDisplay').val(originalCustomerSnapshot.countryDisplay ?? '')
+                    .show();
                 $('#customerCountryEditWrap').hide();
                 $('#customerCountrySelect').val(originalCustomerSnapshot.countrySelect ?? '')
                     .find('option').show();
 
                 // Restore industry — swap back to display input
-                $('#customerIndustryDisplay').val(originalCustomerSnapshot.industryDisplay ?? '').show();
-                $('#customerIndustrySelect').val(originalCustomerSnapshot.industrySelect ?? '').hide();
+                $('#customerIndustryDisplay').val(originalCustomerSnapshot.industryDisplay ??
+                    '').show();
+                $('#customerIndustrySelect').val(originalCustomerSnapshot.industrySelect ?? '')
+                    .hide();
 
                 // Lock all inputs, clear any New Agent styling
-                $('#customerDetailsCard .card-body input:not([type="hidden"])').prop('readonly', true)
+                $('#customerDetailsCard .card-body input:not([type="hidden"])').prop('readonly',
+                        true)
                     .css({
                         'background-color': '',
                         'border-color': ''
@@ -4957,7 +4995,8 @@
                 $('#editCustomerDetailsBtn').show();
 
                 const $company = $('input[data-field="companyname"]');
-                if ($company.hasClass('ui-autocomplete-input')) $company.autocomplete('destroy');
+                if ($company.hasClass('ui-autocomplete-input')) $company.autocomplete(
+                    'destroy');
                 $('#selectedClientId').val('');
 
                 // FIX 1: syncAgentTypeState() called AFTER editBtn is shown so
@@ -4972,16 +5011,21 @@
                 if (selectedType === 'New Agent') {
                     // Snapshot current values into the TEMP variable
                     newAgentTempSnapshot = {};
-                    $('#customerDetailsCard .card-body').find('input:not([type="hidden"])').each(
-                        function() {
-                            const key = $(this).attr('name') || $(this).data('field') || $(this).attr(
-                                'id');
-                            newAgentTempSnapshot[key] = $(this).val();
-                        });
-                    newAgentTempSnapshot['__countryDisplay'] = $('#customerCountryDisplay').val();
-                    newAgentTempSnapshot['__industryDisplay'] = $('#customerIndustryDisplay').val();
+                    $('#customerDetailsCard .card-body').find('input:not([type="hidden"])')
+                        .each(
+                            function() {
+                                const key = $(this).attr('name') || $(this).data('field') || $(
+                                    this).attr(
+                                    'id');
+                                newAgentTempSnapshot[key] = $(this).val();
+                            });
+                    newAgentTempSnapshot['__countryDisplay'] = $('#customerCountryDisplay')
+                        .val();
+                    newAgentTempSnapshot['__industryDisplay'] = $('#customerIndustryDisplay')
+                        .val();
                     newAgentTempSnapshot['__countrySelect'] = $('#customerCountrySelect').val();
-                    newAgentTempSnapshot['__industrySelect'] = $('#customerIndustrySelect').val();
+                    newAgentTempSnapshot['__industrySelect'] = $('#customerIndustrySelect')
+                        .val();
 
                     // Clear and enable ALL fields for New Agent
                     $('#customerDetailsCard .card-body').find('input:not([type="hidden"])')
@@ -4994,17 +5038,23 @@
                 } else {
                     // Restore from TEMP snapshot if switching away from New Agent
                     if (Object.keys(newAgentTempSnapshot).length) {
-                        $('#customerDetailsCard .card-body').find('input:not([type="hidden"])').each(
-                            function() {
-                                const key = $(this).attr('name') || $(this).data('field') || $(this)
-                                    .attr('id');
-                                if (newAgentTempSnapshot[key] !== undefined) $(this).val(
-                                    newAgentTempSnapshot[key]);
-                            });
-                        $('#customerCountryDisplay').val(newAgentTempSnapshot['__countryDisplay'] || '');
-                        $('#customerIndustryDisplay').val(newAgentTempSnapshot['__industryDisplay'] || '');
-                        $('#customerCountrySelect').val(newAgentTempSnapshot['__countrySelect'] || '');
-                        $('#customerIndustrySelect').val(newAgentTempSnapshot['__industrySelect'] || '');
+                        $('#customerDetailsCard .card-body').find('input:not([type="hidden"])')
+                            .each(
+                                function() {
+                                    const key = $(this).attr('name') || $(this).data('field') ||
+                                        $(this)
+                                        .attr('id');
+                                    if (newAgentTempSnapshot[key] !== undefined) $(this).val(
+                                        newAgentTempSnapshot[key]);
+                                });
+                        $('#customerCountryDisplay').val(newAgentTempSnapshot[
+                            '__countryDisplay'] || '');
+                        $('#customerIndustryDisplay').val(newAgentTempSnapshot[
+                            '__industryDisplay'] || '');
+                        $('#customerCountrySelect').val(newAgentTempSnapshot[
+                            '__countrySelect'] || '');
+                        $('#customerIndustrySelect').val(newAgentTempSnapshot[
+                            '__industrySelect'] || '');
                         newAgentTempSnapshot = {};
                     }
 
@@ -5034,7 +5084,8 @@
                 const agentType = $('#agentTypeSelect').val() || '';
                 const companyName = $('input[data-field="companyname"]').val()?.trim() || '';
                 const address1 = $('input[data-field="pri_partner_steet"]').val()?.trim() || '';
-                const country = $('#customerCountrySelect option:selected').data('code')?.trim() || '';
+                const country = $('#customerCountrySelect option:selected').data('code')
+                    ?.trim() || '';
                 const industry = $('#customerIndustrySelect').val()?.trim() || '';
 
                 if (!customerType) {
@@ -5087,16 +5138,20 @@
                     },
                     beforeSend: function() {
                         $('#saveCustomerDetailsBtn').prop('disabled', true)
-                            .html('<i class="fas fa-spinner fa-spin mr-1"></i> Saving...');
+                            .html(
+                                '<i class="fas fa-spinner fa-spin mr-1"></i> Saving...'
+                            );
                     },
                     success: function(response) {
                         if (response.success) {
-                            showNotification('Customer details saved successfully', 'success');
+                            showNotification('Customer details saved successfully',
+                                'success');
 
                             // FIX: country holds the code — show the human-readable name from
                             // the selected option's data-name attribute instead
                             $('#customerCountryDisplay').val(
-                                $('#customerCountrySelect option:selected').data('name') ||
+                                $('#customerCountrySelect option:selected')
+                                .data('name') ||
                                 ''
                             ).show();
                             $('#customerCountryEditWrap').hide();
@@ -5104,21 +5159,27 @@
                             $('#customerIndustryDisplay').val(industry).show();
                             $('#customerIndustrySelect').hide();
 
-                            $('input[data-field="companyname"]').attr('readonly', true);
-                            $('input[data-field="pri_partner_steet"]').attr('readonly', true);
+                            $('input[data-field="companyname"]').attr('readonly',
+                                true);
+                            $('input[data-field="pri_partner_steet"]').attr(
+                                'readonly', true);
                             $('.customer-mandatory-star').hide();
 
                             originalCustomerType = customerType;
                             originalAgentType = agentType;
-                            $('#customerTypeSelect, #agentTypeSelect').prop('disabled', true);
-                            $('#saveCustomerDetailsBtn, #cancelCustomerDetailsBtn').hide();
+                            $('#customerTypeSelect, #agentTypeSelect').prop(
+                                'disabled', true);
+                            $('#saveCustomerDetailsBtn, #cancelCustomerDetailsBtn')
+                                .hide();
                             $('#editCustomerDetailsBtn').show();
                         } else {
-                            showNotification(response.message || 'Failed to save', 'error');
+                            showNotification(response.message || 'Failed to save',
+                                'error');
                         }
                     },
                     error: function(xhr) {
-                        showNotification(xhr.responseJSON?.message || 'Failed to save',
+                        showNotification(xhr.responseJSON?.message ||
+                            'Failed to save',
                             'error');
                     },
                     complete: function() {
@@ -5139,13 +5200,15 @@
             function clearModalForm(type) {
                 const $modal = type === 'revenue' ? $('#addRevenueModal') : $('#addCostModal');
                 const chargeTypeRadioName = type === 'revenue' ? 'revenueChargeType' : 'costChargeType';
-                const increaseTypeSelectName = type === 'revenue' ? 'revenue_increase_type' : 'cost_increase_type';
+                const increaseTypeSelectName = type === 'revenue' ? 'revenue_increase_type' :
+                    'cost_increase_type';
 
                 $modal.find('input[type="text"], input[type="number"]').val('');
                 $modal.find('input[type="number"]').val('0');
 
                 // Reset selects EXCEPT increase_type — let toggleCostFormFields own its default
-                $modal.find('select').not(`select[name="${increaseTypeSelectName}"]`).prop('selectedIndex', 0);
+                $modal.find('select').not(`select[name="${increaseTypeSelectName}"]`).prop(
+                    'selectedIndex', 0);
 
                 // Reset increase_type to a valid default (Percentage), not blank
                 $modal.find(`select[name="${increaseTypeSelectName}"]`).val('Percentage');
@@ -5167,19 +5230,23 @@
             }
 
             function clearRevenueModalForm() {
-                const currentType = $('#addRevenueModal').find('input[name="revenueChargeType"]:checked').val() ||
+                const currentType = $('#addRevenueModal').find(
+                        'input[name="revenueChargeType"]:checked').val() ||
                     'revenue';
                 clearModalForm('revenue');
-                $(`#addRevenueModal input[name="revenueChargeType"][value="${currentType}"]`).prop('checked', true);
+                $(`#addRevenueModal input[name="revenueChargeType"][value="${currentType}"]`).prop(
+                    'checked', true);
                 toggleRevenueFormFields(currentType);
             }
 
             function clearCostModalForm() {
                 // Read the currently selected type BEFORE clearModalForm resets the form
-                const currentType = $('#addCostModal').find('input[name="costChargeType"]:checked').val() || 'cost';
+                const currentType = $('#addCostModal').find('input[name="costChargeType"]:checked')
+                    .val() || 'cost';
                 clearModalForm('cost');
                 // Re-apply the checked state that clearModalForm wiped
-                $(`#addCostModal input[name="costChargeType"][value="${currentType}"]`).prop('checked', true);
+                $(`#addCostModal input[name="costChargeType"][value="${currentType}"]`).prop('checked',
+                    true);
                 toggleCostFormFields(currentType);
             }
 
@@ -5278,8 +5345,10 @@
                                     success: function(descResponse) {
                                         if (!descResponse.success) return;
 
-                                        const description = descResponse.description;
-                                        $('#termsDescriptionPreview').val(description);
+                                        const description = descResponse
+                                            .description;
+                                        $('#termsDescriptionPreview').val(
+                                            description);
                                         $('#termsDescriptionWrapper').show();
                                         $('#applyTermsBtn').hide();
 
@@ -5300,22 +5369,28 @@
                                                 terms_condition: description,
                                                 template_name: t.Name
                                             },
-                                            success: function(saveResponse) {
-                                                if (saveResponse.success) {
-                                                    termsState.applied =
+                                            success: function(
+                                                saveResponse) {
+                                                if (saveResponse
+                                                    .success) {
+                                                    termsState
+                                                        .applied =
                                                         true; // ← gate opened here
-                                                    setGenerateBtn();
+                                                    setGenerateBtn
+                                                        ();
                                                 } else {
-                                                    showNotification(
-                                                        'Auto-apply T&C failed: ' +
-                                                        (saveResponse
-                                                            .message ||
-                                                            'Unknown error'
-                                                        ),
-                                                        'warning'
-                                                    );
+                                                    showNotification
+                                                        (
+                                                            'Auto-apply T&C failed: ' +
+                                                            (saveResponse
+                                                                .message ||
+                                                                'Unknown error'
+                                                            ),
+                                                            'warning'
+                                                        );
                                                     // termsState.applied stays false — button stays disabled
-                                                    setGenerateBtn();
+                                                    setGenerateBtn
+                                                        ();
                                                 }
                                             },
                                             error: function() {
@@ -5324,7 +5399,8 @@
                                         });
                                     },
                                     error: function() {
-                                        showNotification('Failed to load T&C description',
+                                        showNotification(
+                                            'Failed to load T&C description',
                                             'warning');
                                         setGenerateBtn();
                                     }
@@ -5334,17 +5410,28 @@
                             }
 
                             // ── MULTIPLE TEMPLATES: show dropdown ────────────────────
-                            $select.append('<option value="">-- Select Template --</option>');
+                            $select.append(
+                                '<option value="">-- Select Template --</option>');
                             response.templates.forEach(function(t) {
-                                $select.append(`<option value="${t.Name}">${t.Name}</option>`);
+                                $select.append(
+                                    `<option value="${t.Name}">${t.Name}</option>`
+                                );
                             });
 
                             $('#termsDropdownWrapper').show();
                             $('#termsAutoAppliedBadge').hide();
+                            if (!tcAlreadyApplied) {
+                                $('#termsTemplateSelect').closest('.mt-3.pt-2')
+                                    .find('label').first()
+                                    .append(
+                                        ' <span class="text-danger terms-required-star">*</span>'
+                                    );
+                            }
 
                             @if ($quotation->QuotationTCTemplate)
                                 $('#termsDescriptionPreview').val(
-                                    '{{ addslashes($quotation->terms_condition ?? '') }}');
+                                    '{{ addslashes($quotation->terms_condition ?? '') }}'
+                                );
                                 if ($('#termsDescriptionPreview').val()) {
                                     $('#termsDescriptionWrapper').show();
                                 }
@@ -5377,14 +5464,17 @@
                             `⚠ Office not found: ${codeToUse}` :
                             '-- Failed to load templates --';
                         $select.append(`<option value="" disabled>${msg}</option>`);
-                        console.warn('loadTermsTemplates error:', res?.message || xhr.status);
+                        console.warn('loadTermsTemplates error:', res?.message || xhr
+                            .status);
                         setGenerateBtn();
                     }
                 });
             }
-
             $('#termsTemplateSelect').on('change', function() {
                 const selectedName = $(this).val();
+
+                // Remove required star once user interacts with the dropdown
+                $('.terms-required-star').remove();
 
                 // Reset gate whenever user picks a new template
                 termsState.applied = false;
@@ -5414,8 +5504,10 @@
                     },
                     success: function(response) {
                         if (!response.success) {
-                            $('#termsDescriptionPreview').val('Failed to load description.');
-                            showNotification('Could not load T&C description', 'warning');
+                            $('#termsDescriptionPreview').val(
+                                'Failed to load description.');
+                            showNotification('Could not load T&C description',
+                                'warning');
                             return; // button stays disabled
                         }
 
@@ -5435,10 +5527,12 @@
                             },
                             success: function(saveResponse) {
                                 if (saveResponse.success) {
-                                    termsState.applied = true; // ← gate opens here
+                                    termsState.applied =
+                                        true; // ← gate opens here
                                     setGenerateBtn();
                                 } else {
-                                    showNotification(saveResponse.message ||
+                                    showNotification(saveResponse
+                                        .message ||
                                         'Failed to apply Terms & Conditions',
                                         'error');
                                     setGenerateBtn(); // stays disabled
@@ -5453,7 +5547,8 @@
                         });
                     },
                     error: function() {
-                        $('#termsDescriptionPreview').val('Error loading description.');
+                        $('#termsDescriptionPreview').val(
+                            'Error loading description.');
                         showNotification('Error loading T&C description', 'error');
                         setGenerateBtn();
                     }
@@ -5469,9 +5564,13 @@
                 }
 
                 if (!bookingNo) {
-                    showNotification('No booking number — cannot save Terms & Conditions', 'error');
+                    showNotification('No booking number — cannot save Terms & Conditions',
+                        'error');
                     return;
                 }
+
+                termsState.applied = false;
+                setGenerateBtn();
 
                 $.ajax({
                     url: '{{ route('quotation.communication.save-terms') }}',
@@ -5484,17 +5583,21 @@
                     },
                     beforeSend: function() {
                         $('#applyTermsBtn').prop('disabled', true)
-                            .html('<i class="fas fa-spinner fa-spin mr-1"></i> Saving...');
+                            .html(
+                                '<i class="fas fa-spinner fa-spin mr-1"></i> Saving...'
+                            );
                     },
                     success: function(response) {
                         if (response.success) {
-                            showNotification('Terms & Conditions applied successfully',
+                            showNotification(
+                                'Terms & Conditions applied successfully',
                                 'success');
                             termsState.applied =
                                 true; // ← consistent with all other save-terms paths
                             setGenerateBtn();
                         } else {
-                            showNotification(response.message || 'Failed to apply Terms',
+                            showNotification(response.message ||
+                                'Failed to apply Terms',
                                 'error');
                         }
                     },
@@ -5619,7 +5722,8 @@
 
                 const $typeCell = $('<td>');
                 if (editable) {
-                    const $select = $('<select class="form-control form-control-sm container-type-select">');
+                    const $select = $(
+                        '<select class="form-control form-control-sm container-type-select">');
                     $select.append('<option value="">-- Select --</option>');
                     equipmentTypeOptions.forEach(function(item) {
                         $select.append(
@@ -5665,8 +5769,10 @@
                 }
 
                 if (!containers.length) {
-                    const msg = editable ? 'No containers added — click "Add a line" below' : 'No containers';
-                    $tbody.append(`<tr><td colspan="3" class="text-muted text-center">${msg}</td></tr>`);
+                    const msg = editable ? 'No containers added — click "Add a line" below' :
+                        'No containers';
+                    $tbody.append(
+                        `<tr><td colspan="3" class="text-muted text-center">${msg}</td></tr>`);
                     return;
                 }
 
@@ -5727,7 +5833,8 @@
                 $('#containerListBody tr[data-container-row]').each(function() {
                     originalContainers.push({
                         type: $(this).find('td:first').text().trim(),
-                        qty: parseInt($(this).find('td:eq(1)').text().trim(), 10) || 0
+                        qty: parseInt($(this).find('td:eq(1)').text().trim(),
+                            10) || 0
                     });
                 });
 
@@ -5754,7 +5861,8 @@
             $('#cancelCargoDetailsBtn').on('click', function() {
                 $('#cargoVolumeInput').val(originalCargoVolume).prop('readonly', true).css(
                     'background-color', '');
-                $('#commodityInput').val(originalCommodity).prop('readonly', true).css('background-color',
+                $('#commodityInput').val(originalCommodity).prop('readonly', true).css(
+                    'background-color',
                     '');
                 renderContainerRows(originalContainers, false);
                 $('#addContainerRowBtn').addClass('d-none');
@@ -5785,7 +5893,8 @@
                     return;
                 }
 
-                if (scopeVolume !== 'Containerized' && (!cargoVolume || parseFloat(cargoVolume) <= 0)) {
+                if (scopeVolume !== 'Containerized' && (!cargoVolume || parseFloat(
+                        cargoVolume) <= 0)) {
                     showNotification('Cargo Volume must be greater than zero', 'error');
                     return;
                 }
@@ -5808,41 +5917,51 @@
                     },
                     beforeSend: function() {
                         $('#saveCargoDetailsBtn').prop('disabled', true)
-                            .html('<i class="fas fa-spinner fa-spin mr-1"></i> Saving...');
+                            .html(
+                                '<i class="fas fa-spinner fa-spin mr-1"></i> Saving...'
+                            );
                     },
                     success: function(response) {
                         if (response.success) {
-                            showNotification('Cargo details saved successfully', 'success');
+                            showNotification('Cargo details saved successfully',
+                                'success');
 
                             originalCargoVolume = cargoVolume;
                             originalContainers = [];
-                            $('#containerListBody tr[data-container-row]').each(function() {
-                                originalContainers.push({
-                                    type: $(this).find(
-                                            '.container-type-select')
-                                        .val(),
-                                    qty: parseInt($(this).find(
-                                            '.container-qty-input')
-                                        .val(),
-                                        10) || 0
+                            $('#containerListBody tr[data-container-row]').each(
+                                function() {
+                                    originalContainers.push({
+                                        type: $(this).find(
+                                                '.container-type-select'
+                                            )
+                                            .val(),
+                                        qty: parseInt($(this).find(
+                                                '.container-qty-input'
+                                            )
+                                            .val(),
+                                            10) || 0
+                                    });
                                 });
-                            });
 
                             $('#cargoVolumeInput').prop('readonly', true).css(
                                 'background-color', '');
-                            $('#commodityInput').prop('readonly', true).css('background-color',
+                            $('#commodityInput').prop('readonly', true).css(
+                                'background-color',
                                 '');
                             renderContainerRows(originalContainers, false);
                             $('#addContainerRowBtn').addClass('d-none');
-                            $('#saveCargoDetailsBtn, #cancelCargoDetailsBtn').addClass(
-                                'd-none');
+                            $('#saveCargoDetailsBtn, #cancelCargoDetailsBtn')
+                                .addClass(
+                                    'd-none');
                             $('#editCargoDetailsBtn').removeClass('d-none');
                         } else {
-                            showNotification(response.message || 'Failed to save', 'error');
+                            showNotification(response.message || 'Failed to save',
+                                'error');
                         }
                     },
                     error: function(xhr) {
-                        showNotification(xhr.responseJSON?.message || 'Failed to save',
+                        showNotification(xhr.responseJSON?.message ||
+                            'Failed to save',
                             'error');
                     },
                     complete: function() {
@@ -5917,14 +6036,17 @@
                             $('#salesPersonDisplay').attr('readonly', true);
                             $('#salesPersonEmail').attr('readonly', true);
                             $('#editInquiryBtn').removeClass('d-none');
-                            $('#saveInquiryBtn, #cancelInquiryBtn').addClass('d-none');
+                            $('#saveInquiryBtn, #cancelInquiryBtn').addClass(
+                                'd-none');
                             showNotification('Inquiry details saved.', 'success');
                         } else {
-                            showNotification(res.message || 'Save failed.', 'error');
+                            showNotification(res.message || 'Save failed.',
+                                'error');
                         }
                     },
                     error: function(xhr) {
-                        showNotification(xhr.responseJSON?.message || 'Server error.', 'error');
+                        showNotification(xhr.responseJSON?.message ||
+                            'Server error.', 'error');
                     },
                     complete: function() {
                         $btn.prop('disabled', false).html(
@@ -5958,7 +6080,8 @@
                                 office_id: officeId
                             },
                             success: function(res) {
-                                if (!res.success || !res.persons || !res.persons.length) {
+                                if (!res.success || !res.persons || !res.persons
+                                    .length) {
                                     response([{
                                         label: 'No sales persons found for "' +
                                             request.term + '"',
@@ -5969,18 +6092,22 @@
                                 }
                                 response(res.persons.map(function(p) {
                                     const fullName = p.FullName || p
-                                        .Contact_PersonName_FirstName || '';
+                                        .Contact_PersonName_FirstName ||
+                                        '';
                                     return {
-                                        label: (p.Code || '') + ' — ' +
+                                        label: (p.Code || '') +
+                                            ' — ' +
                                             fullName,
-                                        value: fullName || p.Code || '',
+                                        value: fullName || p.Code ||
+                                            '',
                                         code: p.Code || '',
                                         email: p.Email || ''
                                     };
                                 }));
                             },
                             error: function(xhr) {
-                                console.error('Sales person lookup failed:', xhr.status, xhr
+                                console.error('Sales person lookup failed:', xhr
+                                    .status, xhr
                                     .responseText);
                                 response([{
                                     label: 'Error loading sales persons',
@@ -6032,7 +6159,8 @@
                                 filter: request.term
                             },
                             success: function(res) {
-                                if (!res.success || !res.clients || !res.clients.length) {
+                                if (!res.success || !res.clients || !res.clients
+                                    .length) {
                                     response([{
                                         label: 'No clients found for "' +
                                             request.term + '"',
@@ -6043,16 +6171,19 @@
                                 }
                                 response(res.clients.map(function(c) {
                                     return {
-                                        label: (c.ClientCode || '') + ' — ' + (c
+                                        label: (c.ClientCode ||
+                                            '') + ' — ' + (c
                                             .ClientName || ''),
                                         value: c.ClientName || '',
                                         clientId: c.ClientID || '',
-                                        clientCode: c.ClientCode || ''
+                                        clientCode: c.ClientCode ||
+                                            ''
                                     };
                                 }));
                             },
                             error: function(xhr) {
-                                console.error('Client list lookup failed:', xhr.status, xhr
+                                console.error('Client list lookup failed:', xhr
+                                    .status, xhr
                                     .responseText);
                                 response([{
                                     label: 'Error loading clients',
@@ -6083,27 +6214,37 @@
                                     if (!res.success) return;
 
                                     // Address
-                                    $('input[data-field="pri_partner_steet"]').val(res
-                                        .address1 || '');
-                                    $('#customerAddress2Input').val(res.address2 || '');
+                                    $('input[data-field="pri_partner_steet"]')
+                                        .val(res
+                                            .address1 || '');
+                                    $('#customerAddress2Input').val(res
+                                        .address2 || '');
                                     $('#customerCityInput').val(res.city || '');
-                                    $('#customerStateInput').val(res.state || '');
+                                    $('#customerStateInput').val(res.state ||
+                                        '');
                                     $('#customerZipInput').val(res.zip || '');
 
                                     // Contact
-                                    $('#customerContactInput').val(res.contact_person ||
+                                    $('#customerContactInput').val(res
+                                        .contact_person ||
                                         '');
-                                    $('#customerPhoneInput').val(res.phone || '');
-                                    $('#customerEmailInput').val(res.email || '');
+                                    $('#customerPhoneInput').val(res.phone ||
+                                        '');
+                                    $('#customerEmailInput').val(res.email ||
+                                        '');
 
                                     // Country — set display + select
                                     if (res.country_name) {
-                                        $('#customerCountryDisplay').val(res.country_name);
+                                        $('#customerCountryDisplay').val(res
+                                            .country_name);
                                     }
                                     if (res.country_id) {
                                         // Append option if not already present, then select
-                                        const $cSel = $('#customerCountrySelect');
-                                        if ($cSel.find(`option[value="${res.country_id}"]`)
+                                        const $cSel = $(
+                                            '#customerCountrySelect');
+                                        if ($cSel.find(
+                                                `option[value="${res.country_id}"]`
+                                            )
                                             .length === 0) {
                                             $cSel.append(
                                                 `<option value="${res.country_id}"
@@ -6118,9 +6259,11 @@
                                     if (res.industry_name) {
                                         $('#customerIndustryDisplay').val(res
                                             .industry_name);
-                                        const $iSel = $('#customerIndustrySelect');
+                                        const $iSel = $(
+                                            '#customerIndustrySelect');
                                         if ($iSel.find(
-                                                `option[value="${res.industry_name}"]`)
+                                                `option[value="${res.industry_name}"]`
+                                            )
                                             .length === 0) {
                                             $iSel.append(
                                                 `<option value="${res.industry_name}">${res.industry_name}</option>`
@@ -6133,7 +6276,8 @@
                                     if (res.agent_type_name) {
                                         const $aSel = $('#agentTypeSelect');
                                         if ($aSel.find(
-                                                `option[value="${res.agent_type_name}"]`)
+                                                `option[value="${res.agent_type_name}"]`
+                                            )
                                             .length === 0) {
                                             $aSel.append(
                                                 `<option value="${res.agent_type_name}">${res.agent_type_name}</option>`
@@ -6143,12 +6287,15 @@
                                     }
 
                                     // Populate visible Client ID field and store UUID for save payload
-                                    $('#clientIdDisplay').val(res.client_code || '');
-                                    $('#selectedClientId').val(res.client_id || ui.item
+                                    $('#clientIdDisplay').val(res.client_code ||
+                                        '');
+                                    $('#selectedClientId').val(res.client_id ||
+                                        ui.item
                                         .clientId);
                                 },
                                 error: function(xhr) {
-                                    console.error('getClientDetails failed:', xhr
+                                    console.error('getClientDetails failed:',
+                                        xhr
                                         .responseJSON?.message);
                                 }
                             });

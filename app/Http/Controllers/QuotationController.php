@@ -1005,7 +1005,7 @@ class QuotationController extends Controller
             'chargeCode'    => $row->ChargeCode       ?? '',
             'chargeName'    => $row->ChargeDesp        ?? '',
             'rate'          => (float) ($row->EstChargeRate   ?? 0),
-            'quantity'      => 0,   // not in list SP — fetched on edit
+            'quantity'      => (float) ($row->Quantity ?? 0),
             'amtInChgCurr'  => (float) ($row->EstChargeAmount ?? 0),
             'amtInBaseCurr' => (float) ($row->EstBaseAmount   ?? 0),
             'exChangeRate'  => (float) ($row->BaseExchRate    ?? 1),
@@ -5135,7 +5135,7 @@ class QuotationController extends Controller
         Log::info('saveCustomerDetails - raw request', [
             'all' => $request->all(),
         ]);
-        
+
         $request->validate([
             'booking_no' => 'required_without:id|string|nullable',
             'id'         => 'required_without:booking_no|string|nullable',
