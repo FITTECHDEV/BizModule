@@ -6938,45 +6938,39 @@ class QuotationController extends Controller
 
     public function getClientDetails(Request $request)
     {
-        $clientId = trim($request->input('client_id', ''));
+        $quotationNo = trim($request->input('quotation_no', ''));
+        $customerCode = trim($request->input('customer_code', ''));
 
-        if (!$clientId) {
-            return response()->json(['success' => false, 'message' => 'Client ID is required'], 400);
+        if (!$quotationNo || !$customerCode) {
+            return response()->json([
+                'success' => false,
+                'message' => 'quotation_no and customer_code are required'
+            ], 400);
         }
 
         try {
             $pdo  = DB::connection('sqlsrv')->getPdo();
-            // sp_ClientDetails uses OUTPUT parameters — wrap in a DECLARE block
-            // and SELECT the outputs so PDO can fetch them as a result set.
-            $stmt = $pdo->prepare("
-            DECLARE @Status        VARCHAR(10),
-                    @Remark        VARCHAR(100),
-                    @EmailID       VARCHAR(200),
-                    @IndustryType  VARCHAR(200),
-                    @IndustryTypeID UNIQUEIDENTIFIER;
-
-            EXEC dbo.sp_ClientDetails
-                @ClientID       = ?,
-                @Status         = @Status        OUTPUT,
-                @Remark         = @Remark        OUTPUT,
-                @EmailID        = @EmailID       OUTPUT,
-                @IndustryType   = @IndustryType  OUTPUT,
-                @IndustryTypeID = @IndustryTypeID OUTPUT;
-
-            SELECT
-                @Status         AS Status,
-                @Remark         AS Remark,
-                @EmailID        AS EmailID,
-                @IndustryType   AS IndustryType,
-                @IndustryTypeID AS IndustryTypeID;
-        ");
-            $stmt->execute([$clientId]);
+            $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC dbo.sp_Quote_CustomerDetails ?, ?");
+            $stmt->execute([$quotationNo, $customerCode]);
 
             $result = null;
             do {
                 try {
                     $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
-                    if (!empty($rows) && isset($rows[0]->Status)) {
+                    if (empty($rows)) continue;
+
+                    $firstVal = array_values((array) $rows[0])[0] ?? '';
+                    if (is_string($firstVal) && str_starts_with($firstVal, 'Failed')) {
+                        Log::warning('getClientDetails - SP returned failure', [
+                            'quotation_no'  => $quotationNo,
+                            'customer_code' => $customerCode,
+                            'message'       => $firstVal,
+                        ]);
+                        return response()->json(['success' => false, 'message' => $firstVal], 422);
+                    }
+
+                    // Valid result set — SP returns Id column
+                    if (isset($rows[0]->Id)) {
                         $result = $rows[0];
                         break;
                     }
@@ -6986,26 +6980,42 @@ class QuotationController extends Controller
             } while ($stmt->nextRowset());
 
             if (!$result) {
-                return response()->json(['success' => false, 'message' => 'No response from SP'], 500);
+                return response()->json(['success' => false, 'message' => 'No data returned for this customer'], 404);
             }
 
-            if ($result->Status !== 'Success') {
-                return response()->json(['success' => false, 'message' => $result->Remark ?? 'Failed'], 422);
-            }
-
-            Log::info('getClientDetails', [
-                'client_id'    => $clientId,
-                'industry'     => $result->IndustryType ?? '',
-                'has_email'    => !empty($result->EmailID),
+            Log::info('getClientDetails - Success', [
+                'quotation_no'  => $quotationNo,
+                'customer_code' => $customerCode,
+                'company'       => $result->Name ?? '',
             ]);
 
             return response()->json([
-                'success'  => true,
-                'email'    => trim($result->EmailID    ?? ''),
-                'industry' => trim($result->IndustryType ?? ''),
+                'success'         => true,
+                'client_id'       => $result->Id          ?? '',
+                'client_code'     => $result->Code         ?? '',
+                'company'         => $result->Name         ?? '',
+                'address1'        => $result->Address1     ?? '',
+                'address2'        => $result->Address2     ?? '',
+                'city'            => $result->City         ?? '',
+                'zip'             => $result->Zip          ?? '',
+                'state'           => $result->State        ?? $result->state ?? $result->ADDRESS_STATE ?? '',
+                'country_id'      => $result->Address_CountryId ?? '',
+                'country_code'    => $result->CountryCode  ?? '',
+                'country_name'    => $result->CountryName  ?? '',
+                'contact_person'  => $result->ContactPerson ?? '',
+                'phone'           => $result->PhoneNo      ?? '',
+                'email'           => $result->Email        ?? '',
+                'industry_code'   => $result->IndustryTypeCode ?? '',
+                'industry_name'   => $result->IndustryType ?? '',
+                'agent_type_code' => $result->AgentTypeCode ?? '',
+                'agent_type_name' => $result->AgentType    ?? '',
             ]);
         } catch (\Exception $e) {
-            Log::error('getClientDetails failed', ['client_id' => $clientId, 'error' => $e->getMessage()]);
+            Log::error('getClientDetails - Failed', [
+                'quotation_no'  => $quotationNo,
+                'customer_code' => $customerCode,
+                'error'         => $e->getMessage(),
+            ]);
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
