@@ -46,7 +46,7 @@ class QuotationController extends Controller
         if ($userOfficeCodes->isEmpty()) {
             return view('quotation.index', [
                 'offices'       => collect(),
-                'stats'         => $this->getStats('all', null, null, null),
+                'stats'         => $this->getStatsForIndex(collect()),
                 'defaultOffice' => null,
                 'officeError'   => 'Your account is not mapped to any office. Please contact your administrator.',
             ]);
@@ -69,9 +69,6 @@ class QuotationController extends Controller
                 ->pluck('TeamCode');
 
             if ($teamCodes->isNotEmpty()) {
-                // FIX: pluck Cust_Office.Name instead of teamname
-                // teamname stores mixed values (person names + office names)
-                // Cust_Office.Name is the reliable source for office display names
                 $offices = DB::table('Cust_Office')
                     ->whereIn('TeamCode', $teamCodes->toArray())
                     ->where('IsActive', 1)
@@ -89,14 +86,15 @@ class QuotationController extends Controller
 
             return view('quotation.index', [
                 'offices'       => collect(),
-                'stats'         => $this->getStats('all', null, null, null),
+                'stats'         => $this->getStatsForIndex(collect()),
                 'defaultOffice' => null,
                 'officeError'   => 'Your office mapping could not be resolved. Please contact your administrator.',
             ]);
         }
 
         $defaultOffice = $offices->first();
-        $stats         = $this->getStats('all', null, null, $defaultOffice);
+
+        $stats = $this->getStatsForIndex($userOfficeCodes);
 
         Log::info('Quotation index - Resolved offices', [
             'email'             => Auth::user()->Email,
@@ -115,14 +113,13 @@ class QuotationController extends Controller
     // ============================================================
     public function stats(Request $request)
     {
-        $days      = $request->input('days', 0);
+        $days      = $request->input('days', 'all');
         $startDate = $request->input('start_date');
         $endDate   = $request->input('end_date');
 
-        // Use resolved teamnames — these match what teamname column actually stores
-        $allowedTeamNames = $this->resolveUserTeamNames();
+        $allowedOfficeCodes = $this->resolveUserOfficeCodes();
 
-        if ($allowedTeamNames->isEmpty()) {
+        if ($allowedOfficeCodes->isEmpty()) {
             return response()->json([
                 'total' => 0,
                 'in_progress' => 0,
@@ -134,22 +131,79 @@ class QuotationController extends Controller
             ]);
         }
 
-        $requestedOffice = $request->input('office');
+        $allowed = $allowedOfficeCodes->map(fn($c) => strtoupper(trim($c)))->toArray();
 
-        // Validate with normalized comparison — teamname stores mixed values,
-        // so we match via Cust_Office.Name instead
-        $office = null;
-        if ($requestedOffice) {
-            $office = DB::table('Cust_Office')
-                ->where('Name', $requestedOffice)
-                ->where('IsActive', 1)
-                ->where('IsDeleted', 0)
-                ->value('Name');
+        $spFromDate = '';
+        $spToDate   = '';
+        if ($days === 'custom' && $startDate && $endDate) {
+            try {
+                $spFromDate = \Carbon\Carbon::createFromFormat('Y-m-d', $startDate)->format('d/m/Y');
+                $spToDate   = \Carbon\Carbon::createFromFormat('Y-m-d', $endDate)->format('d/m/Y');
+            } catch (\Exception $e) {
+            }
         }
 
-        return response()->json(
-            $this->getStats($days, $startDate, $endDate, $office, $allowedTeamNames)
-        );
+        // Office dropdown filter
+        $filterCode = null;
+        $requestedOffice = $request->input('office');
+        if ($requestedOffice) {
+            $code = DB::table('Cust_Office')
+                ->where('Name', $requestedOffice)
+                ->where('IsActive', 1)->where('IsDeleted', 0)
+                ->value('Code');
+            if ($code) $filterCode = strtoupper(trim($code));
+        }
+
+        // Scope helper — handles both formatted and numeric QuoteNos
+        $scope = fn(array $rows) => $this->scopeRowsByOffice($rows, $allowed, $filterCode);
+
+        // One SP call for Total (covers In Progress + Won + Completed + Failed Int.)
+        $allRows          = $scope($this->callQuotationListSP('Total', $spFromDate, $spToDate));
+        $lostCancelledRows = $scope($this->callQuotationListSP('Lost', $spFromDate, $spToDate));
+        $failedProgressRows = $scope($this->callQuotationListSP('Failed Progress', $spFromDate, $spToDate));
+
+        // Look up SCMINTStatus for Won-branch splitting
+        $quoteNos = array_column($allRows, 'QuoteNo');
+        $scmLookup = collect();
+        if (!empty($quoteNos)) {
+            $scmLookup = DB::table('Quote_QuotationInfo')
+                ->whereIn('QuoteNo', $quoteNos)
+                ->get(['QuoteNo', 'QuoteStatus', 'SCMINTStatus'])
+                ->keyBy('QuoteNo');
+        }
+
+        $inProgress = $won = $completed = $failedInt = 0;
+
+        foreach ($allRows as $row) {
+            $db          = $scmLookup->get($row->QuoteNo);
+            $quoteStatus = $db->QuoteStatus ?? $row->Status ?? '';
+            $scmStatus   = $db->SCMINTStatus ?? null;
+
+            // REPLACE with:
+            if ($quoteStatus === 'Won' && $scmStatus === 'Success') {
+                $completed++;
+            } elseif ($quoteStatus === 'Won' && !is_null($scmStatus) && $scmStatus !== 'Success') {
+                $failedInt++;
+            } elseif ($quoteStatus === 'Won') {
+                $won++;
+            } else {
+                $inProgress++;
+            }
+        }
+
+        $lostCanceled = count($lostCancelledRows);
+        $failedProgress = count($failedProgressRows);
+        $total = $inProgress + $won + $completed + $failedInt + $failedProgress + $lostCanceled;
+
+        return response()->json([
+            'total'           => $total,
+            'in_progress'     => $inProgress,
+            'won'             => $won,
+            'completed'       => $completed,
+            'lost_canceled'   => $lostCanceled,
+            'failed_int'      => $failedInt,
+            'failed_progress' => $failedProgress,
+        ]);
     }
 
     // ============================================================
@@ -267,6 +321,402 @@ class QuotationController extends Controller
     }
 
     // ============================================================
+    // getStatsFromSP()
+    // Calls sp_Quote_QuotationList for each supported status and
+    // counts returned rows after office scoping.
+    // Called by both index() and stats() to replace getStats()
+    // counts for SP-supported cards.
+    // Total and Completed are also now supported by the updated SP.
+    // ============================================================
+    private function getStatsFromSP(
+        string $fromDate = '',
+        string $toDate = '',
+        ?\Illuminate\Support\Collection $allowedOfficeCodes = null
+    ): array {
+        // All statuses the SP now supports
+        $statuses = [
+            'In Progress'     => 'in_progress',
+            'Won'             => 'won',
+            'Lost'            => 'lost',
+            'Cancelled'       => 'cancelled',
+            'Failed Progress' => 'failed_progress',
+            'Failed Int.'     => 'failed_int',
+            'Completed'       => 'completed',
+            'Total'           => 'total',
+        ];
+
+        $counts = [];
+
+        foreach ($statuses as $spStatus => $key) {
+            try {
+                $inputJson = json_encode([
+                    'FromDate'           => $fromDate,
+                    'ToDate'             => $toDate,
+                    'Customer'           => '',
+                    'Service'            => '',
+                    'Process'            => '',
+                    'OriginCountry'      => '',
+                    'DestinationCountry' => '',
+                    'InCoTerm'           => '',
+                    'Status'             => $spStatus,
+                ]);
+
+                $pdo  = DB::connection()->getPdo();
+                $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC dbo.sp_Quote_QuotationList ?");
+                $stmt->execute([$inputJson]);
+
+                $rows        = [];
+                $resultIndex = 0;
+
+                do {
+                    $resultIndex++;
+                    try {
+                        $fetched = $stmt->fetchAll(\PDO::FETCH_OBJ);
+
+                        if (empty($fetched)) {
+                            continue;
+                        }
+
+                        // ── Detect SP CATCH block failure string ──────────────
+                        // SP returns: SELECT 'Failed - (Reason) ' + ERROR_MESSAGE()
+                        $firstVal = array_values((array) $fetched[0])[0] ?? '';
+                        if (is_string($firstVal) && str_starts_with(trim($firstVal), 'Failed')) {
+                            Log::warning('getStatsFromSP - SP returned failure', [
+                                'status'  => $spStatus,
+                                'message' => $firstVal,
+                            ]);
+                            break;
+                        }
+
+                        // ── Skip diagnostic result set ────────────────────────
+                        // SP still emits SELECT @FromDate,@ToDate,... as result
+                        // set #1 even though it is now commented out in the SP
+                        // body — the PRINT @sql statement causes an extra set.
+                        // The actual data result set has QuoteNo column.
+                        if (!isset($fetched[0]->QuoteNo)) {
+                            continue;
+                        }
+
+                        // ── This is the data result set ───────────────────────
+                        $rows = $fetched;
+                        break;
+                    } catch (\PDOException $e) {
+                        Log::debug('getStatsFromSP - Skipping result set #' . $resultIndex, [
+                            'status' => $spStatus,
+                            'error'  => $e->getMessage(),
+                        ]);
+                        continue;
+                    }
+                } while ($stmt->nextRowset());
+
+                // ── Apply office scoping in PHP ───────────────────────────────
+                // SP has no office parameter — scope by QuoteNo prefix
+                // e.g. 'KE-QT-25-00001' → office code 'KE'
+                if ($allowedOfficeCodes && $allowedOfficeCodes->isNotEmpty()) {
+                    $allowed = $allowedOfficeCodes
+                        ->map(fn($c) => strtoupper(trim($c)))
+                        ->toArray();
+
+                    $rows = array_filter($rows, function ($row) use ($allowed) {
+                        $quoteNo    = $row->QuoteNo ?? '';
+                        $parts      = explode('-', $quoteNo);
+                        $officeCode = strtoupper(trim($parts[0] ?? ''));
+                        return in_array($officeCode, $allowed, true);
+                    });
+                }
+
+                $counts[$key] = count($rows);
+
+                Log::info('getStatsFromSP - Count', [
+                    'status'     => $spStatus,
+                    'key'        => $key,
+                    'count'      => $counts[$key],
+                    'result_sets' => $resultIndex,
+                ]);
+            } catch (\Exception $e) {
+                Log::error('getStatsFromSP - Exception', [
+                    'status' => $spStatus,
+                    'error'  => $e->getMessage(),
+                    'file'   => $e->getFile(),
+                    'line'   => $e->getLine(),
+                ]);
+                // Fall back to 0 for this status — do not break the page
+                $counts[$key] = 0;
+            }
+        }
+
+        // lost_canceled combines Lost + Cancelled — matches getStats() key
+        $counts['lost_canceled'] = ($counts['lost'] ?? 0) + ($counts['cancelled'] ?? 0);
+
+        return $counts;
+    }
+
+    // ============================================================
+    // dataFromSP()
+    // Powers the main quotation table. Calls sp_Quote_QuotationList
+    // with the card-filter status, then looks up DB records for
+    // IDs needed by action buttons.
+    //
+    // SP Status mapping:
+    //   in_progress   → 'In Progress'
+    //   won           → 'Won'        (QuoteStatus=Won, SCMINTStatus IS NULL)
+    //   completed     → 'Completed'  (QuoteStatus=Won, SCMINTStatus=Success)
+    //   failed_int    → 'Failed Int.'
+    //   failed_progress → 'Failed Progress'
+    //   lost_canceled → 'Lost' + separate 'Cancelled' call merged
+    //   total         → 'Total'      (all records, no status filter)
+    //
+    // Day-based filters (Today, Last 15 days) are ignored — SP only
+    // supports FromDate/ToDate pairs. Custom date range is converted.
+    // Office scoping is applied in PHP via QuoteNo prefix matching.
+    // ============================================================
+    public function dataFromSP(Request $request)
+    {
+        try {
+            $cardFilter = $request->input('card_filter', 'in_progress');
+            $days       = $request->input('days', 'all');
+            $startDate  = $request->input('start_date');
+            $endDate    = $request->input('end_date');
+
+            // ── Resolve allowed office codes ──────────────────────────────────
+            $allowedOfficeCodes = $this->resolveUserOfficeCodes();
+
+            if ($allowedOfficeCodes->isEmpty()) {
+                return response()->json([
+                    'draw'            => (int) $request->input('draw', 1),
+                    'recordsTotal'    => 0,
+                    'recordsFiltered' => 0,
+                    'data'            => [],
+                ]);
+            }
+
+            $allowed = $allowedOfficeCodes
+                ->map(fn($c) => strtoupper(trim($c)))
+                ->toArray();
+
+            // ── Date range — day filters ignored, SP only supports FromDate/ToDate ──
+            $spFromDate = '';
+            $spToDate   = '';
+            if ($days === 'custom' && $startDate && $endDate) {
+                try {
+                    $spFromDate = \Carbon\Carbon::createFromFormat('Y-m-d', $startDate)->format('d/m/Y');
+                    $spToDate   = \Carbon\Carbon::createFromFormat('Y-m-d', $endDate)->format('d/m/Y');
+                } catch (\Exception $e) {
+                    Log::warning('dataFromSP - Invalid date', ['start' => $startDate, 'end' => $endDate]);
+                }
+            }
+
+            // ── Determine which SP call(s) to make per card ───────────────────
+            // SP branches:
+            //   'Total'          → all records (no status filter)
+            //   'In Progress'    → all records (same branch as Total — filter in PHP)
+            //   'Won'            → all records (same branch — filter in PHP by SCMINTStatus IS NULL)
+            //   'Completed'      → all records (same branch — filter in PHP by SCMINTStatus=Success)
+            //   'Failed Int.'    → all records (same branch — filter in PHP by SCMINTStatus=Failed)
+            //   'Lost','Cancelled' → WHERE QuoteStatus IN ('Lost','Cancelled')
+            //   'Failed Progress'  → WHERE QuoteStatus = 'Failed Progress'
+            //
+            // We call SP with 'Total' for in_progress/won/completed/failed_int/total
+            // and with the exact status for lost_canceled/failed_progress
+
+            $spStatus = match ($cardFilter) {
+                'lost_canceled'   => 'Lost',       // SP returns both Lost+Cancelled in one call
+                'failed_progress' => 'Failed Progress',
+                default           => 'Total',      // covers in_progress, won, completed, failed_int, total
+            };
+
+            // ── Call SP ───────────────────────────────────────────────────────
+            $rows = $this->callQuotationListSP($spStatus, $spFromDate, $spToDate);
+
+            // ── Resolve office dropdown filter code if selected ───────────────────
+            $filterCode      = null;
+            $requestedOffice = $request->input('office');
+            if ($requestedOffice) {
+                $officeCode = DB::table('Cust_Office')
+                    ->where('Name', $requestedOffice)
+                    ->where('IsActive', 1)
+                    ->where('IsDeleted', 0)
+                    ->value('Code');
+
+                if ($officeCode) {
+                    $filterCode = strtoupper(trim($officeCode));
+                }
+            }
+
+            // ── Apply office scope (handles both KE-QT-XX format AND numeric QuoteNos) ──
+            $rows = $this->scopeRowsByOffice($rows, $allowed, $filterCode);
+
+            // ── Fetch SCMINTStatus from DB for Won-branch filtering ───────────
+            // SP 'Total' branch returns ALL records including Won rows.
+            // We need SCMINTStatus to split Won into Won/Completed/Failed Int.
+            $quoteNos  = array_column($rows, 'QuoteNo');
+            $dbRecords = collect();
+
+            if (!empty($quoteNos)) {
+                $dbRecords = DB::table('Quote_QuotationInfo')
+                    ->whereIn('QuoteNo', $quoteNos)
+                    ->get([
+                        'ID',
+                        'QuoteNo',
+                        'bookingno',
+                        'teamname',
+                        'teamid',
+                        'clientid',
+                        'username',
+                        'QuoteStatus',
+                        'SCMINTStatus',
+                        'QuoteStatusDescription',
+                        'CreatedOn',
+                    ])
+                    ->keyBy('QuoteNo');
+            }
+
+            // ── Filter rows by card ───────────────────────────────────────────
+            // For SP 'Total' branch, all statuses come back — filter in PHP
+            if (!in_array($cardFilter, ['lost_canceled', 'failed_progress', 'total'])) {
+                $rows = array_values(array_filter($rows, function ($row) use ($cardFilter, $dbRecords) {
+                    $db          = $dbRecords->get($row->QuoteNo);
+                    $quoteStatus = $db->QuoteStatus ?? $row->Status ?? '';
+                    $scmStatus   = $db->SCMINTStatus ?? null;
+
+                    return match ($cardFilter) {
+                        'in_progress' => $quoteStatus === 'In Progress',
+                        'won'         => $quoteStatus === 'Won' && is_null($scmStatus),
+                        'completed'   => $quoteStatus === 'Won' && $scmStatus === 'Success',
+                        'failed_int'  => $quoteStatus === 'Won' && !is_null($scmStatus) && $scmStatus !== 'Success',
+                        default       => true,
+                    };
+                }));
+            }
+
+            // ── DataTables server-side ────────────────────────────────────────
+            $draw   = (int) $request->input('draw', 1);
+            $start  = (int) $request->input('start', 0);
+            $length = (int) $request->input('length', 25);
+            $search = trim($request->input('search.value', ''));
+
+            // Search
+            if (!empty($search)) {
+                $needle = strtolower($search);
+                $rows   = array_values(array_filter($rows, function ($row) use ($needle, $dbRecords) {
+                    $db = $dbRecords->get($row->QuoteNo);
+                    return str_contains(strtolower($row->CompanyName        ?? ''), $needle)
+                        || str_contains(strtolower($row->OriginCountry      ?? ''), $needle)
+                        || str_contains(strtolower($row->DestinationCountry ?? ''), $needle)
+                        || str_contains(strtolower($row->Status             ?? ''), $needle)
+                        || str_contains(strtolower($row->QuoteNo            ?? ''), $needle)
+                        || str_contains(strtolower($db->teamname            ?? ''), $needle)
+                        || str_contains(strtolower($db->username            ?? ''), $needle)
+                        || str_contains(strtolower((string)($db->bookingno ?? '')), $needle);
+                }));
+            }
+
+            $total    = count($rows);
+            $pageRows = array_slice($rows, $start, $length > 0 ? $length : $total);
+
+            // ── Format rows for DataTable ─────────────────────────────────────
+            $data = array_map(function ($row) use ($dbRecords, $cardFilter) {
+                $db          = $dbRecords->get($row->QuoteNo);
+                $quoteStatus = $db->QuoteStatus ?? $row->Status ?? 'In Progress';
+                $scmStatus   = $db->SCMINTStatus ?? null;
+
+                // Resolve display status
+                $displayStatus = match (true) {
+                    $quoteStatus === 'Won' && $scmStatus === 'Success'                        => 'Completed',
+                    $quoteStatus === 'Won' && !is_null($scmStatus) && $scmStatus !== 'Success' => 'Failed Int.',
+                    $quoteStatus === 'Won'                                                     => 'Won',
+                    $quoteStatus === 'Failed Progress'                                         => 'Failed Progress',
+                    in_array($quoteStatus, ['Lost', 'Cancelled'])                              => 'Lost / Canceled',
+                    default                                                                    => 'In Progress',
+                };
+
+                $badgeClass = match ($displayStatus) {
+                    'Won'             => 'badge-success',
+                    'Completed'       => 'badge-teal',
+                    'Lost / Canceled' => 'badge-warning',
+                    'Failed Int.'     => 'badge-danger',
+                    'Failed Progress' => 'badge-secondary',
+                    default           => 'badge-info', // In Progress
+                };
+
+                // Remarks
+                $remark      = trim($row->Remark ?? '');
+                $remarksHtml = '<span class="text-muted">—</span>';
+                if ($remark && $remark !== '-') {
+                    $isError = in_array($displayStatus, ['Failed Int.', 'Failed Progress']);
+                    $short   = mb_strlen($remark) > 80 ? mb_substr($remark, 0, 80) . '...' : $remark;
+                    $remarksHtml = $isError
+                        ? '<span class="text-danger" title="' . e($remark) . '"><i class="fas fa-exclamation-circle mr-1"></i>' . e($short) . '</span>'
+                        : '<span class="text-muted">' . e($short) . '</span>';
+                }
+
+                // Action buttons
+                $actionHtml = '<div class="action-buttons">';
+                if ($db) {
+                    $isWon        = $quoteStatus === 'Won' && is_null($scmStatus);
+                    $isFailedInt  = $quoteStatus === 'Won' && !is_null($scmStatus) && $scmStatus !== 'Success';
+                    $isInProgress = $quoteStatus === 'In Progress';
+
+                    $actionHtml .= '<a href="' . route('quotation.view', $db->ID) . '" class="btn btn-info btn-sm" title="View"><i class="fas fa-eye"></i></a>';
+
+                    if ($cardFilter === 'in_progress' && $isInProgress) {
+                        $actionHtml .= ' <a href="' . route('quotation.edit', $db->ID) . '" class="btn btn-warning btn-sm" title="Edit"><i class="fas fa-edit"></i></a>';
+                    }
+
+                    if (($cardFilter === 'won' && $isWon) || ($cardFilter === 'failed_int' && $isFailedInt)) {
+                        $actionHtml .= ' <button class="btn btn-success btn-sm btn-create-booking"'
+                            . ' data-id="' . $db->ID . '"'
+                            . ' data-booking="' . $db->bookingno . '"'
+                            . ' data-team="' . $db->teamid . '"'
+                            . ' data-quoteno="' . $db->QuoteNo . '"'
+                            . ' title="Create Booking"><i class="fas fa-plus-circle"></i></button>';
+                    }
+
+                    if ($cardFilter === 'failed_int' && $isFailedInt) {
+                        $actionHtml .= ' <button class="btn btn-secondary btn-sm btn-retrigger"'
+                            . ' data-booking="' . $db->bookingno . '"'
+                            . ' title="Retrigger"><i class="fas fa-sync-alt"></i></button>';
+                    }
+                }
+                $actionHtml .= '</div>';
+
+                return [
+                    'report_date'        => $db?->CreatedOn ? date('Y-m-d', strtotime($db->CreatedOn)) : ($row->Date ?? '-'),
+                    'OfficeName'         => $db->teamname           ?? '-',
+                    'ClientName'         => $row->CompanyName       ?? '-',
+                    'ClientID'           => $db->clientid           ?? '-',
+                    'SalesPerson'        => $db->username           ?? '-',
+                    'OriginCountry'      => $row->OriginCountry     ?? '-',
+                    'DestinationCountry' => $row->DestinationCountry ?? '-',
+                    'QuotationStatus'    => '<span class="badge ' . $badgeClass . '">' . e($displayStatus) . '</span>',
+                    'BookingNo'          => $db->bookingno          ?? '-',
+                    'remarks_error'      => $remarksHtml,
+                    'action'             => $actionHtml,
+                ];
+            }, $pageRows);
+
+            return response()->json([
+                'draw'            => $draw,
+                'recordsTotal'    => $total,
+                'recordsFiltered' => $total,
+                'data'            => $data,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('dataFromSP - Exception', [
+                'message' => $e->getMessage(),
+                'file'    => $e->getFile(),
+                'line'    => $e->getLine(),
+            ]);
+            return response()->json([
+                'draw'            => (int) $request->input('draw', 1),
+                'recordsTotal'    => 0,
+                'recordsFiltered' => 0,
+                'data'            => [],
+            ], 500);
+        }
+    }
+
+    // ============================================================
     // NEW PRIVATE METHOD — resolves BaseOfficeCodes → teamnames
     // that actually exist in Quote_QuotationInfo.
     // This is what the office dropdown displays and what teamname
@@ -298,6 +748,200 @@ class QuotationController extends Controller
         ]);
 
         return $officeNames;
+    }
+
+    private function getStatsForIndex(\Illuminate\Support\Collection $allowedOfficeCodes): array
+    {
+        if ($allowedOfficeCodes->isEmpty()) {
+            return [
+                'total' => 0,
+                'in_progress' => 0,
+                'won' => 0,
+                'completed' => 0,
+                'lost_canceled' => 0,
+                'failed_int' => 0,
+                'failed_progress' => 0,
+            ];
+        }
+
+        $allowed = $allowedOfficeCodes->map(fn($c) => strtoupper(trim($c)))->toArray();
+
+        $scope = fn(array $rows) => $this->scopeRowsByOffice($rows, $allowed);
+
+
+        $allRows            = $scope($this->callQuotationListSP('Total'));
+        $lostCancelledRows  = $scope($this->callQuotationListSP('Lost'));
+        $failedProgressRows = $scope($this->callQuotationListSP('Failed Progress'));
+
+        $quoteNos = array_column($allRows, 'QuoteNo');
+        $scmLookup = collect();
+        if (!empty($quoteNos)) {
+            $scmLookup = DB::table('Quote_QuotationInfo')
+                ->whereIn('QuoteNo', $quoteNos)
+                ->get(['QuoteNo', 'QuoteStatus', 'SCMINTStatus'])
+                ->keyBy('QuoteNo');
+        }
+
+        $inProgress = $won = $completed = $failedInt = 0;
+
+        foreach ($allRows as $row) {
+            $db          = $scmLookup->get($row->QuoteNo);
+            $quoteStatus = $db->QuoteStatus ?? $row->Status ?? '';
+            $scmStatus   = $db->SCMINTStatus ?? null;
+
+            // REPLACE with:
+            if ($quoteStatus === 'Won' && $scmStatus === 'Success') {
+                $completed++;
+            } elseif ($quoteStatus === 'Won' && !is_null($scmStatus) && $scmStatus !== 'Success') {
+                $failedInt++;
+            } elseif ($quoteStatus === 'Won') {
+                $won++;
+            } else {
+                $inProgress++;
+            }
+        }
+
+        $lostCanceled   = count($lostCancelledRows);
+        $failedProgress = count($failedProgressRows);
+        $total = $inProgress + $won + $completed + $failedInt + $failedProgress + $lostCanceled;
+
+        return [
+            'total'           => $total,
+            'in_progress'     => $inProgress,
+            'won'             => $won,
+            'completed'       => $completed,
+            'lost_canceled'   => $lostCanceled,
+            'failed_int'      => $failedInt,
+            'failed_progress' => $failedProgress,
+        ];
+    }
+
+    private function callQuotationListSP(
+        string $status,
+        string $fromDate = '',
+        string $toDate   = ''
+    ): array {
+        $inputJson = json_encode([
+            'FromDate'           => $fromDate,
+            'ToDate'             => $toDate,
+            'Customer'           => '',
+            'Service'            => '',
+            'Process'            => '',
+            'OriginCountry'      => '',
+            'DestinationCountry' => '',
+            'InCoTerm'           => '',
+            'Status'             => $status,
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        try {
+            $pdo  = DB::connection()->getPdo();
+            $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC dbo.sp_Quote_QuotationList ?");
+            $stmt->execute([$inputJson]);
+
+            Log::info('callQuotationListSP - executed', [
+                'status'     => $status,
+                'input_json' => $inputJson,
+            ]);
+
+            $rows = [];
+            do {
+                try {
+                    $fetched  = $stmt->fetchAll(\PDO::FETCH_OBJ);
+                    if (empty($fetched)) continue;
+
+                    $firstVal = array_values((array) $fetched[0])[0] ?? '';
+                    if (is_string($firstVal) && str_starts_with(trim($firstVal), 'Failed')) {
+                        Log::error('callQuotationListSP - SP failure', [
+                            'status'  => $status,
+                            'message' => $firstVal,
+                        ]);
+                        break;
+                    }
+
+                    if (!isset($fetched[0]->QuoteNo)) continue;
+
+                    $rows = $fetched;
+                    break;
+                } catch (\PDOException $e) {
+                    continue;
+                }
+            } while ($stmt->nextRowset());
+
+            return $rows;
+        } catch (\Exception $e) {
+            Log::error('callQuotationListSP - Exception', [
+                'status' => $status,
+                'error'  => $e->getMessage(),
+            ]);
+            return [];
+        }
+    }
+
+    private function scopeRowsByOffice(array $rows, array $allowed, ?string $filterCode = null): array
+    {
+        $formattedRows   = [];
+        $numericQuoteNos = [];
+
+        foreach ($rows as $row) {
+            $qn     = $row->QuoteNo ?? '';
+            $parts  = explode('-', $qn);
+            $prefix = strtoupper(trim($parts[0] ?? ''));
+
+            if (in_array($prefix, $allowed, true)) {
+                $formattedRows[] = $row;
+            } elseif (is_numeric($qn)) {
+                $numericQuoteNos[] = $qn;
+            }
+            // Non-matching formatted QuoteNos (other offices) dropped
+        }
+
+        // Resolve numeric QuoteNos via DB teamid lookup
+        $numericRows = [];
+        if (!empty($numericQuoteNos)) {
+            $allowedTeamCodes = DB::table('Cust_Office')
+                ->whereIn('Code', $allowed)
+                ->where('IsActive', 1)
+                ->where('IsDeleted', 0)
+                ->pluck('TeamCode')
+                ->map(fn($c) => (string) $c)
+                ->toArray();
+
+            $allowedNumericSet = DB::table('Quote_QuotationInfo')
+                ->whereIn('QuoteNo', $numericQuoteNos)
+                ->whereIn('teamid', $allowedTeamCodes)
+                ->pluck('QuoteNo')
+                ->flip()
+                ->toArray();
+
+            foreach ($rows as $row) {
+                $qn = $row->QuoteNo ?? '';
+                if (is_numeric($qn) && isset($allowedNumericSet[$qn])) {
+                    $numericRows[] = $row;
+                }
+            }
+        }
+
+        $scoped = array_values(array_merge($formattedRows, $numericRows));
+
+        // Apply single-office dropdown filter if selected
+        if ($filterCode) {
+            $scoped = array_values(array_filter($scoped, function ($row) use ($filterCode, $allowed) {
+                $qn     = $row->QuoteNo ?? '';
+                $parts  = explode('-', $qn);
+                $prefix = strtoupper(trim($parts[0] ?? ''));
+
+                if ($prefix === $filterCode) return true;
+
+                // Numeric QuoteNo — include if filterCode is the only allowed office
+                if (is_numeric($qn) && count($allowed) === 1 && $allowed[0] === $filterCode) {
+                    return true;
+                }
+
+                return false;
+            }));
+        }
+
+        return $scoped;
     }
 
     // ============================================================
@@ -399,6 +1043,10 @@ class QuotationController extends Controller
 
             // ── Card filter ───────────────────────────────────────────────
             switch ($cardFilter) {
+                case 'total':
+                    // No status filter — return all records scoped to office/date only
+                    break;
+
                 case 'in_progress':
                     $query->where(function ($q) {
                         $q->whereNotIn('QuoteStatus', ['Won', 'Lost', 'Cancel', 'Completed', 'Failed Progress'])
@@ -410,20 +1058,17 @@ class QuotationController extends Controller
                     break;
 
                 case 'won':
-                    // getStats() only checks QuoteStatus — remove the ->where('status', 'Won') AND
                     $query->where('QuoteStatus', 'Won')
                         ->whereNull('SCMINTStatus');
                     break;
 
                 case 'completed':
-                    // getStats() uses OR on QuoteStatus/status — match that
                     $query->where(function ($q) {
                         $q->where('QuoteStatus', 'Won')->orWhere('status', 'Won');
                     })->where('SCMINTStatus', 'Success');
                     break;
 
                 case 'failed_int':
-                    // getStats() uses OR on QuoteStatus/status — match that
                     $query->where(function ($q) {
                         $q->where('QuoteStatus', 'Won')->orWhere('status', 'Won');
                     })->whereNotNull('SCMINTStatus')
@@ -431,7 +1076,6 @@ class QuotationController extends Controller
                     break;
 
                 case 'lost_canceled':
-                    // getStats() uses OR — was AND (whereIn + whereIn), now wrapped in OR
                     $query->where(function ($q) {
                         $q->whereIn('QuoteStatus', ['Lost', 'Cancel'])
                             ->orWhereIn('status', ['Lost', 'Cancel']);
@@ -439,8 +1083,6 @@ class QuotationController extends Controller
                     break;
 
                 case 'failed_progress':
-                    // getStats() uses OR — was AND (where + where), now wrapped in OR
-                    // THIS is the direct fix for "6 in card, 0 in table"
                     $query->where(function ($q) {
                         $q->where('QuoteStatus', 'Failed Progress')
                             ->orWhere('status', 'Failed Progress');
@@ -1042,18 +1684,18 @@ class QuotationController extends Controller
 
             // Fetch fields the SP does not return — IsRevenue needed to call SP correctly
             $supplement = DB::selectOne("
-    SELECT
-        QC.IsRevenue,
-        QC.Quantity,
-        ISNULL(QC.Remarks,    '')       AS ChargeRemark,
-        ISNULL(CP.Code,       '')       AS PartyCode,
-        ISNULL(QC.ChargeType, 'manual') AS SourceType,
-        ISNULL(CB.Code,       '')       AS BasedOnCode
-    FROM Quote_Quotation_ChargeSheet QC WITH (NOLOCK)
-    LEFT JOIN Cust_ChargecodeBasedOn     CB WITH (NOLOCK) ON CB.Id = QC.BasedOnId
-    LEFT JOIN [FITSCMUAT].dbo.Cust_Party CP WITH (NOLOCK) ON CP.Id = QC.PartyID
-    WHERE QC.Id = ? AND QC.IsDeleted = 0
-", [$chargeId]);
+                SELECT
+                    QC.IsRevenue,
+                    QC.Quantity,
+                    ISNULL(QC.Remarks,    '')       AS ChargeRemark,
+                    ISNULL(CP.Code,       '')       AS PartyCode,
+                    ISNULL(QC.ChargeType, 'manual') AS SourceType,
+                    ISNULL(CB.Code,       '')       AS BasedOnCode
+                FROM Quote_Quotation_ChargeSheet QC WITH (NOLOCK)
+                LEFT JOIN Cust_ChargecodeBasedOn     CB WITH (NOLOCK) ON CB.Id = QC.BasedOnId
+                LEFT JOIN [FITSCMUAT].dbo.Cust_Party CP WITH (NOLOCK) ON CP.Id = QC.PartyID
+                WHERE QC.Id = ? AND QC.IsDeleted = 0
+            ", [$chargeId]);
 
             if (!$supplement) {
                 return response()->json(['success' => false, 'message' => 'Charge not found'], 404);
@@ -7065,6 +7707,254 @@ class QuotationController extends Controller
                 'error'         => $e->getMessage(),
             ]);
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    // ============================================================
+    // reportData()
+    // Powers the Report modal on the quotation index page.
+    // Calls sp_Quote_QuotationList with the user's filter inputs
+    // and returns JSON for the modal DataTable.
+    //
+    // Office scoping: same as the main table — results are filtered
+    // to only include records whose QuoteNo prefix matches the
+    // user's allowed office codes resolved via resolveUserOfficeCodes().
+    //
+    // Status='Total' intentionally left as the default so the SP
+    // returns the broadest result set (In Progress + Won branch).
+    // Completed is not supported by the SP and is excluded.
+    // ============================================================
+    public function reportData(Request $request): JsonResponse
+    {
+        try {
+            // ── Resolve allowed office codes for this user ───────────────────
+            $allowedTeamNames = $this->resolveUserTeamNames();
+
+            if ($allowedTeamNames->isEmpty()) {
+                return response()->json([
+                    'draw'            => (int) $request->input('draw', 1),
+                    'recordsTotal'    => 0,
+                    'recordsFiltered' => 0,
+                    'data'            => [],
+                ]);
+            }
+
+            // ── Resolve allowed TeamCodes for office scoping ─────────────────
+            $allowedTeamCodes = DB::table('Cust_Office')
+                ->whereIn('Name', $allowedTeamNames->toArray())
+                ->where('IsActive', 1)
+                ->where('IsDeleted', 0)
+                ->pluck('TeamCode')
+                ->toArray();
+
+            // ── Validate and sanitize inputs ─────────────────────────────────
+            $fromDate    = $request->input('from_date', '');
+            $toDate      = $request->input('to_date', '');
+            $customer    = $request->input('customer', '');
+            $service     = $request->input('service', '');
+            $process     = $request->input('process', '');
+            $incoTerm    = $request->input('incoterm', '');
+
+            // Whitelist status values the SP actually supports.
+            // 'Completed' is excluded — SP has no branch for it.
+            $validStatuses = [
+                'Total',
+                'In Progress',
+                'Won',
+                'Cancelled',
+                'Lost',
+                'Failed Progress',
+                'Failed Int.',
+            ];
+
+            $status = $request->input('status', 'Total');
+            if (!in_array($status, $validStatuses, true)) {
+                $status = 'Total';
+            }
+
+            // ── Validate date range if provided ──────────────────────────────
+            if (!empty($fromDate) && !empty($toDate)) {
+                try {
+                    $from = \Carbon\Carbon::createFromFormat('Y-m-d', $fromDate);
+                    $to   = \Carbon\Carbon::createFromFormat('Y-m-d', $toDate);
+
+                    if ($to->lt($from)) {
+                        return response()->json([
+                            'draw'            => (int) $request->input('draw', 1),
+                            'recordsTotal'    => 0,
+                            'recordsFiltered' => 0,
+                            'data'            => [],
+                            'error'           => 'End date must be after start date.',
+                        ], 422);
+                    }
+
+                    // SP expects dd/MM/yyyy format (British date style, format 103)
+                    $fromDate = $from->format('d/m/Y');
+                    $toDate   = $to->format('d/m/Y');
+                } catch (\Exception $e) {
+                    // Invalid date format — clear both to avoid SP errors
+                    $fromDate = '';
+                    $toDate   = '';
+
+                    Log::warning('reportData - Invalid date input, cleared', [
+                        'from_date_raw' => $request->input('from_date'),
+                        'to_date_raw'   => $request->input('to_date'),
+                    ]);
+                }
+            } else {
+                // If only one date is provided, clear both — SP requires a pair
+                $fromDate = '';
+                $toDate   = '';
+            }
+
+            // ── Build SP input JSON ───────────────────────────────────────────
+            $inputJson = json_encode([
+                'FromDate'           => $fromDate,
+                'ToDate'             => $toDate,
+                'Customer'           => $customer,
+                'Service'            => $service,
+                'Process'            => $process,
+                'OriginCountry'      => '',
+                'DestinationCountry' => '',
+                'InCoTerm'           => $incoTerm,
+                'Status'             => $status,
+            ]);
+
+            Log::info('reportData - Calling SP', [
+                'user'         => Auth::user()->Email ?? 'unknown',
+                'input_json'   => $inputJson,
+                'office_scope' => $allowedTeamNames->toArray(),
+            ]);
+
+            // ── Execute SP ────────────────────────────────────────────────────
+            // The SP emits a diagnostic SELECT of the parsed params as its
+            // first result set before the actual data. We skip it using
+            // nextRowset() — same pattern used throughout this controller.
+            $pdo  = DB::connection()->getPdo();
+            $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC dbo.sp_Quote_QuotationList ?");
+            $stmt->execute([$inputJson]);
+
+            $rows        = [];
+            $resultIndex = 0;
+
+            do {
+                $resultIndex++;
+                try {
+                    $fetched = $stmt->fetchAll(\PDO::FETCH_OBJ);
+
+                    if (empty($fetched)) {
+                        continue;
+                    }
+
+                    // ── Detect SP CATCH block failure string ──────────────────
+                    // SP returns: SELECT 'Failed - (Reason) ' + ERROR_MESSAGE()
+                    // This comes back as a single-column, single-row result set.
+                    $firstVal = array_values((array) $fetched[0])[0] ?? '';
+                    if (is_string($firstVal) && str_starts_with(trim($firstVal), 'Failed')) {
+                        Log::error('reportData - SP returned failure', [
+                            'message'    => $firstVal,
+                            'input_json' => $inputJson,
+                        ]);
+
+                        return response()->json([
+                            'draw'            => (int) $request->input('draw', 1),
+                            'recordsTotal'    => 0,
+                            'recordsFiltered' => 0,
+                            'data'            => [],
+                            'error'           => 'Report query failed. Please contact your administrator.',
+                        ], 500);
+                    }
+
+                    // ── Skip the diagnostic result set ────────────────────────
+                    // The SP always emits SELECT @FromDate,@ToDate,... as result
+                    // set #1. We detect it by checking for the QuoteNo column
+                    // which only exists on the actual data result set.
+                    if (!isset($fetched[0]->QuoteNo)) {
+                        continue;
+                    }
+
+                    // ── This is the data result set ───────────────────────────
+                    $rows = $fetched;
+                    break;
+                } catch (\PDOException $e) {
+                    // Skip unfetchable intermediate result sets — normal for
+                    // SPs that use dynamic SQL or temp tables internally.
+                    Log::debug('reportData - Skipping result set #' . $resultIndex, [
+                        'error' => $e->getMessage(),
+                    ]);
+                    continue;
+                }
+            } while ($stmt->nextRowset());
+
+            Log::info('reportData - SP returned rows', [
+                'row_count'    => count($rows),
+                'result_sets'  => $resultIndex,
+                'status_filter' => $status,
+            ]);
+
+            // ── Apply office scoping in PHP ───────────────────────────────────
+            // The SP does not accept an office filter parameter, so we scope
+            // the results here by matching QuoteNo prefix against the user's
+            // allowed office codes (e.g. QuoteNo 'KE-QT-25-00001' → office 'KE').
+            // This mirrors how resolveUserOfficeCodes() works.
+            $allowedOfficeCodes = $this->resolveUserOfficeCodes()->toArray();
+
+            if (!empty($allowedOfficeCodes)) {
+                $rows = array_filter($rows, function ($row) use ($allowedOfficeCodes) {
+                    $quoteNo = $row->QuoteNo ?? '';
+                    if (empty($quoteNo)) {
+                        return false;
+                    }
+
+                    // QuoteNo format: {OFFICE_CODE}-QT-{YY}-{NNNNN}
+                    // e.g. KE-QT-25-00001 → office code is 'KE'
+                    $parts      = explode('-', $quoteNo);
+                    $officeCode = strtoupper(trim($parts[0] ?? ''));
+
+                    return in_array($officeCode, array_map('strtoupper', $allowedOfficeCodes), true);
+                });
+
+                $rows = array_values($rows); // re-index after filter
+            }
+
+            // ── Format rows for DataTables ────────────────────────────────────
+            $formatted = array_map(function ($row) {
+                return [
+                    'QuoteNo'     => $row->QuoteNo          ?? '-',
+                    'Date'        => $row->Date              ?? '-',
+                    'CompanyName' => $row->CompanyName       ?? '-',
+                    'Service'     => $row->Service           ?? '-',
+                    'Process'     => $row->Process           ?? '-',
+                    'Origin'      => $row->OriginCountry     ?? '-',
+                    'Destination' => $row->DestinationCountry ?? '-',
+                    'IncoTerm'    => $row->IncoTerm          ?? '-',
+                    'Status'      => $row->Status            ?? '-',
+                    'Remark'      => $row->Remark            ?? '',
+                ];
+            }, $rows);
+
+            $total = count($formatted);
+
+            return response()->json([
+                'draw'            => (int) $request->input('draw', 1),
+                'recordsTotal'    => $total,
+                'recordsFiltered' => $total,
+                'data'            => $formatted,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('reportData - Failed', [
+                'error' => $e->getMessage(),
+                'file'  => $e->getFile(),
+                'line'  => $e->getLine(),
+            ]);
+
+            return response()->json([
+                'draw'            => (int) $request->input('draw', 1),
+                'recordsTotal'    => 0,
+                'recordsFiltered' => 0,
+                'data'            => [],
+                'error'           => 'An unexpected error occurred.',
+            ], 500);
         }
     }
 }

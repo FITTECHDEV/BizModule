@@ -765,7 +765,9 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
         ->name('quotation.transport-modes');
     Route::get('/quotation/containers', [App\Http\Controllers\QuotationController::class, 'getContainers'])
         ->name('quotation.containers');
-        
+    Route::get('/quotation/report-data', [App\Http\Controllers\QuotationController::class, 'reportData'])
+        ->name('quotation.report-data');
+
 
     // ✅ MOVED UP — were incorrectly placed after {id} wildcards
     Route::get('/quotation/inco-terms', [App\Http\Controllers\QuotationController::class, 'getIncoTerms'])
@@ -852,10 +854,11 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
         ->name('quotation.cargo.save');
     Route::post('/quotation/booking-integration-response', [App\Http\Controllers\QuotationController::class, 'handleBookingIntegrationResponse'])
         ->name('quotation.bookingIntegrationResponse');
-
     // ✅ MOVED UP — inquiry/save is a POST so technically safe, but grouped correctly here
     Route::post('/quotation/inquiry/save', [App\Http\Controllers\QuotationController::class, 'saveInquiryDetails'])
         ->name('quotation.inquiry.save');
+    Route::get('/quotation/data-sp', [App\Http\Controllers\QuotationController::class, 'dataFromSP'])
+        ->name('quotation.data.sp');
 
     // ============================================
     // WILDCARD ROUTES — must be last

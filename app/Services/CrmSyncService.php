@@ -32,7 +32,7 @@ class CrmSyncService
      * @param  int|null    $limit     Max records to process
      * @param  string|null $bookingNo Sync a single booking number
      */
-    public function run(bool $dryRun = false, ?int $limit = null, ?string $bookingNo = null): array
+    public function run(bool $dryRun = false, ?int $limit = null, ?string $bookingNo = null, string $triggeredBy = 'system'): array
     {
         $inserted            = 0;
         $updated             = 0;
@@ -177,7 +177,7 @@ class CrmSyncService
                 ]);
             }
         }
-        
+
         // ============================================================
         // STEP 4: Verify — only records touched in THIS run
         // Skipped on dry run since nothing was written
@@ -188,6 +188,21 @@ class CrmSyncService
         }
 
         Log::info('CRM Sync - Completed', compact('total', 'inserted', 'updated', 'skipped', 'failed'));
+
+        // Persist this run to history (skipped on dry runs — nothing was written)
+        if (!$dryRun) {
+            $this->appendHistory([
+                'run_at'       => date('Y-m-d H:i:s'),
+                'triggered_by' => $triggeredBy,
+                'total'        => $total,
+                'inserted'     => $inserted,
+                'updated'      => $updated,
+                'skipped'      => $skipped,
+                'failed'       => $failed,
+                'booking_no'   => $bookingNo,
+                'limit'        => $limit,
+            ]);
+        }
 
         return $this->result($total, $inserted, $updated, $skipped, $failed, $errors, $verification);
     }
@@ -439,5 +454,75 @@ class CrmSyncService
         ?array $verification = null
     ): array {
         return compact('total', 'inserted', 'updated', 'skipped', 'failed', 'errors', 'verification');
+    }
+
+    // ============================================================
+    // HISTORY
+    //
+    // Stored as a newline-delimited JSON file (one object per line).
+    // Path: storage/app/crm_sync_history.jsonl
+    //
+    // Why a flat file?
+    //   - No new tables (per requirement)
+    //   - Append-only writes are O(1)
+    //   - 20–100 lines is negligible storage
+    //   - Zero schema dependency or migrations
+    // ============================================================
+    private const HISTORY_FILE     = 'crm_sync_history.jsonl';
+    private const HISTORY_MAX_LINES = 100;
+
+    public function getHistory(int $limit = 20): array
+    {
+        $path = storage_path('app/' . self::HISTORY_FILE);
+
+        if (!file_exists($path)) {
+            return [];
+        }
+
+        $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+
+        if (empty($lines)) {
+            return [];
+        }
+
+        // Reverse so most recent run is first
+        $lines   = array_reverse($lines);
+        $lines   = array_slice($lines, 0, $limit);
+        $history = [];
+
+        foreach ($lines as $line) {
+            $decoded = json_decode(trim($line), true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $history[] = $decoded;
+            }
+        }
+
+        return $history;
+    }
+
+    private function appendHistory(array $entry): void
+    {
+        $path = storage_path('app/' . self::HISTORY_FILE);
+
+        try {
+            file_put_contents(
+                $path,
+                json_encode($entry) . PHP_EOL,
+                FILE_APPEND | LOCK_EX
+            );
+
+            // Rotate: keep only the last HISTORY_MAX_LINES entries
+            $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+            if (count($lines) > self::HISTORY_MAX_LINES) {
+                $trimmed = array_slice($lines, -self::HISTORY_MAX_LINES);
+                file_put_contents($path, implode(PHP_EOL, $trimmed) . PHP_EOL, LOCK_EX);
+            }
+        } catch (\Exception $e) {
+            // Non-fatal — history failure must never break the sync
+            Log::warning('CRM Sync - History write failed', [
+                'error' => $e->getMessage(),
+                'path'  => $path,
+            ]);
+        }
     }
 }
