@@ -50,10 +50,10 @@ class HomeController extends Controller
             try {
                 $azureStats = Cache::remember('azure_user_stats', 300, function () {
                     return [
-                        'active' => \App\Models\AzureUser::where('Status', 'active')->count(),
-                        'pending' => \App\Models\AzureUser::where('Status', 'pending')->count(),
+                        'active'   => \App\Models\AzureUser::where('Status', 'active')->count(),
+                        'pending'  => \App\Models\AzureUser::where('Status', 'pending')->count(),
                         'inactive' => \App\Models\AzureUser::where('Status', 'inactive')->count(),
-                        'total' => \App\Models\AzureUser::count(),
+                        'total'    => \App\Models\AzureUser::count(),
                     ];
                 });
             } catch (\Exception $e) {
@@ -71,11 +71,11 @@ class HomeController extends Controller
             }
 
             try {
-                $traStatsTZ = TRABillingHeader::getStatsByOfficeCode(['AR']);
+                $traStatsTZ  = TRABillingHeader::getStatsByOfficeCode(['AR']);
                 $traStatsADL = TRABillingHeader::getStatsByOfficeCode(['TZ']);
             } catch (\Exception $e) {
                 \Log::error('TRA Stats Error: ' . $e->getMessage());
-                $traStatsTZ = [];
+                $traStatsTZ  = [];
                 $traStatsADL = [];
             }
 
@@ -93,10 +93,10 @@ class HomeController extends Controller
             } catch (\Exception $e) {
                 \Log::error('Login Tracker Stats Error: ' . $e->getMessage());
                 $loginTrackerStats = [
-                    'total_users' => 0,
+                    'total_users'       => 0,
                     'active_this_month' => 0,
                     'active_last_month' => 0,
-                    'inactive_users' => 0,
+                    'inactive_users'    => 0,
                 ];
             }
 
@@ -106,17 +106,17 @@ class HomeController extends Controller
             } catch (\Exception $e) {
                 \Log::error('Tracker Stats Error: ' . $e->getMessage());
                 $tracker_stats = (object)[
-                    'created' => 0,
-                    'transit' => 0,
+                    'created'  => 0,
+                    'transit'  => 0,
                     'complete' => 0,
-                    'total' => 0,
+                    'total'    => 0,
                 ];
             }
 
             $active_this_month = $loginTrackerStats['active_this_month'];
             $active_last_month = $loginTrackerStats['active_last_month'];
-            $inactive_users = $loginTrackerStats['inactive_users'];
-            $total_users = $loginTrackerStats['total_users'];
+            $inactive_users    = $loginTrackerStats['inactive_users'];
+            $total_users       = $loginTrackerStats['total_users'];
 
             $shipment_reports_stats = ShipmentReportController::getHomeStats();
 
@@ -133,10 +133,10 @@ class HomeController extends Controller
                 ->first();
 
             $scm_profit_stats = [
-                'total' => $scm_profit_stats_obj->total ?? 0,
-                'pending' => $scm_profit_stats_obj->pending ?? 0,
-                'success' => $scm_profit_stats_obj->success ?? 0,
-                'failed' => $scm_profit_stats_obj->failed ?? 0,
+                'total'   => $scm_profit_stats_obj->total   ?? 0,
+                'pending' => $scm_profit_stats_obj->pending  ?? 0,
+                'success' => $scm_profit_stats_obj->success  ?? 0,
+                'failed'  => $scm_profit_stats_obj->failed   ?? 0,
             ];
 
             // RA Integration metrics
@@ -145,8 +145,8 @@ class HomeController extends Controller
             } catch (\Exception $e) {
                 \Log::error('RA Integration Stats Error: ' . $e->getMessage());
                 $ra_metrics = [
-                    'ra_pending_d365' => 0,
-                    'ra_total_failed' => 0,
+                    'ra_pending_d365'  => 0,
+                    'ra_total_failed'  => 0,
                     'ra_success_today' => 0,
                 ];
             }
@@ -173,11 +173,11 @@ class HomeController extends Controller
             // Quotation Stats
             try {
                 $quotation_stats = $canViewQuotationCard
-                    ? ['total' => 0, 'pending' => 0, 'success' => 0, 'failed' => 0] // replace with real query later
-                    : ['total' => 0, 'pending' => 0, 'success' => 0, 'failed' => 0];
+                    ? \App\Http\Controllers\QuotationController::getHomeStats()
+                    : ['total' => 0, 'in_progress' => 0, 'failed_int' => 0, 'failed_progress' => 0];
             } catch (\Exception $e) {
                 \Log::error('Quotation Stats Error: ' . $e->getMessage());
-                $quotation_stats = ['total' => 0, 'pending' => 0, 'success' => 0, 'failed' => 0];
+                $quotation_stats = ['total' => 0, 'in_progress' => 0, 'failed_int' => 0, 'failed_progress' => 0];
             }
 
             return view(

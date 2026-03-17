@@ -605,9 +605,9 @@ class QuotationController extends Controller
                         || str_contains(strtolower($row->DestinationCountry ?? ''), $needle)
                         || str_contains(strtolower($row->Status             ?? ''), $needle)
                         || str_contains(strtolower($row->QuoteNo            ?? ''), $needle)
-                        || str_contains(strtolower($db->teamname            ?? ''), $needle)
-                        || str_contains(strtolower($db->username            ?? ''), $needle)
-                        || str_contains(strtolower((string)($db->bookingno ?? '')), $needle);
+                        || str_contains(strtolower($row->Service     ?? ''), $needle)
+                        || str_contains(strtolower($row->Process     ?? ''), $needle)
+                        || str_contains(strtolower($row->IncoTerm    ?? ''), $needle);
                 }));
             }
 
@@ -640,7 +640,24 @@ class QuotationController extends Controller
                 };
 
                 // Remarks
-                $remark      = trim($row->Remark ?? '');
+                // For Failed Int., QuoteStatusDescription holds the actual pipeline failure
+                // message written by markAsFailed(). The SP's Remark field contains the CRM
+                // reference number, which is not meaningful to the user.
+                $remark = trim($row->Remark ?? '');
+
+                if ($db) {
+                    $raw = trim($db->QuoteStatusDescription ?? '');
+                    if ($raw) {
+                        $decoded = json_decode('[' . $raw . ']', true);
+                        $remark  = (json_last_error() === JSON_ERROR_NONE && is_array($decoded))
+                            ? implode(' | ', array_column($decoded, 'Remark'))
+                            : $raw;
+                    } else {
+                        // No QuoteStatusDescription — suppress the CRM reference number
+                        $remark = '';
+                    }
+                }
+
                 $remarksHtml = '<span class="text-muted">—</span>';
                 if ($remark && $remark !== '-') {
                     $isError = in_array($displayStatus, ['Failed Int.', 'Failed Progress']);
@@ -681,16 +698,19 @@ class QuotationController extends Controller
                 $actionHtml .= '</div>';
 
                 return [
-                    'report_date'        => $db?->CreatedOn ? date('Y-m-d', strtotime($db->CreatedOn)) : ($row->Date ?? '-'),
-                    'OfficeName'         => $db->teamname           ?? '-',
-                    'ClientName'         => $row->CompanyName       ?? '-',
-                    'ClientID'           => $db->clientid           ?? '-',
-                    'SalesPerson'        => $db->username           ?? '-',
-                    'OriginCountry'      => $row->OriginCountry     ?? '-',
+                    'QuoteNo'            => $row->QuoteNo            ?? '-',
+                    'Date'               => $db?->CreatedOn ? date('Y-m-d', strtotime($db->CreatedOn)) : ($row->Date ?? '-'),
+                    'CompanyName'        => $row->CompanyName        ?? '-',
+                    'Service'            => $row->Service            ?? '-',
+                    'Process'            => $row->Process            ?? '-',
+                    'OriginCountry'      => $row->OriginCountry      ?? '-',
                     'DestinationCountry' => $row->DestinationCountry ?? '-',
-                    'QuotationStatus'    => '<span class="badge ' . $badgeClass . '">' . e($displayStatus) . '</span>',
-                    'BookingNo'          => $db->bookingno          ?? '-',
-                    'remarks_error'      => $remarksHtml,
+                    'IncoTerm'           => $row->IncoTerm           ?? '-',
+                    'ScopeOfVolume'      => $row->ScopeOfVolume      ?? '-',
+                    'CargoVolume'        => $row->CargoVolume        ?? null,
+                    'ContainerList'      => $row->ContainerList      ?? '-',
+                    'Status'             => '<span class="badge ' . $badgeClass . '">' . e($displayStatus) . '</span>',
+                    'Remark'             => $remarksHtml,
                     'action'             => $actionHtml,
                 ];
             }, $pageRows);
@@ -7955,6 +7975,55 @@ class QuotationController extends Controller
                 'data'            => [],
                 'error'           => 'An unexpected error occurred.',
             ], 500);
+        }
+    }
+
+    /**
+     * Returns quotation stats for the dashboard home card.
+     * All-time scope (no date filter), scoped to the calling user's offices.
+     * Keys match the dashboard card: total, in_progress, failed_int, failed_progress.
+     */
+    public static function getHomeStats(): array
+    {
+        $blank = [
+            'total'           => 0,
+            'in_progress'     => 0,
+            'failed_int'      => 0,
+            'failed_progress' => 0,
+        ];
+
+        try {
+            $instance           = new self();
+            $allowedOfficeCodes = $instance->resolveUserOfficeCodes();
+
+            \Log::info('QuotationController::getHomeStats - office codes resolved', [
+                'user_email'          => \Auth::user()->Email ?? 'null',
+                'allowed_office_codes' => $allowedOfficeCodes->toArray(),
+            ]);
+
+            if ($allowedOfficeCodes->isEmpty()) {
+                \Log::warning('QuotationController::getHomeStats - no office codes, returning zeros');
+                return $blank;
+            }
+
+            $stats = $instance->getStatsForIndex($allowedOfficeCodes);
+
+            \Log::info('QuotationController::getHomeStats - stats returned', $stats);
+
+            return [
+                'total'           => $stats['total']           ?? 0,
+                'in_progress'     => $stats['in_progress']     ?? 0,
+                'failed_int'      => $stats['failed_int']      ?? 0,
+                'failed_progress' => $stats['failed_progress'] ?? 0,
+            ];
+        } catch (\Exception $e) {
+            \Log::error('QuotationController::getHomeStats - Failed', [
+                'error' => $e->getMessage(),
+                'line'  => $e->getLine(),
+                'file'  => $e->getFile(),
+            ]);
+
+            return $blank;
         }
     }
 }

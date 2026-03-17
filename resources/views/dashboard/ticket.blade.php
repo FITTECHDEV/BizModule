@@ -537,10 +537,20 @@
                 <div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-3">
                     <a href="{{ route('quotation.index') }}" style="text-decoration: none; color: inherit;">
                         <div class="card card-widget widget-user shadow service-card scm-profit-card">
+
+                            <!-- Header -->
                             <div class="widget-user-header bg-info">
                                 <h3 class="widget-user-username">Quote INTEGRATION</h3>
                                 <h5 class="widget-user-desc">Integration Status</h5>
                             </div>
+
+                            <!-- Floating Icon (THIS is the key part) -->
+                            <div class="widget-user-image">
+                                <img class="img-circle elevation-2" src="{{ asset('img/supply-chain-management.png') }}"
+                                    alt="SCM Icon" style="background: white; padding: 5px; width: 60px; height: 60px;">
+                            </div>
+
+                            <!-- Footer -->
                             <div class="card-footer">
                                 <div class="row">
                                     <div class="col-3 border-right">
@@ -548,19 +558,20 @@
                                         <span>Total</span>
                                     </div>
                                     <div class="col-3 border-right">
-                                        <h5 class="text-warning">{{ $quotation_stats['pending'] ?? 0 }}</h5>
-                                        <span>Pending</span>
+                                        <h5 class="text-warning">{{ $quotation_stats['in_progress'] ?? 0 }}</h5>
+                                        <span>In Progress</span>
                                     </div>
                                     <div class="col-3 border-right">
-                                        <h5 class="text-success">{{ $quotation_stats['success'] ?? 0 }}</h5>
-                                        <span>Success</span>
+                                        <h5 class="text-danger">{{ $quotation_stats['failed_int'] ?? 0 }}</h5>
+                                        <span>Failed</span>
                                     </div>
                                     <div class="col-3">
-                                        <h5 class="text-danger">{{ $quotation_stats['failed'] ?? 0 }}</h5>
-                                        <span>Failed</span>
+                                        <h5 class="text-secondary">{{ $quotation_stats['failed_progress'] ?? 0 }}</h5>
+                                        <span>Failed In Progress</span>
                                     </div>
                                 </div>
                             </div>
+
                         </div>
                     </a>
                 </div>

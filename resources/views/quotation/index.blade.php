@@ -199,16 +199,17 @@
                     <table id="quotationTable" class="table table-bordered table-striped table-hover w-100 dtr-inline">
                         <thead>
                             <tr>
-                                <th data-priority="1">Date</th>
-                                <th data-priority="2">Office</th>
-                                <th data-priority="3">Client Name</th>
-                                <th data-priority="8">Client ID</th>
-                                <th data-priority="9">Sales Person</th>
-                                <th data-priority="10">Origin</th>
-                                <th data-priority="11">Destination</th>
+                                <th data-priority="1">Quote No</th>
+                                <th data-priority="2">Date</th>
+                                <th data-priority="3">Company Name</th>
+                                <th data-priority="9">Service</th>
+                                <th data-priority="10">Process</th>
+                                <th data-priority="11">Origin</th>
+                                <th data-priority="12">Destination</th>
+                                <th data-priority="8">IncoTerm</th>
+                                <th data-priority="13">Volume / Containers</th>
                                 <th data-priority="4">Status</th>
-                                <th data-priority="13">Booking No</th>
-                                <th>Remarks</th>
+                                <th data-priority="6">Remark</th>
                                 <th data-priority="5">Action</th>
                             </tr>
                         </thead>
@@ -893,100 +894,123 @@
                         alert('Error loading data. Please check the console.');
                     }
                 },
-                columns: [{
-                        data: 'report_date',
-                        name: 'report_date',
-                        searchable: false,
+                columns: [
+                    // col 0 — QuoteNo
+                    {
+                        data: 'QuoteNo',
+                        name: 'QuoteNo',
                         responsivePriority: 1
                     },
+                    // col 1 — Date (default sort)
                     {
-                        data: 'OfficeName',
-                        name: 'OfficeName',
+                        data: 'Date',
+                        name: 'Date',
+                        searchable: false,
                         responsivePriority: 2
                     },
+                    // col 2 — CompanyName
                     {
-                        data: 'ClientName',
-                        name: 'ClientName',
+                        data: 'CompanyName',
+                        name: 'CompanyName',
                         responsivePriority: 3,
                         render: function(data, type, row) {
-                            if (type === 'display' && data && data.length > 50) {
+                            if (type === 'display' && data && data.length > 50)
                                 return '<span title="' + data + '">' + data.substr(0, 50) +
                                     '...</span>';
-                            }
                             return data;
                         }
                     },
+                    // col 3 — Service
                     {
-                        data: 'ClientID',
-                        name: 'ClientID',
-                        responsivePriority: 8
-                    },
-                    {
-                        data: 'SalesPerson',
-                        name: 'SalesPerson',
+                        data: 'Service',
+                        name: 'Service',
                         responsivePriority: 9
                     },
+                    // col 4 — Process
+                    {
+                        data: 'Process',
+                        name: 'Process',
+                        responsivePriority: 10
+                    },
+                    // col 5 — OriginCountry
                     {
                         data: 'OriginCountry',
                         name: 'OriginCountry',
-                        responsivePriority: 10
+                        responsivePriority: 11
                     },
+                    // col 6 — DestinationCountry
                     {
                         data: 'DestinationCountry',
                         name: 'DestinationCountry',
-                        responsivePriority: 11
+                        responsivePriority: 12
                     },
+                    // col 7 — IncoTerm
                     {
-                        data: 'QuotationStatus',
-                        name: 'QuotationStatus',
+                        data: 'IncoTerm',
+                        name: 'IncoTerm',
+                        responsivePriority: 8
+                    },
+                    // col 8 — Volume / Containers (combined, display-only)
+                    {
+                        data: null,
+                        name: 'volume',
+                        orderable: false,
+                        searchable: false,
+                        responsivePriority: 13,
+                        render: function(data, type, row) {
+                            if (type !== 'display') return '';
+                            var parts = [];
+                            if (row.ScopeOfVolume && row.ScopeOfVolume !== '-') parts.push(row
+                                .ScopeOfVolume);
+                            if (row.CargoVolume && parseFloat(row.CargoVolume) > 0) parts.push(
+                                parseFloat(row.CargoVolume).toLocaleString());
+                            if (row.ContainerList && row.ContainerList !== '-') parts.push(
+                                '<span class="text-muted">' + row.ContainerList + '</span>');
+                            return parts.length ? parts.join('<br>') :
+                                '<span class="text-muted">—</span>';
+                        }
+                    },
+                    // col 9 — Status
+                    {
+                        data: 'Status',
+                        name: 'Status',
                         responsivePriority: 4,
                         render: function(data, type, row) {
                             if (type === 'display') {
-                                var badgeClass = 'badge-secondary';
-                                if (data === 'Won') badgeClass = 'badge-success';
-                                else if (data === 'Lost') badgeClass = 'badge-danger';
-                                else if (data === 'Canceled') badgeClass = 'badge-warning';
-                                else if (data === 'Failed Int.') badgeClass = 'badge-danger';
-                                else if (data === 'Failed Progress') badgeClass = 'badge-secondary';
-                                else if (data === 'In Progress') badgeClass = 'badge-info';
-
-                                return '<span class="badge ' + badgeClass + '">' + data + '</span>';
+                                var textColor = '#6c757d'; // default grey
+                                if (data === 'Won') textColor = '#28a745'; // green
+                                else if (data === 'Lost') textColor = '#dc3545'; // red
+                                else if (data === 'Canceled') textColor = '#e0a800'; // amber
+                                else if (data === 'Failed Int.') textColor = '#dc3545'; // red
+                                else if (data === 'Failed Progress') textColor = '#6c757d'; // grey
+                                else if (data === 'In Progress') textColor = '#17a2b8'; // teal
+                                return '<span style="color:' + textColor +
+                                    '; font-weight:600; font-size:0.8rem;">' + data + '</span>';
                             }
                             return data;
                         }
                     },
-
+                    // col 10 — Remark
                     {
-                        data: 'BookingNo',
-                        name: 'BookingNo',
-                        responsivePriority: 13
-                    },
-                    // ── NEW: Remarks / Error column ──────────────────────────────
-                    // Parses failure_reason JSON from the DB and renders validation
-                    // errors in red for Failed Int. / Failed Progress rows,
-                    // or muted grey for informational remarks on other statuses.
-                    {
-                        data: 'remarks_error',
-                        name: 'remarks_error',
+                        data: 'Remark',
+                        name: 'Remark',
                         orderable: false,
                         searchable: false,
                         responsivePriority: 6,
                         render: function(data, type, row) {
                             if (type !== 'display') return data || '';
                             if (!data || data === '-') return '<span class="text-muted">—</span>';
-
-                            var isError = row.QuotationStatus === 'Failed Int.' ||
-                                row.QuotationStatus === 'Failed Progress';
-
-                            if (isError) {
-                                return '<span class="text-danger" title="' + data + '">' +
-                                    '<i class="fas fa-exclamation-circle mr-1"></i>' +
+                            var isError = row.Status === 'Failed Int.' || row.Status ===
+                                'Failed Progress';
+                            if (isError)
+                                return '<span class="text-danger" title="' + data +
+                                    '"><i class="fas fa-exclamation-circle mr-1"></i>' +
                                     (data.length > 80 ? data.substr(0, 80) + '...' : data) +
                                     '</span>';
-                            }
                             return '<span class="text-muted">' + data + '</span>';
                         }
                     },
+                    // col 11 — Action
                     {
                         data: 'action',
                         name: 'action',
@@ -995,15 +1019,13 @@
                         responsivePriority: 1,
                         className: 'text-center action-column',
                         render: function(data, type, row) {
-                            if (type === 'display') {
-                                return '<div class="action-buttons">' + data + '</div>';
-                            }
-                            return data;
+                            return type === 'display' ? '<div class="action-buttons">' + data +
+                                '</div>' : data;
                         }
                     }
                 ],
                 order: [
-                    [0, 'desc']
+                    [1, 'desc']
                 ],
                 pageLength: 25,
                 responsive: {
@@ -1020,7 +1042,6 @@
                                     '<span class="dtr-data">' + col.data + '</span>' +
                                     '</li>' : '';
                             }).join('');
-
                             return data ? $('<ul class="dtr-details"/>').append(data) : false;
                         }
                     },
@@ -1049,7 +1070,7 @@
                 dom: 'lfrtip',
                 language: {
                     search: "Search:",
-                    searchPlaceholder: "Client, Office, Status...",
+                    searchPlaceholder: "Company, Quote No, Status...",
                     lengthMenu: "Show _MENU_"
                 },
                 initComplete: function() {
@@ -1076,7 +1097,7 @@
                 if ($(window).width() < 768) {
                     $searchInput.attr('placeholder', 'Search...');
                 } else {
-                    $searchInput.attr('placeholder', 'Client, Office, Status...');
+                    $searchInput.attr('placeholder', 'Company, Quote No, Status...');
                 }
             }
 
@@ -1393,7 +1414,8 @@
                 $('#' + inputId).closest('.form-group').find('.location-suggestions').remove();
             }
 
-            setupLocationAutocomplete('cb_place_of_receipt', 'cb_place_of_receipt_code', 'cb_place_of_receipt_id');
+            setupLocationAutocomplete('cb_place_of_receipt', 'cb_place_of_receipt_code',
+                'cb_place_of_receipt_id');
             setupLocationAutocomplete('cb_place_of_delivery', 'cb_place_of_delivery_code',
                 'cb_place_of_delivery_id');
 

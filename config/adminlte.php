@@ -361,11 +361,10 @@ return [
         [
             'text' => 'QUOTATION',
             'url'  => 'quotation',
-            'icon' => 'fas fa-fw fa-file-invoice',  // Changed to a more appropriate icon for quotations
+            'icon' => 'fas fa-fw fa-file-invoice',  
             'active' => ['quotation', 'quotation/*'],
-            'can'  => 'approve-all-entity-request'
+            'can'    => 'view-quotation'
         ],
-        // ↓ NEW ENTRY ↓
         [
             'text' => 'Z-REPORT RUNNER',
             'url'  => 'zreport',
