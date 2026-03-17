@@ -4,18 +4,19 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 
 class CrmSyncService
 {
-    private const CRM_CONNECTION     = 'pgsql';
-    private const SCM_CONNECTION     = 'sqlsrv';
-    private const HISTORY_FILE       = 'crm_sync_history.json';
-    private const HISTORY_MAX_ENTRIES = 50;
+    private const CRM_CONNECTION = 'pgsql';
+    private const SCM_CONNECTION = 'sqlsrv';
 
-    // Date fields in the CRM JSON that need microsecond truncation
-    // before being passed to SQL Server's TRY_CAST(... AS DATETIME)
-    private const DATE_FIELDS = ['createdon', 'updatedon', 'date_deadline', 'date_closed'];
+    private const STATUS_MAP = [
+        'won'      => 'Won',
+        'lost'     => 'Lost',
+        'cancel'   => 'Cancel',
+        'proposal' => 'Proposal',
+        'pending'  => 'Pending',
+    ];
 
     /**
      * Run the full sync and return a result summary array.
@@ -24,27 +25,21 @@ class CrmSyncService
      *   1. Get one persistent PDO connection to Postgres
      *   2. Call sp_QuoteDetails() — creates CRM_Details temp table in THIS session
      *   3. SELECT * FROM CRM_Details in the SAME session (temp table would be lost otherwise)
-     *   4. Loop each row, normalize date fields in JSON, upsert into SQL Server via SP
+     *   4. Loop each row, parse bookingdetailsjson, upsert into SQL Server
      *   5. Verify only the records touched in this run
-     *   6. Append run summary to history file
      *
-     * @param  bool        $dryRun       Preview only — no writes
-     * @param  int|null    $limit        Max records to process
-     * @param  string|null $bookingNo    Sync a single booking number
-     * @param  string      $triggeredBy  User who triggered the sync (for history log)
+     * @param  bool        $dryRun    Preview only — no writes
+     * @param  int|null    $limit     Max records to process
+     * @param  string|null $bookingNo Sync a single booking number
      */
-    public function run(
-        bool    $dryRun      = false,
-        ?int    $limit       = null,
-        ?string $bookingNo   = null,
-        string  $triggeredBy = 'system'
-    ): array {
+    public function run(bool $dryRun = false, ?int $limit = null, ?string $bookingNo = null, string $triggeredBy = 'system'): array
+    {
         $inserted            = 0;
         $updated             = 0;
         $skipped             = 0;
         $failed              = 0;
         $errors              = [];
-        $processedBookingNos = [];
+        $processedBookingNos = []; // tracks booking numbers touched this run for verification
 
         // ============================================================
         // STEP 1 + 2: Call SP and read CRM_Details in the SAME PDO session
@@ -56,10 +51,13 @@ class CrmSyncService
         try {
             $pdo = DB::connection(self::CRM_CONNECTION)->getPdo();
 
+            // Step 1: Call the procedure — creates CRM_Details in THIS session
             Log::info('CRM Sync - Calling sp_QuoteDetails()');
             $pdo->exec('CALL sp_QuoteDetails()');
             Log::info('CRM Sync - sp_QuoteDetails() completed');
 
+            // Step 2: Read CRM_Details IN THE SAME SESSION
+            // bookingdetailsjson is the full CRM record as a JSON string
             if ($bookingNo) {
                 $stmt = $pdo->prepare(
                     'SELECT bookingno, bookingdetailsjson
@@ -91,6 +89,7 @@ class CrmSyncService
             ]);
         }
 
+        // Apply limit after fetch (temp table + PDO doesn't easily support LIMIT inline)
         if ($limit && !$bookingNo) {
             $rows = array_slice($rows, 0, $limit);
         }
@@ -105,15 +104,13 @@ class CrmSyncService
         }
 
         // ============================================================
-        // STEP 3: Parse JSON, normalize dates, upsert into SQL Server
+        // STEP 3: Parse JSON and upsert into SQL Server
         //
-        // Root cause of NULL dates: Postgres sends microsecond precision
-        // timestamps e.g. "2026-02-13T14:19:54.235641" which SQL Server's
-        // TRY_CAST(... AS DATETIME) silently returns NULL for because
-        // DATETIME only supports 3-decimal millisecond precision.
-        //
-        // Fix: decode JSON, truncate each date field to milliseconds,
-        // re-encode before passing to the stored procedure.
+        // For each row:
+        //   - Validate the JSON from bookingdetailsjson
+        //   - Build the column payload via buildPayload()
+        //   - Check if bookingno already exists in Quote_QuotationInfo
+        //   - INSERT (new) or UPDATE (existing) only CRM-owned columns
         // ============================================================
         $scmPdo = DB::connection(self::SCM_CONNECTION)->getPdo();
 
@@ -127,23 +124,19 @@ class CrmSyncService
                     continue;
                 }
 
-                $data = json_decode($row->bookingdetailsjson, true);
+                // Validate JSON is parseable before sending to SP
+                json_decode($row->bookingdetailsjson, true);
                 if (json_last_error() !== JSON_ERROR_NONE) {
                     $failed++;
-                    $errors[] = ['bookingno' => $bno, 'error' => 'JSON parse error: ' . json_last_error_msg()];
+                    $errors[] = [
+                        'bookingno' => $bno,
+                        'error'     => 'JSON parse error: ' . json_last_error_msg()
+                    ];
                     Log::error('CRM Sync - JSON parse error', ['bookingno' => $bno]);
                     continue;
                 }
 
-                // Normalize microsecond timestamps → SQL Server-compatible format
-                foreach (self::DATE_FIELDS as $field) {
-                    if (!empty($data[$field])) {
-                        $data[$field] = $this->normalizeDateTime($data[$field]);
-                    }
-                }
-
-                $normalizedJson = json_encode($data);
-
+                // Check existence (for dry-run reporting only)
                 $existing = DB::connection(self::SCM_CONNECTION)
                     ->table('Quote_QuotationInfo')
                     ->where('bookingno', $bno)
@@ -152,6 +145,7 @@ class CrmSyncService
                 if ($dryRun) {
                     $existing ? $updated++ : $inserted++;
                     $processedBookingNos[] = $bno;
+
                     Log::debug('CRM Sync - Dry run', [
                         'bookingno' => $bno,
                         'action'    => $existing ? 'would update' : 'would insert',
@@ -159,9 +153,9 @@ class CrmSyncService
                     continue;
                 }
 
-                // Pass normalized JSON (dates truncated to ms) to the SP
+                // Execute stored procedure — pass raw JSON directly
                 $stmt = $scmPdo->prepare("EXEC dbo.sp_Quote_QuotationCreate ?");
-                $stmt->execute([$normalizedJson]);
+                $stmt->execute([$row->bookingdetailsjson]);
 
                 $existing ? $updated++ : $inserted++;
                 $processedBookingNos[] = $bno;
@@ -172,7 +166,11 @@ class CrmSyncService
                 ]);
             } catch (\Exception $e) {
                 $failed++;
-                $errors[] = ['bookingno' => $bno, 'error' => $e->getMessage()];
+                $errors[] = [
+                    'bookingno' => $bno,
+                    'error'     => $e->getMessage()
+                ];
+
                 Log::error('CRM Sync - Record failed', [
                     'bookingno' => $bno,
                     'error'     => $e->getMessage(),
@@ -182,6 +180,7 @@ class CrmSyncService
 
         // ============================================================
         // STEP 4: Verify — only records touched in THIS run
+        // Skipped on dry run since nothing was written
         // ============================================================
         $verification = null;
         if (!$dryRun) {
@@ -190,116 +189,46 @@ class CrmSyncService
 
         Log::info('CRM Sync - Completed', compact('total', 'inserted', 'updated', 'skipped', 'failed'));
 
-        $result = $this->result($total, $inserted, $updated, $skipped, $failed, $errors, $verification);
-
-        // ============================================================
-        // STEP 5: Persist run summary to history file (skip dry runs)
-        // ============================================================
+        // Persist this run to history (skipped on dry runs — nothing was written)
         if (!$dryRun) {
-            $this->appendHistory($result, $triggeredBy, $bookingNo, $limit);
-        }
-
-        return $result;
-    }
-
-    // ============================================================
-    // DATE NORMALIZATION
-    //
-    // SQL Server DATETIME supports milliseconds (3 decimal places).
-    // Postgres sends microseconds (6 decimal places) which causes
-    // TRY_CAST to silently return NULL.
-    //
-    // Input:  "2026-02-13T14:19:54.235641"
-    // Output: "2026-02-13 14:19:54.235"
-    // ============================================================
-    private function normalizeDateTime(string $value): ?string
-    {
-        if (empty($value)) {
-            return null;
-        }
-
-        // Remove the T separator so SQL Server DATETIME parsing is unambiguous
-        $value = str_replace('T', ' ', $value);
-
-        // Truncate to 3 decimal places (milliseconds) if more are present
-        // Matches: "2026-02-13 14:19:54.235641" → "2026-02-13 14:19:54.235"
-        if (preg_match('/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{1,3})\d*$/', $value, $m)) {
-            return $m[1];
-        }
-
-        // Already clean (no decimals or exactly 1-3 decimal places)
-        return $value;
-    }
-
-    // ============================================================
-    // HISTORY FILE
-    //
-    // Appends a compact summary of each real (non-dry-run) sync
-    // to storage/app/crm_sync_history.json.
-    // Keeps the last HISTORY_MAX_ENTRIES entries only.
-    // ============================================================
-    private function appendHistory(array $result, string $triggeredBy, ?string $bookingNo, ?int $limit): void
-    {
-        try {
-            $entry = [
-                'run_at'       => now()->toDateTimeString(),
+            $this->appendHistory([
+                'run_at'       => date('Y-m-d H:i:s'),
                 'triggered_by' => $triggeredBy,
+                'total'        => $total,
+                'inserted'     => $inserted,
+                'updated'      => $updated,
+                'skipped'      => $skipped,
+                'failed'       => $failed,
                 'booking_no'   => $bookingNo,
                 'limit'        => $limit,
-                'total'        => $result['total'],
-                'inserted'     => $result['inserted'],
-                'updated'      => $result['updated'],
-                'skipped'      => $result['skipped'],
-                'failed'       => $result['failed'],
-                'has_errors'   => !empty($result['errors']),
-            ];
-
-            $history = [];
-
-            if (Storage::exists(self::HISTORY_FILE)) {
-                $raw = Storage::get(self::HISTORY_FILE);
-                $history = json_decode($raw, true) ?? [];
-            }
-
-            // Prepend newest entry so the list is newest-first
-            array_unshift($history, $entry);
-
-            // Trim to max allowed entries
-            $history = array_slice($history, 0, self::HISTORY_MAX_ENTRIES);
-
-            Storage::put(self::HISTORY_FILE, json_encode($history, JSON_PRETTY_PRINT));
-        } catch (\Exception $e) {
-            Log::error('CRM Sync - Failed to write history file', ['error' => $e->getMessage()]);
+            ]);
         }
-    }
 
-    // ============================================================
-    // HISTORY READ
-    // Called by the controller to serve the history endpoint.
-    // ============================================================
-    public function getHistory(int $limit = 20): array
-    {
-        try {
-            if (!Storage::exists(self::HISTORY_FILE)) {
-                return [];
-            }
-
-            $history = json_decode(Storage::get(self::HISTORY_FILE), true) ?? [];
-
-            return array_slice($history, 0, $limit);
-        } catch (\Exception $e) {
-            Log::error('CRM Sync - Failed to read history file', ['error' => $e->getMessage()]);
-            return [];
-        }
+        return $this->result($total, $inserted, $updated, $skipped, $failed, $errors, $verification);
     }
 
     // ============================================================
     // FIELD MAP: CRM JSON → Quote_QuotationInfo columns
-    // (kept for reference — not used in the sync flow directly)
+    //
+    // Source: bookingdetailsjson from CRM_Details (via sp_QuoteDetails)
+    // Target: Quote_QuotationInfo (SQL Server)
+    //
+    // Columns intentionally NOT mapped (SCM-managed, not CRM-owned):
+    //   QuoteNo, OfficeCode, OfficeID, QuotationTCTemplate,
+    //   QuotationEmailTemplate, ServiceTemplateID, ServiceTemplate,
+    //   BillToPartyCode, BillToParty, ForwarderCode, Forwarder,
+    //   IncludeCountry, PlaceOfReceiptCode, PlaceOfReceipt,
+    //   PlaceOfDeliveryCode, PlaceOfDelivery, ReasonCode, ReasonRemark,
+    //   QuoteStatusDescription, INTCreatedOn, INTUpdatedOn,
+    //   ClientCreated, ClientCodeINSCM, ClientIDINSCM, ClientIntegration,
+    //   SCMBookingID, SCMBookingNo, SCMJobID, SCMJobNo, SCMINTStatus,
+    //   SCMBookingXML, CreatedOnInSCM, UpdatedOninSCM, AgentTypeId,
+    //   AgentType, CustomerType, CreatedBy
     // ============================================================
     private function buildPayload(array $d): array
     {
         return [
+            // ── Identity / team ──────────────────────────────────────
             'clientid'                     => $d['clientid']          ?? null,
             'userid'                       => $d['userid']            ?? null,
             'userpartnerid'                => $d['userpartnerid']     ?? null,
@@ -308,6 +237,8 @@ class CrmSyncService
             'teamname'                     => $d['teamname']          ?? '',
             'SalesPersonCode'              => $d['salespersoncode']   ?? '',
             'SalesPersonEmail'             => $d['salespersonemail']  ?? '',
+
+            // ── Company / contact ────────────────────────────────────
             'companyname'                  => $d['companyname']       ?? '',
             'companyname_crm'              => $d['companyname_crm']   ?? '',
             'contact_name'                 => $d['contact_name']      ?? '',
@@ -323,6 +254,8 @@ class CrmSyncService
             'city'                         => $d['city']              ?? '',
             'phone_sanitized'              => $d['phone_sanitized']   ?? '',
             'email_normalized'             => $d['email_normalized']  ?? '',
+
+            // ── Partner (company-level) ──────────────────────────────
             'partnermaster_name'           => $d['partnermaster_name']       ?? '',
             'partner_stateid'              => $d['partner_stateid']          ?? null,
             'partner_statename'            => $d['partner_statename']        ?? '',
@@ -340,6 +273,8 @@ class CrmSyncService
             'partner_email'                => $d['partner_email']            ?? '',
             'partner_phone'                => $d['partner_phone']            ?? '',
             'partner_mobile'               => $d['partner_mobile']           ?? '',
+
+            // ── Primary partner ──────────────────────────────────────
             'pri_id'                       => $d['pri_id']                          ?? null,
             'pri_partnermaster_name'       => $d['pri_partnermaster_name']          ?? '',
             'pri_partner_stateid'          => $d['pri_partner_stateid']             ?? null,
@@ -358,6 +293,8 @@ class CrmSyncService
             'pri_partner_email'            => $d['pri_partner_email']               ?? '',
             'pri_partner_phone'            => $d['pri_partner_phone']               ?? '',
             'pri_partner_mobile'           => $d['pri_partner_mobile']              ?? '',
+
+            // ── Geography ────────────────────────────────────────────
             'origin_country_id'            => $d['origin_country_id']           ?? null,
             'origin_country_code'          => $d['origin_country_code']         ?? '',
             'origincountry'                => $d['origincountry']               ?? '',
@@ -369,8 +306,12 @@ class CrmSyncService
             'countryid'                    => $d['countryid']                   ?? null,
             'countrycode'                  => $d['countrycode']                 ?? '',
             'countryname'                  => $d['countryname']                 ?? '',
+
+            // ── Industry ─────────────────────────────────────────────
             'industryid'                   => $d['industryid']                  ?? null,
             'industryname'                 => $d['industryname']                ?? '',
+
+            // ── Service details ──────────────────────────────────────
             'serviceverticalid'            => $d['serviceverticalid']           ?? null,
             'serviceverticalname'          => $d['svname'] ?? $d['serviceverticalname'] ?? '',
             'ServiceVertical'              => $d['servicevertical']             ?? null,
@@ -382,15 +323,21 @@ class CrmSyncService
             'process'                      => $d['process']                     ?? '',
             'storage'                      => $d['storage']                     ?? '',
             'other'                        => $d['other']                       ?? '',
+
+            // ── Cargo ────────────────────────────────────────────────
             'commodity'                    => $d['commodity']                   ?? '',
             'scope_of_volume'              => $d['scope_of_volume']             ?? '',
             'scopevolume'                  => $d['scopevolume']                 ?? '',
             'cargo_volume'                 => ($d['cargo_volume']  ?? 0) > 0 ? (float) $d['cargo_volume']  : null,
             'cargovolume'                  => ($d['cargovolume']   ?? 0) > 0 ? (float) $d['cargovolume']   : null,
             'containerlist'                => $d['containerlist']               ?? '',
+
+            // ── Revenue ──────────────────────────────────────────────
             'quoted_revenue'               => ($d['quoted_revenue']   ?? 0) > 0 ? (float) $d['quoted_revenue']   : null,
             'expected_revenue'             => ($d['expected_revenue']  ?? 0) > 0 ? (float) $d['expected_revenue']  : null,
             'prorated_revenue'             => ($d['prorated_revenue']  ?? 0) > 0 ? (float) $d['prorated_revenue']  : null,
+
+            // ── CRM metadata ─────────────────────────────────────────
             'source_id'                    => $d['source_id']                   ?? null,
             'source'                       => $d['source']                      ?? '',
             'source_name'                  => $d['source_name']                 ?? '',
@@ -400,36 +347,60 @@ class CrmSyncService
             'state'                        => $d['state']                       ?? '',
             'quotationo'                   => $d['quotationo']                  ?? '',
             'won_status'                   => $d['won_status']                  ?? '',
+
+            // ── Status ───────────────────────────────────────────────
             'status'                       => $d['status']                      ?? '',
             'QuoteStatus'                  => $this->deriveQuoteStatus($d['won_status'] ?? null, $d['status'] ?? null),
-            'date_deadline'                => $this->normalizeDateTime($d['date_deadline'] ?? null),
-            'date_closed'                  => $this->normalizeDateTime($d['date_closed']   ?? null),
-            'CreatedOn'                    => $this->normalizeDateTime($d['createdon']     ?? null),
-            'Updatedon'                    => $this->normalizeDateTime($d['updatedon']     ?? null),
+
+            // ── Dates ────────────────────────────────────────────────
+            'date_deadline'                => $this->parseDate($d['date_deadline'] ?? null),
+            'date_closed'                  => $this->parseDate($d['date_closed']   ?? null),
+            'CreatedOn'                    => $this->parseDate($d['createdon']     ?? null),
+            'Updatedon'                    => $this->parseDate($d['updatedon']     ?? null),
+
+            // ── Audit ────────────────────────────────────────────────
             'LastModifiedBy'               => 'crm_sync',
         ];
     }
 
     // ============================================================
     // VERIFICATION
+    //
+    // Only inspects rows touched in THIS sync run via $processedBookingNos.
+    // This prevents the verification table from showing stale records
+    // from previous runs.
+    //
+    // Single booking → returns the full row for spot-checking.
+    // Full sync      → returns count + the records from this run only.
     // ============================================================
     private function verify(?string $bookingNo, array $processedBookingNos = []): array
     {
         try {
             $scm = DB::connection(self::SCM_CONNECTION);
 
+            // Single booking path — return that one row in full
             if ($bookingNo) {
                 $row = $scm->table('Quote_QuotationInfo')
                     ->where('bookingno', $bookingNo)
                     ->first([
-                        'bookingno', 'companyname', 'teamname', 'username',
-                        'origincountry', 'destinationcountry', 'serviceverticalname',
-                        'QuoteStatus', 'status', 'CreatedOn', 'Updatedon', 'LastModifiedBy',
+                        'bookingno',
+                        'companyname',
+                        'teamname',
+                        'username',
+                        'origincountry',
+                        'destinationcountry',
+                        'serviceverticalname',
+                        'QuoteStatus',
+                        'status',
+                        'Updatedon',
+                        'LastModifiedBy',
                     ]);
 
                 return $row ? ['record' => (array) $row] : ['record' => null];
             }
 
+            // Full sync path — scope to only the booking numbers
+            // processed in this run, not ALL crm_sync rows ever written
             $query = $scm->table('Quote_QuotationInfo')
                 ->where('LastModifiedBy', 'crm_sync');
 
@@ -462,8 +433,9 @@ class CrmSyncService
         if ($won === 'cancel')                   return 'Canceled';
         if ($won === 'pending')                  return 'In Progress';
 
-        return 'In Progress';
+        return 'In Progress'; // default
     }
+
 
     private function parseDate(?string $value): ?string
     {
@@ -482,5 +454,75 @@ class CrmSyncService
         ?array $verification = null
     ): array {
         return compact('total', 'inserted', 'updated', 'skipped', 'failed', 'errors', 'verification');
+    }
+
+    // ============================================================
+    // HISTORY
+    //
+    // Stored as a newline-delimited JSON file (one object per line).
+    // Path: storage/app/crm_sync_history.jsonl
+    //
+    // Why a flat file?
+    //   - No new tables (per requirement)
+    //   - Append-only writes are O(1)
+    //   - 20–100 lines is negligible storage
+    //   - Zero schema dependency or migrations
+    // ============================================================
+    private const HISTORY_FILE     = 'crm_sync_history.jsonl';
+    private const HISTORY_MAX_LINES = 100;
+
+    public function getHistory(int $limit = 20): array
+    {
+        $path = storage_path('app/' . self::HISTORY_FILE);
+
+        if (!file_exists($path)) {
+            return [];
+        }
+
+        $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+
+        if (empty($lines)) {
+            return [];
+        }
+
+        // Reverse so most recent run is first
+        $lines   = array_reverse($lines);
+        $lines   = array_slice($lines, 0, $limit);
+        $history = [];
+
+        foreach ($lines as $line) {
+            $decoded = json_decode(trim($line), true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $history[] = $decoded;
+            }
+        }
+
+        return $history;
+    }
+
+    private function appendHistory(array $entry): void
+    {
+        $path = storage_path('app/' . self::HISTORY_FILE);
+
+        try {
+            file_put_contents(
+                $path,
+                json_encode($entry) . PHP_EOL,
+                FILE_APPEND | LOCK_EX
+            );
+
+            // Rotate: keep only the last HISTORY_MAX_LINES entries
+            $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+            if (count($lines) > self::HISTORY_MAX_LINES) {
+                $trimmed = array_slice($lines, -self::HISTORY_MAX_LINES);
+                file_put_contents($path, implode(PHP_EOL, $trimmed) . PHP_EOL, LOCK_EX);
+            }
+        } catch (\Exception $e) {
+            // Non-fatal — history failure must never break the sync
+            Log::warning('CRM Sync - History write failed', [
+                'error' => $e->getMessage(),
+                'path'  => $path,
+            ]);
+        }
     }
 }

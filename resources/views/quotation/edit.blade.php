@@ -6,7 +6,7 @@
 @section('content_header')
     <div class="d-flex justify-content-between align-items-center">
         <div>
-            <h1><i class="fas fa-file-invoice"></i> Inquiry No - {{ $quotation->bookingno ?? 'N/A' }}</h1>
+            <h1><i class="fas fa-file-invoice"></i> Quote No - {{ $quotation->QuoteNo ?? '' }}</h1>
             <p class="text-muted mb-0">Edit booking quotation</p>
         </div>
         <div>
@@ -20,6 +20,9 @@
     </div>
 @stop
 
+@php
+    $isBookingCreated = !empty($quotation->SCMBookingNo);
+@endphp
 
 @section('content')
     <form id="bookingQuotationForm">
@@ -44,7 +47,7 @@
                             <label class="col-sm-5 col-form-label">Source</label>
                             <div class="col-sm-7">
                                 <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->source ?? 'N/A' }}" readonly>
+                                    value="{{ $quotation->source ?? '' }}" readonly>
                             </div>
                         </div>
                         <div class="form-group row">
@@ -55,10 +58,27 @@
                             </div>
                         </div>
                         <div class="form-group row">
-                            <label class="col-sm-5 col-form-label">Sales person</label>
+                            <label class="col-sm-5 col-form-label">Office</label>
                             <div class="col-sm-7">
                                 <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->username ?? '' }}" readonly>
+                                    value="{{ $quotation->teamname ?? '' }}" readonly>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="col-sm-5 col-form-label">Sales Person</label>
+                            <div class="col-sm-7" style="position:relative;">
+                                <input type="text" class="form-control form-control-sm" id="salesPersonDisplay"
+                                    value="{{ $quotation->username ?? '' }}" readonly
+                                    placeholder="Search by name or code...">
+                                <input type="hidden" id="salesPersonCode" value="{{ $quotation->SalesPersonCode ?? '' }}">
+                                <ul id="salesPersonSuggestions" class="list-group"
+                                    style="
+                                    display:none; position:absolute; z-index:9999;
+                                    width:100%; max-height:200px; overflow-y:auto;
+                                    border:1px solid #ced4da; border-radius:0 0 4px 4px;
+                                    background:#fff; margin-top:-1px;
+                                    box-shadow:0 4px 8px rgba(0,0,0,0.1);">
+                                </ul>
                             </div>
                         </div>
                         <div class="form-group row">
@@ -68,13 +88,21 @@
                                     value="{{ $quotation->SalesPersonEmail ?? '' }}" readonly>
                             </div>
                         </div>
-                        <div class="form-group row mb-0">
-                            <label class="col-sm-5 col-form-label">Office</label>
-                            <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->teamname ?? 'N/A' }}" readonly>
+                        @if (!$isBookingCreated)
+                            <div class="form-group row mb-0">
+                                <div class="col-sm-7 offset-sm-5">
+                                    <button type="button" class="btn btn-warning btn-sm" id="editInquiryBtn">
+                                        <i class="fas fa-edit mr-1"></i> Edit
+                                    </button>
+                                    <button type="button" class="btn btn-success btn-sm d-none" id="saveInquiryBtn">
+                                        <i class="fas fa-save mr-1"></i> Save
+                                    </button>
+                                    <button type="button" class="btn btn-secondary btn-sm d-none" id="cancelInquiryBtn">
+                                        Cancel
+                                    </button>
+                                </div>
                             </div>
-                        </div>
+                        @endif
                     </div>
                 </div>
 
@@ -93,7 +121,7 @@
                             <label class="col-sm-5 col-form-label">Service</label>
                             <div class="col-sm-7">
                                 <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->ServiceVerticalname ?? '' }}" readonly>
+                                    value="{{ $quotation->SVName ?? '' }}" readonly>
                             </div>
                         </div>
                         <div class="form-group row">
@@ -103,46 +131,93 @@
                                     value="{{ $quotation->process ?? '' }}" readonly>
                             </div>
                         </div>
+                        {{-- Origin Country field: --}}
                         <div class="form-group row">
                             <label class="col-sm-5 col-form-label">Origin Country</label>
                             <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm"
+                                <input type="text" class="form-control form-control-sm" id="originCountryDisplay"
                                     value="{{ $quotation->origincountry ?? '' }}" readonly>
+                                <div id="originCountryEditWrap" style="display:none;">
+                                    {{-- REMOVED: <input type="text" id="originCountrySearch"> --}}
+                                    <select class="form-control form-control-sm" id="originCountrySelect">
+                                        <option value="">-- Select --</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
+
+                        {{-- Destination Country field: --}}
                         <div class="form-group row">
                             <label class="col-sm-5 col-form-label">Destination Country</label>
                             <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm"
+                                <input type="text" class="form-control form-control-sm" id="destCountryDisplay"
                                     value="{{ $quotation->destinationcountry ?? '' }}" readonly>
+                                <div id="destCountryEditWrap" style="display:none;">
+                                    {{-- REMOVED: <input type="text" id="destCountrySearch"> --}}
+                                    <select class="form-control form-control-sm" id="destCountrySelect">
+                                        <option value="">-- Select --</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
+                        {{-- InCo Terms --}}
                         <div class="form-group row">
                             <label class="col-sm-5 col-form-label">InCO Terms</label>
                             <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm"
+                                <input type="text" class="form-control form-control-sm" id="incoTermDisplay"
                                     value="{{ $quotation->incoterm ?? '' }}" readonly>
+                                <select class="form-control form-control-sm d-none" id="incoTermSelect" disabled>
+                                    <option value="">-- Select --</option>
+                                </select>
                             </div>
                         </div>
                         <div class="form-group row">
                             <label class="col-sm-5 col-form-label">Shipment Mode</label>
                             <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->shipmentmode ?? '' }}" readonly>
+                                <select class="form-control form-control-sm" id="shipmentModeSelect" name="shipment_mode"
+                                    disabled>
+                                    <option value="">-- Loading... --</option>
+                                </select>
                             </div>
                         </div>
                         <div class="form-group row">
                             <label class="col-sm-5 col-form-label">Transport Mode</label>
                             <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->TransportMode ?? '' }}" readonly>
+                                <select class="form-control form-control-sm" id="transportModeSelect"
+                                    name="transport_mode" disabled>
+                                    <option value="">-- Loading... --</option>
+                                </select>
                             </div>
                         </div>
                         <div class="form-group row mb-0">
                             <label class="col-sm-5 col-form-label">Service Class</label>
                             <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm"
+                                <input type="text" class="form-control form-control-sm" id="serviceClassDisplay"
                                     value="{{ $quotation->ServiceClass ?? '' }}" readonly>
+                                <select class="form-control form-control-sm d-none" id="serviceClassSelect" disabled>
+                                    <option value="">-- Select --</option>
+                                </select>
+                                {{-- keep this hidden field for the save payload --}}
+                                <input type="hidden" id="serviceClassCode"
+                                    value="{{ $quotation->ServiceClassCode ?? ($quotation->ServiceClass ?? '') }}">
+                            </div>
+                        </div>
+
+                        <div class="row mt-3 pt-2" style="border-top: 1px solid #dee2e6;">
+                            <div class="col-md-12 text-right">
+                                @if (!$isBookingCreated)
+                                    <button type="button" class="btn btn-warning btn-sm" id="editShipmentDetailsBtn">
+                                        <i class="fas fa-edit mr-1"></i> Edit
+                                    </button>
+                                @endif
+                                <button type="button" class="btn btn-primary btn-sm" id="saveShipmentDetailsBtn"
+                                    style="display:none">
+                                    <i class="fas fa-save mr-1"></i> Save
+                                </button>
+                                <button type="button" class="btn btn-secondary btn-sm" id="cancelShipmentDetailsBtn"
+                                    style="display:none">
+                                    <i class="fas fa-times mr-1"></i> Cancel
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -162,12 +237,13 @@
                         <div class="form-group row">
                             <label class="col-sm-5 col-form-label">Commodity</label>
                             <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->commodity ?? 'N/A' }}" readonly>
+                                <input type="text" class="form-control form-control-sm" id="commodityInput"
+                                    value="{{ $quotation->commodity ?? '' }}" readonly>
                             </div>
                         </div>
                         <div class="form-group row">
-                            <label class="col-sm-5 col-form-label">Scope Of Volume</label>
+                            <label class="col-sm-5 col-form-label">Scope Of Volume <span
+                                    class="text-danger customer-mandatory-star" style="display:none;">*</span></label>
                             <div class="col-sm-7">
                                 <input type="text" class="form-control form-control-sm" id="scopeVolumeDisplay"
                                     value="{{ $quotation->scopevolume ?? '' }}" readonly>
@@ -188,15 +264,48 @@
                         <div class="form-group row">
                             <label class="col-sm-5 col-form-label">Cargo Volume</label>
                             <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->cargovolume ?? 'N/A' }}" readonly>
+                                <input type="text" class="form-control form-control-sm" id="cargoVolumeInput"
+                                    value="{{ $quotation->cargovolume ?? '' }}" readonly>
                             </div>
                         </div>
                         <div class="form-group row mb-0">
-                            <label class="col-sm-5 col-form-label">Container List</label>
+                            <label class="col-sm-5 col-form-label">Containers</label>
                             <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->containerlist ?? 'N/A' }}" readonly>
+                                <table class="table table-sm table-bordered mb-1" id="containerListTable">
+                                    <thead>
+                                        <tr>
+                                            <th>Container Type</th>
+                                            <th style="width:90px;">Quantity</th>
+                                            <th style="width:36px;" id="containerActionCol" class="d-none"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="containerListBody">
+                                        <tr>
+                                            <td colspan="3" class="text-muted text-center">Loading...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                                <button type="button" class="btn btn-link btn-sm p-0 d-none" id="addContainerRowBtn">
+                                    <i class="fas fa-plus mr-1"></i> Add a line
+                                </button>
+                            </div>
+                        </div>
+
+                        {{-- Edit / Save / Cancel --}}
+                        <div class="row mt-3 pt-2" style="border-top: 1px solid #dee2e6;">
+                            <div class="col-md-12 text-right">
+                                @if (!$isBookingCreated)
+                                    <button type="button" class="btn btn-warning btn-sm" id="editCargoDetailsBtn">
+                                        <i class="fas fa-edit mr-1"></i> Edit
+                                    </button>
+                                @endif
+                                <button type="button" class="btn btn-primary btn-sm d-none" id="saveCargoDetailsBtn">
+                                    <i class="fas fa-save mr-1"></i> Save
+                                </button>
+                                <button type="button" class="btn btn-secondary btn-sm d-none"
+                                    id="cancelCargoDetailsBtn">
+                                    <i class="fas fa-times mr-1"></i> Cancel
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -207,8 +316,8 @@
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h3 class="card-title mb-0">Quotation Document</h3>
                         <div class="d-flex align-items-center ml-auto">
-                            <button type="button" class="btn btn-email-quote btn-sm mr-2" id="generateQuoteBtn" disabled
-                                title="Please apply Terms & Conditions first">
+                            <button type="button" class="btn btn-email-quote btn-sm mr-2" id="generateQuoteBtn">
+
                                 <i class="fas fa-file-alt mr-1"></i> Generate Quote
                             </button>
                             <button type="button" class="btn btn-tool" data-card-widget="collapse">
@@ -323,21 +432,21 @@
                             <label class="col-sm-5 col-form-label">Client Status</label>
                             <div class="col-sm-7">
                                 <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->ClientIntegration ?? 'N/A' }}" readonly>
+                                    value="{{ $quotation->ClientIntegration ?? '' }}" readonly>
                             </div>
                         </div>
                         <div class="form-group row">
                             <label class="col-sm-5 col-form-label">Booking No</label>
                             <div class="col-sm-7">
                                 <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->SCMBookingNo ?? 'N/A' }}" readonly>
+                                    value="{{ $quotation->SCMBookingNo ?? '' }}" readonly>
                             </div>
                         </div>
                         <div class="form-group row">
                             <label class="col-sm-5 col-form-label">Booking Integration</label>
                             <div class="col-sm-7">
                                 <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->SCMINTStatus ?? 'N/A' }}" readonly>
+                                    value="{{ $quotation->SCMINTStatus ?? '' }}" readonly>
                             </div>
                         </div>
                         <div class="form-group row mb-0">
@@ -348,7 +457,7 @@
                                         <i class="fas fa-code"></i> View XML
                                     </button>
                                 @else
-                                    <input type="text" class="form-control form-control-sm" value="N/A" readonly>
+                                    <input type="text" class="form-control form-control-sm" value="" readonly>
                                 @endif
                             </div>
                         </div>
@@ -372,99 +481,9 @@
                         </div>
                     </div>
                     <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group row">
-                                    <label class="col-sm-4 col-form-label">Company</label>
-                                    <div class="col-sm-8">
-                                        <input type="text" class="form-control form-control-sm"
-                                            value="{{ $quotation->companyname ?? 'N/A' }}" readonly>
-                                    </div>
-                                </div>
-                                <div class="form-group row">
-                                    <label class="col-sm-4 col-form-label">Address 1</label>
-                                    <div class="col-sm-8">
-                                        <input type="text" class="form-control form-control-sm"
-                                            value="{{ $quotation->pri_partner_steet ?? 'N/A' }}" readonly>
-                                    </div>
-                                </div>
-                                <div class="form-group row">
-                                    <label class="col-sm-4 col-form-label">City</label>
-                                    <div class="col-sm-8">
-                                        <input type="text" class="form-control form-control-sm"
-                                            value="{{ $quotation->pri_partner_city ?? 'N/A' }}" readonly>
-                                    </div>
-                                </div>
-                                <div class="form-group row">
-                                    <label class="col-sm-4 col-form-label">State</label>
-                                    <div class="col-sm-8">
-                                        <input type="text" class="form-control form-control-sm"
-                                            value="{{ $quotation->pri_partner_state ?? 'N/A' }}" readonly>
-                                    </div>
-                                </div>
-                                <div class="form-group row">
-                                    <label class="col-sm-4 col-form-label">Contact Person</label>
-                                    <div class="col-sm-8">
-                                        <input type="text" class="form-control form-control-sm"
-                                            value="{{ $quotation->pri_partnername ?? 'N/A' }}" readonly>
-                                    </div>
-                                </div>
-                                <div class="form-group row mb-0">
-                                    <label class="col-sm-4 col-form-label">Phone No</label>
-                                    <div class="col-sm-8">
-                                        <input type="text" class="form-control form-control-sm"
-                                            value="{{ $quotation->pri_partner_phone ?? 'N/A' }}" readonly>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group row">
-                                    <label class="col-sm-4 col-form-label">Client ID</label>
-                                    <div class="col-sm-8">
-                                        <input type="text" class="form-control form-control-sm"
-                                            value="{{ $quotation->clientid ?? 'N/A' }}" readonly>
-                                    </div>
-                                </div>
-                                <div class="form-group row">
-                                    <label class="col-sm-4 col-form-label">Address 2</label>
-                                    <div class="col-sm-8">
-                                        <input type="text" class="form-control form-control-sm"
-                                            value="{{ $quotation->pri_partner_steet2 ?? 'N/A' }}" readonly>
-                                    </div>
-                                </div>
-                                <div class="form-group row">
-                                    <label class="col-sm-4 col-form-label">Zip</label>
-                                    <div class="col-sm-8">
-                                        <input type="text" class="form-control form-control-sm"
-                                            value="{{ $quotation->pri_partner_zip ?? 'N/A' }}" readonly>
-                                    </div>
-                                </div>
-                                <div class="form-group row">
-                                    <label class="col-sm-4 col-form-label">Country</label>
-                                    <div class="col-sm-8">
-                                        <input type="text" class="form-control form-control-sm"
-                                            value="{{ $quotation->pri_partner_countryname ?? 'N/A' }}" readonly>
-                                    </div>
-                                </div>
-                                <div class="form-group row">
-                                    <label class="col-sm-4 col-form-label">Email ID</label>
-                                    <div class="col-sm-8">
-                                        <input type="text" class="form-control form-control-sm"
-                                            value="{{ $quotation->pri_partner_email ?? 'N/A' }}" readonly>
-                                    </div>
-                                </div>
-                                <div class="form-group row mb-0">
-                                    <label class="col-sm-4 col-form-label">Industry</label>
-                                    <div class="col-sm-8">
-                                        <input type="text" class="form-control form-control-sm"
-                                            value="{{ $quotation->Industryname ?? 'N/A' }}" readonly>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
 
-                        {{-- Customer Type & Agent Type — new row below the two-column section --}}
-                        <div class="row mt-3 pt-3" style="border-top: 1px solid #dee2e6;">
+                        {{-- ── Customer Type & Agent Type — TOP ── --}}
+                        <div class="row mb-3 pb-2" style="border-bottom: 1px solid #dee2e6;">
                             <div class="col-md-6">
                                 <div class="form-group row mb-0">
                                     <label class="col-sm-4 col-form-label">
@@ -498,11 +517,136 @@
                                 </div>
                             </div>
                         </div>
+
+                        {{-- ── Two-column customer fields ── --}}
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group row">
+                                    <label class="col-sm-4 col-form-label">Company</label>
+                                    <div class="col-sm-8">
+                                        <input type="text" class="form-control form-control-sm"
+                                            data-field="companyname" value="{{ $quotation->companyname ?? '' }}"
+                                            readonly>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-sm-4 col-form-label">Address 1 <span
+                                            class="text-danger">*</span></label>
+                                    <div class="col-sm-8">
+                                        <input type="text" class="form-control form-control-sm"
+                                            data-field="pri_partner_steet"
+                                            value="{{ $quotation->pri_partner_steet ?? '' }}" readonly>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-sm-4 col-form-label">City</label>
+                                    <div class="col-sm-8">
+                                        <input type="text" class="form-control form-control-sm" id="customerCityInput"
+                                            value="{{ $quotation->pri_partner_city ?? '' }}" readonly>
+
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-sm-4 col-form-label">State</label>
+                                    <div class="col-sm-8">
+                                        <input type="text" class="form-control form-control-sm"
+                                            id="customerStateInput" value="{{ $quotation->pri_partner_statename ?? '' }}"
+                                            readonly>
+
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-sm-4 col-form-label">Contact Person</label>
+                                    <div class="col-sm-8">
+                                        <input type="text" class="form-control form-control-sm"
+                                            id="customerContactInput" value="{{ $quotation->contact_name ?? '' }}"
+                                            readonly>
+
+                                    </div>
+                                </div>
+                                <div class="form-group row mb-0">
+                                    <label class="col-sm-4 col-form-label">Phone No</label>
+                                    <div class="col-sm-8">
+                                        <input type="text" class="form-control form-control-sm"
+                                            id="customerPhoneInput" value="{{ $quotation->pri_partner_phone ?? '' }}"
+                                            readonly>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group row">
+                                    <label class="col-sm-4 col-form-label">Client ID</label>
+                                    <div class="col-sm-8">
+                                        <input type="text" class="form-control form-control-sm" id="clientIdDisplay"
+                                            value="{{ $quotation->clientid ?? '' }}" readonly>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-sm-4 col-form-label">Address 2</label>
+                                    <div class="col-sm-8">
+                                        <input type="text" class="form-control form-control-sm"
+                                            id="customerAddress2Input" value="{{ $quotation->pri_partner_steet2 ?? '' }}"
+                                            readonly>
+
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-sm-4 col-form-label">Zip</label>
+                                    <div class="col-sm-8">
+                                        <input type="text" class="form-control form-control-sm" id="customerZipInput"
+                                            value="{{ $quotation->pri_partner_zip ?? '' }}" readonly>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-sm-4 col-form-label">
+                                        Country <span class="text-danger customer-mandatory-star"
+                                            style="display:none;">*</span>
+                                    </label>
+                                    <div class="col-sm-8">
+                                        <input type="text" class="form-control form-control-sm"
+                                            id="customerCountryDisplay"
+                                            value="{{ $quotation->pri_partner_countryname ?? '' }}" readonly>
+                                        <div id="customerCountryEditWrap" style="display:none;">
+                                            <select class="form-control form-control-sm" id="customerCountrySelect">
+                                                <option value="">-- Select --</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-sm-4 col-form-label">Email ID</label>
+                                    <div class="col-sm-8">
+                                        <input type="text" class="form-control form-control-sm"
+                                            id="customerEmailInput" value="{{ $quotation->pri_partner_email ?? '' }}"
+                                            readonly>
+                                    </div>
+                                </div>
+                                <div class="form-group row mb-0">
+                                    <label class="col-sm-4 col-form-label">
+                                        Industry <span class="text-danger customer-mandatory-star"
+                                            style="display:none;">*</span>
+                                    </label>
+                                    <div class="col-sm-8">
+                                        <input type="text" class="form-control form-control-sm"
+                                            id="customerIndustryDisplay" value="{{ $quotation->industryname ?? '' }}"
+                                            readonly>
+                                        <select class="form-control form-control-sm" id="customerIndustrySelect"
+                                            style="display:none;">
+                                            <option value="">-- Select --</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- ── Edit / Save / Cancel ── --}}
                         <div class="row mt-3 pt-2" style="border-top: 1px solid #dee2e6;">
                             <div class="col-md-12 text-right">
-                                <button type="button" class="btn btn-warning btn-sm" id="editCustomerDetailsBtn">
-                                    <i class="fas fa-edit mr-1"></i> Edit
-                                </button>
+                                @if (!$isBookingCreated)
+                                    <button type="button" class="btn btn-warning btn-sm" id="editCustomerDetailsBtn">
+                                        <i class="fas fa-edit mr-1"></i> Edit
+                                    </button>
+                                @endif
                                 <button type="button" class="btn btn-primary btn-sm" id="saveCustomerDetailsBtn"
                                     style="display:none">
                                     <i class="fas fa-save mr-1"></i> Save
@@ -521,7 +665,7 @@
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <div class="d-flex align-items-center">
                             <h3 class="card-title mb-0 mr-1">Revenue</h3>
-                            <span class="text-white small" id="revenueTotalHeader">
+                            <span class="text-white small ml-2" id="revenueTotalHeader" style="white-space:nowrap;">
                                 Total: <strong id="revenueTotalHeaderAmount">0.00</strong>
                             </span>
                         </div>
@@ -562,7 +706,7 @@
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <div class="d-flex align-items-center">
                             <h3 class="card-title mb-0 mr-1">Cost</h3>
-                            <span class="text-white small" id="costTotalHeader">
+                            <span class="text-white small ml-2" id="costTotalHeader" style="white-space:nowrap;">
                                 Total: <strong id="costTotalHeaderAmount">0.00</strong>
                             </span>
                         </div>
@@ -623,7 +767,7 @@
                                     <label class="col-sm-5 col-form-label">Actual Revenue</label>
                                     <div class="col-sm-7">
                                         <input type="text" class="form-control form-control-sm" id="actualRevenue"
-                                            value="N/A" readonly>
+                                            value="" readonly>
                                     </div>
                                 </div>
                             </div>
@@ -639,7 +783,7 @@
                                     <label class="col-sm-5 col-form-label">Actual Margin</label>
                                     <div class="col-sm-7">
                                         <input type="text" class="form-control form-control-sm" id="actualMargin"
-                                            value="N/A" readonly>
+                                            value="" readonly>
                                     </div>
                                 </div>
                             </div>
@@ -683,8 +827,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 MODALS
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 ============================================ -->
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     MODALS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1246,8 +1390,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1690,9 +1834,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -1843,14 +1987,46 @@
     <script>
         const isCopiedBooking = {{ request()->query('copied', 0) ? 'true' : 'false' }};
         const quotationId = '{{ $quotation->ID }}';
-
+        const quoteNo = '{{ $quotation->QuoteNo ?? '' }}';
+        const officeId = '{{ $quotation->OfficeID ?? '' }}'; // ← ADD
         const tcAlreadyApplied = {{ $quotation->QuotationTCTemplate ? 'true' : 'false' }};
+
         // Mirrors QuotationController::OFFICE_BASE_CURRENCY — single source of truth via PHP
         const OFFICE_BASE_CURRENCY = @json(\App\Http\Controllers\QuotationController::OFFICE_BASE_CURRENCY);
 
 
         $(document).ready(function() {
+
             console.log('Booking Quotation Edit - Page Loaded');
+
+            // ============================================================
+            // COPIED FLAG — highlight mandatory empty fields after duplication
+            // ============================================================
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('copied') === '1') {
+
+                // Fields that must be filled after duplication
+                const mandatoryFields = [
+                    '[data-field="username"]', // Sales Person
+                    '#shipmentModeSelect', // Shipment Mode
+                    '#transportModeSelect', // Transport Mode
+                    '#originCountrySelect', // Origin Country
+                    '#destCountrySelect', // Destination Country
+                    '#incoTermSelect', // InCo Term
+                    '#serviceClassSelect', // Service Class
+                    '[data-field="commodity"]', // Commodity
+                ];
+
+                mandatoryFields.forEach(function(selector) {
+                    const $el = $(selector);
+                    if ($el.length && !$el.val()) {
+                        $el.closest('.form-group').find('label').append(
+                            ' <span class="text-danger mandatory-flag">*</span>'
+                        );
+                        $el.css('border-color', '#dc3545');
+                    }
+                });
+            }
 
             // ============================================
             // GLOBAL VARIABLES
@@ -1863,46 +2039,402 @@
             let currentEditingCharge = null;
             let currentEditingType = null;
             let currencyMap = {};
-            let officeCode = '';
+            let officeCode = '{{ trim($quotation->OfficeCode ?? '') }}';
+
+            // ── Single source of truth for Generate Quote gate ────────────────────────
+            // All paths that touch the button must go through setGenerateBtn().
+            // Direct calls to .prop('disabled', ...) on #generateQuoteBtn are banned
+            // outside this function — that's how the state got scattered before.
+            const termsState = {
+                applied: false, // true only after a successful save-terms call
+                generating: false, // true while the POST is in flight
+            };
+
+            function setGenerateBtn() {
+                const $btn = $('#generateQuoteBtn');
+                const shouldDisable = termsState.generating || !termsState.applied;
+                $btn.prop('disabled', shouldDisable);
+                if (termsState.generating) {
+                    $btn.attr('title', 'Generating…');
+                } else if (!termsState.applied) {
+                    $btn.attr('title', 'Select a Terms & Conditions template first');
+                } else {
+                    $btn.removeAttr('title');
+                }
+            }
+
+            // Hidden field to hold the ClientID selected from Company Name autocomplete
+            $('input[data-field="companyname"]').closest('.form-group').find('.col-sm-8')
+                .append('<input type="hidden" id="selectedClientId" value="">');
+
+
+            // ============================================
+            // SAVED VALUES — read once from PHP, used for pre-selection
+            // ============================================
+            const savedShipmentMode = '{{ $quotation->shipmentmode ?? '' }}';
+            const savedTransportMode = '{{ $quotation->TransportMode ?? '' }}';
+
+            // ============================================
+            // SHIPMENT MODE DROPDOWN
+            // sp_ShipmentMode returns: Id, Code
+            // Stored value is Code — match on Code for pre-selection
+            // ============================================
+            function loadShipmentModes() {
+                $.ajax({
+                    url: '{{ route('quotation.shipment-modes') }}',
+                    type: 'GET',
+                    success: function(response) {
+                        const $select = $('#shipmentModeSelect');
+                        $select.empty().append('<option value="">-- Select --</option>');
+
+                        if (response.success && response.data.length > 0) {
+                            response.data.forEach(function(item) {
+                                const selected = item.Code === savedShipmentMode ? 'selected' :
+                                    '';
+                                $select.append(
+                                    `<option value="${item.Code}" ${selected}>${item.Code}</option>`
+                                );
+                            });
+                        } else {
+                            $select.append('<option value="" disabled>No options available</option>');
+                        }
+                    },
+                    error: function(xhr) {
+                        console.error('loadShipmentModes failed:', xhr);
+                        $('#shipmentModeSelect')
+                            .empty()
+                            .append('<option value="" disabled>Failed to load</option>');
+                    }
+                });
+            }
+
+            // ============================================
+            // TRANSPORT MODE DROPDOWN
+            // sp_TransportMode returns: Id, Code, Name
+            // Stored value is Code — display Name, match on Code for pre-selection
+            // ============================================
+            function loadTransportModes() {
+                $.ajax({
+                    url: '{{ route('quotation.transport-modes') }}',
+                    type: 'GET',
+                    success: function(response) {
+                        const $select = $('#transportModeSelect');
+                        $select.empty().append('<option value="">-- Select --</option>');
+
+                        if (response.success && response.data.length > 0) {
+                            response.data.forEach(function(item) {
+                                const selected = item.Code === savedTransportMode ? 'selected' :
+                                    '';
+                                $select.append(
+                                    `<option value="${item.Code}" ${selected}>${item.Name}</option>`
+                                );
+                            });
+                        } else {
+                            $select.append('<option value="" disabled>No options available</option>');
+                        }
+                    },
+                    error: function(xhr) {
+                        console.error('loadTransportModes failed:', xhr);
+                        $('#transportModeSelect')
+                            .empty()
+                            .append('<option value="" disabled>Failed to load</option>');
+                    }
+                });
+            }
+
+            // Load both dropdowns on page init
+            loadShipmentModes();
+            loadTransportModes();
+
+            // ============================================
+            // SHIPMENT DETAILS — EDIT / CANCEL / SAVE
+            // Mirrors the Customer Details Edit/Save/Cancel pattern.
+            // Both selects stay disabled until Edit is clicked.
+            // ============================================
+            let originalShipmentMode = '';
+            let originalTransportMode = '';
+            let originalOriginCountry = '';
+            let originalOriginCountryName = '';
+            let originalDestCountry = '';
+            let originalDestCountryName = '';
+            let shipmentCountriesLoaded = false;
+            let incoTermsLoaded = false;
+            let originalIncoTerm = '';
+
+            let serviceClassesLoaded = false;
+            let originalServiceClass = '';
+            let originalServiceClassDisplay = '';
+
+            function loadServiceClasses(callback) {
+                if (serviceClassesLoaded) {
+                    if (typeof callback === 'function') callback();
+                    return;
+                }
+                const savedCode = '{{ $quotation->ServiceClass ?? '' }}';
+                $.ajax({
+                    url: '{{ route('quotation.lookup.serviceClasses') }}',
+                    type: 'GET',
+                    data: {
+                        filter: ''
+                    },
+                    success: function(data) {
+                        const list = Array.isArray(data) ? data : [];
+                        const $sel = $('#serviceClassSelect').empty()
+                            .append('<option value="">-- Select --</option>');
+                        list.forEach(function(item) {
+                            const code = (item.Code || item.ServiceClass || '').trim();
+                            const name = (item.Name || item.Description || code).trim();
+                            $sel.append(
+                                `<option value="${code}" ${code === savedCode ? 'selected' : ''}>${name}</option>`
+                            );
+                        });
+                        serviceClassesLoaded = true;
+                    },
+                    complete: function() {
+                        if (typeof callback === 'function') callback();
+                    }
+                });
+            }
+
+            function loadShipmentCountries(callback) {
+                if (shipmentCountriesLoaded) {
+                    if (typeof callback === 'function') callback();
+                    return;
+                }
+                const savedOriginCode = '{{ $quotation->origin_country_code ?? '' }}';
+                const savedDestCode = '{{ $quotation->destination_country_code ?? '' }}';
+                $.ajax({
+                    url: '{{ route('quotation.lookup.countries') }}',
+                    type: 'GET',
+                    data: {
+                        filter: ''
+                    },
+                    success: function(data) {
+                        const list = Array.isArray(data) ? data : [];
+
+                        function fill(selectId, savedCode) {
+                            const $sel = $('#' + selectId).empty()
+                                .append('<option value="">-- Select --</option>');
+                            list.forEach(function(c) {
+                                const name = (c.CountryName || '').trim();
+                                const code = (c.CountryCode || '').trim();
+                                $sel.append(
+                                    `<option value="${code}" data-name="${name}" ${code === savedCode ? 'selected' : ''}>${name}</option>`
+                                );
+                            });
+                        }
+                        fill('originCountrySelect', savedOriginCode);
+                        fill('destCountrySelect', savedDestCode);
+                        shipmentCountriesLoaded = true;
+                    },
+                    complete: function() {
+                        if (typeof callback === 'function') callback();
+                    }
+                });
+            }
+
+            $('#editShipmentDetailsBtn').on('click', function() {
+                originalShipmentMode = $('#shipmentModeSelect').val();
+                originalTransportMode = $('#transportModeSelect').val();
+                originalIncoTerm = $('#incoTermDisplay').val();
+                originalOriginCountry = $('#originCountrySelect').val(); // code
+                originalOriginCountryName = $('#originCountryDisplay').val(); // name
+                originalDestCountry = $('#destCountrySelect').val(); // code
+                originalDestCountryName = $('#destCountryDisplay').val(); // name
+                $('#shipmentModeSelect, #transportModeSelect').prop('disabled', false);
+
+                if (!incoTermsLoaded) {
+                    const savedIncoTerm = '{{ $quotation->incoterm ?? '' }}';
+                    $.ajax({
+                        url: '{{ route('quotation.inco-terms') }}',
+                        type: 'GET',
+                        success: function(r) {
+                            const $sel = $('#incoTermSelect').empty().append(
+                                '<option value="">-- Select --</option>');
+                            (r.success ? r.data : []).forEach(function(item) {
+                                const code = item.IncoTermCode || '';
+                                $sel.append(
+                                    `<option value="${code}" ${code === savedIncoTerm ? 'selected' : ''}>${code} — ${item.Name}</option>`
+                                );
+                            });
+                            incoTermsLoaded = true;
+                        }
+                    });
+                }
+
+                $('#incoTermDisplay').addClass('d-none');
+                $('#incoTermSelect').removeClass('d-none').prop('disabled', false);
+
+                originalServiceClass = $('#serviceClassSelect').val();
+                originalServiceClassDisplay = $('#serviceClassDisplay').val();
+
+                loadShipmentCountries(function() {
+                    $('#originCountryDisplay').hide();
+                    $('#originCountryEditWrap').show();
+                    $('#destCountryDisplay').hide();
+                    $('#destCountryEditWrap').show();
+                });
+
+                loadServiceClasses(function() {
+                    $('#serviceClassDisplay').addClass('d-none');
+                    $('#serviceClassSelect').removeClass('d-none').prop('disabled', false);
+                });
+
+
+                $(this).hide();
+                $('#saveShipmentDetailsBtn, #cancelShipmentDetailsBtn').show();
+            });
+
+            $('#cancelShipmentDetailsBtn').on('click', function() {
+                $('#shipmentModeSelect').val(originalShipmentMode);
+                $('#transportModeSelect').val(originalTransportMode);
+                $('#incoTermSelect').val(originalIncoTerm);
+                $('#originCountrySelect').val(originalOriginCountry);
+                $('#destCountrySelect').val(originalDestCountry);
+
+                $('#shipmentModeSelect, #transportModeSelect').prop('disabled', true);
+
+                $('#incoTermSelect').addClass('d-none').prop('disabled', true);
+                $('#incoTermDisplay').removeClass('d-none').val(originalIncoTerm);
+
+                $('#serviceClassSelect').val(originalServiceClass).addClass('d-none').prop('disabled',
+                    true);
+                $('#serviceClassDisplay').val(originalServiceClassDisplay).removeClass('d-none');
+
+                $('#originCountryEditWrap').hide();
+                $('#originCountryDisplay').val(originalOriginCountryName).show();
+                $('#destCountryEditWrap').hide();
+                $('#destCountryDisplay').val(originalDestCountryName).show();
+
+                $(this).hide();
+                $('#saveShipmentDetailsBtn').hide();
+                $('#editShipmentDetailsBtn').show();
+            });
+
+            $('#saveShipmentDetailsBtn').on('click', function() {
+                const shipmentMode = $('#shipmentModeSelect').val();
+                const transportMode = $('#transportModeSelect').val();
+                const incoTerm = $('#incoTermSelect').val();
+                const originCountry = $('#originCountrySelect').val();
+                const destCountry = $('#destCountrySelect').val();
+                const serviceClass = $('#serviceClassSelect').val();
+
+                if (!shipmentMode) {
+                    showNotification('Please select a Shipment Mode', 'error');
+                    return;
+                }
+                if (!transportMode) {
+                    showNotification('Please select a Transport Mode', 'error');
+                    return;
+                }
+
+                $.ajax({
+                    url: '{{ route('quotation.shipment.save') }}',
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        booking_no: bookingNo,
+                        shipment_mode: shipmentMode,
+                        transport_mode: transportMode,
+                        incoterm: incoTerm,
+                        origincountry: originCountry,
+                        destinationcountry: destCountry,
+                        service_class: serviceClass,
+                    },
+                    beforeSend: function() {
+                        $('#saveShipmentDetailsBtn').prop('disabled', true)
+                            .html('<i class="fas fa-spinner fa-spin mr-1"></i> Saving...');
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            showNotification('Shipment details saved successfully', 'success');
+
+                            originalShipmentMode = shipmentMode;
+                            originalTransportMode = transportMode;
+                            originalOriginCountry = originCountry;
+                            originalDestCountry = destCountry;
+
+                            $('#shipmentModeSelect, #transportModeSelect').prop('disabled',
+                                true);
+
+                            $('#incoTermSelect').addClass('d-none').prop('disabled', true);
+                            $('#incoTermDisplay').removeClass('d-none').val(incoTerm);
+                            originalIncoTerm = incoTerm;
+
+                            $('#originCountryEditWrap').hide();
+                            $('#originCountryDisplay').val(
+                                $('#originCountrySelect option:selected').data('name')
+                            ).show();
+                            $('#destCountryEditWrap').hide();
+                            $('#destCountryDisplay').val(
+                                $('#destCountrySelect option:selected').data('name')
+                            ).show();
+
+
+                            $('#serviceClassSelect').addClass('d-none').prop('disabled', true);
+                            $('#serviceClassDisplay').val(
+                                $('#serviceClassSelect option:selected').text()
+                            ).removeClass('d-none');
+                            originalServiceClass = serviceClass;
+                            originalServiceClassDisplay = $(
+                                '#serviceClassSelect option:selected').text();
+
+                            $('#saveShipmentDetailsBtn, #cancelShipmentDetailsBtn').hide();
+                            $('#editShipmentDetailsBtn').show();
+                        } else {
+                            showNotification(response.message || 'Failed to save', 'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        showNotification(xhr.responseJSON?.message || 'Failed to save',
+                            'error');
+                    },
+                    complete: function() {
+                        $('#saveShipmentDetailsBtn').prop('disabled', false)
+                            .html('<i class="fas fa-save mr-1"></i> Save');
+                    }
+                });
+            });
 
             // ── T&C Gate ─────────────────────────────────────────────
             // Unblock Generate Quote immediately if T&C was previously applied
+            // Seed termsState from server-rendered flag so the gate
+            // reflects reality on page load without an extra API round-trip.
             if (tcAlreadyApplied) {
-                $('#generateQuoteBtn')
-                    .prop('disabled', false)
-                    .removeAttr('title');
+                termsState.applied = true;
             }
+            setGenerateBtn(); // single authoritative call — no direct .prop() here
 
             console.log('Booking Number:', bookingNo);
             console.log('Quotation Status:', quotationStatus);
             console.log('Team ID:', teamId);
 
-            // ============================================
-            // INITIALIZE OFFICE CODE ON PAGE LOAD
-            // ============================================
-            if (teamId) {
-                getOfficeCode(teamId);
-            }
+            // // ============================================
+            // // INITIALIZE OFFICE CODE ON PAGE LOAD
+            // // ============================================
+            // if (teamId) {
+            //     getOfficeCode(teamId);
+            // }
 
-            function getOfficeCode(teamId) {
-                $.ajax({
-                    url: '/quotation/office-code',
-                    type: 'GET',
-                    data: {
-                        team_id: teamId
-                    },
-                    success: function(response) {
-                        if (response.success && response.office_code) {
-                            officeCode = response.office_code.trim();
-                            console.log('Office Code loaded:', officeCode);
-                            loadTermsTemplates();
-                        }
-                    },
-                    error: function(xhr) {
-                        console.error('Failed to load office code:', xhr);
-                    }
-                });
-            }
+            // function getOfficeCode(teamId) {
+            //     $.ajax({
+            //         url: '/quotation/office-code',
+            //         type: 'GET',
+            //         data: {
+            //             team_id: teamId
+            //         },
+            //         success: function(response) {
+            //             if (response.success && response.office_code) {
+            //                 officeCode = response.office_code.trim();
+            //                 console.log('Office Code loaded:', officeCode);
+            //                 loadTermsTemplates();
+            //             }
+            //         },
+            //         error: function(xhr) {
+            //             console.error('Failed to load office code:', xhr);
+            //         }
+            //     });
+            // }
 
             // ============================================
             // MODAL CLOSE HANDLERS
@@ -2079,18 +2611,23 @@
 
                 if ($currencySelect.data('populated')) return;
 
-                if (!officeCode && bookingNo) {
-                    $.ajax({
-                        url: '/quotation/office-code',
-                        type: 'GET',
-                        data: {
-                            team_id: teamId
-                        },
-                        async: false,
-                        success: function(response) {
-                            if (response.success) officeCode = response.office_code.trim();
-                        }
-                    });
+                // if (!officeCode && bookingNo) {
+                //     $.ajax({
+                //         url: '/quotation/office-code',
+                //         type: 'GET',
+                //         data: {
+                //             team_id: teamId
+                //         },
+                //         async: false,
+                //         success: function(response) {
+                //             if (response.success) officeCode = response.office_code.trim();
+                //         }
+                //     });
+                // }
+
+                if (!officeCode) {
+                    console.error('populateCurrencyDropdown: officeCode not available');
+                    return;
                 }
 
                 if (!officeCode) {
@@ -2138,12 +2675,7 @@
             // Format date as '05/Mar/2026' to match fn_GetCurrentExRateUsingCodeandPeriod signature
             function formatDateForExRate(date) {
                 const d = date || new Date();
-                const day = String(d.getDate()).padStart(2, '0');
-                const month = d.toLocaleString('en-GB', {
-                    month: 'short'
-                }); // 'Mar'
-                const year = d.getFullYear();
-                return `${day}/${month}/${year}`; // '05/Mar/2026'
+                return d.toISOString().split('T')[0]; // '2026-03-09' — unambiguous, Carbon parses reliably
             }
 
             $(document).on('change', 'select[name="revenue_currency"], select[name="cost_currency"]', function() {
@@ -2153,7 +2685,10 @@
                 const $exchangeRateInput = $(`input[name="${prefix}_exchange_rate"]`);
 
                 if (!currencyCode || !officeCode) {
-                    console.warn('Currency code or office code missing');
+                    console.warn('Currency code or office code missing', {
+                        currencyCode,
+                        officeCode
+                    });
                     return;
                 }
 
@@ -2165,6 +2700,15 @@
                     return;
                 }
 
+                const dateFor = formatDateForExRate(new Date());
+
+                console.log('Fetching exchange rate', {
+                    officeCode,
+                    currencyCode,
+                    baseCurrency,
+                    dateFor
+                });
+
                 $.ajax({
                     url: '/quotation/exchange-rate',
                     type: 'GET',
@@ -2172,7 +2716,7 @@
                         office_code: officeCode,
                         from_currency: currencyCode,
                         to_currency: baseCurrency,
-                        date_for: formatDateForExRate(new Date()) // → '05/Mar/2026'
+                        date_for: dateFor
                     },
                     beforeSend: function() {
                         $exchangeRateInput.val('').prop('readonly', true);
@@ -2185,15 +2729,42 @@
                         } else {
                             showNotification(
                                 response.message ||
-                                `No exchange rate found for ${currencyCode} → ${baseCurrency}`,
+                                `No rate found for ${currencyCode} → ${baseCurrency}`,
                                 'warning'
                             );
                             $exchangeRateInput.val('');
                         }
                     },
                     error: function(xhr) {
-                        showNotification('Failed to fetch exchange rate', 'error');
-                        $exchangeRateInput.val('');
+                        // Surface the actual server message — 404 = rate not configured, 500 = DB error
+                        const serverMsg = xhr.responseJSON?.message;
+                        const statusCode = xhr.status;
+
+                        if (statusCode === 404) {
+                            showNotification(
+                                serverMsg ||
+                                `No exchange rate found for ${currencyCode} → ${baseCurrency} on ${dateFor}. Please enter manually.`,
+                                'warning' // warning, not error — rate may just not be set up for this date
+                            );
+                        } else {
+                            showNotification(
+                                serverMsg ||
+                                'Exchange rate lookup failed. Please enter manually.',
+                                'error'
+                            );
+                        }
+
+                        console.error('Exchange rate fetch failed', {
+                            status: statusCode,
+                            message: serverMsg,
+                            officeCode,
+                            currencyCode,
+                            baseCurrency,
+                            dateFor
+                        });
+
+                        $exchangeRateInput.val('').prop('readonly',
+                            false); // Let user enter manually
                     },
                     complete: function() {
                         $exchangeRateInput.prop('readonly', true);
@@ -2551,32 +3122,12 @@
                     if (officeCode) {
                         execSearch(officeCode);
                     } else {
-                        $.ajax({
-                            url: '/quotation/office-code',
-                            type: 'GET',
-                            data: {
-                                team_id: teamId
-                            },
-                            success: function(res) {
-                                if (res.success && res.office_code) {
-                                    officeCode = res.office_code.trim();
-                                    execSearch(officeCode);
-                                } else {
-                                    response([{
-                                        label: 'Could not resolve office code',
-                                        value: '',
-                                        disabled: true
-                                    }]);
-                                }
-                            },
-                            error: function() {
-                                response([{
-                                    label: 'Error resolving office code',
-                                    value: '',
-                                    disabled: true
-                                }]);
-                            }
-                        });
+                        response([{
+                            label: 'Office code not available',
+                            value: '',
+                            disabled: true
+                        }]);
+                        console.error('initializeBillToPartyAutocomplete: officeCode not available');
                     }
                 }
 
@@ -2765,9 +3316,15 @@
                 if (chargeType === 'costmarkup') {
                     const increaseBy = parseFloat($modal.find(`input[name="${prefix}_increase_by"]`).val()) || 0;
                     const increaseType = $modal.find(`select[name="${prefix}_increase_type"]`).val();
-                    const markupAmount = increaseType === 'Percentage' ?
-                        amount + (amount * increaseBy / 100) :
-                        amount + increaseBy;
+
+                    // Mirror SP logic: markup applied to Rate first, then multiply by Quantity
+                    const newRate = increaseType === 'Percentage' ?
+                        rate + (rate * increaseBy / 100) :
+                        rate + increaseBy; // Fixed: add to rate, not to amount
+
+                    const markupAmount = Math.round(newRate * quantity * 100) / 100;
+                    const markupBaseAmount = Math.round(markupAmount * exchangeRate * 100) / 100;
+
                     const markupFieldName = prefix === 'revenue' ? 'revenue_markup_amount' : 'cost_revenue_amount';
                     $modal.find(`input[name="${markupFieldName}"]`).val(markupAmount.toFixed(2));
                 }
@@ -2807,16 +3364,13 @@
                 const prefix = type === 'revenue' ? 'revenue' : 'cost';
                 const chargeType = $modal.find(`input[name="${prefix}ChargeType"]:checked`).val();
 
-                // FIX: Derive revenueOrCost from the radio button, not the modal context.
+                // Derive revenueOrCost from the radio button, not the modal context
                 const revenueOrCost = chargeType === 'revenue' ? 'Revenue' :
                     chargeType === 'costmarkup' ? 'Cost with Markup' : 'Cost';
 
                 console.log('Saving charge — modal:', type, '| radio:', chargeType, '| revenueOrCost:',
                     revenueOrCost);
 
-                // FIX: to_be_added logic was inverted in the original code.
-                // Revenue modal has no checkboxes, so it is always 0 for revenue.
-                // For cost, check both IsReimbursed and IsAccrued.
                 let toBeAdded = 0;
                 if (type === 'cost') {
                     toBeAdded = ($modal.find('#costIsReimbursed').is(':checked') ||
@@ -2874,12 +3428,22 @@
                     success: function(response) {
                         if (response.success) {
                             showNotification(response.message, 'success');
-                            loadCharges();
+
                             if (addMore) {
-                                clearModalForm(type);
+                                // Clear modal first so user can start entering next charge immediately
+                                // loadCharges() reloads in the background — no visual flicker
+                                if (type === 'revenue') {
+                                    clearRevenueModalForm();
+                                } else {
+                                    clearCostModalForm();
+                                }
+                                loadCharges();
                             } else {
+                                // Hide modal first for snappy UX, then reload charge tables
                                 $modal.modal('hide');
+                                loadCharges();
                             }
+
                             currentEditingCharge = null;
                         } else {
                             showNotification(response.message, 'error');
@@ -2926,22 +3490,54 @@
             // ============================================
             // EDIT CHARGES
             // ============================================
+            function openChargeEditModal(chargeId, modalType) {
+                $.ajax({
+                    url: '{{ route('quotation.charge-details') }}',
+                    type: 'GET',
+                    data: {
+                        booking_no: bookingNo,
+                        charge_id: chargeId
+                    },
+                    beforeSend: function() {
+                        // Show the modal immediately with a loading state
+                        const $modal = modalType === 'revenue' ? $('#addRevenueModal') : $(
+                            '#addCostModal');
+                        $modal.modal('show');
+                        $modal.find('.modal-body').css('opacity', 0.5);
+                    },
+                    success: function(response) {
+                        const $modal = modalType === 'revenue' ? $('#addRevenueModal') : $(
+                            '#addCostModal');
+                        $modal.find('.modal-body').css('opacity', 1);
+
+                        if (!response.success) {
+                            showNotification(response.message || 'Failed to load charge details',
+                                'error');
+                            $modal.modal('hide');
+                            return;
+                        }
+
+                        currentEditingCharge = chargeId;
+                        currentEditingType = modalType;
+                        populateModal(modalType, response);
+                    },
+                    error: function(xhr) {
+                        const $modal = modalType === 'revenue' ? $('#addRevenueModal') : $(
+                            '#addCostModal');
+                        $modal.find('.modal-body').css('opacity', 1);
+                        $modal.modal('hide');
+                        showNotification(xhr.responseJSON?.message || 'Failed to load charge details',
+                            'error');
+                    }
+                });
+            }
+
             $(document).on('click', '.edit-revenue-charge', function() {
-                const index = $(this).data('index');
-                const charge = revenueCharges[index];
-                currentEditingCharge = charge.id;
-                currentEditingType = 'revenue';
-                populateModal('revenue', charge);
-                $('#addRevenueModal').modal('show');
+                openChargeEditModal($(this).data('id'), 'revenue');
             });
 
             $(document).on('click', '.edit-cost-charge', function() {
-                const index = $(this).data('index');
-                const charge = costCharges[index];
-                currentEditingCharge = charge.id;
-                currentEditingType = 'cost';
-                populateModal('cost', charge);
-                $('#addCostModal').modal('show');
+                openChargeEditModal($(this).data('id'), 'cost');
             });
 
             // ============================================
@@ -2950,6 +3546,19 @@
             function populateModal(type, charge) {
                 const $modal = type === 'revenue' ? $('#addRevenueModal') : $('#addCostModal');
                 const prefix = type;
+
+                // ── Restore charge type radio ──
+                const savedChargeType = charge.revenueOrCost === 'Revenue' ? 'revenue' :
+                    charge.revenueOrCost === 'Cost with Markup' ? 'costmarkup' : 'cost';
+
+                $modal.find(`input[name="${prefix}ChargeType"][value="${savedChargeType}"]`)
+                    .prop('checked', true);
+
+                if (type === 'revenue') {
+                    toggleRevenueFormFields(savedChargeType);
+                } else {
+                    toggleCostFormFields(savedChargeType);
+                }
 
                 // ── Scalar fields — no async dependency ──
                 $modal.find(`input[name="${prefix}_charge_code"]`).val(charge.chargeCode);
@@ -2964,6 +3573,12 @@
                 $modal.find(`input[name="${prefix}_base_amount"]`).val(
                     parseFloat(charge.amtInBaseCurr || 0).toFixed(2)
                 );
+
+                // ── Restore markup fields if Cost with Markup ──
+                if (savedChargeType === 'costmarkup') {
+                    $modal.find(`input[name="${prefix}_increase_by"]`).val(charge.increaseBy || 0);
+                    $modal.find(`select[name="${prefix}_increase_type"]`).val(charge.increaseType || 'Percentage');
+                }
 
                 // ── Currency — wait for currencyMap to be populated ──
                 function setCurrency() {
@@ -3017,10 +3632,10 @@
                         totalBaseAmount += parseFloat(charge.amtInBaseCurr || 0);
                         tbody.append(`
                             <tr>
-                                <td>${charge.chargeName || charge.chargeCode || 'N/A'}</td>
+                                <td>${charge.chargeName || charge.chargeCode || ''}</td>
                                 <td class="text-right">${parseFloat(charge.rate || 0).toFixed(2)}</td>
                                 <td class="text-right col-extra">${parseFloat(charge.quantity || 0).toFixed(2)}</td>
-                                <td class="col-extra">${charge.basedOnUOM || 'N/A'}</td>
+                                <td class="col-extra">${charge.basedOnUOM || ''}</td>
                                 <td class="col-extra">${charge.chgCurr || 'KES'}</td>
                                 <td class="text-right">${parseFloat(charge.amtInChgCurr  || 0).toFixed(2)}</td>
                                 <td class="text-right">${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
@@ -3062,10 +3677,10 @@
                         totalBaseAmount += parseFloat(charge.amtInBaseCurr || 0);
                         tbody.append(`
                             <tr>
-                                <td>${charge.chargeName || charge.chargeCode || 'N/A'}</td>
+                                <td>${charge.chargeName || charge.chargeCode || ''}</td>
                                 <td class="text-right">${parseFloat(charge.rate || 0).toFixed(2)}</td>
                                 <td class="text-right col-extra">${parseFloat(charge.quantity || 0).toFixed(2)}</td>
-                                <td class="col-extra">${charge.basedOnUOM || 'N/A'}</td>
+                                <td class="col-extra">${charge.basedOnUOM || ''}</td>
                                 <td class="col-extra">${charge.chgCurr || 'KES'}</td>
                                 <td class="text-right">${parseFloat(charge.amtInChgCurr  || 0).toFixed(2)}</td>
                                 <td class="text-right">${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
@@ -3131,7 +3746,7 @@
 
             $('#confirmWonBtn').on('click', function() {
                 const remark = $('#wonRemarkInput').val().trim();
-                updateStatus('Won', '', remark);
+                updateStatus('Won', '', remark, bookingNo);
             });
 
             $('#wonModal').on('hidden.bs.modal', function() {
@@ -3226,7 +3841,7 @@
                     }
 
                     $('#reasonRemark').removeClass('is-invalid');
-                    updateStatus(status, reasonCode, reasonRemark);
+                    updateStatus(status, reasonCode, reasonRemark, bookingNo);
                 });
 
                 $('#statusModal').on('input', '#reasonRemark', function() {
@@ -3235,37 +3850,6 @@
 
                 $('#statusModal').on('hidden.bs.modal', function() {
                     $(this).remove();
-                });
-            }
-
-            function updateStatus(status, reasonCode, reasonRemark) {
-                $.ajax({
-                    url: '{{ route('quotation.status.update') }}',
-                    type: 'POST',
-                    data: {
-                        _token: '{{ csrf_token() }}',
-                        booking_no: bookingNo,
-                        status: status,
-                        reason_code: reasonCode,
-                        reason_remark: reasonRemark
-                    },
-                    success: function(response) {
-                        if (response.success) {
-                            showNotification(response.message, 'success');
-                            $('#statusModal').modal('hide');
-                            $('#wonModal').modal('hide');
-
-                            setTimeout(function() {
-                                window.location.href = '{{ route('quotation.index') }}';
-                            }, 1500);
-                        } else {
-                            showNotification(response.message, 'error');
-                        }
-                    },
-                    error: function(xhr) {
-                        showNotification(xhr.responseJSON?.message || 'Failed to update status',
-                            'error');
-                    }
                 });
             }
 
@@ -3358,6 +3942,7 @@
                             );
                         }
                     },
+
                     error: function(xhr) {
                         console.error('loadVersions error:', xhr.status, xhr.responseText);
                         $('#quotationVersionsList').html(
@@ -3371,11 +3956,12 @@
             // GENERATE QUOTE BUTTON
             // ============================================
             $('#generateQuoteBtn').on('click', function() {
-                const $btn = $(this);
-                let generationSucceeded = false;
+                if (termsState.generating || !termsState.applied) return;
 
-                $btn.prop('disabled', true)
-                    .html('<i class="fas fa-spinner fa-spin mr-1"></i> Generating...');
+                const $btn = $(this);
+                termsState.generating = true;
+                setGenerateBtn();
+                $btn.html('<i class="fas fa-spinner fa-spin mr-1"></i> Generating...');
 
                 $.ajax({
                     url: GENERATE_PDF_URL,
@@ -3385,26 +3971,34 @@
                     },
                     success: function(response) {
                         if (response.success) {
-                            generationSucceeded = true;
                             showNotification('Quote generated — ' + response.label, 'success');
+                            if (response.warning) {
+                                showNotification(response.warning, 'warning');
+                            }
                             loadVersions();
 
+                            // Reset gate — user must reselect before generating again
+                            termsState.applied = false;
+                            termsState.generating = false;
+
                             if ($('#termsDropdownWrapper').is(':visible')) {
-                                // Multi-template: reset dropdown and lock Generate until
-                                // user selects a new template (auto-apply fires on change)
+                                // Multi-template: reset dropdown and show re-select hint
                                 $('#termsTemplateSelect').val('');
                                 $('#termsDescriptionPreview').val('');
                                 $('#termsDescriptionWrapper').hide();
                                 $('#applyTermsBtn').prop('disabled', true);
                                 $('#termsReSelectMsg').show();
+                                setGenerateBtn();
                             } else {
-                                // Single-template: silently re-apply so Generate
-                                // re-enables automatically via loadTermsTemplates()
+                                // Single-template: reload so auto-save fires again and re-enables button
                                 loadTermsTemplates();
                             }
                         } else {
                             showNotification(response.message || 'Failed to generate quote.',
                                 'error');
+                            // On failure, restore applied state so user can retry without reselecting
+                            termsState.generating = false;
+                            setGenerateBtn();
                         }
                     },
                     error: function(xhr) {
@@ -3413,28 +4007,18 @@
                             'An error occurred while generating the quote.',
                             'error'
                         );
+                        termsState.generating = false;
+                        setGenerateBtn();
                     },
                     complete: function() {
-                        // Restore button label always.
-                        // Only re-enable if generation FAILED — success path keeps it locked
-                        // until T&C is re-selected.
                         $btn.html('<i class="fas fa-file-alt mr-1"></i> Generate Quote');
-                        if (!generationSucceeded) {
-                            // Failed or errored — let user retry
-                            $btn.prop('disabled', false).removeAttr('title');
-                        } else {
-                            // Succeeded — keep disabled, set tooltip explaining why
-                            $btn.prop('disabled', true)
-                                .attr('title',
-                                    'Select a Terms & Conditions template to generate a new version'
-                                );
-                        }
                     }
                 });
             });
 
             // Load versions on page init
             loadVersions();
+            loadTermsTemplates();
 
             // ============================================
             // EMAIL QUOTE — TEMPLATE LOADING
@@ -3468,7 +4052,8 @@
                                 response.templates.forEach(function(t) {
                                     emailTemplateMap[t.Name] = t.Description || '';
                                     $select.append(
-                                        `<option value="${t.Name}">${t.Name}</option>`);
+                                        `<option value="${t.Name}">${t.Name}</option>`
+                                    );
                                 });
                             } else {
                                 const msg = response.code === 'NOT_CONFIGURED' ?
@@ -3486,8 +4071,10 @@
                                 res?.code === 'OFFICE_NOT_FOUND' ?
                                 `⚠ Office not found: ${resolvedOfficeCode}` :
                                 '-- Failed to load templates --';
-                            $select.empty().append(`<option value="" disabled>${msg}</option>`);
-                            console.warn('loadEmailTemplates error:', res?.message || xhr.status);
+                            $select.empty().append(
+                                `<option value="" disabled>${msg}</option>`);
+                            console.warn('loadEmailTemplates error:', res?.message || xhr
+                                .status);
                         },
                         complete: function() {
                             $select.prop('disabled', false);
@@ -3500,30 +4087,11 @@
                 if (officeCode) {
                     fetchTemplates(officeCode);
                 } else {
-                    $.ajax({
-                        url: '/quotation/office-code',
-                        type: 'GET',
-                        data: {
-                            team_id: teamId
-                        },
-                        success: function(response) {
-                            if (response.success && response.office_code) {
-                                officeCode = response.office_code.trim();
-                                fetchTemplates(officeCode);
-                            } else {
-                                $select.empty().append(
-                                    '<option value="" disabled>⚠ Could not resolve office</option>'
-                                );
-                                $select.prop('disabled', false);
-                            }
-                        },
-                        error: function() {
-                            $select.empty().append(
-                                '<option value="" disabled>⚠ Failed to resolve office</option>'
-                            );
-                            $select.prop('disabled', false);
-                        }
-                    });
+                    $select.empty().append(
+                        '<option value="" disabled>⚠ Office code not available</option>'
+                    );
+                    $select.prop('disabled', false);
+                    console.error('loadEmailTemplates: officeCode not available');
                 }
             }
 
@@ -3545,12 +4113,12 @@
             // EMAIL TO/FROM SWAP BUTTON
             // Swaps the To and From email addresses
             // ============================================
-            $('#swapEmailBtn').on('click', function() {
-                const toVal = $('#emailTo').val();
-                const fromVal = $('#emailFrom').val();
-                $('#emailTo').val(fromVal);
-                $('#emailFrom').val(toVal);
-            });
+            // $('#swapEmailBtn').on('click', function() {
+            //     const toVal = $('#emailTo').val();
+            //     const fromVal = $('#emailFrom').val();
+            //     $('#emailTo').val(fromVal);
+            //     $('#emailFrom').val(toVal);
+            // });
 
             function populateQuoteVersionDropdown() {
                 const $select = $('#emailQuoteVersionSelect');
@@ -3562,11 +4130,13 @@
                         if (response.success && response.versions?.length) {
                             response.versions.forEach(function(v) {
                                 $select.append(
-                                    `<option value="${v.url}">${v.label}</option>`);
+                                    `<option value="${v.url}">${v.label}</option>`
+                                );
                             });
                         } else {
                             $select.append(
-                                '<option value="" disabled>No quotes generated yet</option>');
+                                '<option value="" disabled>No quotes generated yet</option>'
+                            );
                         }
                     },
                     error: function() {
@@ -3625,7 +4195,9 @@
                     },
                     beforeSend: function() {
                         $('#sendEmailQuoteBtn').prop('disabled', true)
-                            .html('<i class="fas fa-spinner fa-spin mr-1"></i> Sending...');
+                            .html(
+                                '<i class="fas fa-spinner fa-spin mr-1"></i> Sending...'
+                            );
                     },
                     success: function(response) {
                         if (response.success) {
@@ -3633,7 +4205,8 @@
                             $('#emailQuoteModal').modal('hide');
                             loadEmailHistory();
                         } else {
-                            showNotification(response.message || 'Failed to send email',
+                            showNotification(response.message ||
+                                'Failed to send email',
                                 'error');
                         }
                     },
@@ -3714,27 +4287,29 @@
 
                 if (!emails.length) {
                     tbody.html(
-                        '<tr><td colspan="3" class="text-center text-muted">No emails sent yet</td></tr>');
+                        '<tr><td colspan="3" class="text-center text-muted">No emails sent yet</td></tr>'
+                    );
                     return;
                 }
 
                 emails.forEach(function(email) {
                     tbody.append(`
             <tr>
-                <td>${email.sent_on   ?? 'N/A'}</td>
-                <td>${email.to_email  ?? 'N/A'}</td>
-                <td>${email.quote_version ?? 'N/A'}</td>
+                <td>${email.sent_on   ?? ''}</td>
+                <td>${email.to_email  ?? ''}</td>
+                <td>${email.quote_version ?? ''}</td>
             </tr>
         `);
                 });
             }
 
-            $('#emailQuoteModal .close, #emailQuoteModal button[data-dismiss="modal"]').on('click', function(
-                e) {
-                e.preventDefault();
-                e.stopPropagation();
-                $('#emailQuoteModal').modal('hide');
-            });
+            $('#emailQuoteModal .close, #emailQuoteModal button[data-dismiss="modal"]').on('click',
+                function(
+                    e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    $('#emailQuoteModal').modal('hide');
+                });
 
             $('#emailQuoteModal').on('hidden.bs.modal', function() {
                 $('#emailTemplateSelect').val('');
@@ -3762,7 +4337,8 @@
                 $('#cb_place_of_delivery_code, #cb_place_of_delivery_id').val('');
                 ['cb_place_of_receipt', 'cb_place_of_delivery'].forEach(function(id) {
                     const $el = $('#' + id);
-                    if ($el.hasClass('ui-autocomplete-input')) $el.autocomplete('destroy');
+                    if ($el.hasClass('ui-autocomplete-input')) $el.autocomplete(
+                        'destroy');
                 });
             });
 
@@ -3773,7 +4349,8 @@
                 loadForwarders();
                 // Small delay ensures modal DOM is visible before autocomplete binds
                 setTimeout(function() {
-                    initLocationAutocomplete('cb_place_of_receipt', 'cb_place_of_receipt_code',
+                    initLocationAutocomplete('cb_place_of_receipt',
+                        'cb_place_of_receipt_code',
                         'cb_place_of_receipt_id');
                     initLocationAutocomplete('cb_place_of_delivery',
                         'cb_place_of_delivery_code',
@@ -3797,7 +4374,7 @@
                         if (response.success && response.templates.length) {
                             response.templates.forEach(function(t) {
                                 $select.append(
-                                    `<option value="${t.Id}">${t.Name}</option>`
+                                    `<option value="${t.Name}">${t.Name}</option>`
                                 );
                             });
                         } else {
@@ -3807,7 +4384,8 @@
                         }
                     },
                     error: function() {
-                        $select.empty().append('<option value="" disabled>Failed to load</option>');
+                        $select.empty().append(
+                            '<option value="" disabled>Failed to load</option>');
                         showNotification('Failed to load service templates', 'error');
                     },
                     complete: function() {
@@ -3838,11 +4416,13 @@
                             });
                         } else {
                             $select.append(
-                                '<option value="" disabled>No parties available</option>');
+                                '<option value="" disabled>No parties available</option>'
+                            );
                         }
                     },
                     error: function() {
-                        $select.empty().append('<option value="" disabled>Failed to load</option>');
+                        $select.empty().append(
+                            '<option value="" disabled>Failed to load</option>');
                         showNotification('Failed to load bill to parties', 'error');
                     },
                     complete: function() {
@@ -3873,11 +4453,13 @@
                             });
                         } else {
                             $select.append(
-                                '<option value="" disabled>No forwarders available</option>');
+                                '<option value="" disabled>No forwarders available</option>'
+                            );
                         }
                     },
                     error: function() {
-                        $select.empty().append('<option value="" disabled>Failed to load</option>');
+                        $select.empty().append(
+                            '<option value="" disabled>Failed to load</option>');
                         showNotification('Failed to load forwarders', 'error');
                     },
                     complete: function() {
@@ -3913,7 +4495,8 @@
                             type: 'GET',
                             data: {
                                 filter: request.term,
-                                include_country: $('#cb_include_country').is(':checked') ?
+                                include_country: $('#cb_include_country').is(
+                                        ':checked') ?
                                     1 : 0,
                                 country_code: ''
                             },
@@ -3921,7 +4504,8 @@
                                 if (data.success && data.locations.length) {
                                     response(data.locations.map(function(l) {
                                         return {
-                                            label: l.LocationCode + ' — ' +
+                                            label: l.LocationCode +
+                                                ' — ' +
                                                 l
                                                 .LocationName,
                                             value: l.LocationName,
@@ -4015,7 +4599,8 @@
                         quote_id: quotationId,
                         service_template: serviceTemplate,
                         bill_to_party: billToParty,
-                        bill_to_party_id: $('#cb_bill_to_party option:selected').data('id'),
+                        bill_to_party_id: $('#cb_bill_to_party option:selected').data(
+                            'id'),
                         forwarder: forwarder,
                         forwarder_id: $('#cb_forwarder option:selected').data('id'),
                         include_country: $('#cb_include_country').is(':checked') ? 1 : 0,
@@ -4027,25 +4612,30 @@
                     beforeSend: function() {
                         $('#submitCreateBookingBtn').prop('disabled', true)
                             .html(
-                                '<i class="fas fa-spinner fa-spin mr-1"></i> Creating...');
+                                '<i class="fas fa-spinner fa-spin mr-1"></i> Creating...'
+                            );
                     },
                     success: function(response) {
                         if (response.success) {
-                            showNotification('Booking created successfully', 'success');
+                            showNotification('Booking created successfully',
+                                'success');
                             $('#createBookingModal').modal('hide');
                         } else {
-                            showNotification(response.message || 'Failed to create booking',
+                            showNotification(response.message ||
+                                'Failed to create booking',
                                 'error');
                         }
                     },
                     error: function(xhr) {
                         showNotification(
-                            xhr.responseJSON?.message || 'Failed to create booking',
+                            xhr.responseJSON?.message ||
+                            'Failed to create booking',
                             'error'
                         );
                     },
                     complete: function() {
-                        $('#submitCreateBookingBtn').prop('disabled', false).html('Create');
+                        $('#submitCreateBookingBtn').prop('disabled', false).html(
+                            'Create');
                     }
                 });
             });
@@ -4079,7 +4669,8 @@
                     success: function(response) {
                         $select.empty().append('<option value="">-- Select --</option>');
 
-                        if (response.success && Array.isArray(response.data) && response.data
+                        if (response.success && Array.isArray(response.data) && response
+                            .data
                             .length >
                             0) {
                             response.data.forEach(function(item) {
@@ -4094,7 +4685,8 @@
                             $select.append(
                                 '<option value="" disabled>⚠ No customer types available</option>'
                             );
-                            console.warn('fetchCustomerTypes: SP returned empty or failed response',
+                            console.warn(
+                                'fetchCustomerTypes: SP returned empty or failed response',
                                 response);
                         }
                     },
@@ -4134,36 +4726,36 @@
                         'X-CSRF-TOKEN': '{{ csrf_token() }}'
                     },
                     success: function(response) {
-                        $select.empty().append('<option value="">-- Select Agent Type --</option>');
+                        $select.empty().append(
+                            '<option value="">-- Select Agent Type --</option>');
 
-                        if (response.success && Array.isArray(response.data) && response.data
+                        if (response.success && Array.isArray(response.data) && response
+                            .data
                             .length >
                             0) {
                             response.data.forEach(function(item) {
-                                const code = item.Code ?? item.code ?? '';
                                 const name = item.Name ?? item.name ?? '';
-
-                                // FIX: value is now Code (e.g. "WCA"), not the GUID Id.
-                                // sp_Quote_DetailsUpdate requires the Code.
-                                const isSelected = String(code) === String(
+                                const isSelected = String(name) === String(
                                     SAVED_AGENT_TYPE);
 
                                 $select.append(
-                                    `<option value="${code}" ${isSelected ? 'selected' : ''}>${name}</option>`
+                                    `<option value="${name}" ${isSelected ? 'selected' : ''}>${name}</option>`
                                 );
                             });
                         } else {
                             $select.append(
                                 '<option value="" disabled>-- No agent types available --</option>'
                             );
-                            console.warn('fetchAgentTypes: SP returned empty or failed response',
+                            console.warn(
+                                'fetchAgentTypes: SP returned empty or failed response',
                                 response);
                         }
                     },
                     error: function(xhr) {
                         $select.empty()
                             .append('<option value="">-- Select Agent Type --</option>')
-                            .append('<option value="" disabled>-- Failed to load --</option>');
+                            .append(
+                                '<option value="" disabled>-- Failed to load --</option>');
                         console.error('fetchAgentTypes: AJAX error', xhr);
                     },
                     complete: function() {
@@ -4201,31 +4793,285 @@
             // Snapshot values captured when Edit is clicked — restored on Cancel
             let originalCustomerType = '';
             let originalAgentType = '';
+            let originalCustomerSnapshot = {}; // owned by Edit/Cancel — written ONCE on Edit click
+            let newAgentTempSnapshot = {}; // owned by New Agent toggle — entirely separate
+
+            // ============================================================
+            // CUSTOMER — load country + industry dropdowns (once)
+            // ============================================================
+            let customerDropdownsLoaded = false;
+            const savedCustomerCountry = '{{ $quotation->pri_partner_countryname ?? '' }}';
+            const savedCustomerCountryCode = '{{ $quotation->pri_partner_countrycode ?? '' }}';
+
+            const savedCustomerIndustry = '{{ $quotation->industryname ?? '' }}';
+
+            // AFTER — remove the search event binding entirely
+            function loadCustomerDropdowns(callback) {
+                if (customerDropdownsLoaded) {
+                    if (typeof callback === 'function') callback();
+                    return;
+                }
+
+                let remaining = 2;
+
+                function oneDone() {
+                    remaining--;
+                    if (remaining === 0) {
+                        customerDropdownsLoaded = true;
+                        if (typeof callback === 'function') callback();
+                    }
+                }
+
+                // Countries — dropdown only, no search
+                $.ajax({
+                    url: '{{ route('quotation.lookup.countries') }}',
+                    type: 'GET',
+                    data: {
+                        filter: ''
+                    },
+                    success: function(data) {
+                        const $sel = $('#customerCountrySelect').empty()
+                            .append('<option value="">-- Select --</option>');
+
+                        (Array.isArray(data) ? data : []).forEach(function(c) {
+                            const name = (c.CountryName || '').trim();
+                            const isoCode = (c.CountryCode || '')
+                                .trim(); // e.g. "KE"
+                            const countryId = (c.CountryID || '').trim(); // UUID
+
+                            // Pre-select by ISO code match against savedCustomerCountryCode
+                            const isSelected = isoCode === savedCustomerCountryCode;
+
+                            $sel.append(
+                                `<option value="${countryId}" 
+                                data-name="${name}" 
+                                data-code="${isoCode}"
+                                ${isSelected ? 'selected' : ''}>${name}</option>`
+                            );
+                        });
+                    },
+                    complete: oneDone
+                });
+
+                // Industry Types — unchanged
+                $.ajax({
+                    url: '{{ route('quotation.lookup.industryTypes') }}',
+                    type: 'GET',
+                    data: {
+                        filter: ''
+                    },
+                    success: function(data) {
+                        const $sel = $('#customerIndustrySelect').empty()
+                            .append('<option value="">-- Select --</option>');
+                        (Array.isArray(data) ? data : []).forEach(function(i) {
+                            const name = i.Name || '';
+                            $sel.append(
+                                `<option value="${name}" ${name === savedCustomerIndustry ? 'selected' : ''}>${name}</option>`
+                            );
+                        });
+                    },
+                    complete: oneDone
+                });
+            }
 
             $('#editCustomerDetailsBtn').on('click', function() {
                 originalCustomerType = $('#customerTypeSelect').val();
                 originalAgentType = $('#agentTypeSelect').val();
 
-                $('#customerTypeSelect').prop('disabled', false);
-                syncAgentTypeState();
+                // Capture with stable, explicit keys — never overwritten until next Edit click
+                originalCustomerSnapshot = {
+                    companyName: $('input[data-field="companyname"]').val(),
+                    address1: $('input[data-field="pri_partner_steet"]').val(),
+                    countryDisplay: $('#customerCountryDisplay').val(),
+                    countrySelect: $('#customerCountrySelect').val(),
+                    industryDisplay: $('#customerIndustryDisplay').val(),
+                    industrySelect: $('#customerIndustrySelect').val(),
+                };
 
-                $(this).hide();
-                $('#saveCustomerDetailsBtn, #cancelCustomerDetailsBtn').show();
+                // Capture remaining fields by position — same selector, same eq() order as Cancel
+                const $leftInputs = $(
+                    '#customerDetailsCard .col-md-6:first-child input:not([type="hidden"])');
+                const $rightInputs = $(
+                    '#customerDetailsCard .col-md-6:last-child input:not([type="hidden"], #customerCountryDisplay, #customerIndustryDisplay)'
+                );
+                originalCustomerSnapshot.city = $leftInputs.eq(2).val();
+                originalCustomerSnapshot.state = $leftInputs.eq(3).val();
+                originalCustomerSnapshot.contactPerson = $leftInputs.eq(4).val();
+                originalCustomerSnapshot.phoneNo = $leftInputs.eq(5).val();
+                originalCustomerSnapshot.clientId = $rightInputs.eq(0).val();
+                originalCustomerSnapshot.address2 = $rightInputs.eq(1).val();
+                originalCustomerSnapshot.zip = $rightInputs.eq(2).val();
+                originalCustomerSnapshot.emailId = $rightInputs.eq(3).val();
+
+                loadCustomerDropdowns(function() {
+                    $('#customerCountryDisplay').hide();
+                    $('#customerCountryEditWrap').show();
+                    $('#customerIndustryDisplay').hide();
+                    $('#customerIndustrySelect').show();
+
+                    // Lock ALL fields first — only Company Name is editable by default.
+                    // Fields unlock only when "New Agent" is selected from Customer Type.
+                    $('#customerDetailsCard .card-body')
+                        .find('input:not([type="hidden"])')
+                        .prop('readonly', true)
+                        .css({
+                            'background-color': '',
+                            'border-color': ''
+                        });
+
+                    // Unlock only Company Name
+                    $('input[data-field="companyname"]').prop('readonly', false);
+
+                    // Remove the Address 1 unlock — it's read-only unless New Agent is selected
+                    // $('input[data-field="pri_partner_steet"]').removeAttr('readonly');
+
+                    $('.customer-mandatory-star')
+                        .hide(); // hide mandatory stars — only shown for New Agent
+
+                    $('#customerTypeSelect').prop('disabled', false);
+                    syncAgentTypeState();
+
+                    $('#editCustomerDetailsBtn').hide();
+                    $('#saveCustomerDetailsBtn, #cancelCustomerDetailsBtn').show();
+
+                    initCompanyAutocomplete();
+                });
             });
 
             $('#cancelCustomerDetailsBtn').on('click', function() {
-                $('#customerTypeSelect').val(originalCustomerType);
+                // Restore dropdowns
+                $('#customerTypeSelect').val(originalCustomerType).prop('disabled', true);
                 $('#agentTypeSelect').val(originalAgentType);
 
-                $('#customerTypeSelect, #agentTypeSelect').prop('disabled', true);
+                // Restore explicitly-keyed fields
+                $('input[data-field="companyname"]').val(originalCustomerSnapshot.companyName ??
+                    '');
+                $('input[data-field="pri_partner_steet"]').val(originalCustomerSnapshot
+                    .address1 ?? '');
 
-                $(this).hide();
-                $('#saveCustomerDetailsBtn').hide();
+                // Restore positionally-keyed fields — same selectors as Edit snapshot
+                const $leftInputs = $(
+                    '#customerDetailsCard .col-md-6:first-child input:not([type="hidden"])');
+                const $rightInputs = $(
+                    '#customerDetailsCard .col-md-6:last-child input:not([type="hidden"], #customerCountryDisplay, #customerCountrySearch, #customerIndustryDisplay)'
+                );
+
+                $leftInputs.eq(2).val(originalCustomerSnapshot.city ?? '');
+                $leftInputs.eq(3).val(originalCustomerSnapshot.state ?? '');
+                $leftInputs.eq(4).val(originalCustomerSnapshot.contactPerson ?? '');
+                $leftInputs.eq(5).val(originalCustomerSnapshot.phoneNo ?? '');
+                $rightInputs.eq(0).val(originalCustomerSnapshot.clientId ?? '');
+                $rightInputs.eq(1).val(originalCustomerSnapshot.address2 ?? '');
+                $rightInputs.eq(2).val(originalCustomerSnapshot.zip ?? '');
+                $rightInputs.eq(3).val(originalCustomerSnapshot.emailId ?? '');
+
+                // Restore country — swap back to display input
+                $('#customerCountryDisplay').val(originalCustomerSnapshot.countryDisplay ?? '')
+                    .show();
+                $('#customerCountryEditWrap').hide();
+                $('#customerCountrySelect').val(originalCustomerSnapshot.countrySelect ?? '')
+                    .find('option').show();
+
+                // Restore industry — swap back to display input
+                $('#customerIndustryDisplay').val(originalCustomerSnapshot.industryDisplay ??
+                    '').show();
+                $('#customerIndustrySelect').val(originalCustomerSnapshot.industrySelect ?? '')
+                    .hide();
+
+                // Lock all inputs, clear any New Agent styling
+                $('#customerDetailsCard .card-body input:not([type="hidden"])').prop('readonly',
+                        true)
+                    .css({
+                        'background-color': '',
+                        'border-color': ''
+                    });
+
+                // Clear both snapshots
+                originalCustomerSnapshot = {};
+                newAgentTempSnapshot = {};
+
+                $('.customer-mandatory-star').hide();
+                $('#saveCustomerDetailsBtn, #cancelCustomerDetailsBtn').hide();
                 $('#editCustomerDetailsBtn').show();
+
+                const $company = $('input[data-field="companyname"]');
+                if ($company.hasClass('ui-autocomplete-input')) $company.autocomplete(
+                    'destroy');
+                $('#selectedClientId').val('');
+
+                // FIX 1: syncAgentTypeState() called AFTER editBtn is shown so
+                // inEditMode correctly evaluates to false → agentTypeSelect is locked.
+                syncAgentTypeState();
             });
 
             $('#customerTypeSelect').on('change', function() {
+                const selectedType = $(this).val();
                 syncAgentTypeState();
+
+                if (selectedType === 'New Agent') {
+                    // Snapshot current values into the TEMP variable
+                    newAgentTempSnapshot = {};
+                    $('#customerDetailsCard .card-body').find('input:not([type="hidden"])')
+                        .each(
+                            function() {
+                                const key = $(this).attr('name') || $(this).data('field') || $(
+                                    this).attr(
+                                    'id');
+                                newAgentTempSnapshot[key] = $(this).val();
+                            });
+                    newAgentTempSnapshot['__countryDisplay'] = $('#customerCountryDisplay')
+                        .val();
+                    newAgentTempSnapshot['__industryDisplay'] = $('#customerIndustryDisplay')
+                        .val();
+                    newAgentTempSnapshot['__countrySelect'] = $('#customerCountrySelect').val();
+                    newAgentTempSnapshot['__industrySelect'] = $('#customerIndustrySelect')
+                        .val();
+
+                    // Clear and enable ALL fields for New Agent
+                    $('#customerDetailsCard .card-body').find('input:not([type="hidden"])')
+                        .val('').prop('readonly', false)
+                        .css({
+                            'background-color': '#fff9e6',
+                            'border-color': '#ffc107'
+                        });
+
+                } else {
+                    // Restore from TEMP snapshot if switching away from New Agent
+                    if (Object.keys(newAgentTempSnapshot).length) {
+                        $('#customerDetailsCard .card-body').find('input:not([type="hidden"])')
+                            .each(
+                                function() {
+                                    const key = $(this).attr('name') || $(this).data('field') ||
+                                        $(this)
+                                        .attr('id');
+                                    if (newAgentTempSnapshot[key] !== undefined) $(this).val(
+                                        newAgentTempSnapshot[key]);
+                                });
+                        $('#customerCountryDisplay').val(newAgentTempSnapshot[
+                            '__countryDisplay'] || '');
+                        $('#customerIndustryDisplay').val(newAgentTempSnapshot[
+                            '__industryDisplay'] || '');
+                        $('#customerCountrySelect').val(newAgentTempSnapshot[
+                            '__countrySelect'] || '');
+                        $('#customerIndustrySelect').val(newAgentTempSnapshot[
+                            '__industrySelect'] || '');
+                        newAgentTempSnapshot = {};
+                    }
+
+                    // For ALL other types: lock every field except Company Name (Address 1 edit already
+                    // captured in originalCustomerSnapshot and protected by the save validation).
+                    // Only Company Name remains editable.
+                    $('#customerDetailsCard .card-body')
+                        .find('input:not([type="hidden"])')
+                        .css({
+                            'background-color': '',
+                            'border-color': ''
+                        })
+                        .prop('readonly', true);
+
+                    // Re-enable only Company Name
+                    $('input[data-field="companyname"]').prop('readonly', false);
+                }
             });
 
             // ============================================
@@ -4236,14 +5082,35 @@
             $('#saveCustomerDetailsBtn').on('click', function() {
                 const customerType = $('#customerTypeSelect').val();
                 const agentType = $('#agentTypeSelect').val() || '';
+                const companyName = $('input[data-field="companyname"]').val()?.trim() || '';
+                const address1 = $('input[data-field="pri_partner_steet"]').val()?.trim() || '';
+                const country = $('#customerCountrySelect option:selected').data('code')
+                    ?.trim() || '';
+                const industry = $('#customerIndustrySelect').val()?.trim() || '';
 
                 if (!customerType) {
                     showNotification('Customer Type is required', 'error');
                     return;
                 }
-
                 if (customerType.toLowerCase().includes('agent') && !agentType) {
                     showNotification('Agent Type is required for Agent customers', 'error');
+                    return;
+                }
+                if (!companyName) {
+                    showNotification('Company Name is required', 'error');
+                    return;
+                }
+                const isNewAgent = customerType === 'New Agent';
+                if (isNewAgent && !address1) {
+                    showNotification('Address 1 is required', 'error');
+                    return;
+                }
+                if (!country) {
+                    showNotification('Country is required', 'error');
+                    return;
+                }
+                if (!industry) {
+                    showNotification('Industry Type is required', 'error');
                     return;
                 }
 
@@ -4252,32 +5119,67 @@
                     type: 'POST',
                     data: {
                         _token: '{{ csrf_token() }}',
-                        booking_no: bookingNo,
+                        booking_no: quoteNo,
                         customer_type: customerType,
-                        agent_type: agentType
+                        agent_type: agentType,
+                        company: companyName,
+                        address1: address1,
+                        address2: $('#customerAddress2Input').val()?.trim() || '',
+                        city: $('#customerCityInput').val()?.trim() || '',
+                        state: $('#customerStateInput').val()?.trim() || '',
+                        contact_person: $('#customerContactInput').val()?.trim() || '',
+                        phone: $('#customerPhoneInput').val()?.trim() || '',
+                        zip: $('#customerZipInput').val()?.trim() || '',
+                        email: $('#customerEmailInput').val()?.trim() || '',
+                        country: country,
+                        industry: industry,
+                        client_id: $('#selectedClientId').val() ||
+                            '{{ $quotation->clientid ?? '' }}',
                     },
                     beforeSend: function() {
                         $('#saveCustomerDetailsBtn').prop('disabled', true)
-                            .html('<i class="fas fa-spinner fa-spin mr-1"></i> Saving...');
+                            .html(
+                                '<i class="fas fa-spinner fa-spin mr-1"></i> Saving...'
+                            );
                     },
                     success: function(response) {
                         if (response.success) {
                             showNotification('Customer details saved successfully',
                                 'success');
 
+                            // FIX: country holds the code — show the human-readable name from
+                            // the selected option's data-name attribute instead
+                            $('#customerCountryDisplay').val(
+                                $('#customerCountrySelect option:selected')
+                                .data('name') ||
+                                ''
+                            ).show();
+                            $('#customerCountryEditWrap').hide();
+
+                            $('#customerIndustryDisplay').val(industry).show();
+                            $('#customerIndustrySelect').hide();
+
+                            $('input[data-field="companyname"]').attr('readonly',
+                                true);
+                            $('input[data-field="pri_partner_steet"]').attr(
+                                'readonly', true);
+                            $('.customer-mandatory-star').hide();
+
                             originalCustomerType = customerType;
                             originalAgentType = agentType;
-
-                            $('#customerTypeSelect, #agentTypeSelect').prop('disabled',
-                                true);
-                            $('#saveCustomerDetailsBtn, #cancelCustomerDetailsBtn').hide();
+                            $('#customerTypeSelect, #agentTypeSelect').prop(
+                                'disabled', true);
+                            $('#saveCustomerDetailsBtn, #cancelCustomerDetailsBtn')
+                                .hide();
                             $('#editCustomerDetailsBtn').show();
                         } else {
-                            showNotification(response.message || 'Failed to save', 'error');
+                            showNotification(response.message || 'Failed to save',
+                                'error');
                         }
                     },
                     error: function(xhr) {
-                        showNotification(xhr.responseJSON?.message || 'Failed to save',
+                        showNotification(xhr.responseJSON?.message ||
+                            'Failed to save',
                             'error');
                     },
                     complete: function() {
@@ -4297,11 +5199,21 @@
             // ============================================
             function clearModalForm(type) {
                 const $modal = type === 'revenue' ? $('#addRevenueModal') : $('#addCostModal');
+                const chargeTypeRadioName = type === 'revenue' ? 'revenueChargeType' : 'costChargeType';
+                const increaseTypeSelectName = type === 'revenue' ? 'revenue_increase_type' :
+                    'cost_increase_type';
+
                 $modal.find('input[type="text"], input[type="number"]').val('');
                 $modal.find('input[type="number"]').val('0');
-                $modal.find('select').prop('selectedIndex', 0);
-                $modal.find('input[type="checkbox"]').prop('checked', false);
 
+                // Reset selects EXCEPT increase_type — let toggleCostFormFields own its default
+                $modal.find('select').not(`select[name="${increaseTypeSelectName}"]`).prop(
+                    'selectedIndex', 0);
+
+                // Reset increase_type to a valid default (Percentage), not blank
+                $modal.find(`select[name="${increaseTypeSelectName}"]`).val('Percentage');
+
+                $modal.find('input[type="checkbox"]').prop('checked', false);
 
                 if (type === 'revenue') {
                     $modal.find('.increase-by-row').removeClass('active').css('display', 'none');
@@ -4311,9 +5223,6 @@
                     $modal.find('.cost-markup-row input[type="number"]').val('0.00');
                 }
 
-                // ── FIX: Only reload BasedOn list in add mode.
-                // In edit mode, populateModal owns the loading sequence via loadBasedOnListWithCallback.
-                // Calling loadBasedOnList here would race and reset the dropdown, wiping basedOnUOM.
                 if (!currentEditingCharge) {
                     loadBasedOnList(type);
                     populateCurrencyDropdown(type);
@@ -4321,39 +5230,24 @@
             }
 
             function clearRevenueModalForm() {
+                const currentType = $('#addRevenueModal').find(
+                        'input[name="revenueChargeType"]:checked').val() ||
+                    'revenue';
                 clearModalForm('revenue');
-                $('#revenueTypeRevenue').prop('checked', true);
-                toggleRevenueFormFields('revenue');
-                $('#addRevenueModal .increase-by-row').removeClass('active').css('display', 'none');
+                $(`#addRevenueModal input[name="revenueChargeType"][value="${currentType}"]`).prop(
+                    'checked', true);
+                toggleRevenueFormFields(currentType);
             }
 
             function clearCostModalForm() {
+                // Read the currently selected type BEFORE clearModalForm resets the form
+                const currentType = $('#addCostModal').find('input[name="costChargeType"]:checked')
+                    .val() || 'cost';
                 clearModalForm('cost');
-                $('#costTypeCost').prop('checked', true);
-                toggleCostFormFields('cost');
-                $('#addCostModal .cost-markup-row').removeClass('active').css('display', 'none');
-            }
-
-            function showNotification(message, type) {
-                const alertClass = type === 'success' ? 'alert-success' :
-                    type === 'error' ? 'alert-danger' :
-                    type === 'warning' ? 'alert-warning' : 'alert-info';
-
-                $('body').append(`
-                    <div class="alert ${alertClass} alert-dismissible fade show notification-toast" role="alert"
-                        style="position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
-                        <strong>${message}</strong>
-                        <button type="button" class="close" data-dismiss="alert">
-                            <span>&times;</span>
-                        </button>
-                    </div>
-                `);
-
-                setTimeout(function() {
-                    $('.notification-toast').fadeOut(function() {
-                        $(this).remove();
-                    });
-                }, 3000);
+                // Re-apply the checked state that clearModalForm wiped
+                $(`#addCostModal input[name="costChargeType"][value="${currentType}"]`).prop('checked',
+                    true);
+                toggleCostFormFields(currentType);
             }
 
             // ============================================
@@ -4422,8 +5316,8 @@
                     data: {
                         module: 'Quotation',
                         sub_module: 'T&C',
-                        office_code: codeToUse, // ← kept for backwards compat (ignored by SP path)
-                        booking_no: bookingNo // ← NEW: triggers SP path in controller
+                        office_code: codeToUse,
+                        booking_no: quoteNo
                     },
                     success: function(response) {
                         const $select = $('#termsTemplateSelect');
@@ -4431,16 +5325,14 @@
 
                         if (response.success && response.templates.length > 0) {
 
-                            // ── SINGLE TEMPLATE: auto-apply, no dropdown needed ──────────
+                            // ── SINGLE TEMPLATE: auto-apply ──────────────────────────
                             if (response.templates.length === 1) {
                                 const t = response.templates[0];
 
-                                // Hide dropdown, show badge
                                 $('#termsDropdownWrapper').hide();
                                 $('#termsAutoAppliedName').text(t.Name);
                                 $('#termsAutoAppliedBadge').show();
 
-                                // Fetch description then silently save
                                 $.ajax({
                                     url: '{{ route('quotation.communication.description') }}',
                                     type: 'GET',
@@ -4453,22 +5345,21 @@
                                     success: function(descResponse) {
                                         if (!descResponse.success) return;
 
-                                        const description = descResponse.description;
-                                        $('#termsDescriptionPreview').val(description);
-                                        // Show preview read-only (no Apply button needed)
+                                        const description = descResponse
+                                            .description;
+                                        $('#termsDescriptionPreview').val(
+                                            description);
                                         $('#termsDescriptionWrapper').show();
                                         $('#applyTermsBtn').hide();
 
-                                        // Only auto-save if T&C hasn't been applied yet
+                                        // Already applied server-side — just unlock
                                         if (tcAlreadyApplied) {
-                                            // Already applied — just unlock Generate Quote
-                                            $('#generateQuoteBtn')
-                                                .prop('disabled', false)
-                                                .removeAttr('title');
+                                            termsState.applied = true;
+                                            setGenerateBtn();
                                             return;
                                         }
 
-                                        // Silently save the single T&C
+                                        // Auto-save the single template silently
                                         $.ajax({
                                             url: '{{ route('quotation.communication.save-terms') }}',
                                             type: 'POST',
@@ -4478,116 +5369,126 @@
                                                 terms_condition: description,
                                                 template_name: t.Name
                                             },
-                                            success: function(saveResponse) {
-                                                if (saveResponse.success) {
-                                                    // Unlock Generate Quote
-                                                    $('#generateQuoteBtn')
-                                                        .prop('disabled', false)
-                                                        .removeAttr('title');
+                                            success: function(
+                                                saveResponse) {
+                                                if (saveResponse
+                                                    .success) {
+                                                    termsState
+                                                        .applied =
+                                                        true; // ← gate opened here
+                                                    setGenerateBtn
+                                                        ();
                                                 } else {
-                                                    showNotification(
-                                                        'Auto-apply T&C failed: ' +
-                                                        (saveResponse
-                                                            .message ||
-                                                            'Unknown error'
-                                                        ),
-                                                        'warning'
-                                                    );
+                                                    showNotification
+                                                        (
+                                                            'Auto-apply T&C failed: ' +
+                                                            (saveResponse
+                                                                .message ||
+                                                                'Unknown error'
+                                                            ),
+                                                            'warning'
+                                                        );
+                                                    // termsState.applied stays false — button stays disabled
+                                                    setGenerateBtn
+                                                        ();
                                                 }
                                             },
                                             error: function() {
-                                                showNotification(
-                                                    'Failed to auto-apply Terms & Conditions',
-                                                    'warning');
+                                                setGenerateBtn();
                                             }
                                         });
                                     },
                                     error: function() {
-                                        showNotification('Failed to load T&C description',
+                                        showNotification(
+                                            'Failed to load T&C description',
                                             'warning');
+                                        setGenerateBtn();
                                     }
                                 });
 
-                                return; // ← skip the multi-template path below
+                                return; // skip multi-template path
                             }
 
-                            // ── MULTIPLE TEMPLATES: show dropdown as before ──────────────
-                            $select.append('<option value="">-- Select Template --</option>');
+                            // ── MULTIPLE TEMPLATES: show dropdown ────────────────────
+                            $select.append(
+                                '<option value="">-- Select Template --</option>');
                             response.templates.forEach(function(t) {
-                                $select.append(`<option value="${t.Name}">${t.Name}</option>`);
+                                $select.append(
+                                    `<option value="${t.Name}">${t.Name}</option>`
+                                );
                             });
 
                             $('#termsDropdownWrapper').show();
                             $('#termsAutoAppliedBadge').hide();
+                            if (!tcAlreadyApplied) {
+                                $('#termsTemplateSelect').closest('.mt-3.pt-2')
+                                    .find('label').first()
+                                    .append(
+                                        ' <span class="text-danger terms-required-star">*</span>'
+                                    );
+                            }
 
                             @if ($quotation->QuotationTCTemplate)
-                                // Pre-populate preview if T&C was previously applied
                                 $('#termsDescriptionPreview').val(
-                                    '{{ addslashes($quotation->terms_condition ?? '') }}');
+                                    '{{ addslashes($quotation->terms_condition ?? '') }}'
+                                );
                                 if ($('#termsDescriptionPreview').val()) {
                                     $('#termsDescriptionWrapper').show();
+                                }
+                                // Previously applied — gate re-opens on page load for multi-template too
+                                if (tcAlreadyApplied) {
+                                    termsState.applied = true;
+                                    setGenerateBtn();
                                 }
                             @endif
 
                         } else {
-                            // Error states — unchanged
-                            if (response.code === 'NOT_CONFIGURED') {
-                                $select.append(
-                                    `<option value="" disabled>⚠ T&C not configured for office: ${codeToUse}</option>`
-                                );
-                            } else if (response.code === 'OFFICE_NOT_FOUND') {
-                                $select.append(
-                                    `<option value="" disabled>⚠ Office not found: ${codeToUse}</option>`
-                                );
-                            } else {
-                                $select.append(
-                                    `<option value="" disabled>-- No templates available --</option>`
-                                );
-                            }
+                            // Error states — surface clearly, button stays disabled
+                            const msg = response.code === 'NOT_CONFIGURED' ?
+                                `⚠ T&C not configured for office: ${codeToUse}` :
+                                response.code === 'OFFICE_NOT_FOUND' ?
+                                `⚠ Office not found: ${codeToUse}` :
+                                '-- No templates available --';
+                            $select.append(`<option value="" disabled>${msg}</option>`);
+                            setGenerateBtn();
                         }
                     },
                     error: function(xhr) {
-                        const response = xhr.responseJSON;
+                        const res = xhr.responseJSON;
                         const $select = $('#termsTemplateSelect');
                         $select.empty();
 
-                        if (response && response.code === 'NOT_CONFIGURED') {
-                            $select.append(
-                                `<option value="" disabled>⚠ T&C not configured for office: ${codeToUse}</option>`
-                            );
-                        } else if (response && response.code === 'OFFICE_NOT_FOUND') {
-                            $select.append(
-                                `<option value="" disabled>⚠ Office not found: ${codeToUse}</option>`
-                            );
-                        } else {
-                            $select.append(
-                                `<option value="" disabled>-- Failed to load templates --</option>`
-                            );
-                        }
-
-                        console.warn('loadTermsTemplates error:', response?.message || xhr.status);
+                        const msg = res?.code === 'NOT_CONFIGURED' ?
+                            `⚠ T&C not configured for office: ${codeToUse}` :
+                            res?.code === 'OFFICE_NOT_FOUND' ?
+                            `⚠ Office not found: ${codeToUse}` :
+                            '-- Failed to load templates --';
+                        $select.append(`<option value="" disabled>${msg}</option>`);
+                        console.warn('loadTermsTemplates error:', res?.message || xhr
+                            .status);
+                        setGenerateBtn();
                     }
                 });
             }
-
             $('#termsTemplateSelect').on('change', function() {
                 const selectedName = $(this).val();
 
-                // Hide re-select instruction and disable Generate until auto-apply succeeds
+                // Remove required star once user interacts with the dropdown
+                $('.terms-required-star').remove();
+
+                // Reset gate whenever user picks a new template
+                termsState.applied = false;
+                setGenerateBtn();
+
                 $('#termsReSelectMsg').hide();
-                $('#generateQuoteBtn').prop('disabled', true).attr('title',
-                    'Please wait — applying Terms & Conditions...');
                 $('#applyTermsBtn').prop('disabled', true);
 
                 if (!selectedName) {
                     $('#termsDescriptionWrapper').hide();
                     $('#termsDescriptionPreview').val('');
-                    $('#generateQuoteBtn').prop('disabled', true).attr('title',
-                        'Please select a Terms & Conditions template first');
-                    return;
+                    return; // button already disabled via setGenerateBtn above
                 }
 
-                // Step 1: Fetch the T&C description
                 $.ajax({
                     url: '{{ route('quotation.communication.description') }}',
                     type: 'GET',
@@ -4603,18 +5504,18 @@
                     },
                     success: function(response) {
                         if (!response.success) {
-                            $('#termsDescriptionPreview').val('Failed to load description.');
-                            showNotification('Could not load T&C description', 'warning');
-                            $('#generateQuoteBtn').prop('disabled', true).attr('title',
-                                'T&C description failed to load');
-                            return;
+                            $('#termsDescriptionPreview').val(
+                                'Failed to load description.');
+                            showNotification('Could not load T&C description',
+                                'warning');
+                            return; // button stays disabled
                         }
 
                         const description = response.description;
                         $('#termsDescriptionPreview').val(description);
                         $('#applyTermsBtn').prop('disabled', false);
 
-                        // Step 2: Auto-apply the selected T&C silently
+                        // Auto-apply on selection — no separate Apply click needed for the common case
                         $.ajax({
                             url: '{{ route('quotation.communication.save-terms') }}',
                             type: 'POST',
@@ -4626,33 +5527,30 @@
                             },
                             success: function(saveResponse) {
                                 if (saveResponse.success) {
-                                    // T&C saved — unlock Generate Quote
-                                    $('#generateQuoteBtn')
-                                        .prop('disabled', false)
-                                        .removeAttr('title');
+                                    termsState.applied =
+                                        true; // ← gate opens here
+                                    setGenerateBtn();
                                 } else {
-                                    showNotification(saveResponse.message ||
+                                    showNotification(saveResponse
+                                        .message ||
                                         'Failed to apply Terms & Conditions',
                                         'error');
-                                    $('#generateQuoteBtn').prop('disabled', true)
-                                        .attr('title',
-                                            'T&C apply failed — please retry');
+                                    setGenerateBtn(); // stays disabled
                                 }
                             },
                             error: function() {
                                 showNotification(
                                     'Failed to apply Terms & Conditions',
                                     'error');
-                                $('#generateQuoteBtn').prop('disabled', true).attr(
-                                    'title', 'T&C apply failed — please retry');
+                                setGenerateBtn();
                             }
                         });
                     },
                     error: function() {
-                        $('#termsDescriptionPreview').val('Error loading description.');
+                        $('#termsDescriptionPreview').val(
+                            'Error loading description.');
                         showNotification('Error loading T&C description', 'error');
-                        $('#generateQuoteBtn').prop('disabled', true).attr('title',
-                            'T&C description failed to load');
+                        setGenerateBtn();
                     }
                 });
             });
@@ -4666,9 +5564,13 @@
                 }
 
                 if (!bookingNo) {
-                    showNotification('No booking number — cannot save Terms & Conditions', 'error');
+                    showNotification('No booking number — cannot save Terms & Conditions',
+                        'error');
                     return;
                 }
+
+                termsState.applied = false;
+                setGenerateBtn();
 
                 $.ajax({
                     url: '{{ route('quotation.communication.save-terms') }}',
@@ -4681,19 +5583,21 @@
                     },
                     beforeSend: function() {
                         $('#applyTermsBtn').prop('disabled', true)
-                            .html('<i class="fas fa-spinner fa-spin mr-1"></i> Saving...');
+                            .html(
+                                '<i class="fas fa-spinner fa-spin mr-1"></i> Saving...'
+                            );
                     },
                     success: function(response) {
                         if (response.success) {
-                            showNotification('Terms & Conditions applied successfully',
+                            showNotification(
+                                'Terms & Conditions applied successfully',
                                 'success');
-
-                            // ── Unblock Generate Quote now that T&C is applied ──
-                            $('#generateQuoteBtn')
-                                .prop('disabled', false)
-                                .removeAttr('title');
+                            termsState.applied =
+                                true; // ← consistent with all other save-terms paths
+                            setGenerateBtn();
                         } else {
-                            showNotification(response.message || 'Failed to apply Terms',
+                            showNotification(response.message ||
+                                'Failed to apply Terms',
                                 'error');
                         }
                     },
@@ -4710,40 +5614,756 @@
             });
 
             // ============================================
-            // COPIED BOOKING — UNLOCK EDITABLE FIELDS
+            // ============================================
+            // COPIED BOOKING — PUT ALL CARDS INTO EDIT MODE
+            // Triggers the Edit button on each card so all
+            // dropdowns load and fields become editable,
+            // exactly matching the normal edit page flow.
             // ============================================
             if (isCopiedBooking) {
-                const editableCards = ['#customerDetailsCard', '#shipmentDetailsCard', '#cargoDetailsCard'];
 
-                editableCards.forEach(function(cardId) {
+                // Expand Inquiry Details card (not in the array below — needs explicit expand)
+                (function() {
+                    const $inquiryCard = $('#editInquiryBtn').closest('.card');
+                    $inquiryCard.find('.card-body').show();
+                    $inquiryCard.find('[data-card-widget="collapse"] i')
+                        .removeClass('fa-chevron-down')
+                        .addClass('fa-chevron-up');
+                    $inquiryCard.removeClass('collapsed-card');
+                })();
+
+                // Expand the remaining three cards
+                const cardsToExpand = [
+                    '#customerDetailsCard',
+                    '#shipmentDetailsCard',
+                    '#cargoDetailsCard'
+                ];
+
+                cardsToExpand.forEach(function(cardId) {
                     const $card = $(cardId);
-
                     $card.find('.card-body').show();
                     $card.find('[data-card-widget="collapse"] i')
-                        .removeClass('fa-chevron-down').addClass('fa-chevron-up');
+                        .removeClass('fa-chevron-down')
+                        .addClass('fa-chevron-up');
                     $card.removeClass('collapsed-card');
+                });
 
-                    $card.find('input[readonly]').each(function() {
-                        $(this).removeAttr('readonly').css({
-                            'background-color': '#fff',
-                            'border': '1px solid #ced4da',
-                            'border-radius': '4px',
-                            'padding': '0.25rem 0.5rem',
-                            'cursor': 'text'
-                        });
+                // Trigger each card's Edit button with a staggered delay.
+                // Inquiry first — lightweight (only sales person autocomplete).
+                // Customer second — loads countries, industries, customer/agent types.
+                // Shipment third — loads InCo Terms, modes, country selects.
+                // Cargo last — loads equipment types.
+                setTimeout(function() {
+                    $('#editInquiryBtn').trigger('click');
+                }, 200);
+
+                setTimeout(function() {
+                    $('#editCustomerDetailsBtn').trigger('click');
+                }, 400);
+
+                setTimeout(function() {
+                    $('#editShipmentDetailsBtn').trigger('click');
+                }, 600);
+
+                setTimeout(function() {
+                    $('#editCargoDetailsBtn').trigger('click');
+                }, 800);
+            }
+            // ============================================
+            // CARGO DETAILS — CONTAINER LIST
+            // Loaded from Quote_Quotation_EquipmentDetails via getContainers.
+            // Saved via sp_Quote_CargoDetailsUpdate.
+            // Container string format: "20GPX2,40HCX1"
+            // SP typo "Qunatity" is handled in the controller — JS just passes the string.
+            // ============================================
+            const QUOTE_NO = '{{ $quotation->QuoteNo ?? '' }}';
+            let originalCargoVolume = '';
+            let originalCommodity = '';
+            let originalContainers = []; // [{type, qty}] snapshot for Cancel
+
+            let equipmentTypeOptions = [];
+
+            // Load containers on page init
+            loadContainers();
+
+            function loadEquipmentTypeOptions(callback) {
+                if (equipmentTypeOptions.length > 0) {
+                    if (typeof callback === 'function') callback();
+                    return;
+                }
+                $.ajax({
+                    url: '{{ route('quotation.equipment-types') }}',
+                    type: 'GET',
+                    success: function(response) {
+                        if (response.success && response.data.length > 0) {
+                            equipmentTypeOptions = response.data;
+                        }
+                        if (typeof callback === 'function') callback();
+                    },
+                    error: function() {
+                        console.error('Failed to load equipment types');
+                        if (typeof callback === 'function') callback();
+                    }
+                });
+            }
+
+            function serializeContainerList() {
+                const rows = [];
+                $('#containerListBody tr[data-container-row]').each(function() {
+                    const type = $(this).find('.container-type-select').val();
+                    const qty = parseInt($(this).find('.container-qty-input').val(), 10) || 0;
+                    if (type && qty > 0) rows.push(type + 'X' + qty);
+                });
+                return rows.join(',');
+            }
+
+            function buildContainerRow(type, qty, editable) {
+                const $row = $('<tr data-container-row="1">');
+
+                const $typeCell = $('<td>');
+                if (editable) {
+                    const $select = $(
+                        '<select class="form-control form-control-sm container-type-select">');
+                    $select.append('<option value="">-- Select --</option>');
+                    equipmentTypeOptions.forEach(function(item) {
+                        $select.append(
+                            `<option value="${item.Code}" ${item.Code === type ? 'selected' : ''}>${item.Code}</option>`
+                        );
+                    });
+                    $typeCell.append($select);
+                } else {
+                    $typeCell.text(type || '—');
+                }
+
+                const $qtyCell = $('<td>');
+                if (editable) {
+                    $qtyCell.append(
+                        `<input type="number" class="form-control form-control-sm container-qty-input"
+                value="${qty}" min="1" style="width:75px;">`
+                    );
+                } else {
+                    $qtyCell.text(qty);
+                }
+
+                const $actionCell = $('<td class="text-center">');
+                if (editable) {
+                    $actionCell.append(
+                        `<button type="button" class="btn btn-danger btn-sm remove-container-row">
+                <i class="fas fa-times"></i>
+            </button>`
+                    );
+                }
+
+                return $row.append($typeCell, $qtyCell, $actionCell);
+            }
+
+            function renderContainerRows(containers, editable) {
+                const $tbody = $('#containerListBody');
+                $tbody.empty();
+
+                // Show/hide action column header
+                if (editable) {
+                    $('#containerActionCol').removeClass('d-none');
+                } else {
+                    $('#containerActionCol').addClass('d-none');
+                }
+
+                if (!containers.length) {
+                    const msg = editable ? 'No containers added — click "Add a line" below' :
+                        'No containers';
+                    $tbody.append(
+                        `<tr><td colspan="3" class="text-muted text-center">${msg}</td></tr>`);
+                    return;
+                }
+
+                containers.forEach(function(c) {
+                    $tbody.append(buildContainerRow(c.type, c.qty, editable));
+                });
+            }
+
+            function loadContainers() {
+                $.ajax({
+                    url: '{{ route('quotation.containers') }}',
+                    type: 'GET',
+                    data: {
+                        quote_no: QUOTE_NO
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            const containers = (response.containers || []).map(function(c) {
+                                return {
+                                    type: c.EquipmentType,
+                                    qty: c.Quantity
+                                };
+                            });
+                            originalContainers = containers;
+                            renderContainerRows(containers, false);
+                        } else {
+                            $('#containerListBody').html(
+                                '<tr><td colspan="3" class="text-danger text-center">Failed to load</td></tr>'
+                            );
+                        }
+                    },
+                    error: function() {
+                        $('#containerListBody').html(
+                            '<tr><td colspan="3" class="text-danger text-center">Error loading containers</td></tr>'
+                        );
+                    }
+                });
+            }
+
+            // Remove row
+            $(document).on('click', '.remove-container-row', function() {
+                $(this).closest('tr').remove();
+            });
+
+            // Add a line
+            $('#addContainerRowBtn').on('click', function() {
+                $('#containerListBody tr:not([data-container-row])').remove();
+                loadEquipmentTypeOptions(function() {
+                    $('#containerListBody').append(buildContainerRow('', 1, true));
+                });
+            });
+
+            // Edit
+            $('#editCargoDetailsBtn').on('click', function() {
+                originalCargoVolume = $('#cargoVolumeInput').val();
+                originalCommodity = $('#commodityInput').val();
+                originalContainers = [];
+                $('#containerListBody tr[data-container-row]').each(function() {
+                    originalContainers.push({
+                        type: $(this).find('td:first').text().trim(),
+                        qty: parseInt($(this).find('td:eq(1)').text().trim(),
+                            10) || 0
                     });
                 });
 
-                $('.content-header h1, .content-header .d-flex').first().after(`
-                    <div class="alert alert-info alert-dismissible fade show mx-3 mt-2" role="alert">
-                        <i class="fas fa-copy mr-1"></i>
-                        <strong>Copied Booking</strong> — Customer, Shipment and Cargo details are now editable.
-                        Update them before sending this quotation.
-                        <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
-                    </div>
-                `);
+                $('#scopeVolumeDisplay').hide();
+                $('#scopeVolumeSelect').removeClass('d-none').prop('disabled', false);
+                $('.customer-mandatory-star', '#cargoDetailsCard').show();
+
+                $('#cargoVolumeInput, #commodityInput').prop('readonly', false).css({
+                    'background-color': '#fff',
+                    'border': '1px solid #ced4da'
+                });
+
+                // ← Load equipment types first, THEN render editable rows
+                loadEquipmentTypeOptions(function() {
+                    renderContainerRows(originalContainers, true);
+                    $('#addContainerRowBtn').removeClass('d-none');
+                });
+
+                $(this).addClass('d-none');
+                $('#saveCargoDetailsBtn, #cancelCargoDetailsBtn').removeClass('d-none');
+            });
+
+            // Cancel
+            $('#cancelCargoDetailsBtn').on('click', function() {
+                $('#cargoVolumeInput').val(originalCargoVolume).prop('readonly', true).css(
+                    'background-color', '');
+                $('#commodityInput').val(originalCommodity).prop('readonly', true).css(
+                    'background-color',
+                    '');
+                renderContainerRows(originalContainers, false);
+                $('#addContainerRowBtn').addClass('d-none');
+
+                $('#scopeVolumeSelect').addClass('d-none').prop('disabled', true);
+                $('#scopeVolumeDisplay').show();
+                $('.customer-mandatory-star', '#cargoDetailsCard').hide();
+
+                $(this).addClass('d-none');
+                $('#saveCargoDetailsBtn').addClass('d-none');
+                $('#editCargoDetailsBtn').removeClass('d-none');
+            });
+
+            // Save
+            $('#saveCargoDetailsBtn').on('click', function() {
+                const cargoVolume = $('#cargoVolumeInput').val();
+                const containers = serializeContainerList();
+                const scopeVolume = $('#scopeVolumeSelect').val() ||
+                    '{{ $quotation->scopevolume ?? '' }}';
+
+                if (!scopeVolume) {
+                    showNotification('Scope of Volume is required', 'error');
+                    return;
+                }
+                const commodity = $('#commodityInput').val().trim();
+                if (!commodity) {
+                    showNotification('Commodity is required', 'error');
+                    return;
+                }
+
+                if (scopeVolume !== 'Containerized' && (!cargoVolume || parseFloat(
+                        cargoVolume) <= 0)) {
+                    showNotification('Cargo Volume must be greater than zero', 'error');
+                    return;
+                }
+
+                if (scopeVolume === 'Containerized' && !containers) {
+                    showNotification('Please add at least one container', 'error');
+                    return;
+                }
+
+                $.ajax({
+                    url: '{{ route('quotation.cargo.save') }}',
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        quote_no: QUOTE_NO,
+                        scope_volume: scopeVolume,
+                        commodity: $('#commodityInput').val(),
+                        cargo_volume: cargoVolume || 0,
+                        containers: containers
+                    },
+                    beforeSend: function() {
+                        $('#saveCargoDetailsBtn').prop('disabled', true)
+                            .html(
+                                '<i class="fas fa-spinner fa-spin mr-1"></i> Saving...'
+                            );
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            showNotification('Cargo details saved successfully',
+                                'success');
+
+                            originalCargoVolume = cargoVolume;
+                            originalContainers = [];
+                            $('#containerListBody tr[data-container-row]').each(
+                                function() {
+                                    originalContainers.push({
+                                        type: $(this).find(
+                                                '.container-type-select'
+                                            )
+                                            .val(),
+                                        qty: parseInt($(this).find(
+                                                '.container-qty-input'
+                                            )
+                                            .val(),
+                                            10) || 0
+                                    });
+                                });
+
+                            $('#cargoVolumeInput').prop('readonly', true).css(
+                                'background-color', '');
+                            $('#commodityInput').prop('readonly', true).css(
+                                'background-color',
+                                '');
+                            renderContainerRows(originalContainers, false);
+                            $('#addContainerRowBtn').addClass('d-none');
+                            $('#saveCargoDetailsBtn, #cancelCargoDetailsBtn')
+                                .addClass(
+                                    'd-none');
+                            $('#editCargoDetailsBtn').removeClass('d-none');
+                        } else {
+                            showNotification(response.message || 'Failed to save',
+                                'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        showNotification(xhr.responseJSON?.message ||
+                            'Failed to save',
+                            'error');
+                    },
+                    complete: function() {
+                        $('#saveCargoDetailsBtn').prop('disabled', false)
+                            .html('<i class="fas fa-save mr-1"></i> Save');
+                    }
+                });
+            });
+
+
+            // ============================================
+            // INQUIRY DETAILS — EDIT / SAVE / CANCEL
+            // ============================================
+            var inquirySnapshot = {};
+
+            $('#editInquiryBtn').on('click', function() {
+                inquirySnapshot = {
+                    display: $('#salesPersonDisplay').val(),
+                    code: $('#salesPersonCode').val(),
+                    email: $('#salesPersonEmail').val(),
+                };
+                $('#salesPersonDisplay').removeAttr('readonly');
+                $('#salesPersonEmail').removeAttr('readonly');
+                $('#editInquiryBtn').addClass('d-none');
+                $('#saveInquiryBtn, #cancelInquiryBtn').removeClass('d-none');
+
+                // FIX: Initialize autocomplete AFTER readonly is removed —
+                // jQuery UI cannot attach properly to a readonly input
+                initSalesPersonAutocomplete();
+            });
+
+            $('#cancelInquiryBtn').on('click', function() {
+                $('#salesPersonDisplay').val(inquirySnapshot.display).attr('readonly', true);
+                $('#salesPersonCode').val(inquirySnapshot.code);
+                $('#salesPersonEmail').val(inquirySnapshot.email);
+                $('#editInquiryBtn').removeClass('d-none');
+                $('#saveInquiryBtn, #cancelInquiryBtn').addClass('d-none');
+
+                // Destroy autocomplete and restore readonly — jQuery UI does not play
+                // well with readonly inputs so we clean up on cancel
+                const $sp = $('#salesPersonDisplay');
+                if ($sp.hasClass('ui-autocomplete-input')) $sp.autocomplete('destroy');
+            });
+
+            $('#saveInquiryBtn').on('click', function() {
+                var code = $('#salesPersonCode').val().trim();
+                var email = $('#salesPersonEmail').val().trim();
+
+                if (!code) {
+                    showNotification('Please select a Sales Person.', 'error');
+                    return;
+                }
+                if (!email) {
+                    showNotification('Sales Person Email is required.', 'error');
+                    return;
+                }
+
+                var $btn = $(this).prop('disabled', true).html(
+                    '<i class="fas fa-spinner fa-spin"></i> Saving...');
+
+                $.ajax({
+                    url: '{{ route('quotation.inquiry.save') }}',
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        booking_no: bookingNo,
+                        sales_person_code: code,
+                        sales_person_email: email,
+                    },
+                    success: function(res) {
+                        if (res.success) {
+                            $('#salesPersonDisplay').attr('readonly', true);
+                            $('#salesPersonEmail').attr('readonly', true);
+                            $('#editInquiryBtn').removeClass('d-none');
+                            $('#saveInquiryBtn, #cancelInquiryBtn').addClass(
+                                'd-none');
+                            showNotification('Inquiry details saved.', 'success');
+                        } else {
+                            showNotification(res.message || 'Save failed.',
+                                'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        showNotification(xhr.responseJSON?.message ||
+                            'Server error.', 'error');
+                    },
+                    complete: function() {
+                        $btn.prop('disabled', false).html(
+                            '<i class="fas fa-save mr-1"></i> Save');
+                    }
+                });
+            });
+
+            // ============================================
+            // SALES PERSON AUTOCOMPLETE
+            // FIX: Replaced manual <ul> suggestion pattern with jQuery UI autocomplete.
+            // The manual input event did not fire reliably after removeAttr('readonly').
+            // jQuery UI is already loaded on the page and handles this correctly.
+            // ============================================
+            function initSalesPersonAutocomplete() {
+                const $input = $('#salesPersonDisplay');
+
+                if ($input.hasClass('ui-autocomplete-input')) {
+                    $input.autocomplete('destroy');
+                }
+
+                $input.autocomplete({
+                    minLength: 2,
+                    delay: 300,
+                    source: function(request, response) {
+                        $.ajax({
+                            url: '{{ route('quotation.sales-persons') }}',
+                            type: 'GET',
+                            data: {
+                                filter: request.term,
+                                office_id: officeId
+                            },
+                            success: function(res) {
+                                if (!res.success || !res.persons || !res.persons
+                                    .length) {
+                                    response([{
+                                        label: 'No sales persons found for "' +
+                                            request.term + '"',
+                                        value: request.term,
+                                        disabled: true
+                                    }]);
+                                    return;
+                                }
+                                response(res.persons.map(function(p) {
+                                    const fullName = p.FullName || p
+                                        .Contact_PersonName_FirstName ||
+                                        '';
+                                    return {
+                                        label: (p.Code || '') +
+                                            ' — ' +
+                                            fullName,
+                                        value: fullName || p.Code ||
+                                            '',
+                                        code: p.Code || '',
+                                        email: p.Email || ''
+                                    };
+                                }));
+                            },
+                            error: function(xhr) {
+                                console.error('Sales person lookup failed:', xhr
+                                    .status, xhr
+                                    .responseText);
+                                response([{
+                                    label: 'Error loading sales persons',
+                                    value: '',
+                                    disabled: true
+                                }]);
+                            }
+                        });
+                    },
+                    select: function(event, ui) {
+                        if (ui.item.disabled) {
+                            event.preventDefault();
+                            return false;
+                        }
+                        $('#salesPersonDisplay').val(ui.item.value);
+                        $('#salesPersonCode').val(ui.item.code);
+                        $('#salesPersonEmail').val(ui.item.email);
+                        return false;
+                    }
+                }).autocomplete('instance')._renderItem = function(ul, item) {
+                    return $('<li>')
+                        .addClass(item.disabled ? 'ui-state-disabled' : '')
+                        .append($('<div>').text(item.label))
+                        .appendTo(ul);
+                };
+            }
+
+            // ============================================
+            // COMPANY NAME AUTOCOMPLETE
+            // Calls sp_ClientList for name suggestions.
+            // On selection calls sp_ClientDetails to auto-fill Email + Industry.
+            // Only active while Customer Details is in edit mode.
+            // ============================================
+            function initCompanyAutocomplete() {
+                const $input = $('input[data-field="companyname"]');
+
+                if ($input.hasClass('ui-autocomplete-input')) {
+                    $input.autocomplete('destroy');
+                }
+
+                $input.autocomplete({
+                    minLength: 2,
+                    delay: 350,
+                    source: function(request, response) {
+                        $.ajax({
+                            url: '{{ route('quotation.client-list') }}',
+                            type: 'GET',
+                            data: {
+                                filter: request.term
+                            },
+                            success: function(res) {
+                                if (!res.success || !res.clients || !res.clients
+                                    .length) {
+                                    response([{
+                                        label: 'No clients found for "' +
+                                            request.term + '"',
+                                        value: request.term,
+                                        disabled: true
+                                    }]);
+                                    return;
+                                }
+                                response(res.clients.map(function(c) {
+                                    return {
+                                        label: (c.ClientCode ||
+                                            '') + ' — ' + (c
+                                            .ClientName || ''),
+                                        value: c.ClientName || '',
+                                        clientId: c.ClientID || '',
+                                        clientCode: c.ClientCode ||
+                                            ''
+                                    };
+                                }));
+                            },
+                            error: function(xhr) {
+                                console.error('Client list lookup failed:', xhr
+                                    .status, xhr
+                                    .responseText);
+                                response([{
+                                    label: 'Error loading clients',
+                                    value: '',
+                                    disabled: true
+                                }]);
+                            }
+                        });
+                    },
+                    select: function(event, ui) {
+                        if (ui.item.disabled) {
+                            event.preventDefault();
+                            return false;
+                        }
+
+                        $input.val(ui.item.value);
+                        $('#selectedClientId').val(ui.item.clientId);
+
+                        if (ui.item.clientCode) {
+                            $.ajax({
+                                url: '{{ route('quotation.client-details') }}',
+                                type: 'GET',
+                                data: {
+                                    quotation_no: quoteNo,
+                                    customer_code: ui.item.clientCode
+                                },
+                                success: function(res) {
+                                    if (!res.success) return;
+
+                                    // Address
+                                    $('input[data-field="pri_partner_steet"]')
+                                        .val(res
+                                            .address1 || '');
+                                    $('#customerAddress2Input').val(res
+                                        .address2 || '');
+                                    $('#customerCityInput').val(res.city || '');
+                                    $('#customerStateInput').val(res.state ||
+                                        '');
+                                    $('#customerZipInput').val(res.zip || '');
+
+                                    // Contact
+                                    $('#customerContactInput').val(res
+                                        .contact_person ||
+                                        '');
+                                    $('#customerPhoneInput').val(res.phone ||
+                                        '');
+                                    $('#customerEmailInput').val(res.email ||
+                                        '');
+
+                                    // Country — set display + select
+                                    if (res.country_name) {
+                                        $('#customerCountryDisplay').val(res
+                                            .country_name);
+                                    }
+                                    if (res.country_id) {
+                                        // Append option if not already present, then select
+                                        const $cSel = $(
+                                            '#customerCountrySelect');
+                                        if ($cSel.find(
+                                                `option[value="${res.country_id}"]`
+                                            )
+                                            .length === 0) {
+                                            $cSel.append(
+                                                `<option value="${res.country_id}"
+                                                data-name="${res.country_name}"
+                                                data-code="${res.country_code}">${res.country_name}</option>`
+                                            );
+                                        }
+                                        $cSel.val(res.country_id);
+                                    }
+
+                                    // Industry — set display + select
+                                    if (res.industry_name) {
+                                        $('#customerIndustryDisplay').val(res
+                                            .industry_name);
+                                        const $iSel = $(
+                                            '#customerIndustrySelect');
+                                        if ($iSel.find(
+                                                `option[value="${res.industry_name}"]`
+                                            )
+                                            .length === 0) {
+                                            $iSel.append(
+                                                `<option value="${res.industry_name}">${res.industry_name}</option>`
+                                            );
+                                        }
+                                        $iSel.val(res.industry_name);
+                                    }
+
+                                    // Agent Type — set select if returned
+                                    if (res.agent_type_name) {
+                                        const $aSel = $('#agentTypeSelect');
+                                        if ($aSel.find(
+                                                `option[value="${res.agent_type_name}"]`
+                                            )
+                                            .length === 0) {
+                                            $aSel.append(
+                                                `<option value="${res.agent_type_name}">${res.agent_type_name}</option>`
+                                            );
+                                        }
+                                        $aSel.val(res.agent_type_name);
+                                    }
+
+                                    // Populate visible Client ID field and store UUID for save payload
+                                    $('#clientIdDisplay').val(res.client_code ||
+                                        '');
+                                    $('#selectedClientId').val(res.client_id ||
+                                        ui.item
+                                        .clientId);
+                                },
+                                error: function(xhr) {
+                                    console.error('getClientDetails failed:',
+                                        xhr
+                                        .responseJSON?.message);
+                                }
+                            });
+                        }
+                        return false;
+                    }
+                }).autocomplete('instance')._renderItem = function(ul, item) {
+                    return $('<li>')
+                        .addClass(item.disabled ? 'ui-state-disabled' : '')
+                        .append($('<div>').text(item.label))
+                        .appendTo(ul);
+                };
             }
 
         }); // end document.ready
+
+        function updateStatus(status, reasonCode, reasonRemark, bookingNo) {
+            $.ajax({
+                url: '{{ route('quotation.status.update') }}',
+                type: 'POST',
+                data: {
+                    _token: '{{ csrf_token() }}',
+                    booking_no: bookingNo,
+                    status: status,
+                    reason_code: reasonCode,
+                    reason_remark: reasonRemark
+                },
+                success: function(response) {
+                    if (response.success) {
+                        showNotification(response.message, 'success');
+                        $('#statusModal').modal('hide');
+                        $('#wonModal').modal('hide');
+
+                        setTimeout(function() {
+                            window.location.href = '{{ route('quotation.index') }}';
+                        }, 1500);
+                    } else {
+                        showNotification(response.message, 'error');
+                    }
+                },
+                error: function(xhr) {
+                    showNotification(xhr.responseJSON?.message || 'Failed to update status',
+                        'error');
+                }
+            });
+        }
+
+
+        function showNotification(message, type) {
+            const alertClass = type === 'success' ? 'alert-success' :
+                type === 'error' ? 'alert-danger' :
+                type === 'warning' ? 'alert-warning' : 'alert-info';
+
+            $('body').append(`
+                    <div class="alert ${alertClass} alert-dismissible fade show notification-toast" role="alert"
+                        style="position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
+                        <strong>${message}</strong>
+                        <button type="button" class="close" data-dismiss="alert">
+                            <span>&times;</span>
+                        </button>
+                    </div>
+                `);
+
+            setTimeout(function() {
+                $('.notification-toast').fadeOut(function() {
+                    $(this).remove();
+                });
+            }, 3000);
+        }
     </script>
 @stop

@@ -5,7 +5,7 @@
 @section('content_header')
     <div class="d-flex justify-content-between align-items-center">
         <div>
-            <h1><i class="fas fa-file-invoice"></i> Inquiry No - {{ $quotation->bookingno ?? 'N/A' }}</h1>
+            <h1><i class="fas fa-file-invoice"></i> Quote No - {{ $quotation->QuoteNo ?? '' }}</h1>
             <p class="text-muted mb-0">View booking quotation details</p>
         </div>
         <div>
@@ -14,7 +14,7 @@
             </a>
 
             <button type="button" class="btn btn-info btn-sm" id="btnCopyBooking" data-bookingno="{{ $quotation->bookingno }}">
-                <i class="fas fa-copy"></i> Copy Booking
+                <i class="fas fa-copy"></i> Duplicate
             </button>
 
             {{--
@@ -25,8 +25,9 @@
             --}}
             @php
                 $quoteStatus = $quotation->QuoteStatus ?? ($quotation->status ?? null);
-                $isInProgress = in_array($quoteStatus, ['Proposal', 'Pending']) || is_null($quoteStatus);
-            @endphp
+                $isInProgress =
+                    in_array($quoteStatus, ['Proposal', 'Pending', 'In Progress', 'Failed Progress']) ||
+                is_null($quoteStatus); @endphp
 
             @if ($isInProgress)
                 <a href="{{ route('quotation.edit', $quotation->ID) }}" class="btn btn-warning btn-sm">
@@ -38,6 +39,38 @@
 @stop
 
 @section('content')
+
+
+    {{-- ============================================================ --}}
+    {{-- DUPLICATE RESULT CARD — fixed center overlay                 --}}
+    {{-- ============================================================ --}}
+    <div id="dupResultCard"
+        style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:9999; min-width:420px; max-width:560px;">
+        <div class="alert alert-success shadow-lg" style="border-left: 5px solid #28a745; border-radius:8px;">
+            <div class="d-flex align-items-center">
+                <i class="fas fa-check-circle mr-3" style="font-size:2rem; color:#28a745;"></i>
+                <div class="flex-grow-1">
+                    <h5 class="mb-1 font-weight-bold">Quotation duplicated successfully!</h5>
+                    <p class="mb-0">
+                        New Inquiry No:&nbsp;
+                        <a id="dupResultLink" href="#" class="font-weight-bold"
+                            style="color:#4B49AC; font-size:1.1rem;">
+                            —
+                        </a>
+                        <small class="text-muted ml-1">— click to open the new quotation</small>
+                    </p>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-secondary ml-3" id="dupResultClose">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    @php
+        $quoteStatus = $quotation->QuoteStatus ?? ($quotation->status ?? null);
+        $isInProgress =
+        in_array($quoteStatus, ['Proposal', 'Pending', 'In Progress', 'Failed Progress']) || is_null($quoteStatus); @endphp
 
     <div class="row">
         <!-- LEFT COLUMN -->
@@ -57,36 +90,44 @@
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Source</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->source ?? 'N/A' }}" readonly>
+                            <input type="text" class="form-control form-control-sm" data-field="source"
+                                value="{{ $quotation->source ?? '' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Status</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->status ?? 'N/A' }}" readonly>
+                            <input type="text" class="form-control form-control-sm" data-field="status"
+                                value="{{ $quotation->status ?? '' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row">
-                        <label class="col-sm-5 col-form-label">Sales person</label>
+                        <label class="col-sm-5 col-form-label">Office</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->username ?? 'N/A' }}" readonly>
+                            <input type="text" class="form-control form-control-sm" data-field="teamname"
+                                value="{{ $quotation->teamname ?? '' }}" readonly>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-5 col-form-label">Sales Person</label>
+                        <div class="col-sm-7">
+                            <input type="text" class="form-control form-control-sm" data-field="username"
+                                data-code="{{ $quotation->SalesPersonCode ?? '' }}" value="{{ $quotation->username ?? '' }}"
+                                readonly>
                         </div>
                     </div>
                     <div class="form-group row mb-0">
-                        <label class="col-sm-5 col-form-label">Office</label>
+                        <label class="col-sm-5 col-form-label">Sales Person Email</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->teamname ?? 'N/A' }}" readonly>
+                            <input type="text" class="form-control form-control-sm" data-field="SalesPersonEmail"
+                                value="{{ $quotation->SalesPersonEmail ?? '' }}" readonly>
                         </div>
                     </div>
                 </div>
             </div>
 
             <!-- Shipment Details -->
-            <div class="card card-primary">
+            <div class="card card-primary" id="viewShipmentCard">
                 <div class="card-header">
                     <h3 class="card-title">Shipment Details</h3>
                     <div class="card-tools">
@@ -96,62 +137,79 @@
                     </div>
                 </div>
                 <div class="card-body">
+
+                    {{-- Service — always read-only --}}
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Service</label>
                         <div class="col-sm-7">
                             <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->serviceverticalname ?? 'N/A' }}" readonly>
+                                value="{{ $quotation->SVName ?? '' }}" readonly>
                         </div>
                     </div>
+
+                    {{-- Process — always read-only --}}
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Process</label>
                         <div class="col-sm-7">
                             <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->process ?? 'N/A' }}" readonly>
+                                value="{{ $quotation->process ?? '' }}" readonly>
                         </div>
                     </div>
+
+                    {{-- Origin Country --}}
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Origin Country</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->origincountry ?? 'N/A' }}" readonly>
+                            <input type="text" class="form-control form-control-sm" id="viewOriginCountryDisplay"
+                                value="{{ $quotation->origincountry ?? '' }}" readonly>
                         </div>
                     </div>
+
+                    {{-- Destination Country --}}
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Destination Country</label>
                         <div class="col-sm-7">
                             <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->destinationcountry ?? 'N/A' }}" readonly>
+                                value="{{ $quotation->destinationcountry ?? '' }}" readonly>
                         </div>
                     </div>
+
+                    {{-- InCO Terms --}}
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">InCO Terms</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->incoterm ?? 'N/A' }}" readonly>
+                            <input type="text" class="form-control form-control-sm" id="viewIncoTermDisplay"
+                                value="{{ $quotation->incoterm ?? '' }}" readonly>
                         </div>
                     </div>
+
+                    {{-- Shipment Mode --}}
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Shipment Mode</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->shipmentmode ?? 'N/A' }}" readonly>
+                            <input type="text" class="form-control form-control-sm" id="viewShipmentModeDisplay"
+                                value="{{ $quotation->shipmentmode ?? '' }}" readonly>
                         </div>
                     </div>
+
+                    {{-- Transport Mode --}}
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Transport Mode</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->TransportMode ?? 'N/A' }}" readonly>
+                            <input type="text" class="form-control form-control-sm" id="viewTransportModeDisplay"
+                                value="{{ $quotation->TransportMode ?? '' }}" readonly>
                         </div>
                     </div>
+
+                    {{-- Service Class --}}
                     <div class="form-group row mb-0">
                         <label class="col-sm-5 col-form-label">Service Class</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->ServiceClass ?? 'N/A' }}" readonly>
+                            <input type="text" class="form-control form-control-sm" id="viewServiceClassDisplay"
+                                value="{{ $quotation->ServiceClass ?? '' }}" readonly>
                         </div>
                     </div>
+
                 </div>
             </div>
 
@@ -169,29 +227,43 @@
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Commodity</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->commodity ?? 'N/A' }}" readonly>
+                            <input type="text" class="form-control form-control-sm" data-field="commodity"
+                                value="{{ $quotation->commodity ?? '' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Scope Of Volume</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->scopevolume ?? 'N/A' }}" readonly>
+                            <input type="text" class="form-control form-control-sm" id="viewScopeVolumeDisplay"
+                                value="{{ $quotation->scopevolume ?? '' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Cargo Volume</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->cargovolume ?? 'N/A' }}" readonly>
+                            <input type="text" class="form-control form-control-sm" data-field="cargovolume"
+                                value="{{ $quotation->cargovolume ?? '' }}" readonly>
                         </div>
                     </div>
-                    <div class="form-group row mb-0">
-                        <label class="col-sm-5 col-form-label">Container List</label>
+                    <div class="form-group row mb-0" id="viewContainerSection"
+                        style="{{ ($quotation->scopevolume ?? '') === 'Containerized' ? '' : 'display:none;' }}">
+                        <label class="col-sm-5 col-form-label">Containers</label>
                         <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->containerlist ?? 'N/A' }}" readonly>
+                            <table class="table table-bordered table-sm mb-0">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th>Equipment Type</th>
+                                        <th class="text-center">Qty</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="viewContainerTableBody">
+                                    <tr>
+                                        <td colspan="2" class="text-center text-muted">
+                                            <i class="fas fa-spinner fa-spin"></i> Loading...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -263,28 +335,28 @@
                         <label class="col-sm-5 col-form-label">Client Status</label>
                         <div class="col-sm-7">
                             <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->ClientIntegration ?? 'N/A' }}" readonly>
+                                value="{{ $quotation->ClientIntegration ?? '' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Booking No</label>
                         <div class="col-sm-7">
                             <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->SCMBookingNo ?? 'N/A' }}" readonly>
+                                value="{{ $quotation->SCMBookingNo ?? '' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Booking Integration</label>
                         <div class="col-sm-7">
                             <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->SCMINTStatus ?? 'N/A' }}" readonly>
+                                value="{{ $quotation->SCMINTStatus ?? '' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row mb-0">
                         <label class="col-sm-5 col-form-label">Booking XML</label>
                         <div class="col-sm-7">
                             <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->SCMBookingXML ?? 'N/A' }}" readonly>
+                                value="{{ $quotation->SCMBookingXML ?? '' }}" readonly>
                         </div>
                     </div>
                 </div>
@@ -296,6 +368,7 @@
 
             <!-- Customer Details -->
             <div class="card card-primary">
+
                 <div class="card-header">
                     <h3 class="card-title">Customer Details</h3>
                     <div class="card-tools">
@@ -310,43 +383,53 @@
                             <div class="form-group row">
                                 <label class="col-sm-4 col-form-label">Company</label>
                                 <div class="col-sm-8">
-                                    <input type="text" class="form-control form-control-sm"
-                                        value="{{ $quotation->companyname ?? 'N/A' }}" readonly>
+                                    <input type="text" class="form-control form-control-sm" data-field="companyname"
+                                        value="{{ $quotation->companyname ?? '' }}" readonly>
                                 </div>
                             </div>
                             <div class="form-group row">
                                 <label class="col-sm-4 col-form-label">Address 1</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm"
-                                        value="{{ $quotation->pri_partner_steet ?? 'N/A' }}" readonly>
+                                        data-field="pri_partner_steet" value="{{ $quotation->pri_partner_steet ?? '' }}"
+                                        readonly>
+
                                 </div>
                             </div>
                             <div class="form-group row">
                                 <label class="col-sm-4 col-form-label">City</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm"
-                                        value="{{ $quotation->pri_partner_city ?? 'N/A' }}" readonly>
+                                        data-field="pri_partner_city" value="{{ $quotation->pri_partner_city ?? '' }}"
+                                        readonly>
+
                                 </div>
                             </div>
                             <div class="form-group row">
                                 <label class="col-sm-4 col-form-label">State</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm"
-                                        value="{{ $quotation->pri_partner_statename ?? 'N/A' }}" readonly>
+                                        data-field="pri_partner_statename"
+                                        value="{{ $quotation->pri_partner_statename ?? '' }}" readonly>
+
                                 </div>
                             </div>
                             <div class="form-group row">
                                 <label class="col-sm-4 col-form-label">Contact Person</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm"
-                                        value="{{ $quotation->pri_partnermaster_name ?? 'N/A' }}" readonly>
+                                        data-field="pri_partnermaster_name"
+                                        value="{{ $quotation->pri_partnermaster_name ?? '' }}" readonly>
+
                                 </div>
                             </div>
                             <div class="form-group row mb-0">
                                 <label class="col-sm-4 col-form-label">Phone No</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm"
-                                        value="{{ $quotation->pri_partner_phone ?? 'N/A' }}" readonly>
+                                        data-field="pri_partner_phone" value="{{ $quotation->pri_partner_phone ?? '' }}"
+                                        readonly>
+
                                 </div>
                             </div>
                         </div>
@@ -354,43 +437,52 @@
                             <div class="form-group row">
                                 <label class="col-sm-4 col-form-label">Client ID</label>
                                 <div class="col-sm-8">
-                                    <input type="text" class="form-control form-control-sm"
-                                        value="{{ $quotation->clientid ?? 'N/A' }}" readonly>
+                                    <input type="text" class="form-control form-control-sm" data-field="clientid"
+                                        value="{{ $quotation->clientid ?? '' }}" readonly>
                                 </div>
                             </div>
                             <div class="form-group row">
                                 <label class="col-sm-4 col-form-label">Address 2</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm"
-                                        value="{{ $quotation->pri_partner_steet2 ?? 'N/A' }}" readonly>
+                                        data-field="pri_partner_steet2"
+                                        value="{{ $quotation->pri_partner_steet2 ?? '' }}" readonly>
+
                                 </div>
                             </div>
                             <div class="form-group row">
                                 <label class="col-sm-4 col-form-label">Zip</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm"
-                                        value="{{ $quotation->pri_partner_zip ?? 'N/A' }}" readonly>
+                                        data-field="pri_partner_zip" value="{{ $quotation->pri_partner_zip ?? '' }}"
+                                        readonly>
+
                                 </div>
                             </div>
                             <div class="form-group row">
                                 <label class="col-sm-4 col-form-label">Country</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm"
-                                        value="{{ $quotation->pri_partner_countryname ?? 'N/A' }}" readonly>
+                                        data-field="pri_partner_countryname"
+                                        value="{{ $quotation->pri_partner_countryname ?? '' }}" readonly>
+
+
                                 </div>
                             </div>
                             <div class="form-group row">
                                 <label class="col-sm-4 col-form-label">Email ID</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm"
-                                        value="{{ $quotation->pri_partner_email ?? 'N/A' }}" readonly>
+                                        data-field="pri_partner_email" value="{{ $quotation->pri_partner_email ?? '' }}"
+                                        readonly>
+
                                 </div>
                             </div>
                             <div class="form-group row mb-0">
                                 <label class="col-sm-4 col-form-label">Industry</label>
                                 <div class="col-sm-8">
-                                    <input type="text" class="form-control form-control-sm"
-                                        value="{{ $quotation->industryname ?? 'N/A' }}" readonly>
+                                    <input type="text" class="form-control form-control-sm" data-field="industryname"
+                                        value="{{ $quotation->industryname ?? '' }}" readonly>
                                 </div>
                             </div>
                         </div>
@@ -495,27 +587,27 @@
                                 <label class="col-sm-6 col-form-label">Expected Revenue</label>
                                 <div class="col-sm-6">
                                     <input type="text" class="form-control form-control-sm" id="viewExpectedRevenue"
-                                        value="{{ $quotation->expected_revenue ?? 'N/A' }}" readonly>
+                                        value="{{ $quotation->expected_revenue ?? '' }}" readonly>
                                 </div>
                             </div>
                             <div class="form-group row">
                                 <label class="col-sm-6 col-form-label">Quoted Revenue</label>
                                 <div class="col-sm-6">
                                     <input type="text" class="form-control form-control-sm" id="viewQuotedRevenue"
-                                        value="{{ $quotation->quoted_revenue ?? 'N/A' }}" readonly>
+                                        value="{{ $quotation->quoted_revenue ?? '' }}" readonly>
                                 </div>
                             </div>
                             <div class="form-group row">
                                 <label class="col-sm-6 col-form-label">Actual Revenue</label>
                                 <div class="col-sm-6">
-                                    <input type="text" class="form-control form-control-sm" value="N/A" readonly>
+                                    <input type="text" class="form-control form-control-sm" value="" readonly>
                                 </div>
                             </div>
                             <div class="form-group row mb-0">
                                 <label class="col-sm-6 col-form-label">Terms & Condition</label>
                                 <div class="col-sm-6">
                                     <input type="text" class="form-control form-control-sm"
-                                        value="{{ $quotation->terms_condition ?? 'N/A' }}" readonly>
+                                        value="{{ $quotation->terms_condition ?? '' }}" readonly>
                                 </div>
                             </div>
                         </div>
@@ -524,13 +616,13 @@
                                 <label class="col-sm-6 col-form-label">Quoted Margin</label>
                                 <div class="col-sm-6">
                                     <input type="text" class="form-control form-control-sm" id="viewQuotedMargin"
-                                        value="{{ $quotation->quoted_margin ?? 'N/A' }}" readonly>
+                                        value="{{ $quotation->quoted_margin ?? '' }}" readonly>
                                 </div>
                             </div>
                             <div class="form-group row mb-0">
                                 <label class="col-sm-6 col-form-label">Actual Margin</label>
                                 <div class="col-sm-6">
-                                    <input type="text" class="form-control form-control-sm" value="N/A" readonly>
+                                    <input type="text" class="form-control form-control-sm" value="" readonly>
                                 </div>
                             </div>
                         </div>
@@ -566,20 +658,6 @@
             height: calc(1.5em + 0.5rem + 2px);
             padding: 0.25rem 0.5rem;
             font-size: 0.875rem;
-        }
-
-        .form-control[readonly] {
-            background-color: transparent;
-            border: none;
-            cursor: default;
-            padding-left: 0;
-            font-weight: 500;
-            color: #333;
-        }
-
-        .form-control[readonly]:focus {
-            outline: none;
-            box-shadow: none;
         }
 
         .form-group.row {
@@ -636,68 +714,415 @@
             font-weight: 600;
             font-size: 0.85rem;
         }
+
+        /* Card footer action buttons */
+        /* Card footer action buttons */
+        .card-action-footer {
+            background: #f8f9fa;
+            border-top: 1px solid rgba(0, 0, 0, .125);
+            padding: 0.5rem 1rem;
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.25rem;
+        }
+
+        /* Highlight inputs when card is in edit mode */
+        .card-in-edit input[data-field]:not([readonly]) {
+            background-color: #fff9e6;
+            border-color: #ffc107 !important;
+        }
     </style>
 @stop
-
 
 @section('js')
     <script>
         $(document).ready(function() {
-            console.log('Booking Quotation View - Page Loaded');
 
             const bookingNo = '{{ $quotation->bookingno ?? '' }}';
+            const QUOTE_NO_VIEW = '{{ $quotation->QuoteNo ?? '' }}';
+            const SCOPE_OF_VOLUME = '{{ $quotation->scopevolume ?? '' }}';
 
-            // ============================================
-            // COPY BOOKING — INLINE LINK RESULT
-            // ============================================
-            $('#btnCopyBooking').on('click', function() {
-                if (!confirm('Copy booking ' + bookingNo + '? A new inquiry will be created.')) {
+            // ============================================================
+            // VIEW PAGE — Load containers (read-only table)
+            // FIX: was response.data — correct key is response.containers
+            // ============================================================
+            if (QUOTE_NO_VIEW && SCOPE_OF_VOLUME === 'Containerized') {
+                $.ajax({
+                    url: '{{ route('quotation.containers') }}',
+                    type: 'GET',
+                    data: {
+                        quote_no: QUOTE_NO_VIEW
+                    },
+                    success: function(response) {
+                        const tbody = $('#viewContainerTableBody');
+                        tbody.empty();
+                        if (response.success && response.containers && response.containers.length) {
+                            response.containers.forEach(function(row) {
+                                tbody.append(`
+                                    <tr>
+                                        <td>${row.EquipmentType || ''}</td>
+                                        <td class="text-center">${row.Quantity || 0}</td>
+                                    </tr>`);
+                            });
+                        } else {
+                            tbody.append(
+                                '<tr><td colspan="2" class="text-center text-muted">No containers added</td></tr>'
+                            );
+                        }
+                    },
+                    error: function() {
+                        $('#viewContainerTableBody').html(
+                            '<tr><td colspan="2" class="text-center text-danger">Failed to load</td></tr>'
+                        );
+                    }
+                });
+            }
+
+            // ============================================================
+            // SHIPMENT DETAILS — Edit / Save / Cancel
+            // FIX: correct column names for country pre-selection
+            // ============================================================
+            const savedShipmentMode = '{{ $quotation->shipmentmode ?? '' }}';
+            const savedTransportMode = '{{ $quotation->TransportMode ?? '' }}';
+            const savedOriginCountry = '{{ $quotation->origincountry ?? '' }}';
+            const savedDestCountry = '{{ $quotation->destinationcountry ?? '' }}';
+            const savedIncoTerm = '{{ $quotation->incoterm ?? '' }}';
+            const savedServiceClass = '{{ $quotation->ServiceClass ?? '' }}';
+
+            let viewShipmentSnapshot = {};
+            let viewShipmentDropdownsLoaded = false;
+
+            // FIX: replace CSS toggle approach with DOM remove/restore
+            // Browsers ignore display:none on <option> elements
+            function bindCountrySearch(searchId, selectId) {
+                const $select = $('#' + selectId);
+                const allOptions = $select.find('option').clone();
+
+                $('#' + searchId).on('input', function() {
+                    const term = $(this).val().toLowerCase().trim();
+                    const currentVal = $select.val();
+
+                    $select.empty();
+                    allOptions.each(function() {
+                        const optText = $(this).text().toLowerCase();
+                        const optVal = $(this).val();
+                        if (optVal === '' || optText.includes(term)) {
+                            $select.append($(this).clone());
+                        }
+                    });
+
+                    if ($select.find(`option[value="${currentVal}"]`).length) {
+                        $select.val(currentVal);
+                    }
+                });
+            }
+
+            function loadViewShipmentDropdowns(callback) {
+                if (viewShipmentDropdownsLoaded) {
+                    if (typeof callback === 'function') callback();
+                    return;
+                }
+
+                let remaining = 5;
+
+                function oneDone() {
+                    remaining--;
+                    if (remaining === 0) {
+                        viewShipmentDropdownsLoaded = true;
+                        if (typeof callback === 'function') callback();
+                    }
+                }
+
+                // Shipment Mode
+                $.ajax({
+                    url: '{{ route('quotation.shipment-modes') }}',
+                    type: 'GET',
+                    success: function(r) {
+                        const $sel = $('#viewShipmentModeSelect').empty()
+                            .append('<option value="">-- Select --</option>');
+                        (r.success ? r.data : []).forEach(function(item) {
+                            $sel.append(
+                                `<option value="${item.Code}"
+                                 ${item.Code === savedShipmentMode ? 'selected' : ''}>${item.Code}</option>`
+                            );
+                        });
+                    },
+                    complete: oneDone
+                });
+
+                // Transport Mode
+                $.ajax({
+                    url: '{{ route('quotation.transport-modes') }}',
+                    type: 'GET',
+                    success: function(r) {
+                        const $sel = $('#viewTransportModeSelect').empty()
+                            .append('<option value="">-- Select --</option>');
+                        (r.success ? r.data : []).forEach(function(item) {
+                            $sel.append(
+                                `<option value="${item.Code}"
+                                 ${item.Code === savedTransportMode ? 'selected' : ''}>${item.Name}</option>`
+                            );
+                        });
+                    },
+                    complete: oneDone
+                });
+
+                // Countries
+                // FIX: use CountryName from lookupCountries response (not c.Name)
+                // FIX: pre-select against savedOriginCountry/savedDestCountry (stored names)
+                $.ajax({
+                    url: '{{ route('quotation.lookup.countries') }}',
+                    type: 'GET',
+                    data: {
+                        filter: ''
+                    },
+                    success: function(countries) {
+                        const list = Array.isArray(countries) ? countries : [];
+
+                        function fillCountrySelect(selectId, savedValue) {
+                            const $sel = $('#' + selectId).empty()
+                                .append('<option value="">-- Select --</option>');
+                            const normalizedSaved = (savedValue || '').trim().toLowerCase();
+
+                            list.forEach(function(c) {
+                                const name = (c.CountryName || '').trim();
+                                $sel.append(
+                                    `<option value="${name}"
+                                     ${name.toLowerCase() === normalizedSaved ? 'selected' : ''}>${name}</option>`
+                                );
+                            });
+                        }
+
+                        fillCountrySelect('viewOriginCountrySelect', savedOriginCountry);
+                        fillCountrySelect('viewDestCountrySelect', savedDestCountry);
+
+                        // Bind search AFTER options are populated
+                        bindCountrySearch('viewOriginCountrySearch', 'viewOriginCountrySelect');
+                        bindCountrySearch('viewDestCountrySearch', 'viewDestCountrySelect');
+                    },
+                    complete: oneDone
+                });
+
+                // InCo Terms
+                $.ajax({
+                    url: '{{ route('quotation.inco-terms') }}',
+                    type: 'GET',
+                    success: function(r) {
+                        const $sel = $('#viewIncoTermSelect').empty()
+                            .append('<option value="">-- Select --</option>');
+                        (r.success ? r.data : []).forEach(function(item) {
+                            const code = item.IncoTermCode || item.Code || '';
+                            const name = item.Name || code;
+                            $sel.append(
+                                `<option value="${code}"
+                                 ${code === savedIncoTerm ? 'selected' : ''}>${code} — ${name}</option>`
+                            );
+                        });
+                    },
+                    complete: oneDone
+                });
+
+                // Service Class
+                $.ajax({
+                    url: '{{ route('quotation.lookup.serviceClasses') }}',
+                    type: 'GET',
+                    data: {
+                        filter: ''
+                    },
+                    success: function(classes) {
+                        const $sel = $('#viewServiceClassSelect').empty()
+                            .append('<option value="">-- Select --</option>');
+                        (Array.isArray(classes) ? classes : []).forEach(function(item) {
+                            const code = item.Code || '';
+                            const display = item.Name || item.Description || code;
+                            $sel.append(
+                                `<option value="${code}"
+                                 ${code === savedServiceClass ? 'selected' : ''}>${display}</option>`
+                            );
+                        });
+                    },
+                    complete: oneDone
+                });
+            }
+
+            $('#viewShipmentEditBtn').on('click', function() {
+                viewShipmentSnapshot = {
+                    shipmentMode: $('#viewShipmentModeSelect').val() || savedShipmentMode,
+                    transportMode: $('#viewTransportModeSelect').val() || savedTransportMode,
+                    originCountry: $('#viewOriginCountrySelect').val() || savedOriginCountry,
+                    destCountry: $('#viewDestCountrySelect').val() || savedDestCountry,
+                    incoTerm: $('#viewIncoTermSelect').val() || savedIncoTerm,
+                    serviceClass: $('#viewServiceClassSelect').val() || savedServiceClass,
+                };
+
+                loadViewShipmentDropdowns(function() {
+                    $('#viewShipmentModeDisplay, #viewTransportModeDisplay, #viewIncoTermDisplay, #viewServiceClassDisplay')
+                        .addClass('d-none');
+                    $('#viewOriginCountryDisplay, #viewDestCountryDisplay').addClass('d-none');
+                    $('#viewShipmentModeSelect, #viewTransportModeSelect, #viewIncoTermSelect, #viewServiceClassSelect')
+                        .removeClass('d-none').prop('disabled', false);
+                    $('#viewOriginCountryEditWrap, #viewDestCountryEditWrap').removeClass('d-none');
+                    $('#viewShipmentEditBtn').hide();
+                    $('#viewShipmentSaveBtn, #viewShipmentCancelBtn').show();
+                });
+            });
+
+            $('#viewShipmentCancelBtn').on('click', function() {
+                $('#viewShipmentModeSelect').val(viewShipmentSnapshot.shipmentMode);
+                $('#viewTransportModeSelect').val(viewShipmentSnapshot.transportMode);
+                $('#viewOriginCountrySelect').val(viewShipmentSnapshot.originCountry);
+                $('#viewDestCountrySelect').val(viewShipmentSnapshot.destCountry);
+                $('#viewIncoTermSelect').val(viewShipmentSnapshot.incoTerm);
+                $('#viewServiceClassSelect').val(viewShipmentSnapshot.serviceClass);
+                $('#viewOriginCountrySearch, #viewDestCountrySearch').val('');
+                $('#viewShipmentModeSelect, #viewTransportModeSelect, #viewIncoTermSelect, #viewServiceClassSelect')
+                    .addClass('d-none').prop('disabled', true);
+                $('#viewOriginCountryEditWrap, #viewDestCountryEditWrap').addClass('d-none');
+                $('#viewShipmentModeDisplay, #viewTransportModeDisplay, #viewIncoTermDisplay, #viewServiceClassDisplay')
+                    .removeClass('d-none');
+                $('#viewOriginCountryDisplay, #viewDestCountryDisplay').removeClass('d-none');
+                $(this).hide();
+                $('#viewShipmentSaveBtn').hide();
+                $('#viewShipmentEditBtn').show();
+            });
+
+            $('#viewShipmentSaveBtn').on('click', function() {
+                const shipmentMode = $('#viewShipmentModeSelect').val();
+                const transportMode = $('#viewTransportModeSelect').val();
+                const originCountry = $('#viewOriginCountrySelect').val();
+                const destCountry = $('#viewDestCountrySelect').val();
+                const incoTerm = $('#viewIncoTermSelect').val();
+                const serviceClass = $('#viewServiceClassSelect').val();
+
+                if (!shipmentMode) {
+                    toastr.error('Please select a Shipment Mode.');
+                    return;
+                }
+                if (!transportMode) {
+                    toastr.error('Please select a Transport Mode.');
+                    return;
+                }
+                if (!originCountry) {
+                    toastr.error('Please select an Origin Country.');
+                    return;
+                }
+                if (!destCountry) {
+                    toastr.error('Please select a Destination Country.');
+                    return;
+                }
+                if (!incoTerm) {
+                    toastr.error('Please select an InCO Term.');
+                    return;
+                }
+                if (!serviceClass) {
+                    toastr.error('Please select a Service Class.');
                     return;
                 }
 
                 const $btn = $(this);
-                $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Copying...');
+                $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Saving...');
 
                 $.ajax({
-                    url: '/quotation/' + bookingNo + '/copy',
+                    url: '{{ route('quotation.shipment.save') }}',
                     type: 'POST',
                     data: {
-                        _token: '{{ csrf_token() }}'
+                        _token: '{{ csrf_token() }}',
+                        booking_no: bookingNo,
+                        shipment_mode: shipmentMode,
+                        transport_mode: transportMode,
+                        incoterm: incoTerm,
+                        origincountry: originCountry,
+                        destinationcountry: destCountry,
+                        service_class: serviceClass,
                     },
-                    success: function(response) {
-                        if (response.success) {
-                            $btn.replaceWith(`
-                                <a href="${response.redirect_url}"
-                                   class="btn btn-success btn-sm"
-                                   id="newInquiryLink">
-                                    <i class="fas fa-check-circle mr-1"></i>
-                                    Copied — Inquiry No: ${response.new_booking_no}
-                                </a>
-                            `);
-                        } else {
-                            alert('Failed to copy booking: ' + response.message);
-                            $btn.prop('disabled', false)
-                                .html('<i class="fas fa-copy"></i> Copy Booking');
+                    success: function(r) {
+                        if (!r.success) {
+                            toastr.error(r.message || 'Shipment save failed.');
+                            $btn.prop('disabled', false).html(
+                                '<i class="fas fa-save mr-1"></i> Save');
+                            return;
                         }
+
+                        // Update display inputs
+                        $('#viewShipmentModeDisplay').val(shipmentMode);
+                        $('#viewTransportModeDisplay').val(
+                            $('#viewTransportModeSelect option:selected').text().trim()
+                        );
+                        $('#viewOriginCountryDisplay').val(originCountry);
+                        $('#viewDestCountryDisplay').val(destCountry);
+                        $('#viewIncoTermDisplay').val(incoTerm);
+                        $('#viewServiceClassDisplay').val(serviceClass);
+
+                        // Swap back to read-only display
+                        $('#viewShipmentModeSelect, #viewTransportModeSelect, #viewIncoTermSelect, #viewServiceClassSelect')
+                            .addClass('d-none').prop('disabled', true);
+                        $('#viewOriginCountryEditWrap, #viewDestCountryEditWrap').addClass(
+                            'd-none');
+                        $('#viewShipmentModeDisplay, #viewTransportModeDisplay, #viewIncoTermDisplay, #viewServiceClassDisplay')
+                            .removeClass('d-none');
+                        $('#viewOriginCountryDisplay, #viewDestCountryDisplay').removeClass(
+                            'd-none');
+                        $('#viewOriginCountrySearch, #viewDestCountrySearch').val('');
+                        $('#viewShipmentSaveBtn, #viewShipmentCancelBtn').hide();
+                        $('#viewShipmentEditBtn').show();
+                        toastr.success('Shipment details saved successfully.');
                     },
                     error: function(xhr) {
-                        const msg = xhr.responseJSON ? xhr.responseJSON.message :
-                            'An unexpected error occurred.';
-                        alert('Error: ' + msg);
-                        $btn.prop('disabled', false)
-                            .html('<i class="fas fa-copy"></i> Copy Booking');
+                        toastr.error(xhr.responseJSON?.message ||
+                            'Unexpected error saving shipment details.');
+                    },
+                    complete: function() {
+                        $btn.prop('disabled', false).html(
+                            '<i class="fas fa-save mr-1"></i> Save');
                     }
                 });
             });
 
-            // ============================================
+            // ============================================================
+            // DUPLICATE — centered overlay card
+            // ============================================================
+            $('#btnCopyBooking').off('click').on('click', function() {
+                const $btn = $(this);
+                $btn.prop('disabled', true).html(
+                    '<i class="fas fa-spinner fa-spin mr-1"></i> Duplicating...');
+
+                $.ajax({
+                    url: '{{ route('quotation.processDuplicate', $quotation->bookingno) }}',
+                    type: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json'
+                    },
+                    contentType: 'application/json',
+                    data: JSON.stringify({}),
+                    success: function(response) {
+                        $btn.prop('disabled', false).html(
+                            '<i class="fas fa-copy mr-1"></i> Duplicate');
+                        if (response.success) {
+                            $('#dupResultLink').text(response.new_booking_no).attr('href',
+                                response.redirect_url);
+                            $('#dupResultCard').slideDown(300);
+                        } else {
+                            toastr.error(response.message || 'Duplication failed.');
+                        }
+                    },
+                    error: function(xhr) {
+                        $btn.prop('disabled', false).html(
+                            '<i class="fas fa-copy mr-1"></i> Duplicate');
+                        toastr.error('Error: ' + (xhr.responseJSON?.message ||
+                            'Unexpected error (HTTP ' + xhr.status + ')'));
+                    }
+                });
+            });
+
+            $('#dupResultClose').on('click', function() {
+                $('#dupResultCard').slideUp(200);
+            });
+
+            // ============================================================
             // LOAD CHARGES ON PAGE LOAD
-            // ============================================
-            if (bookingNo) {
-                loadChargesForView();
-            } else {
-                console.error('No booking number found');
-            }
+            // ============================================================
+            if (bookingNo) loadChargesForView();
 
             function loadChargesForView() {
                 $.ajax({
@@ -707,12 +1132,9 @@
                         booking_no: bookingNo
                     },
                     beforeSend: function() {
-                        $('#revenueChargesViewTable').html(
-                            '<tr><td colspan="7" class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>'
-                        );
-                        $('#costChargesViewTable').html(
-                            '<tr><td colspan="7" class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>'
-                        );
+                        const spinner =
+                            '<tr><td colspan="7" class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>';
+                        $('#revenueChargesViewTable, #costChargesViewTable').html(spinner);
                     },
                     success: function(response) {
                         if (response.success) {
@@ -720,138 +1142,97 @@
                             renderCostChargesView(response.cost || []);
                             updateViewSummary(response.revenue || [], response.cost || []);
                         } else {
-                            $('#revenueChargesViewTable').html(
-                                '<tr><td colspan="7" class="text-center text-danger">Failed to load charges</td></tr>'
-                            );
-                            $('#costChargesViewTable').html(
-                                '<tr><td colspan="7" class="text-center text-danger">Failed to load charges</td></tr>'
-                            );
+                            const err =
+                                '<tr><td colspan="7" class="text-center text-danger">Failed to load charges</td></tr>';
+                            $('#revenueChargesViewTable, #costChargesViewTable').html(err);
                         }
                     },
                     error: function() {
-                        $('#revenueChargesViewTable').html(
-                            '<tr><td colspan="7" class="text-center text-danger">Error loading charges</td></tr>'
-                        );
-                        $('#costChargesViewTable').html(
-                            '<tr><td colspan="7" class="text-center text-danger">Error loading charges</td></tr>'
-                        );
+                        const err =
+                            '<tr><td colspan="7" class="text-center text-danger">Error loading charges</td></tr>';
+                        $('#revenueChargesViewTable, #costChargesViewTable').html(err);
                     }
                 });
             }
 
-            // ============================================
-            // RENDER REVENUE CHARGES (VIEW-ONLY)
-            // After rendering, respects current expanded state of the toggle link
-            // so re-loading charges does not collapse extra columns if user expanded them.
-            // ============================================
             function renderRevenueChargesView(charges) {
                 const tbody = $('#revenueChargesViewTable');
                 tbody.empty();
-
-                if (charges.length === 0) {
+                if (!charges.length) {
                     tbody.append(
                         '<tr><td colspan="7" class="text-center text-muted">No revenue charges found</td></tr>');
                     $('#revenueTotalHeaderAmount').text('0.00');
                     return;
                 }
-
-                let totalBaseAmount = 0;
-                charges.forEach(function(charge) {
-                    totalBaseAmount += parseFloat(charge.amtInBaseCurr || 0);
-                    tbody.append(`
-                        <tr>
-                            <td>${charge.chargeName || charge.chargeCode || 'N/A'}</td>
-                            <td class="text-right">${parseFloat(charge.rate || 0).toFixed(2)}</td>
-                            <td class="text-right col-extra">${parseFloat(charge.quantity || 0).toFixed(2)}</td>
-                            <td class="col-extra">${charge.basedOnUOM || 'N/A'}</td>
-                            <td class="col-extra">${charge.chgCurr || 'KES'}</td>
-                            <td class="text-right">${parseFloat(charge.amtInChgCurr || 0).toFixed(2)}</td>
-                            <td class="text-right">${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
-                        </tr>
-                    `);
+                let total = 0;
+                charges.forEach(function(c) {
+                    total += parseFloat(c.amtInBaseCurr || 0);
+                    tbody.append(`<tr>
+                        <td>${c.chargeName || c.chargeCode || ''}</td>
+                        <td class="text-right">${parseFloat(c.rate || 0).toFixed(2)}</td>
+                        <td class="text-right col-extra">${parseFloat(c.quantity || 0).toFixed(2)}</td>
+                        <td class="col-extra">${c.basedOnUOM || ''}</td>
+                        <td class="col-extra">${c.chgCurr || 'KES'}</td>
+                        <td class="text-right">${parseFloat(c.amtInChgCurr || 0).toFixed(2)}</td>
+                        <td class="text-right">${parseFloat(c.amtInBaseCurr || 0).toFixed(2)}</td>
+                    </tr>`);
                 });
-
-                $('#revenueTotalHeaderAmount').text(totalBaseAmount.toFixed(2));
-
-                // Respect current toggle state — if user had expanded, keep expanded after reload
-                const revenueExpanded = $('.show-items-link[data-table="revenue"]').data('expanded') || false;
-                if (!revenueExpanded) {
+                $('#revenueTotalHeaderAmount').text(total.toFixed(2));
+                if (!$('.show-items-link[data-table="revenue"]').data('expanded')) {
                     tbody.find('.col-extra').hide();
                 }
             }
 
-            // ============================================
-            // RENDER COST CHARGES (VIEW-ONLY)
-            // ============================================
             function renderCostChargesView(charges) {
                 const tbody = $('#costChargesViewTable');
                 tbody.empty();
-
-                if (charges.length === 0) {
+                if (!charges.length) {
                     tbody.append(
                         '<tr><td colspan="7" class="text-center text-muted">No cost charges found</td></tr>');
                     $('#costTotalHeaderAmount').text('0.00');
                     return;
                 }
-
-                let totalBaseAmount = 0;
-                charges.forEach(function(charge) {
-                    totalBaseAmount += parseFloat(charge.amtInBaseCurr || 0);
-                    tbody.append(`
-                        <tr>
-                            <td>${charge.chargeName || charge.chargeCode || 'N/A'}</td>
-                            <td class="text-right">${parseFloat(charge.rate || 0).toFixed(2)}</td>
-                            <td class="text-right col-extra">${parseFloat(charge.quantity || 0).toFixed(2)}</td>
-                            <td class="col-extra">${charge.basedOnUOM || 'N/A'}</td>
-                            <td class="col-extra">${charge.chgCurr || 'KES'}</td>
-                            <td class="text-right">${parseFloat(charge.amtInChgCurr || 0).toFixed(2)}</td>
-                            <td class="text-right">${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
-                        </tr>
-                    `);
+                let total = 0;
+                charges.forEach(function(c) {
+                    total += parseFloat(c.amtInBaseCurr || 0);
+                    tbody.append(`<tr>
+                        <td>${c.chargeName || c.chargeCode || ''}</td>
+                        <td class="text-right">${parseFloat(c.rate || 0).toFixed(2)}</td>
+                        <td class="text-right col-extra">${parseFloat(c.quantity || 0).toFixed(2)}</td>
+                        <td class="col-extra">${c.basedOnUOM || ''}</td>
+                        <td class="col-extra">${c.chgCurr || 'KES'}</td>
+                        <td class="text-right">${parseFloat(c.amtInChgCurr || 0).toFixed(2)}</td>
+                        <td class="text-right">${parseFloat(c.amtInBaseCurr || 0).toFixed(2)}</td>
+                    </tr>`);
                 });
-
-                $('#costTotalHeaderAmount').text(totalBaseAmount.toFixed(2));
-
-                // Respect current toggle state
-                const costExpanded = $('.show-items-link[data-table="cost"]').data('expanded') || false;
-                if (!costExpanded) {
+                $('#costTotalHeaderAmount').text(total.toFixed(2));
+                if (!$('.show-items-link[data-table="cost"]').data('expanded')) {
                     tbody.find('.col-extra').hide();
                 }
             }
 
-            // ============================================
-            // UPDATE SUMMARY
-            // ============================================
             function updateViewSummary(revenueCharges, costCharges) {
-                const totalRevenue = revenueCharges.reduce((sum, c) => sum + parseFloat(c.amtInBaseCurr || 0), 0);
-                const totalCost = costCharges.reduce((sum, c) => sum + parseFloat(c.amtInBaseCurr || 0), 0);
+                const totalRevenue = revenueCharges.reduce((s, c) => s + parseFloat(c.amtInBaseCurr || 0), 0);
+                const totalCost = costCharges.reduce((s, c) => s + parseFloat(c.amtInBaseCurr || 0), 0);
                 const margin = totalRevenue - totalCost;
                 const marginPct = totalRevenue > 0 ? (margin / totalRevenue * 100) : 0;
-
                 $('#viewQuotedRevenue').val('KES ' + totalRevenue.toFixed(2));
                 $('#viewQuotedMargin').val('KES ' + margin.toFixed(2) + ' (' + marginPct.toFixed(2) + '%)');
             }
 
-            // ============================================
-            // SHOW MORE / SHOW LESS — matches edit page behaviour exactly:
-            //   - link lives in the card header
-            //   - scoped to each table independently via data-table
-            //   - toggles thead .col-extra + tbody .col-extra together
-            //   - tracks state via .data('expanded')
-            // ============================================
-            // Hide all extra columns on load (CSS also does this, belt-and-braces)
+            // ============================================================
+            // SHOW MORE / SHOW LESS
+            // ============================================================
             $('.col-extra').hide();
 
             $('.show-items-link').on('click', function(e) {
                 e.preventDefault();
-                e.stopPropagation(); // prevent card-header collapse from firing
-
+                e.stopPropagation();
                 const tableId = $(this).data('table');
                 const $table = tableId === 'revenue' ?
                     $('#revenueChargesViewTable').closest('table') :
                     $('#costChargesViewTable').closest('table');
                 const isExpanded = $(this).data('expanded') || false;
-
                 if (isExpanded) {
                     $table.find('.col-extra').hide();
                     $(this).html('<i class="fas fa-columns mr-1"></i> Show more');
@@ -863,11 +1244,9 @@
                 }
             });
 
-            // ============================================
+            // ============================================================
             // CARD COLLAPSE
-            // Card header click triggers collapse, but must not fire
-            // when the user clicks the Show More link inside the header.
-            // ============================================
+            // ============================================================
             $('[data-card-widget="collapse"]').on('click', function() {
                 $(this).find('i').toggleClass('fa-chevron-down fa-chevron-up');
             });
@@ -879,16 +1258,25 @@
                 }
             });
 
-            // ============================================
-            // INITIALIZE — collapse all except Revenue, Cost, Summary
-            // ============================================
+            // Collapse all on load except Revenue, Cost, Summary
             $('.card').not('.card-success, .card-danger, .summary-card').each(function() {
                 $(this).find('.card-body').hide();
+                $(this).find('.card-footer').hide();
                 $(this).find('[data-card-widget="collapse"] i')
-                    .removeClass('fa-chevron-up').addClass('fa-chevron-down');
+                    .removeClass('fa-chevron-up')
+                    .addClass('fa-chevron-down');
                 $(this).addClass('collapsed-card');
+            });
+
+            // Sync footer visibility with card collapse state
+            $(document).on('click', '[data-card-widget="collapse"]', function() {
+                const $card = $(this).closest('.card');
+                setTimeout(function() {
+                    const isExpanded = $card.find('.card-body').is(':visible');
+                    $card.find('.card-footer').toggle(isExpanded);
+                }, 0);
             });
 
         });
     </script>
-@stop
+@endsection
