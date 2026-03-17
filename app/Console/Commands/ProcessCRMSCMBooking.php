@@ -19,8 +19,7 @@ class ProcessCRMSCMBooking extends Command
     protected $signature = 'crmscm:Booking
     {--debug : Enable debug mode}
     {--test-auth : Test authentication only}
-    {--booking= : Process specific booking number}
-    {--skip-delay : Run without 17-minute delay}';
+    {--booking= : Process specific booking number}';
 
     /**
      * The console command description.
@@ -51,21 +50,6 @@ class ProcessCRMSCMBooking extends Command
         Log::info("CRMSCM Command Started at: " . $this->startTime);
         if ($this->debugMode) {
             $this->info("Debug Mode is ENABLED");
-        }
-
-        // === CONDITIONAL DELAY ===
-        if (!$this->option('skip-delay')) {
-            if ($this->debugMode) {
-                $this->info("Delaying execution for 17 minutes...");
-            }
-            Log::info("CRMSCM: Delaying execution for 17 minutes");
-            sleep(1020); // 17 minutes
-            Log::info("CRMSCM: Delay completed, proceeding with command execution");
-        } else {
-            Log::info("CRMSCM: Skip-delay option enabled, running immediately");
-            if ($this->debugMode) {
-                $this->info("⏩ Running without delay (skip-delay enabled)");
-            }
         }
 
         // === TEST AUTH MODE SHORT CIRCUIT ===
@@ -167,7 +151,8 @@ class ProcessCRMSCMBooking extends Command
             ->whereNull('SCMBookingID')
             ->whereNotNull('SCMBookingXML')
             ->where('SCMBookingXML', '!=', '')
-            ->whereNull('SCMINTStatus');
+            ->whereNull('SCMINTStatus')
+            ->where('teamid', '!=', 5); // Skip Kenya team
 
         if ($specificBooking) {
             $query->where('bookingno', $specificBooking);
@@ -359,7 +344,7 @@ class ProcessCRMSCMBooking extends Command
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_ENCODING => '',
             CURLOPT_MAXREDIRS => 10,
-            CURLOPT_TIMEOUT => 60, // Increased timeout
+            CURLOPT_TIMEOUT => 60,
             CURLOPT_CONNECTTIMEOUT => 30,
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
@@ -557,7 +542,7 @@ class ProcessCRMSCMBooking extends Command
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_ENCODING => '',
             CURLOPT_MAXREDIRS => 10,
-            CURLOPT_TIMEOUT => 300, // Increased to 5 minutes
+            CURLOPT_TIMEOUT => 300, // 5 minutes
             CURLOPT_CONNECTTIMEOUT => 60,
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
@@ -721,7 +706,6 @@ class ProcessCRMSCMBooking extends Command
      */
     private function checkForAPIErrors($xmlResponse)
     {
-        // Check multiple possible error indicators
         if (
             isset($xmlResponse['Transaction']['Status']) &&
             strtolower($xmlResponse['Transaction']['Status']) === 'fail'
@@ -752,7 +736,6 @@ class ProcessCRMSCMBooking extends Command
      */
     private function extractTransactionId($xmlResponse)
     {
-        // Try multiple possible locations
         $possiblePaths = [
             'Transaction.TransactionId',
             'Transaction.ID',
@@ -776,7 +759,6 @@ class ProcessCRMSCMBooking extends Command
      */
     private function extractBookingId($xmlResponse)
     {
-        // Try multiple possible locations
         $possiblePaths = [
             'Transaction.ID',
             'Transaction.BookingNo',
@@ -803,7 +785,6 @@ class ProcessCRMSCMBooking extends Command
     {
         $errors = [];
 
-        // Multiple possible error locations
         $errorSources = [
             'Transaction.Errors.Error',
             'Transaction.Error',
@@ -822,7 +803,6 @@ class ProcessCRMSCMBooking extends Command
         }
 
         if (empty($errors)) {
-            // Check for status messages
             $status = data_get($xmlResponse, 'Transaction.Status') ??
                 data_get($xmlResponse, 'Status') ??
                 'Unknown error occurred';
@@ -845,9 +825,7 @@ class ProcessCRMSCMBooking extends Command
                 $errors[] = $cleaned;
             }
         } elseif (is_array($errorData)) {
-            // Handle array of errors or single error as array
             if (isset($errorData['Code']) || isset($errorData['Description']) || isset($errorData['Message'])) {
-                // Single error as associative array
                 $description = $errorData['Description'] ?? $errorData['Message'] ?? 'Unknown error';
                 $cleaned = $this->cleanErrorDescription($description);
                 if (!empty($cleaned)) {
@@ -855,7 +833,6 @@ class ProcessCRMSCMBooking extends Command
                     $errors[] = $code . $cleaned;
                 }
             } else {
-                // Multiple errors or indexed array
                 foreach ($errorData as $error) {
                     if (is_string($error)) {
                         $cleaned = $this->cleanErrorDescription($error);
@@ -886,20 +863,14 @@ class ProcessCRMSCMBooking extends Command
             return '';
         }
 
-        // Handle various data types
         if (is_array($description)) {
             $description = implode(' ', array_filter($description));
         }
 
-        // Convert to string if not already
         $description = (string) $description;
-
-        // Clean up whitespace and newlines
         $description = trim($description);
         $description = preg_replace('/\s+/', ' ', $description);
         $description = str_replace(["\r\n", "\n", "\r"], ' ', $description);
-
-        // Remove common XML artifacts
         $description = preg_replace('/<[^>]*>/', '', $description);
         $description = html_entity_decode($description);
 

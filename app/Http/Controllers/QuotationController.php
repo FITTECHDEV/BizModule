@@ -47,7 +47,7 @@ class QuotationController extends Controller
             $azureUser = DB::table('Azure_Users')
                 ->where(function ($q) use ($userEmail) {
                     $q->whereRaw('LOWER(LTRIM(RTRIM(userPrincipalName))) = ?', [$userEmail])
-                        ->orWhereRaw('LOWER(LTRIM(RTRIM(alternateEmailAddress))) = ?', [$userEmail]);
+                        ->orWhereRaw('LOWER(LTRIM(RTRIM(mail))) = ?', [$userEmail]);
                 })
                 ->first(['userPrincipalName', 'BaseOfficeCode']);
 
@@ -89,8 +89,13 @@ class QuotationController extends Controller
 
         // Default to logged-in user's office if none provided
         $office = $request->input('office');
-        if (!$office) {
-            $office = $this->resolveUserOffices()->first();
+        $allowedOffices = $this->resolveUserOffices();
+
+        if ($office && !$allowedOffices->contains($office)) {
+            // Requested office is not in the user's allowed set — ignore it
+            $office = $allowedOffices->first();
+        } elseif (!$office) {
+            $office = $allowedOffices->first();
         }
 
         $stats = $this->getStats($days, $startDate, $endDate, $office);
@@ -5373,10 +5378,10 @@ class QuotationController extends Controller
             ->where(function ($q) use ($userEmail, $userLoginId) {
                 // Primary: match by email
                 $q->whereRaw('LOWER(LTRIM(RTRIM(userPrincipalName))) = ?', [$userEmail])
-                    ->orWhereRaw('LOWER(LTRIM(RTRIM(alternateEmailAddress))) = ?', [$userEmail]);
+                    ->orWhereRaw('LOWER(LTRIM(RTRIM(mail))) = ?', [$userEmail]);
+
 
                 // Fallback: match by LoginID prefix of userPrincipalName
-                // e.g. LoginID = 'L.adika' matches 'L.adika@freight-in-time.com'
                 if (!empty($userLoginId)) {
                     $q->orWhereRaw(
                         "LOWER(LTRIM(RTRIM(userPrincipalName))) LIKE ?",
@@ -5421,28 +5426,20 @@ class QuotationController extends Controller
                 ->pluck('teamname');
         }
 
-        // ── 3. Fallback: direct BaseOfficeCode → teamname match ───────────────
-        //    Catches offices like Zambia that have no Cust_Office row
-        if ($offices->isEmpty()) {
-            Log::warning('resolveUserOffices - Primary path returned no offices, trying direct match', [
-                'email'            => $userEmail,
-                'base_office_codes' => $baseOfficeCodes->toArray(),
-                'team_codes_found'  => $teamCodes->toArray(),
+        // ── 3. Fallback: pull Name directly from Cust_Office ─────────────────
+        // Handles offices (e.g. ET) that have no quotation records yet
+        if ($offices->isEmpty() && $teamCodes->isNotEmpty()) {
+            Log::warning('resolveUserOffices - No quotation records found, falling back to Cust_Office.Name', [
+                'email'       => $userEmail,
+                'team_codes'  => $teamCodes->toArray(),
             ]);
 
-            $offices = DB::table('Quote_QuotationInfo')
-                ->whereNotNull('teamname')
-                ->where(function ($q) use ($baseOfficeCodes) {
-                    foreach ($baseOfficeCodes as $code) {
-                        $q->orWhereRaw(
-                            'LOWER(LTRIM(RTRIM(teamname))) = ?',
-                            [strtolower($code)]
-                        );
-                    }
-                })
-                ->distinct()
-                ->orderBy('teamname')
-                ->pluck('teamname');
+            $offices = DB::table('Cust_Office')
+                ->whereIn('TeamCode', $teamCodes->toArray())
+                ->where('IsActive', 1)
+                ->where('IsDeleted', 0)
+                ->orderBy('Name')
+                ->pluck('Name');
         }
 
         Log::info('resolveUserOffices - Resolved', [

@@ -1244,6 +1244,14 @@
             setupLocationAutocomplete('cb_place_of_delivery', 'cb_place_of_delivery_code',
                 'cb_place_of_delivery_id');
 
+            $('#cb_include_country').on('change', function() {
+                $('#cb_place_of_receipt, #cb_place_of_delivery').val('');
+                $('#cb_place_of_receipt_code, #cb_place_of_receipt_id').val('');
+                $('#cb_place_of_delivery_code, #cb_place_of_delivery_id').val('');
+                removeSuggestions('cb_place_of_receipt');
+                removeSuggestions('cb_place_of_delivery');
+            });
+
             // ============================================
             // STEP LABELS FOR PROGRESS VIEW
             // ============================================
@@ -1415,9 +1423,8 @@
                                 response.lost, 500);
                             animateValue('stat-canceled', parseInt($('#stat-canceled')
                                 .text()) || 0, response.canceled, 500);
-                            animateValue('stat-failed-progress', parseInt($(
-                                    '#stat-failed-progress').text()) || 0, response
-                                .failed_progress, 500);
+                            animateValue('stat-failed-int', parseInt($('#stat-failed-int')
+                                .text()) || 0, response.failed_int, 500);
                         },
                         error: function(xhr, error, code) {
                             console.error('Failed to update card statistics:', xhr, error,

@@ -365,6 +365,14 @@ return [
             'active' => ['quotation', 'quotation/*'],
             'can'  => 'approve-all-entity-request'
         ],
+        // ↓ NEW ENTRY ↓
+        [
+            'text' => 'Z-REPORT RUNNER',
+            'url'  => 'zreport',
+            'icon' => 'fas fa-file-signature',
+            'active' => ['zreport', 'zreport/*'],
+            'can'  => 'approve-all-entity-request'
+        ],
 
         // ['header' => 'account_settings'],
         [

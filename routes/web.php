@@ -1364,6 +1364,9 @@ Route::middleware(['auth'])->prefix('jimi-test')->group(function () {
 
 // [2026-01-21 15:31:52] Production.ERROR: Error in user lookup {"username":"juma.k@freight-in-time.com","error":"SQLSTATE[42000]: [Microsoft][ODBC Driver 17 for SQL Server][SQL Server]Conversion failed when converting from a character string to uniqueidentifier. (SQL: select top 1 * from [Azure_Users] where LOWER(RTRIM(LTRIM(userPrincipalName))) = LOWER(juma.k@freight-in-time.com) and [id] is not null and [id] != )"}
 
+Route::get('zreport',        [App\Http\Controllers\ZReportRunnerController::class, 'index'])->name('zreport.index');
+Route::post('zreport/run',   [App\Http\Controllers\ZReportRunnerController::class, 'run'])->name('zreport.run');
+
 
 
 
