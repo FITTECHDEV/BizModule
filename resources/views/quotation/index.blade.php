@@ -867,1026 +867,1026 @@
 @section('js')
     <script>
         $(document).ready(function() {
-        var currentCardFilter = 'in_progress';
-        var statsUpdateTimer = null;
+            var currentCardFilter = 'in_progress';
+            var statsUpdateTimer = null;
 
-        // Set date filter to All Time BEFORE DataTable initialises
-        // so the first AJAX request picks up the correct value
-        $('#dateFilter').val('all');
+            // Set date filter to All Time BEFORE DataTable initialises
+            // so the first AJAX request picks up the correct value
+            $('#dateFilter').val('all');
 
-        // Initialize DataTable
-        var table = $('#quotationTable').DataTable({
-            processing: true,
-            serverSide: true,
-            ajax: {
-url: '{{ route('quotation.data.sp') }}',
-                type: 'GET',
-                data: function(d) {
-                    d.days = $('#dateFilter').val();
-                    d.start_date = $('#startDate').val();
-                    d.end_date = $('#endDate').val();
-                    d.office = $('#officeFilter').val();
-                    d.card_filter = currentCardFilter;
-                },
-                error: function(xhr, error, code) {
-                    console.error('DataTables Ajax Error:', xhr, error, code);
-                    alert('Error loading data. Please check the console.');
-                }
-            },
-            columns: [{
-                    data: 'report_date',
-                    name: 'report_date',
-                    searchable: false,
-                    responsivePriority: 1
-                },
-                {
-                    data: 'OfficeName',
-                    name: 'OfficeName',
-                    responsivePriority: 2
-                },
-                {
-                    data: 'ClientName',
-                    name: 'ClientName',
-                    responsivePriority: 3,
-                    render: function(data, type, row) {
-                        if (type === 'display' && data && data.length > 50) {
-                            return '<span title="' + data + '">' + data.substr(0, 50) +
-                                '...</span>';
-                        }
-                        return data;
-                    }
-                },
-                {
-                    data: 'ClientID',
-                    name: 'ClientID',
-                    responsivePriority: 8
-                },
-                {
-                    data: 'SalesPerson',
-                    name: 'SalesPerson',
-                    responsivePriority: 9
-                },
-                {
-                    data: 'OriginCountry',
-                    name: 'OriginCountry',
-                    responsivePriority: 10
-                },
-                {
-                    data: 'DestinationCountry',
-                    name: 'DestinationCountry',
-                    responsivePriority: 11
-                },
-                {
-                    data: 'QuotationStatus',
-                    name: 'QuotationStatus',
-                    responsivePriority: 4,
-                    render: function(data, type, row) {
-                        if (type === 'display') {
-                            var badgeClass = 'badge-secondary';
-                            if (data === 'Won') badgeClass = 'badge-success';
-                            else if (data === 'Lost') badgeClass = 'badge-danger';
-                            else if (data === 'Canceled') badgeClass = 'badge-warning';
-                            else if (data === 'Failed Int.') badgeClass = 'badge-danger';
-                            else if (data === 'Failed Progress') badgeClass = 'badge-secondary';
-                            else if (data === 'In Progress') badgeClass = 'badge-info';
-
-                            return '<span class="badge ' + badgeClass + '">' + data + '</span>';
-                        }
-                        return data;
-                    }
-                },
-
-                {
-                    data: 'BookingNo',
-                    name: 'BookingNo',
-                    responsivePriority: 13
-                },
-                // ── NEW: Remarks / Error column ──────────────────────────────
-                // Parses failure_reason JSON from the DB and renders validation
-                // errors in red for Failed Int. / Failed Progress rows,
-                // or muted grey for informational remarks on other statuses.
-                {
-                    data: 'remarks_error',
-                    name: 'remarks_error',
-                    orderable: false,
-                    searchable: false,
-                    responsivePriority: 6,
-                    render: function(data, type, row) {
-                        if (type !== 'display') return data || '';
-                        if (!data || data === '-') return '<span class="text-muted">—</span>';
-
-                        var isError = row.QuotationStatus === 'Failed Int.' ||
-                            row.QuotationStatus === 'Failed Progress';
-
-                        if (isError) {
-                            return '<span class="text-danger" title="' + data + '">' +
-                                '<i class="fas fa-exclamation-circle mr-1"></i>' +
-                                (data.length > 80 ? data.substr(0, 80) + '...' : data) +
-                                '</span>';
-                        }
-                        return '<span class="text-muted">' + data + '</span>';
-                    }
-                },
-                {
-                    data: 'action',
-                    name: 'action',
-                    orderable: false,
-                    searchable: false,
-                    responsivePriority: 1,
-                    className: 'text-center action-column',
-                    render: function(data, type, row) {
-                        if (type === 'display') {
-                            return '<div class="action-buttons">' + data + '</div>';
-                        }
-                        return data;
-                    }
-                }
-            ],
-            order: [
-                [0, 'desc']
-            ],
-            pageLength: 25,
-            responsive: {
-                details: {
-                    type: 'inline',
-                    display: $.fn.dataTable.Responsive.display.childRow,
-                    renderer: function(api, rowIdx, columns) {
-                        var data = $.map(columns, function(col, i) {
-                            return col.hidden ?
-                                '<li data-dtr-index="' + col.columnIndex +
-                                '" data-dt-row="' + col.rowIndex +
-                                '" data-dt-column="' + col.columnIndex + '">' +
-                                '<span class="dtr-title">' + col.title + '</span> ' +
-                                '<span class="dtr-data">' + col.data + '</span>' +
-                                '</li>' : '';
-                        }).join('');
-
-                        return data ? $('<ul class="dtr-details"/>').append(data) : false;
-                    }
-                },
-                breakpoints: [{
-                        name: 'desktop',
-                        width: Infinity
-                    },
-                    {
-                        name: 'tablet-l',
-                        width: 1024
-                    },
-                    {
-                        name: 'tablet-p',
-                        width: 768
-                    },
-                    {
-                        name: 'mobile-l',
-                        width: 480
-                    },
-                    {
-                        name: 'mobile-p',
-                        width: 320
-                    }
-                ]
-            },
-            dom: 'lfrtip',
-            language: {
-                search: "Search:",
-                searchPlaceholder: "Client, Office, Status...",
-                lengthMenu: "Show _MENU_"
-            },
-            initComplete: function() {
-                $('.dataTables_length').appendTo('#entriesContainer');
-                $('.dataTables_filter').appendTo('#searchContainer');
-                adjustSearchPlaceholder();
-                $('.card-filter-trigger[data-filter="in_progress"]').addClass('active');
-            }
-        });
-
-        // ============================================
-        // DEBUG
-        // ============================================
-        table.on('xhr', function() {
-            var json = table.ajax.json();
-            console.log('DataTable Response:', json);
-        });
-
-        // ============================================
-        // SEARCH PLACEHOLDER
-        // ============================================
-        function adjustSearchPlaceholder() {
-            var $searchInput = $('.dataTables_filter input');
-            if ($(window).width() < 768) {
-                $searchInput.attr('placeholder', 'Search...');
-            } else {
-                $searchInput.attr('placeholder', 'Client, Office, Status...');
-            }
-        }
-
-        $(window).on('resize', function() {
-            adjustSearchPlaceholder();
-        });
-
-        // ============================================
-        // RETRIGGER BUTTON
-        // ============================================
-        $('#quotationTable').on('click', '.btn-retrigger', function(e) {
-            e.stopPropagation();
-            var $btn = $(this);
-            var bookingNo = $btn.data('booking');
-
-            if (!bookingNo) {
-                alert('Booking number not found');
-                return;
-            }
-
-            if (!confirm('Are you sure you want to retrigger booking: ' + bookingNo + '?')) {
-                return;
-            }
-
-            $btn.prop('disabled', true);
-            $btn.html('<i class="fas fa-spinner fa-spin"></i>');
-
-            $.ajax({
-                url: '{{ route('quotation.retrigger') }}',
-                type: 'POST',
-                data: {
-                    _token: '{{ csrf_token() }}',
-                    booking_no: bookingNo
-                },
-                success: function(response) {
-                    if (response.success) {
-                        alert('Successfully retriggered booking: ' + bookingNo);
-                        table.ajax.reload(null, false);
-                    } else {
-                        alert('Failed to retrigger: ' + (response.message ||
-                            'Unknown error'));
-                    }
-                },
-                error: function(xhr) {
-                    alert('Error retriggering booking: ' + (xhr.responseJSON?.message ||
-                        'Server error'));
-                },
-                complete: function() {
-                    $btn.prop('disabled', false);
-                    $btn.html('<i class="fas fa-sync-alt"></i>');
-                }
-            });
-        });
-        // ============================================
-        // CREATE BOOKING BUTTON
-        // ============================================
-        $('#quotationTable').on('click', '.btn-create-booking', function(e) {
-            e.stopPropagation();
-            var $btn = $(this);
-            var cardFilter = currentCardFilter;
-
-            $('#createBookingModal')
-                .data('quotation-id', $btn.data('id'))
-                .data('booking-no', $btn.data('booking'))
-                .data('team-id', $btn.data('team'))
-                .data('quote-no', $btn.data('quoteno'))
-                .data('card-filter', cardFilter)
-                .modal('show');
-        });
-
-        // ============================================
-        // CREATE BOOKING MODAL — ON SHOW
-        // ============================================
-        $('#createBookingModal').on('show.bs.modal', function() {
-            var modal = $(this);
-            var quoteNo = modal.data('quote-no');
-            var teamId = modal.data('team-id');
-            var cardFilter = modal.data('card-filter') || 'in_progress';
-
-            resetCreateBookingForm();
-            setDropdownLoading('#cb_service_template');
-            setDropdownLoading('#cb_bill_to_party');
-            setDropdownLoading('#cb_forwarder');
-
-            // ── 1. Service Templates ──
-            $.get('{{ route('quotation.booking.service-templates') }}', {
-                    quotation_id: quoteNo
-                })
-                .done(function(res) {
-                    var $select = $('#cb_service_template').empty().append(
-                        '<option value=""></option>');
-                    if (res.success && res.templates && res.templates.length) {
-                        $.each(res.templates, function(i, t) {
-                            $select.append($('<option>', {
-                                value: t.Name,
-                                text: t.Name
-                            }));
-                        });
-                    } else {
-                        // No templates configured in SCM for this service type + office
-                        var msg = (res.code === 'NO_TEMPLATES_CONFIGURED') ?
-                            'No templates available for this office.' :
-                            (res.message || 'No templates available for this office.');
-                        $select.append('<option value="" disabled>No templates available</option>');
-                        $('#cb_service_template').closest('.form-group').append(
-                            '<small class="text-danger cb-config-warning mt-1 d-block">' +
-                            '<i class="fas fa-exclamation-triangle mr-1"></i>' + msg +
-                            '</small>'
-                        );
-                        $('#submitCreateBookingBtn').prop('disabled', true);
-                    }
-                })
-                .fail(function() {
-                    $('#cb_service_template').empty()
-                        .append('<option value="" disabled>Failed to load — try again</option>');
-                });
-
-            // ── 2. Bill To Parties ──
-            $.get('{{ route('quotation.booking.bill-to-parties') }}', {
-                    team_id: teamId
-                })
-                .done(function(res) {
-                    var $select = $('#cb_bill_to_party').empty().append(
-                        '<option value=""></option>');
-                    if (res.success && res.parties && res.parties.length) {
-                        $.each(res.parties, function(i, p) {
-                            $select.append($('<option>', {
-                                value: p.PartyCode,
-                                text: p.PartyCode + ' — ' + p.PartyName
-                            }));
-                        });
-                    } else {
-                        $select.append('<option value="" disabled>No parties available</option>');
-                    }
-                })
-                .fail(function() {
-                    $('#cb_bill_to_party').empty()
-                        .append('<option value="" disabled>Failed to load — try again</option>');
-                });
-
-            // ── 3. Forwarders ──
-            $.get('{{ route('quotation.booking.forwarders') }}', {
-                    team_id: teamId
-                })
-                .done(function(res) {
-                    var $select = $('#cb_forwarder').empty().append('<option value=""></option>');
-                    if (res.success && res.parties && res.parties.length) {
-                        $.each(res.parties, function(i, p) {
-                            $select.append($('<option>', {
-                                value: p.PartyCode,
-                                text: p.PartyCode + ' — ' + p.PartyName
-                            }));
-                        });
-                    } else {
-                        $select.append(
-                            '<option value="" disabled>No forwarders available</option>');
-                    }
-                })
-                .fail(function() {
-                    $('#cb_forwarder').empty()
-                        .append('<option value="" disabled>Failed to load — try again</option>');
-                });
-
-            // ── Handle failed_int UI AFTER dropdowns are kicked off ──
-            if (cardFilter === 'failed_int') {
-                $('#createBookingForm').addClass('d-none');
-                $('#cbProgressPanel').removeClass('d-none');
-                $('#submitCreateBookingBtn').addClass('d-none');
-                $('#cancelCreateBookingBtn').addClass('d-none');
-                $('#cbCloseBtn').removeClass('d-none');
-                $('#cbEditLink').removeClass('d-none');
-                renderBookingSteps([]);
-                return;
-            }
-        });
-
-        // ============================================
-        // CREATE BOOKING MODAL — ON HIDE
-        // ============================================
-        $('#createBookingModal').on('hidden.bs.modal', function() {
-            $('.location-suggestions').remove();
-            $('#createBookingForm').removeClass('d-none cb-locked');
-            $('#cbProgressPanel').addClass('d-none');
-            $('#submitCreateBookingBtn, #cancelCreateBookingBtn').removeClass('d-none');
-            $('#cbCloseBtn').addClass('d-none');
-            $('#cbEditLink').addClass('d-none');
-            $('#cbStepList').empty();
-            $('#cbProgressError, #cbProgressSuccess').addClass('d-none');
-            $('#cb_service_template, #cb_bill_to_party, #cb_forwarder').prop('disabled', false);
-            $('#cb_include_country, #cb_place_of_receipt, #cb_place_of_delivery').prop('disabled',
-                false);
-        });
-
-        // ✅ FIX — unified close handler, no preventDefault conflict
-        $('#cbCloseBtn, #cbXBtn, #cancelCreateBookingBtn').on('click', function(e) {
-            e.preventDefault(); // safe — we call hide() ourselves
-            $('#createBookingModal').modal('hide');
-        });
-
-        $('#cbEditLink').on('click', function(e) {
-            e.preventDefault();
-            $('#cb_service_template, #cb_bill_to_party, #cb_forwarder').prop('disabled', false);
-            $('#cb_include_country, #cb_place_of_receipt, #cb_place_of_delivery').prop('disabled',
-                false);
-            $('#createBookingForm').removeClass('cb-locked d-none');
-            $('#cbProgressPanel').addClass('d-none');
-            $('#submitCreateBookingBtn, #cancelCreateBookingBtn').removeClass('d-none');
-            $('#cbCloseBtn').addClass('d-none');
-            $(this).addClass('d-none');
-        });
-
-        // ============================================
-        // HELPERS — FORM RESET & LOADING STATE
-        // ============================================
-        function resetCreateBookingForm() {
-            $('#cb_service_template, #cb_bill_to_party, #cb_forwarder')
-                .empty().append('<option value=""></option>').prop('disabled', false);
-            $('#cb_include_country').prop('checked', false).prop('disabled', false);
-            $('#cb_place_of_receipt, #cb_place_of_delivery').val('').prop('disabled', false);
-            $('#cb_place_of_receipt_code, #cb_place_of_receipt_id').val('');
-            $('#cb_place_of_delivery_code, #cb_place_of_delivery_id').val('');
-            $('.location-suggestions').remove();
-            $('#createBookingForm').removeClass('cb-locked');
-            $('#cbEditLink').addClass('d-none');
-            // Reset submit button and clear any config warnings from previous open
-            $('#submitCreateBookingBtn').prop('disabled', false);
-            $('.cb-config-warning').remove();
-        }
-
-        function setDropdownLoading(selector) {
-            $(selector).empty().append('<option value="" disabled selected>Loading...</option>');
-        }
-
-        // ============================================
-        // PLACE OF RECEIPT / DELIVERY — AUTOCOMPLETE
-        // ============================================
-        function setupLocationAutocomplete(inputId, codeId, idHiddenId) {
-            var debounceTimer = null;
-
-            $('#' + inputId).on('input', function() {
-                var query = $(this).val().trim();
-                clearTimeout(debounceTimer);
-                removeSuggestions(inputId);
-                if (query.length < 2) return;
-
-                debounceTimer = setTimeout(function() {
-                    $.get('{{ route('quotation.booking.locations') }}', {
-                            filter: query,
-                            include_country: $('#cb_include_country').is(':checked') ? 1 : 0
-                        })
-                        .done(function(res) {
-                            removeSuggestions(inputId);
-                            if (!res.success || !res.locations || !res.locations.length)
-                                return;
-
-                            var $input = $('#' + inputId);
-                            var $list = $('<ul>', {
-                                class: 'location-suggestions list-group',
-                                css: {
-                                    position: 'absolute',
-                                    zIndex: 9999,
-                                    width: $input.outerWidth(),
-                                    maxHeight: '200px',
-                                    overflowY: 'auto',
-                                    border: '1px solid #ced4da',
-                                    borderRadius: '0 0 4px 4px',
-                                    boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
-                                    background: '#fff',
-                                    marginTop: '-1px'
-                                }
-                            });
-
-                            $.each(res.locations, function(i, loc) {
-                                $('<li>', {
-                                        class: 'list-group-item list-group-item-action',
-                                        css: {
-                                            cursor: 'pointer',
-                                            padding: '0.4rem 0.75rem',
-                                            fontSize: '0.875rem'
-                                        },
-                                        text: loc.LocationName + (loc
-                                            .LocationType ? ' (' + loc
-                                            .LocationType + ')' : '')
-                                    })
-                                    .on('mousedown', function(e) {
-                                        e.preventDefault();
-                                        $('#' + inputId).val(loc.LocationName +
-                                            (loc.LocationType ? ' (' + loc
-                                                .LocationType + ')' : ''));
-                                        $('#' + codeId).val(loc.LocationCode);
-                                        $('#' + idHiddenId).val(loc.LocationID);
-                                        removeSuggestions(inputId);
-                                    })
-                                    .appendTo($list);
-                            });
-
-                            $input.closest('.form-group').css('position', 'relative')
-                                .append($list);
-                        })
-                        .fail(function(xhr) {
-                            console.error('Location search failed:', xhr);
-                        });
-                }, 300);
-            });
-
-            $('#' + inputId).on('blur', function() {
-                setTimeout(function() {
-                    removeSuggestions(inputId);
-                }, 200);
-            });
-        }
-
-        function removeSuggestions(inputId) {
-            $('#' + inputId).closest('.form-group').find('.location-suggestions').remove();
-        }
-
-        setupLocationAutocomplete('cb_place_of_receipt', 'cb_place_of_receipt_code', 'cb_place_of_receipt_id');
-        setupLocationAutocomplete('cb_place_of_delivery', 'cb_place_of_delivery_code',
-            'cb_place_of_delivery_id');
-
-        // ── Clear location fields when include_country is toggled ────────────────
-        // SP re-validates the code against country when CountryIncluded = 1.
-        // A previously selected location may fail the new validation silently,
-        // so we clear both fields to force the user to re-select.
-        $('#cb_include_country').on('change', function() {
-            $('#cb_place_of_receipt, #cb_place_of_delivery').val('');
-            $('#cb_place_of_receipt_code, #cb_place_of_receipt_id').val('');
-            $('#cb_place_of_delivery_code, #cb_place_of_delivery_id').val('');
-            removeSuggestions('cb_place_of_receipt');
-            removeSuggestions('cb_place_of_delivery');
-        });
-
-        // ============================================
-        // STEP LABELS FOR PROGRESS VIEW
-        // ============================================
-        var BOOKING_STEPS = [{
-                step: 0,
-                label: 'Save Booking Info'
-            },
-            {
-                step: 1,
-                label: 'Client Creation'
-            },
-            {
-                step: 2,
-                label: 'Booking XML'
-            },
-            {
-                step: 3,
-                label: 'Charge Transfer'
-            },
-            {
-                step: 4,
-                label: 'Document Transfer'
-            },
-        ];
-
-        function renderBookingSteps(completedSteps) {
-            var $list = $('#cbStepList').empty();
-            BOOKING_STEPS.forEach(function(def) {
-                var completed = completedSteps.find(function(s) {
-                    return s.step === def.step;
-                });
-                var iconClass, badgeClass, statusText, remarkHtml = '';
-
-                if (!completed) {
-                    iconClass = 'fas fa-circle text-secondary';
-                    badgeClass = 'badge-secondary';
-                    statusText = 'Pending';
-                } else if (completed.status === 'Success') {
-                    iconClass = 'fas fa-check-circle text-success';
-                    badgeClass = 'badge-success';
-                    statusText = 'Success';
-                    if (completed.remark) remarkHtml = '<small class="text-muted d-block mt-1">' +
-                        completed.remark + '</small>';
-                } else if (completed.status === 'Skipped') {
-                    iconClass = 'fas fa-minus-circle text-secondary';
-                    badgeClass = 'badge-secondary';
-                    statusText = 'Skipped';
-                } else {
-                    iconClass = 'fas fa-times-circle text-danger';
-                    badgeClass = 'badge-danger';
-                    statusText = 'Failed';
-                    if (completed.remark) remarkHtml = '<small class="text-danger d-block mt-1">' +
-                        completed.remark + '</small>';
-                }
-
-                $list.append(
-                    '<div class="list-group-item py-2">' +
-                    '<div class="d-flex align-items-center justify-content-between">' +
-                    '<div><i class="' + iconClass + ' mr-2"></i><strong>Step ' + def.step +
-                    ':</strong> ' + def.label + remarkHtml + '</div>' +
-                    '<span class="badge ' + badgeClass + '">' + statusText + '</span>' +
-                    '</div></div>'
-                );
-            });
-        }
-
-        // ============================================
-        // SUBMIT CREATE BOOKING → FULL PIPELINE
-        // ============================================
-        $('#submitCreateBookingBtn').on('click', function() {
-            var quotationId = $('#createBookingModal').data('quotation-id');
-            var bookingNo = $('#createBookingModal').data('booking-no');
-            var serviceTemplate = $('#cb_service_template').val();
-            var billToParty = $('#cb_bill_to_party').val();
-            var forwarder = $('#cb_forwarder').val();
-            var placeOfReceipt = $('#cb_place_of_receipt_code').val();
-            var placeOfDelivery = $('#cb_place_of_delivery_code').val();
-
-            var errors = [];
-            if (!serviceTemplate) errors.push('Service Template');
-            if (!billToParty) errors.push('Bill To Party');
-            if (!forwarder) errors.push('Forwarder');
-            if (!placeOfReceipt) errors.push('Place of Receipt');
-            if (!placeOfDelivery) errors.push('Place of Delivery');
-
-            if (errors.length) {
-                alert('Please complete the following required fields:\n• ' + errors.join('\n• '));
-                return;
-            }
-
-            $('#createBookingForm').addClass('d-none');
-            $('#cbProgressPanel').removeClass('d-none');
-            $('#submitCreateBookingBtn, #cancelCreateBookingBtn').addClass('d-none');
-            $('#cbEditLink').addClass('d-none');
-            $('#cbProgressError, #cbProgressSuccess').addClass('d-none');
-            renderBookingSteps([]);
-
-            $.ajax({
-                url: '{{ route('quotation.process-booking') }}',
-                type: 'POST',
-                data: {
-                    _token: '{{ csrf_token() }}',
-                    id: quotationId,
-                    booking_no: bookingNo,
-                    service_template: serviceTemplate,
-                    bill_to_party: billToParty,
-                    forwarder: forwarder,
-                    include_country: $('#cb_include_country').is(':checked') ? 1 : 0,
-                    place_of_receipt: placeOfReceipt,
-                    place_of_delivery: placeOfDelivery,
-                },
-                success: function(res) {
-                    renderBookingSteps(res.steps || []);
-                    // ✅ FIX — display the SCM booking number in the success panel
-                    if (res.success) {
-                        var msg = '<i class="fas fa-check-circle mr-2"></i>' +
-                            'All steps completed. Booking has been created in SCM.';
-
-                        if (res.scm_booking_no) {
-                            msg += '<br><strong class="mt-2 d-block">SCM Booking No: ' +
-                                res.scm_booking_no + '</strong>';
-                        }
-                        if (res.scm_booking_id) {
-                            msg += '<strong>SCM Booking ID: ' + res.scm_booking_id +
-                                '</strong>';
-                        }
-
-                        $('#cbProgressSuccess').html(msg).removeClass('d-none');
-                        table.ajax.reload(null, false);
-                        updateCardStats();
-                    } else {
-                        var failedStep = (res.steps || []).find(function(s) {
-                            return s.status === 'Failed';
-                        });
-                        $('#cbProgressError')
-                            .html('<strong>' + (res.failed_label || 'Step') +
-                                ' failed:</strong> ' +
-                                (failedStep ? failedStep.remark : 'Unknown error'))
-                            .removeClass('d-none');
-                        table.ajax.reload(null, false);
-                        updateCardStats();
-                    }
-                },
-                error: function(xhr) {
-                    var msg = xhr.responseJSON?.message || 'An unexpected error occurred.';
-                    $('#cbProgressError').text(msg).removeClass('d-none');
-                    if (xhr.responseJSON?.steps) renderBookingSteps(xhr.responseJSON.steps);
-                },
-                complete: function() {
-                    $('#cbCloseBtn').removeClass('d-none');
-                }
-            });
-        });
-
-        // ============================================
-        // STATS UPDATE (debounced)
-        // ============================================
-        function updateCardStats() {
-            if (statsUpdateTimer) clearTimeout(statsUpdateTimer);
-
-            statsUpdateTimer = setTimeout(function() {
-                $.ajax({
-                    url: '{{ route('quotation.stats') }}',
+            // Initialize DataTable
+            var table = $('#quotationTable').DataTable({
+                processing: true,
+                serverSide: true,
+                ajax: {
+                    url: '{{ route('quotation.data.sp') }}',
                     type: 'GET',
-                    data: {
-                        days: $('#dateFilter').val(),
-                        start_date: $('#startDate').val(),
-                        end_date: $('#endDate').val(),
-                        office: $('#officeFilter').val()
+                    data: function(d) {
+                        d.days = $('#dateFilter').val();
+                        d.start_date = $('#startDate').val();
+                        d.end_date = $('#endDate').val();
+                        d.office = $('#officeFilter').val();
+                        d.card_filter = currentCardFilter;
                     },
-                    beforeSend: function() {
-                        $('.compact-card .inner h3').css('opacity', '0.5');
-                    },
-                    success: function(response) {
-                        animateValue('stat-total', parseInt($('#stat-total').text()) || 0,
-                            response.total, 500);
-                        animateValue('stat-in-progress', parseInt($('#stat-in-progress')
-                            .text()) || 0, response.in_progress, 500);
-                        animateValue('stat-won', parseInt($('#stat-won').text()) || 0,
-                            response.won, 500);
-                        animateValue('stat-completed', parseInt($('#stat-completed')
-                            .text()) || 0, response.completed, 500);
-                        animateValue('stat-lost-canceled', parseInt($('#stat-lost-canceled')
-                            .text()) || 0, response.lost_canceled, 500);
-                        animateValue('stat-failed-progress', parseInt($(
-                                '#stat-failed-progress').text()) || 0, response
-                            .failed_progress, 500);
-                        animateValue('stat-failed-int', parseInt($('#stat-failed-int')
-                            .text()) || 0, response.failed_int, 500);
-                    },
-                    error: function() {
-                        $('.compact-card .inner h3').css('opacity', '1');
-                    },
-                    complete: function() {
-                        $('.compact-card .inner h3').css('opacity', '1');
+                    error: function(xhr, error, code) {
+                        console.error('DataTables Ajax Error:', xhr, error, code);
+                        alert('Error loading data. Please check the console.');
                     }
-                });
-            }, 300);
-        }
-
-        // ============================================
-        // CRM SYNC HISTORY
-        // ============================================
-        function loadCrmHistory() {
-            $('#crmHistoryContainer').html(
-                '<div class="text-muted small text-center py-2">' +
-                '<i class="fas fa-spinner fa-spin mr-1"></i> Loading history...</div>'
-            );
-            $('#crmHistoryMeta').text('');
-
-            $.ajax({
-                url: '{{ route('crm.sync.history') }}',
-                type: 'GET',
-                success: function(res) {
-                    var history = res.history || [];
-
-                    if (!history.length) {
-                        $('#crmHistoryContainer').html(
-                            '<p class="text-muted small mb-0 text-center py-2">' +
-                            '<i class="fas fa-info-circle mr-1"></i> No sync runs recorded yet.</p>'
-                        );
-                        return;
-                    }
-
-                    $('#crmHistoryMeta').text('Last ' + history.length + ' run(s)');
-
-                    var rows = history.map(function(h) {
-                        var scopeTag = h.booking_no ?
-                            '<span class="badge badge-secondary ml-1">Booking #' +
-                            escapeHtml(String(h.booking_no)) + '</span>' :
-                            (h.limit ?
-                                '<span class="badge badge-secondary ml-1">Limit ' + h
-                                .limit + '</span>' :
-                                '');
-
-                        var failBadge = h.failed > 0 ?
-                            ' <span class="badge badge-danger">' + h.failed +
-                            ' failed</span>' :
-                            '';
-
-                        return '<tr>' +
-                            '<td class="text-nowrap">' + escapeHtml(h.run_at) + '</td>' +
-                            '<td>' + escapeHtml(h.triggered_by || '-') + '</td>' +
-                            '<td class="text-center">' + h.total + scopeTag + '</td>' +
-                            '<td class="text-center text-success font-weight-bold">' + h
-                            .inserted + '</td>' +
-                            '<td class="text-center text-info font-weight-bold">' + h
-                            .updated + '</td>' +
-                            '<td class="text-center">' + h.skipped + '</td>' +
-                            '<td class="text-center">' + h.failed + failBadge + '</td>' +
-                            '</tr>';
-                    }).join('');
-
-                    $('#crmHistoryContainer').html(
-                        '<div style="max-height:220px;overflow-y:auto;">' +
-                        '<table class="table table-sm table-bordered table-striped mb-0"' +
-                        ' style="font-size:0.8rem;">' +
-                        '<thead class="thead-light"><tr>' +
-                        '<th>Run At</th>' +
-                        '<th>By</th>' +
-                        '<th class="text-center">Total</th>' +
-                        '<th class="text-center">Ins.</th>' +
-                        '<th class="text-center">Upd.</th>' +
-                        '<th class="text-center">Skip</th>' +
-                        '<th class="text-center">Fail</th>' +
-                        '</tr></thead>' +
-                        '<tbody>' + rows + '</tbody>' +
-                        '</table></div>'
-                    );
                 },
-                error: function() {
-                    $('#crmHistoryContainer').html(
-                        '<p class="text-danger small mb-0">' +
-                        '<i class="fas fa-exclamation-circle mr-1"></i> Failed to load history.</p>'
-                    );
+                columns: [{
+                        data: 'report_date',
+                        name: 'report_date',
+                        searchable: false,
+                        responsivePriority: 1
+                    },
+                    {
+                        data: 'OfficeName',
+                        name: 'OfficeName',
+                        responsivePriority: 2
+                    },
+                    {
+                        data: 'ClientName',
+                        name: 'ClientName',
+                        responsivePriority: 3,
+                        render: function(data, type, row) {
+                            if (type === 'display' && data && data.length > 50) {
+                                return '<span title="' + data + '">' + data.substr(0, 50) +
+                                    '...</span>';
+                            }
+                            return data;
+                        }
+                    },
+                    {
+                        data: 'ClientID',
+                        name: 'ClientID',
+                        responsivePriority: 8
+                    },
+                    {
+                        data: 'SalesPerson',
+                        name: 'SalesPerson',
+                        responsivePriority: 9
+                    },
+                    {
+                        data: 'OriginCountry',
+                        name: 'OriginCountry',
+                        responsivePriority: 10
+                    },
+                    {
+                        data: 'DestinationCountry',
+                        name: 'DestinationCountry',
+                        responsivePriority: 11
+                    },
+                    {
+                        data: 'QuotationStatus',
+                        name: 'QuotationStatus',
+                        responsivePriority: 4,
+                        render: function(data, type, row) {
+                            if (type === 'display') {
+                                var badgeClass = 'badge-secondary';
+                                if (data === 'Won') badgeClass = 'badge-success';
+                                else if (data === 'Lost') badgeClass = 'badge-danger';
+                                else if (data === 'Canceled') badgeClass = 'badge-warning';
+                                else if (data === 'Failed Int.') badgeClass = 'badge-danger';
+                                else if (data === 'Failed Progress') badgeClass = 'badge-secondary';
+                                else if (data === 'In Progress') badgeClass = 'badge-info';
+
+                                return '<span class="badge ' + badgeClass + '">' + data + '</span>';
+                            }
+                            return data;
+                        }
+                    },
+
+                    {
+                        data: 'BookingNo',
+                        name: 'BookingNo',
+                        responsivePriority: 13
+                    },
+                    // ── NEW: Remarks / Error column ──────────────────────────────
+                    // Parses failure_reason JSON from the DB and renders validation
+                    // errors in red for Failed Int. / Failed Progress rows,
+                    // or muted grey for informational remarks on other statuses.
+                    {
+                        data: 'remarks_error',
+                        name: 'remarks_error',
+                        orderable: false,
+                        searchable: false,
+                        responsivePriority: 6,
+                        render: function(data, type, row) {
+                            if (type !== 'display') return data || '';
+                            if (!data || data === '-') return '<span class="text-muted">—</span>';
+
+                            var isError = row.QuotationStatus === 'Failed Int.' ||
+                                row.QuotationStatus === 'Failed Progress';
+
+                            if (isError) {
+                                return '<span class="text-danger" title="' + data + '">' +
+                                    '<i class="fas fa-exclamation-circle mr-1"></i>' +
+                                    (data.length > 80 ? data.substr(0, 80) + '...' : data) +
+                                    '</span>';
+                            }
+                            return '<span class="text-muted">' + data + '</span>';
+                        }
+                    },
+                    {
+                        data: 'action',
+                        name: 'action',
+                        orderable: false,
+                        searchable: false,
+                        responsivePriority: 1,
+                        className: 'text-center action-column',
+                        render: function(data, type, row) {
+                            if (type === 'display') {
+                                return '<div class="action-buttons">' + data + '</div>';
+                            }
+                            return data;
+                        }
+                    }
+                ],
+                order: [
+                    [0, 'desc']
+                ],
+                pageLength: 25,
+                responsive: {
+                    details: {
+                        type: 'inline',
+                        display: $.fn.dataTable.Responsive.display.childRow,
+                        renderer: function(api, rowIdx, columns) {
+                            var data = $.map(columns, function(col, i) {
+                                return col.hidden ?
+                                    '<li data-dtr-index="' + col.columnIndex +
+                                    '" data-dt-row="' + col.rowIndex +
+                                    '" data-dt-column="' + col.columnIndex + '">' +
+                                    '<span class="dtr-title">' + col.title + '</span> ' +
+                                    '<span class="dtr-data">' + col.data + '</span>' +
+                                    '</li>' : '';
+                            }).join('');
+
+                            return data ? $('<ul class="dtr-details"/>').append(data) : false;
+                        }
+                    },
+                    breakpoints: [{
+                            name: 'desktop',
+                            width: Infinity
+                        },
+                        {
+                            name: 'tablet-l',
+                            width: 1024
+                        },
+                        {
+                            name: 'tablet-p',
+                            width: 768
+                        },
+                        {
+                            name: 'mobile-l',
+                            width: 480
+                        },
+                        {
+                            name: 'mobile-p',
+                            width: 320
+                        }
+                    ]
+                },
+                dom: 'lfrtip',
+                language: {
+                    search: "Search:",
+                    searchPlaceholder: "Client, Office, Status...",
+                    lengthMenu: "Show _MENU_"
+                },
+                initComplete: function() {
+                    $('.dataTables_length').appendTo('#entriesContainer');
+                    $('.dataTables_filter').appendTo('#searchContainer');
+                    adjustSearchPlaceholder();
+                    $('.card-filter-trigger[data-filter="in_progress"]').addClass('active');
                 }
             });
-        }
 
-        function escapeHtml(str) {
-            if (!str) return '-';
-            return String(str)
-                .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-        }
+            // ============================================
+            // DEBUG
+            // ============================================
+            table.on('xhr', function() {
+                var json = table.ajax.json();
+                console.log('DataTable Response:', json);
+            });
 
-        function animateValue(id, start, end, duration) {
-            var element = document.getElementById(id);
-            if (!element) return;
-            start = parseInt(start) || 0;
-            end = parseInt(end) || 0;
-            var range = end - start;
-            if (range === 0 || Math.abs(range) > 100) {
-                element.textContent = end;
-                return;
+            // ============================================
+            // SEARCH PLACEHOLDER
+            // ============================================
+            function adjustSearchPlaceholder() {
+                var $searchInput = $('.dataTables_filter input');
+                if ($(window).width() < 768) {
+                    $searchInput.attr('placeholder', 'Search...');
+                } else {
+                    $searchInput.attr('placeholder', 'Client, Office, Status...');
+                }
             }
-            var current = start;
-            var increment = end > start ? 1 : -1;
-            var stepTime = Math.abs(Math.floor(duration / range));
-            if (!isFinite(stepTime) || stepTime > 100 || stepTime < 1) {
-                element.textContent = end;
-                return;
-            }
-            var timer = setInterval(function() {
-                current += increment;
-                element.textContent = current;
-                if (current === end) clearInterval(timer);
-            }, stepTime);
-        }
 
-        // ============================================
-        // CARD CLICK FILTERING
-        // ============================================
-        var touchMoved = false;
-        $('.card-filter-trigger').on('touchstart', function() {
-            touchMoved = false;
-        });
-        $('.card-filter-trigger').on('touchmove', function() {
-            touchMoved = true;
-        });
-        $('.card-filter-trigger').on('click touchend', function(e) {
-            if (e.type === 'touchend' && touchMoved) return;
-            if (e.type === 'touchend') e.preventDefault();
-            var filterType = $(this).data('filter');
-            if (!filterType) return;
-            $('.card-filter-trigger').removeClass('active');
-            $(this).addClass('active');
-            currentCardFilter = filterType;
-            updateCardStats();
-            table.ajax.reload();
-        });
+            $(window).on('resize', function() {
+                adjustSearchPlaceholder();
+            });
 
-        // ============================================
-        // CLEAR BUTTON VISIBILITY
-        // ============================================
-        function updateClearButtonVisibility() {
-            var dateFilter = $('#dateFilter').val();
-            var officeFilter = $('#officeFilter').val();
-            var defaultOffice = '{{ $defaultOffice ?? '' }}';
-            if (dateFilter === 'custom') {
-                $('#clearFiltersContainer').hide();
-                return;
-            }
-            if (dateFilter !== 'all' || officeFilter !== defaultOffice) {
-                $('#clearFiltersContainer').show();
-            } else {
-                $('#clearFiltersContainer').hide();
-            }
-        }
+            // ============================================
+            // RETRIGGER BUTTON
+            // ============================================
+            $('#quotationTable').on('click', '.btn-retrigger', function(e) {
+                e.stopPropagation();
+                var $btn = $(this);
+                var bookingNo = $btn.data('booking');
 
-        // ============================================
-        // DATE FILTER
-        // ============================================
-        $('#dateFilter').on('change', function() {
-            var selectedValue = $(this).val();
-            if (selectedValue === 'custom') {
-                $('#customDateRange, #customDateRangeTo').show();
-                updateClearButtonVisibility();
-            } else {
-                $('#customDateRange, #customDateRangeTo').hide();
-                $('#startDate, #endDate').val('');
-                updateCardStats();
-                table.ajax.reload();
-                updateClearButtonVisibility();
-            }
-        });
-
-        $('#startDate, #endDate').on('change', function() {
-            if ($('#startDate').val() && $('#endDate').val()) {
-                if (new Date($('#endDate').val()) < new Date($('#startDate').val())) {
-                    alert('End date must be after start date');
-                    $('#endDate').val('');
+                if (!bookingNo) {
+                    alert('Booking number not found');
                     return;
                 }
+
+                if (!confirm('Are you sure you want to retrigger booking: ' + bookingNo + '?')) {
+                    return;
+                }
+
+                $btn.prop('disabled', true);
+                $btn.html('<i class="fas fa-spinner fa-spin"></i>');
+
+                $.ajax({
+                    url: '{{ route('quotation.retrigger') }}',
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        booking_no: bookingNo
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            alert('Successfully retriggered booking: ' + bookingNo);
+                            table.ajax.reload(null, false);
+                        } else {
+                            alert('Failed to retrigger: ' + (response.message ||
+                                'Unknown error'));
+                        }
+                    },
+                    error: function(xhr) {
+                        alert('Error retriggering booking: ' + (xhr.responseJSON?.message ||
+                            'Server error'));
+                    },
+                    complete: function() {
+                        $btn.prop('disabled', false);
+                        $btn.html('<i class="fas fa-sync-alt"></i>');
+                    }
+                });
+            });
+            // ============================================
+            // CREATE BOOKING BUTTON
+            // ============================================
+            $('#quotationTable').on('click', '.btn-create-booking', function(e) {
+                e.stopPropagation();
+                var $btn = $(this);
+                var cardFilter = currentCardFilter;
+
+                $('#createBookingModal')
+                    .data('quotation-id', $btn.data('id'))
+                    .data('booking-no', $btn.data('booking'))
+                    .data('team-id', $btn.data('team'))
+                    .data('quote-no', $btn.data('quoteno'))
+                    .data('card-filter', cardFilter)
+                    .modal('show');
+            });
+
+            // ============================================
+            // CREATE BOOKING MODAL — ON SHOW
+            // ============================================
+            $('#createBookingModal').on('show.bs.modal', function() {
+                var modal = $(this);
+                var quoteNo = modal.data('quote-no');
+                var teamId = modal.data('team-id');
+                var cardFilter = modal.data('card-filter') || 'in_progress';
+
+                resetCreateBookingForm();
+                setDropdownLoading('#cb_service_template');
+                setDropdownLoading('#cb_bill_to_party');
+                setDropdownLoading('#cb_forwarder');
+
+                // ── 1. Service Templates ──
+                $.get('{{ route('quotation.booking.service-templates') }}', {
+                        quotation_id: quoteNo
+                    })
+                    .done(function(res) {
+                        var $select = $('#cb_service_template').empty().append(
+                            '<option value=""></option>');
+                        if (res.success && res.templates && res.templates.length) {
+                            $.each(res.templates, function(i, t) {
+                                $select.append($('<option>', {
+                                    value: t.Name,
+                                    text: t.Name
+                                }));
+                            });
+                        } else {
+                            // No templates configured in SCM for this service type + office
+                            var msg = (res.code === 'NO_TEMPLATES_CONFIGURED') ?
+                                'No templates available for this office.' :
+                                (res.message || 'No templates available for this office.');
+                            $select.append('<option value="" disabled>No templates available</option>');
+                            $('#cb_service_template').closest('.form-group').append(
+                                '<small class="text-danger cb-config-warning mt-1 d-block">' +
+                                '<i class="fas fa-exclamation-triangle mr-1"></i>' + msg +
+                                '</small>'
+                            );
+                            $('#submitCreateBookingBtn').prop('disabled', true);
+                        }
+                    })
+                    .fail(function() {
+                        $('#cb_service_template').empty()
+                            .append('<option value="" disabled>Failed to load — try again</option>');
+                    });
+
+                // ── 2. Bill To Parties ──
+                $.get('{{ route('quotation.booking.bill-to-parties') }}', {
+                        team_id: teamId
+                    })
+                    .done(function(res) {
+                        var $select = $('#cb_bill_to_party').empty().append(
+                            '<option value=""></option>');
+                        if (res.success && res.parties && res.parties.length) {
+                            $.each(res.parties, function(i, p) {
+                                $select.append($('<option>', {
+                                    value: p.PartyCode,
+                                    text: p.PartyCode + ' — ' + p.PartyName
+                                }));
+                            });
+                        } else {
+                            $select.append('<option value="" disabled>No parties available</option>');
+                        }
+                    })
+                    .fail(function() {
+                        $('#cb_bill_to_party').empty()
+                            .append('<option value="" disabled>Failed to load — try again</option>');
+                    });
+
+                // ── 3. Forwarders ──
+                $.get('{{ route('quotation.booking.forwarders') }}', {
+                        team_id: teamId
+                    })
+                    .done(function(res) {
+                        var $select = $('#cb_forwarder').empty().append('<option value=""></option>');
+                        if (res.success && res.parties && res.parties.length) {
+                            $.each(res.parties, function(i, p) {
+                                $select.append($('<option>', {
+                                    value: p.PartyCode,
+                                    text: p.PartyCode + ' — ' + p.PartyName
+                                }));
+                            });
+                        } else {
+                            $select.append(
+                                '<option value="" disabled>No forwarders available</option>');
+                        }
+                    })
+                    .fail(function() {
+                        $('#cb_forwarder').empty()
+                            .append('<option value="" disabled>Failed to load — try again</option>');
+                    });
+
+                // ── Handle failed_int UI AFTER dropdowns are kicked off ──
+                if (cardFilter === 'failed_int') {
+                    $('#createBookingForm').addClass('d-none');
+                    $('#cbProgressPanel').removeClass('d-none');
+                    $('#submitCreateBookingBtn').addClass('d-none');
+                    $('#cancelCreateBookingBtn').addClass('d-none');
+                    $('#cbCloseBtn').removeClass('d-none');
+                    $('#cbEditLink').removeClass('d-none');
+                    renderBookingSteps([]);
+                    return;
+                }
+            });
+
+            // ============================================
+            // CREATE BOOKING MODAL — ON HIDE
+            // ============================================
+            $('#createBookingModal').on('hidden.bs.modal', function() {
+                $('.location-suggestions').remove();
+                $('#createBookingForm').removeClass('d-none cb-locked');
+                $('#cbProgressPanel').addClass('d-none');
+                $('#submitCreateBookingBtn, #cancelCreateBookingBtn').removeClass('d-none');
+                $('#cbCloseBtn').addClass('d-none');
+                $('#cbEditLink').addClass('d-none');
+                $('#cbStepList').empty();
+                $('#cbProgressError, #cbProgressSuccess').addClass('d-none');
+                $('#cb_service_template, #cb_bill_to_party, #cb_forwarder').prop('disabled', false);
+                $('#cb_include_country, #cb_place_of_receipt, #cb_place_of_delivery').prop('disabled',
+                    false);
+            });
+
+            // ✅ FIX — unified close handler, no preventDefault conflict
+            $('#cbCloseBtn, #cbXBtn, #cancelCreateBookingBtn').on('click', function(e) {
+                e.preventDefault(); // safe — we call hide() ourselves
+                $('#createBookingModal').modal('hide');
+            });
+
+            $('#cbEditLink').on('click', function(e) {
+                e.preventDefault();
+                $('#cb_service_template, #cb_bill_to_party, #cb_forwarder').prop('disabled', false);
+                $('#cb_include_country, #cb_place_of_receipt, #cb_place_of_delivery').prop('disabled',
+                    false);
+                $('#createBookingForm').removeClass('cb-locked d-none');
+                $('#cbProgressPanel').addClass('d-none');
+                $('#submitCreateBookingBtn, #cancelCreateBookingBtn').removeClass('d-none');
+                $('#cbCloseBtn').addClass('d-none');
+                $(this).addClass('d-none');
+            });
+
+            // ============================================
+            // HELPERS — FORM RESET & LOADING STATE
+            // ============================================
+            function resetCreateBookingForm() {
+                $('#cb_service_template, #cb_bill_to_party, #cb_forwarder')
+                    .empty().append('<option value=""></option>').prop('disabled', false);
+                $('#cb_include_country').prop('checked', false).prop('disabled', false);
+                $('#cb_place_of_receipt, #cb_place_of_delivery').val('').prop('disabled', false);
+                $('#cb_place_of_receipt_code, #cb_place_of_receipt_id').val('');
+                $('#cb_place_of_delivery_code, #cb_place_of_delivery_id').val('');
+                $('.location-suggestions').remove();
+                $('#createBookingForm').removeClass('cb-locked');
+                $('#cbEditLink').addClass('d-none');
+                // Reset submit button and clear any config warnings from previous open
+                $('#submitCreateBookingBtn').prop('disabled', false);
+                $('.cb-config-warning').remove();
+            }
+
+            function setDropdownLoading(selector) {
+                $(selector).empty().append('<option value="" disabled selected>Loading...</option>');
+            }
+
+            // ============================================
+            // PLACE OF RECEIPT / DELIVERY — AUTOCOMPLETE
+            // ============================================
+            function setupLocationAutocomplete(inputId, codeId, idHiddenId) {
+                var debounceTimer = null;
+
+                $('#' + inputId).on('input', function() {
+                    var query = $(this).val().trim();
+                    clearTimeout(debounceTimer);
+                    removeSuggestions(inputId);
+                    if (query.length < 2) return;
+
+                    debounceTimer = setTimeout(function() {
+                        $.get('{{ route('quotation.booking.locations') }}', {
+                                filter: query,
+                                include_country: $('#cb_include_country').is(':checked') ? 1 : 0
+                            })
+                            .done(function(res) {
+                                removeSuggestions(inputId);
+                                if (!res.success || !res.locations || !res.locations.length)
+                                    return;
+
+                                var $input = $('#' + inputId);
+                                var $list = $('<ul>', {
+                                    class: 'location-suggestions list-group',
+                                    css: {
+                                        position: 'absolute',
+                                        zIndex: 9999,
+                                        width: $input.outerWidth(),
+                                        maxHeight: '200px',
+                                        overflowY: 'auto',
+                                        border: '1px solid #ced4da',
+                                        borderRadius: '0 0 4px 4px',
+                                        boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
+                                        background: '#fff',
+                                        marginTop: '-1px'
+                                    }
+                                });
+
+                                $.each(res.locations, function(i, loc) {
+                                    $('<li>', {
+                                            class: 'list-group-item list-group-item-action',
+                                            css: {
+                                                cursor: 'pointer',
+                                                padding: '0.4rem 0.75rem',
+                                                fontSize: '0.875rem'
+                                            },
+                                            text: loc.LocationName + (loc
+                                                .LocationType ? ' (' + loc
+                                                .LocationType + ')' : '')
+                                        })
+                                        .on('mousedown', function(e) {
+                                            e.preventDefault();
+                                            $('#' + inputId).val(loc.LocationName +
+                                                (loc.LocationType ? ' (' + loc
+                                                    .LocationType + ')' : ''));
+                                            $('#' + codeId).val(loc.LocationCode);
+                                            $('#' + idHiddenId).val(loc.LocationID);
+                                            removeSuggestions(inputId);
+                                        })
+                                        .appendTo($list);
+                                });
+
+                                $input.closest('.form-group').css('position', 'relative')
+                                    .append($list);
+                            })
+                            .fail(function(xhr) {
+                                console.error('Location search failed:', xhr);
+                            });
+                    }, 300);
+                });
+
+                $('#' + inputId).on('blur', function() {
+                    setTimeout(function() {
+                        removeSuggestions(inputId);
+                    }, 200);
+                });
+            }
+
+            function removeSuggestions(inputId) {
+                $('#' + inputId).closest('.form-group').find('.location-suggestions').remove();
+            }
+
+            setupLocationAutocomplete('cb_place_of_receipt', 'cb_place_of_receipt_code', 'cb_place_of_receipt_id');
+            setupLocationAutocomplete('cb_place_of_delivery', 'cb_place_of_delivery_code',
+                'cb_place_of_delivery_id');
+
+            // ── Clear location fields when include_country is toggled ────────────────
+            // SP re-validates the code against country when CountryIncluded = 1.
+            // A previously selected location may fail the new validation silently,
+            // so we clear both fields to force the user to re-select.
+            $('#cb_include_country').on('change', function() {
+                $('#cb_place_of_receipt, #cb_place_of_delivery').val('');
+                $('#cb_place_of_receipt_code, #cb_place_of_receipt_id').val('');
+                $('#cb_place_of_delivery_code, #cb_place_of_delivery_id').val('');
+                removeSuggestions('cb_place_of_receipt');
+                removeSuggestions('cb_place_of_delivery');
+            });
+
+            // ============================================
+            // STEP LABELS FOR PROGRESS VIEW
+            // ============================================
+            var BOOKING_STEPS = [{
+                    step: 0,
+                    label: 'Save Booking Info'
+                },
+                {
+                    step: 1,
+                    label: 'Client Creation'
+                },
+                {
+                    step: 2,
+                    label: 'Booking XML'
+                },
+                {
+                    step: 3,
+                    label: 'Charge Transfer'
+                },
+                {
+                    step: 4,
+                    label: 'Document Transfer'
+                },
+            ];
+
+            function renderBookingSteps(completedSteps) {
+                var $list = $('#cbStepList').empty();
+                BOOKING_STEPS.forEach(function(def) {
+                    var completed = completedSteps.find(function(s) {
+                        return s.step === def.step;
+                    });
+                    var iconClass, badgeClass, statusText, remarkHtml = '';
+
+                    if (!completed) {
+                        iconClass = 'fas fa-circle text-secondary';
+                        badgeClass = 'badge-secondary';
+                        statusText = 'Pending';
+                    } else if (completed.status === 'Success') {
+                        iconClass = 'fas fa-check-circle text-success';
+                        badgeClass = 'badge-success';
+                        statusText = 'Success';
+                        if (completed.remark) remarkHtml = '<small class="text-muted d-block mt-1">' +
+                            completed.remark + '</small>';
+                    } else if (completed.status === 'Skipped') {
+                        iconClass = 'fas fa-minus-circle text-secondary';
+                        badgeClass = 'badge-secondary';
+                        statusText = 'Skipped';
+                    } else {
+                        iconClass = 'fas fa-times-circle text-danger';
+                        badgeClass = 'badge-danger';
+                        statusText = 'Failed';
+                        if (completed.remark) remarkHtml = '<small class="text-danger d-block mt-1">' +
+                            completed.remark + '</small>';
+                    }
+
+                    $list.append(
+                        '<div class="list-group-item py-2">' +
+                        '<div class="d-flex align-items-center justify-content-between">' +
+                        '<div><i class="' + iconClass + ' mr-2"></i><strong>Step ' + def.step +
+                        ':</strong> ' + def.label + remarkHtml + '</div>' +
+                        '<span class="badge ' + badgeClass + '">' + statusText + '</span>' +
+                        '</div></div>'
+                    );
+                });
+            }
+
+            // ============================================
+            // SUBMIT CREATE BOOKING → FULL PIPELINE
+            // ============================================
+            $('#submitCreateBookingBtn').on('click', function() {
+                var quotationId = $('#createBookingModal').data('quotation-id');
+                var bookingNo = $('#createBookingModal').data('booking-no');
+                var serviceTemplate = $('#cb_service_template').val();
+                var billToParty = $('#cb_bill_to_party').val();
+                var forwarder = $('#cb_forwarder').val();
+                var placeOfReceipt = $('#cb_place_of_receipt_code').val();
+                var placeOfDelivery = $('#cb_place_of_delivery_code').val();
+
+                var errors = [];
+                if (!serviceTemplate) errors.push('Service Template');
+                if (!billToParty) errors.push('Bill To Party');
+                if (!forwarder) errors.push('Forwarder');
+                if (!placeOfReceipt) errors.push('Place of Receipt');
+                if (!placeOfDelivery) errors.push('Place of Delivery');
+
+                if (errors.length) {
+                    alert('Please complete the following required fields:\n• ' + errors.join('\n• '));
+                    return;
+                }
+
+                $('#createBookingForm').addClass('d-none');
+                $('#cbProgressPanel').removeClass('d-none');
+                $('#submitCreateBookingBtn, #cancelCreateBookingBtn').addClass('d-none');
+                $('#cbEditLink').addClass('d-none');
+                $('#cbProgressError, #cbProgressSuccess').addClass('d-none');
+                renderBookingSteps([]);
+
+                $.ajax({
+                    url: '{{ route('quotation.process-booking') }}',
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        id: quotationId,
+                        booking_no: bookingNo,
+                        service_template: serviceTemplate,
+                        bill_to_party: billToParty,
+                        forwarder: forwarder,
+                        include_country: $('#cb_include_country').is(':checked') ? 1 : 0,
+                        place_of_receipt: placeOfReceipt,
+                        place_of_delivery: placeOfDelivery,
+                    },
+                    success: function(res) {
+                        renderBookingSteps(res.steps || []);
+                        // ✅ FIX — display the SCM booking number in the success panel
+                        if (res.success) {
+                            var msg = '<i class="fas fa-check-circle mr-2"></i>' +
+                                'All steps completed. Booking has been created in SCM.';
+
+                            if (res.scm_booking_no) {
+                                msg += '<br><strong class="mt-2 d-block">SCM Booking No: ' +
+                                    res.scm_booking_no + '</strong>';
+                            }
+                            if (res.scm_booking_id) {
+                                msg += '<strong>SCM Booking ID: ' + res.scm_booking_id +
+                                    '</strong>';
+                            }
+
+                            $('#cbProgressSuccess').html(msg).removeClass('d-none');
+                            table.ajax.reload(null, false);
+                            updateCardStats();
+                        } else {
+                            var failedStep = (res.steps || []).find(function(s) {
+                                return s.status === 'Failed';
+                            });
+                            $('#cbProgressError')
+                                .html('<strong>' + (res.failed_label || 'Step') +
+                                    ' failed:</strong> ' +
+                                    (failedStep ? failedStep.remark : 'Unknown error'))
+                                .removeClass('d-none');
+                            table.ajax.reload(null, false);
+                            updateCardStats();
+                        }
+                    },
+                    error: function(xhr) {
+                        var msg = xhr.responseJSON?.message || 'An unexpected error occurred.';
+                        $('#cbProgressError').text(msg).removeClass('d-none');
+                        if (xhr.responseJSON?.steps) renderBookingSteps(xhr.responseJSON.steps);
+                    },
+                    complete: function() {
+                        $('#cbCloseBtn').removeClass('d-none');
+                    }
+                });
+            });
+
+            // ============================================
+            // STATS UPDATE (debounced)
+            // ============================================
+            function updateCardStats() {
+                if (statsUpdateTimer) clearTimeout(statsUpdateTimer);
+
+                statsUpdateTimer = setTimeout(function() {
+                    $.ajax({
+                        url: '{{ route('quotation.stats') }}',
+                        type: 'GET',
+                        data: {
+                            days: $('#dateFilter').val(),
+                            start_date: $('#startDate').val(),
+                            end_date: $('#endDate').val(),
+                            office: $('#officeFilter').val()
+                        },
+                        beforeSend: function() {
+                            $('.compact-card .inner h3').css('opacity', '0.5');
+                        },
+                        success: function(response) {
+                            animateValue('stat-total', parseInt($('#stat-total').text()) || 0,
+                                response.total, 500);
+                            animateValue('stat-in-progress', parseInt($('#stat-in-progress')
+                                .text()) || 0, response.in_progress, 500);
+                            animateValue('stat-won', parseInt($('#stat-won').text()) || 0,
+                                response.won, 500);
+                            animateValue('stat-completed', parseInt($('#stat-completed')
+                                .text()) || 0, response.completed, 500);
+                            animateValue('stat-lost-canceled', parseInt($('#stat-lost-canceled')
+                                .text()) || 0, response.lost_canceled, 500);
+                            animateValue('stat-failed-progress', parseInt($(
+                                    '#stat-failed-progress').text()) || 0, response
+                                .failed_progress, 500);
+                            animateValue('stat-failed-int', parseInt($('#stat-failed-int')
+                                .text()) || 0, response.failed_int, 500);
+                        },
+                        error: function() {
+                            $('.compact-card .inner h3').css('opacity', '1');
+                        },
+                        complete: function() {
+                            $('.compact-card .inner h3').css('opacity', '1');
+                        }
+                    });
+                }, 300);
+            }
+
+            // ============================================
+            // CRM SYNC HISTORY
+            // ============================================
+            function loadCrmHistory() {
+                $('#crmHistoryContainer').html(
+                    '<div class="text-muted small text-center py-2">' +
+                    '<i class="fas fa-spinner fa-spin mr-1"></i> Loading history...</div>'
+                );
+                $('#crmHistoryMeta').text('');
+
+                $.ajax({
+                    url: '{{ route('crm.sync.history') }}',
+                    type: 'GET',
+                    success: function(res) {
+                        var history = res.history || [];
+
+                        if (!history.length) {
+                            $('#crmHistoryContainer').html(
+                                '<p class="text-muted small mb-0 text-center py-2">' +
+                                '<i class="fas fa-info-circle mr-1"></i> No sync runs recorded yet.</p>'
+                            );
+                            return;
+                        }
+
+                        $('#crmHistoryMeta').text('Last ' + history.length + ' run(s)');
+
+                        var rows = history.map(function(h) {
+                            var scopeTag = h.booking_no ?
+                                '<span class="badge badge-secondary ml-1">Booking #' +
+                                escapeHtml(String(h.booking_no)) + '</span>' :
+                                (h.limit ?
+                                    '<span class="badge badge-secondary ml-1">Limit ' + h
+                                    .limit + '</span>' :
+                                    '');
+
+                            var failBadge = h.failed > 0 ?
+                                ' <span class="badge badge-danger">' + h.failed +
+                                ' failed</span>' :
+                                '';
+
+                            return '<tr>' +
+                                '<td class="text-nowrap">' + escapeHtml(h.run_at) + '</td>' +
+                                '<td>' + escapeHtml(h.triggered_by || '-') + '</td>' +
+                                '<td class="text-center">' + h.total + scopeTag + '</td>' +
+                                '<td class="text-center text-success font-weight-bold">' + h
+                                .inserted + '</td>' +
+                                '<td class="text-center text-info font-weight-bold">' + h
+                                .updated + '</td>' +
+                                '<td class="text-center">' + h.skipped + '</td>' +
+                                '<td class="text-center">' + h.failed + failBadge + '</td>' +
+                                '</tr>';
+                        }).join('');
+
+                        $('#crmHistoryContainer').html(
+                            '<div style="max-height:220px;overflow-y:auto;">' +
+                            '<table class="table table-sm table-bordered table-striped mb-0"' +
+                            ' style="font-size:0.8rem;">' +
+                            '<thead class="thead-light"><tr>' +
+                            '<th>Run At</th>' +
+                            '<th>By</th>' +
+                            '<th class="text-center">Total</th>' +
+                            '<th class="text-center">Ins.</th>' +
+                            '<th class="text-center">Upd.</th>' +
+                            '<th class="text-center">Skip</th>' +
+                            '<th class="text-center">Fail</th>' +
+                            '</tr></thead>' +
+                            '<tbody>' + rows + '</tbody>' +
+                            '</table></div>'
+                        );
+                    },
+                    error: function() {
+                        $('#crmHistoryContainer').html(
+                            '<p class="text-danger small mb-0">' +
+                            '<i class="fas fa-exclamation-circle mr-1"></i> Failed to load history.</p>'
+                        );
+                    }
+                });
+            }
+
+            function escapeHtml(str) {
+                if (!str) return '-';
+                return String(str)
+                    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            }
+
+            function animateValue(id, start, end, duration) {
+                var element = document.getElementById(id);
+                if (!element) return;
+                start = parseInt(start) || 0;
+                end = parseInt(end) || 0;
+                var range = end - start;
+                if (range === 0 || Math.abs(range) > 100) {
+                    element.textContent = end;
+                    return;
+                }
+                var current = start;
+                var increment = end > start ? 1 : -1;
+                var stepTime = Math.abs(Math.floor(duration / range));
+                if (!isFinite(stepTime) || stepTime > 100 || stepTime < 1) {
+                    element.textContent = end;
+                    return;
+                }
+                var timer = setInterval(function() {
+                    current += increment;
+                    element.textContent = current;
+                    if (current === end) clearInterval(timer);
+                }, stepTime);
+            }
+
+            // ============================================
+            // CARD CLICK FILTERING
+            // ============================================
+            var touchMoved = false;
+            $('.card-filter-trigger').on('touchstart', function() {
+                touchMoved = false;
+            });
+            $('.card-filter-trigger').on('touchmove', function() {
+                touchMoved = true;
+            });
+            $('.card-filter-trigger').on('click touchend', function(e) {
+                if (e.type === 'touchend' && touchMoved) return;
+                if (e.type === 'touchend') e.preventDefault();
+                var filterType = $(this).data('filter');
+                if (!filterType) return;
+                $('.card-filter-trigger').removeClass('active');
+                $(this).addClass('active');
+                currentCardFilter = filterType;
+                updateCardStats();
+                table.ajax.reload();
+            });
+
+            // ============================================
+            // CLEAR BUTTON VISIBILITY
+            // ============================================
+            function updateClearButtonVisibility() {
+                var dateFilter = $('#dateFilter').val();
+                var officeFilter = $('#officeFilter').val();
+                var defaultOffice = '{{ $defaultOffice ?? '' }}';
+                if (dateFilter === 'custom') {
+                    $('#clearFiltersContainer').hide();
+                    return;
+                }
+                if (dateFilter !== 'all' || officeFilter !== defaultOffice) {
+                    $('#clearFiltersContainer').show();
+                } else {
+                    $('#clearFiltersContainer').hide();
+                }
+            }
+
+            // ============================================
+            // DATE FILTER
+            // ============================================
+            $('#dateFilter').on('change', function() {
+                var selectedValue = $(this).val();
+                if (selectedValue === 'custom') {
+                    $('#customDateRange, #customDateRangeTo').show();
+                    updateClearButtonVisibility();
+                } else {
+                    $('#customDateRange, #customDateRangeTo').hide();
+                    $('#startDate, #endDate').val('');
+                    updateCardStats();
+                    table.ajax.reload();
+                    updateClearButtonVisibility();
+                }
+            });
+
+            $('#startDate, #endDate').on('change', function() {
+                if ($('#startDate').val() && $('#endDate').val()) {
+                    if (new Date($('#endDate').val()) < new Date($('#startDate').val())) {
+                        alert('End date must be after start date');
+                        $('#endDate').val('');
+                        return;
+                    }
+                    updateCardStats();
+                    table.ajax.reload();
+                    updateClearButtonVisibility();
+                }
+            });
+
+            $('#clearCustomDates').on('click', function() {
+                $('#startDate, #endDate').val('');
+                $('#customDateRange, #customDateRangeTo').hide();
+                $('#dateFilter').val('all');
+                updateCardStats();
+                table.ajax.reload();
+            });
+
+            // ============================================
+            // OFFICE FILTER
+            // ============================================
+            $('#officeFilter').on('change', function() {
                 updateCardStats();
                 table.ajax.reload();
                 updateClearButtonVisibility();
-            }
-        });
+            });
 
-        $('#clearCustomDates').on('click', function() {
-            $('#startDate, #endDate').val('');
-            $('#customDateRange, #customDateRangeTo').hide();
-            $('#dateFilter').val('all');
-            updateCardStats();
-            table.ajax.reload();
-        });
+            // ============================================
+            // CLEAR ALL FILTERS
+            // ============================================
+            $('#clearAllFilters').on('click', function() {
+                $('#dateFilter').val('all');
+                $('#startDate, #endDate').val('');
+                $('#customDateRange, #customDateRangeTo').hide();
+                $('#officeFilter').val('{{ $defaultOffice ?? '' }}');
+                $('.card-filter-trigger').removeClass('active');
+                $('.card-filter-trigger[data-filter="in_progress"]').addClass('active');
+                currentCardFilter = 'in_progress';
+                updateCardStats();
+                table.ajax.reload();
+                updateClearButtonVisibility();
+            });
 
-        // ============================================
-        // OFFICE FILTER
-        // ============================================
-        $('#officeFilter').on('change', function() {
-            updateCardStats();
-            table.ajax.reload();
-            updateClearButtonVisibility();
-        });
+            // ============================================
+            // CRM SYNC MODAL
+            // ============================================
+            $('#btnOpenCrmSync').on('click', function() {
+                $('#crmSyncResult').html('');
+                $('#crmSyncProgress').addClass('d-none');
+                $('#crmDryRun').prop('checked', false);
+                $('#crmLimit, #crmBooking').val('');
+                $('#crmSyncModal').modal('show');
+                loadCrmHistory();
+            });
 
-        // ============================================
-        // CLEAR ALL FILTERS
-        // ============================================
-        $('#clearAllFilters').on('click', function() {
-            $('#dateFilter').val('all');
-            $('#startDate, #endDate').val('');
-            $('#customDateRange, #customDateRangeTo').hide();
-            $('#officeFilter').val('{{ $defaultOffice ?? '' }}');
-            $('.card-filter-trigger').removeClass('active');
-            $('.card-filter-trigger[data-filter="in_progress"]').addClass('active');
-            currentCardFilter = 'in_progress';
-            updateCardStats();
-            table.ajax.reload();
-            updateClearButtonVisibility();
-        });
+            // CRM Sync modal — explicit close handlers
+            $(document).on('click', '#crmSyncModal .close', function(e) {
+                e.preventDefault();
+                $('#crmSyncModal').modal('hide');
+            });
+            $(document).on('click', '#crmSyncModal .modal-footer .btn-secondary', function(e) {
+                e.preventDefault();
+                $('#crmSyncModal').modal('hide');
+            });
 
-        // ============================================
-        // CRM SYNC MODAL
-        // ============================================
-        $('#btnOpenCrmSync').on('click', function() {
-            $('#crmSyncResult').html('');
-            $('#crmSyncProgress').addClass('d-none');
-            $('#crmDryRun').prop('checked', false);
-            $('#crmLimit, #crmBooking').val('');
-            $('#crmSyncModal').modal('show');
-            loadCrmHistory();
-        });
+            // Report modal — explicit close handlers
+            // data-dismiss="modal" handles these natively in Bootstrap 4,
+            // but we add explicit handlers as a fallback in case z-index
+            // or event bubbling interferes.
+            $(document).on('click', '#quotationReportModal .close', function(e) {
+                e.preventDefault();
+                $('#quotationReportModal').modal('hide');
+            });
+            $(document).on('click', '#quotationReportModal .modal-footer .btn-secondary', function(e) {
+                e.preventDefault();
+                $('#quotationReportModal').modal('hide');
+            });
 
-        // CRM Sync modal — explicit close handlers
-        $(document).on('click', '#crmSyncModal .close', function(e) {
-            e.preventDefault();
-            $('#crmSyncModal').modal('hide');
-        });
-        $(document).on('click', '#crmSyncModal .modal-footer .btn-secondary', function(e) {
-            e.preventDefault();
-            $('#crmSyncModal').modal('hide');
-        });
+            // ============================================
+            // CRM SYNC — RUN
+            // ============================================
+            $('#btnRunCrmSync').on('click', function() {
+                var btn = $(this);
+                var dryRun = $('#crmDryRun').is(':checked') ? 1 : 0;
+                var limit = $('#crmLimit').val().trim();
+                var booking = $('#crmBooking').val().trim();
 
-        // Report modal — explicit close handlers
-        // data-dismiss="modal" handles these natively in Bootstrap 4,
-        // but we add explicit handlers as a fallback in case z-index
-        // or event bubbling interferes.
-        $(document).on('click', '#quotationReportModal .close', function(e) {
-            e.preventDefault();
-            $('#quotationReportModal').modal('hide');
-        });
-        $(document).on('click', '#quotationReportModal .modal-footer .btn-secondary', function(e) {
-            e.preventDefault();
-            $('#quotationReportModal').modal('hide');
-        });
+                btn.prop('disabled', true);
+                $('#crmSyncProgress').removeClass('d-none');
+                $('#crmSyncResult').html('');
 
-        // ============================================
-        // CRM SYNC — RUN
-        // ============================================
-        $('#btnRunCrmSync').on('click', function() {
-            var btn = $(this);
-            var dryRun = $('#crmDryRun').is(':checked') ? 1 : 0;
-            var limit = $('#crmLimit').val().trim();
-            var booking = $('#crmBooking').val().trim();
+                $.ajax({
+                    url: '{{ route('crm.sync.run') }}',
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        dry_run: dryRun,
+                        limit: limit || null,
+                        booking: booking || null,
+                    },
+                    success: function(res) {
+                        var s = res.summary;
+                        var dryTag = res.dry_run ?
+                            '<span class="badge badge-warning ml-2">DRY RUN</span>' : '';
+                        var alertClass = res.success ? 'alert-success' : 'alert-danger';
+                        var icon = res.success ? 'check-circle' : 'times-circle';
 
-            btn.prop('disabled', true);
-            $('#crmSyncProgress').removeClass('d-none');
-            $('#crmSyncResult').html('');
-
-            $.ajax({
-                url: '{{ route('crm.sync.run') }}',
-                type: 'POST',
-                data: {
-                    _token: '{{ csrf_token() }}',
-                    dry_run: dryRun,
-                    limit: limit || null,
-                    booking: booking || null,
-                },
-                success: function(res) {
-                    var s = res.summary;
-                    var dryTag = res.dry_run ?
-                        '<span class="badge badge-warning ml-2">DRY RUN</span>' : '';
-                    var alertClass = res.success ? 'alert-success' : 'alert-danger';
-                    var icon = res.success ? 'check-circle' : 'times-circle';
-
-                    var html = `
+                        var html = `
                 <div class="alert ${alertClass} mb-3">
                     <i class="fas fa-${icon} mr-2"></i>
                     <strong>Sync ${res.success ? 'completed' : 'completed with failures'}</strong>${dryTag}
@@ -1901,37 +1901,37 @@ url: '{{ route('quotation.data.sp') }}',
                     </tbody>
                 </table>`;
 
-                    if (res.errors && res.errors.length) {
-                        html +=
-                            '<h6 class="text-danger mt-3">Errors</h6><ul class="list-group">';
-                        res.errors.forEach(function(e) {
-                            html += `<li class="list-group-item list-group-item-danger">
+                        if (res.errors && res.errors.length) {
+                            html +=
+                                '<h6 class="text-danger mt-3">Errors</h6><ul class="list-group">';
+                            res.errors.forEach(function(e) {
+                                html += `<li class="list-group-item list-group-item-danger">
                         <strong>Booking #${e.bookingno ?? '-'}</strong>: ${e.error}
                     </li>`;
-                        });
-                        html += '</ul>';
-                    }
+                            });
+                            html += '</ul>';
+                        }
 
-                    if (!res.dry_run && (s.inserted > 0 || s.updated > 0)) {
-                        table.ajax.reload(null, false);
-                        updateCardStats();
-                    }
+                        if (!res.dry_run && (s.inserted > 0 || s.updated > 0)) {
+                            table.ajax.reload(null, false);
+                            updateCardStats();
+                        }
 
-                    $('#crmSyncResult').html(html);
-                    if (!res.dry_run) loadCrmHistory();
-                },
-                error: function(xhr) {
-                    $('#crmSyncResult').html(
-                        '<div class="alert alert-danger">Request failed: ' +
-                        (xhr.responseJSON?.message || xhr.statusText) + '</div>'
-                    );
-                },
-                complete: function() {
-                    btn.prop('disabled', false);
-                    $('#crmSyncProgress').addClass('d-none');
-                }
-            });
-        }); // ← CRM Sync click handler closes HERE — correctly
+                        $('#crmSyncResult').html(html);
+                        if (!res.dry_run) loadCrmHistory();
+                    },
+                    error: function(xhr) {
+                        $('#crmSyncResult').html(
+                            '<div class="alert alert-danger">Request failed: ' +
+                            (xhr.responseJSON?.message || xhr.statusText) + '</div>'
+                        );
+                    },
+                    complete: function() {
+                        btn.prop('disabled', false);
+                        $('#crmSyncProgress').addClass('d-none');
+                    }
+                });
+            }); // ← CRM Sync click handler closes HERE — correctly
 
         }); // end document.ready
     </script>

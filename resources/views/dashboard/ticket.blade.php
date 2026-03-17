@@ -533,52 +533,31 @@
             @endif
 
             <!-- Quote Integration -->
-            @if (Auth::user()->can('approve-all-entity-request'))
+            @if ($canViewQuotationCard)
                 <div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-3">
                     <a href="{{ route('quotation.index') }}" style="text-decoration: none; color: inherit;">
-                        <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card scm-profit-card"
-                            style="cursor: pointer;">
+                        <div class="card card-widget widget-user shadow service-card scm-profit-card">
                             <div class="widget-user-header bg-info">
                                 <h3 class="widget-user-username">Quote INTEGRATION</h3>
                                 <h5 class="widget-user-desc">Integration Status</h5>
                             </div>
-                            <div class="widget-user-image">
-                                <img src="{{ asset('img/supply-chain-management.png') }}" alt="SCM Profit Integration"
-                                    class="img-circle elevation-2">
-                            </div>
                             <div class="card-footer">
                                 <div class="row">
                                     <div class="col-3 border-right">
-                                        <div class="description-block">
-                                            <h5 class="description-header text-primary">
-                                                {{ $quotation_stats['total'] ?? 0 }}
-                                            </h5>
-                                            <span class="description-text">Total</span>
-                                        </div>
+                                        <h5 class="text-primary">{{ $quotation_stats['total'] ?? 0 }}</h5>
+                                        <span>Total</span>
                                     </div>
                                     <div class="col-3 border-right">
-                                        <div class="description-block">
-                                            <h5 class="description-header text-warning">
-                                                {{ $quotation_stats['pending'] ?? 0 }}
-                                            </h5>
-                                            <span class="description-text">Pending</span>
-                                        </div>
+                                        <h5 class="text-warning">{{ $quotation_stats['pending'] ?? 0 }}</h5>
+                                        <span>Pending</span>
                                     </div>
                                     <div class="col-3 border-right">
-                                        <div class="description-block">
-                                            <h5 class="description-header text-success">
-                                                {{ $quotation_stats['success'] ?? 0 }}
-                                            </h5>
-                                            <span class="description-text">Success</span>
-                                        </div>
+                                        <h5 class="text-success">{{ $quotation_stats['success'] ?? 0 }}</h5>
+                                        <span>Success</span>
                                     </div>
                                     <div class="col-3">
-                                        <div class="description-block">
-                                            <h5 class="description-header text-danger">
-                                                {{ $quotation_stats['failed'] ?? 0 }}
-                                            </h5>
-                                            <span class="description-text">Failed</span>
-                                        </div>
+                                        <h5 class="text-danger">{{ $quotation_stats['failed'] ?? 0 }}</h5>
+                                        <span>Failed</span>
                                     </div>
                                 </div>
                             </div>

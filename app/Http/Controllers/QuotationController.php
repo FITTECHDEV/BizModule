@@ -1174,19 +1174,19 @@ class QuotationController extends Controller
                         ($cardFilter === 'failed_int' && $isFailedInt)
                     ) {
                         $createBookingBtn = ' <button class="btn btn-success btn-sm btn-create-booking"
-            data-id="'      . $row->ID       . '"
-            data-booking="' . $row->bookingno . '"
-            data-team="'    . $row->teamid    . '"
-            data-quoteno="' . $row->QuoteNo   . '"
-            title="Create Booking"><i class="fas fa-plus-circle"></i></button>';
+                            data-id="'      . $row->ID       . '"
+                            data-booking="' . $row->bookingno . '"
+                            data-team="'    . $row->teamid    . '"
+                            data-quoteno="' . $row->QuoteNo   . '"
+                            title="Create Booking"><i class="fas fa-plus-circle"></i></button>';
                     }
 
                     // Retrigger button — only for Failed Int. rows
                     $retriggerBtn = '';
                     if ($cardFilter === 'failed_int' && $isFailedInt) {
                         $retriggerBtn = ' <button class="btn btn-secondary btn-sm btn-retrigger"
-            data-booking="' . $row->bookingno . '"
-            title="Retrigger"><i class="fas fa-sync-alt"></i></button>';
+                        data-booking="' . $row->bookingno . '"
+                        title="Retrigger"><i class="fas fa-sync-alt"></i></button>';
                     }
 
                     return $viewBtn . $editBtn . $createBookingBtn . $retriggerBtn;
@@ -1653,7 +1653,7 @@ class QuotationController extends Controller
             'exChangeRate'  => (float) ($row->BaseExchRate    ?? 1),
             'chgCurr'       => $row->EstChargeCurrCode ?? 'KES',
             'basedOnCode'   => '',  // not in list SP — fetched on edit
-            'basedOnUOM'    => $row->UOMCode           ?? '',
+            'basedOnAndUOM' => $row->BasedOnAndUOM     ?? '',
             'chargeRemark'  => '',  // not in list SP — fetched on edit
             'partyCode'     => '',  // not in list SP — fetched on edit
             'revenueOrCost' => $isRevenue ? 'Revenue' : 'Cost',
@@ -1752,7 +1752,7 @@ class QuotationController extends Controller
                 'exChangeRate'  => (float) ($spRow->BaseExchRate     ?? 1),
                 'chgCurr'       => $spRow->EstChargeCurrCode ?? 'KES',
                 'basedOnCode'   => $supplement->BasedOnCode  ?? '',
-                'basedOnUOM'    => $spRow->UOMCode           ?? '',
+                'basedOnAndUOM' => $spRow->BasedOnAndUOM     ?? '',
                 'chargeRemark'  => $supplement->ChargeRemark ?? '',
                 'partyCode'     => $supplement->PartyCode    ?? '',
                 'revenueOrCost' => $isRevenue ? 'Revenue' : 'Cost',

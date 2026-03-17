@@ -46,7 +46,7 @@ class HomeController extends Controller
             $tims_stats = new KRABillingHeader();
             $tims_stats = $tims_stats->timsStats();
 
-            // Azure User Statistics with error handling
+            // Azure User Statistics
             try {
                 $azureStats = Cache::remember('azure_user_stats', 300, function () {
                     return [
@@ -87,7 +87,7 @@ class HomeController extends Controller
                 $rra_stats = [];
             }
 
-            // Get Login Tracker Statistics
+            // Login Tracker Stats
             try {
                 $loginTrackerStats = $this->getLoginTrackerStats();
             } catch (\Exception $e) {
@@ -100,7 +100,7 @@ class HomeController extends Controller
                 ];
             }
 
-            // Get GPS Tracker Statistics
+            // GPS Tracker Stats
             try {
                 $tracker_stats = $this->getTrackerStats();
             } catch (\Exception $e) {
@@ -120,15 +120,16 @@ class HomeController extends Controller
 
             $shipment_reports_stats = ShipmentReportController::getHomeStats();
 
-            // Add SCM Profit Integration stats
+            // SCM Profit Stats
             $scm_profit_stats_obj = DB::table('CRM_SCMprofit_integration')
                 ->whereNotNull('clientid')
-                ->whereRaw("CAST(createdon as date) = CAST(GETDATE() as date)")->selectRaw("
-                    COUNT(*) as total,
-                        SUM(CASE WHEN LEN(ISNULL(SCMINTStatus,'')) <= 0 THEN 1 ELSE 0 END) as pending,
-                        SUM(CASE WHEN CHARINDEX('success', LOWER(SCMINTStatus), 1) > 0 THEN 1 ELSE 0 END) as success,
-                        SUM(CASE WHEN LEN(ISNULL(SCMINTStatus,'')) > 0 AND CHARINDEX('success', LOWER(SCMINTStatus), 1) = 0 THEN 1 ELSE 0 END) as failed
-                ")
+                ->whereRaw("CAST(createdon as date) = CAST(GETDATE() as date)")
+                ->selectRaw("
+                COUNT(*) as total,
+                SUM(CASE WHEN LEN(ISNULL(SCMINTStatus,'')) <= 0 THEN 1 ELSE 0 END) as pending,
+                SUM(CASE WHEN CHARINDEX('success', LOWER(SCMINTStatus), 1) > 0 THEN 1 ELSE 0 END) as success,
+                SUM(CASE WHEN LEN(ISNULL(SCMINTStatus,'')) > 0 AND CHARINDEX('success', LOWER(SCMINTStatus), 1) = 0 THEN 1 ELSE 0 END) as failed
+            ")
                 ->first();
 
             $scm_profit_stats = [
@@ -138,7 +139,7 @@ class HomeController extends Controller
                 'failed' => $scm_profit_stats_obj->failed ?? 0,
             ];
 
-            // Add RA Integration metrics
+            // RA Integration metrics
             try {
                 $ra_metrics = \App\Http\Controllers\RAIntegrationController::getCardMetrics();
             } catch (\Exception $e) {
@@ -150,15 +151,34 @@ class HomeController extends Controller
                 ];
             }
 
+            // Quotation Card Permission
+            $azureUser = \App\Models\AzureUser::where('userPrincipalName', Auth::user()->Email)->first();
 
-            // LOG BEFORE RETURNING VIEW
-            \Log::info('About to return view with data', [
-                'ticketStatistics' => $ticketStatistics,
-                'efris_stats' => $efris_stats,
-                'traStatsTZ' => $traStatsTZ,
-                'azureStats' => $azureStats,
-                'tracker_stats' => $tracker_stats,
-            ]);
+            $roles = [];
+
+            if ($azureUser && !empty($azureUser->AzureId)) {
+                $roles = DB::table('Azure_Application_UserMapping')
+                    ->whereRaw('AzureUserID = CAST(? AS UNIQUEIDENTIFIER)', [$azureUser->AzureId])
+                    ->pluck('RoleCode')
+                    ->map(fn($r) => strtoupper(trim($r)))
+                    ->toArray();
+            } else {
+                \Log::warning('Azure user not resolved', [
+                    'auth_email' => Auth::user()->Email,
+                ]);
+            }
+
+            $canViewQuotationCard = in_array('QUOTATIONUSER', $roles);
+
+            // Quotation Stats
+            try {
+                $quotation_stats = $canViewQuotationCard
+                    ? ['total' => 0, 'pending' => 0, 'success' => 0, 'failed' => 0] // replace with real query later
+                    : ['total' => 0, 'pending' => 0, 'success' => 0, 'failed' => 0];
+            } catch (\Exception $e) {
+                \Log::error('Quotation Stats Error: ' . $e->getMessage());
+                $quotation_stats = ['total' => 0, 'pending' => 0, 'success' => 0, 'failed' => 0];
+            }
 
             return view(
                 'dashboard.ticket',
@@ -178,7 +198,9 @@ class HomeController extends Controller
                     'azureStats',
                     'shipment_reports_stats',
                     'scm_profit_stats',
-                    'ra_metrics'
+                    'ra_metrics',
+                    'canViewQuotationCard',
+                    'quotation_stats'
                 )
             );
         } catch (\Exception $e) {
