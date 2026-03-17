@@ -9,8 +9,8 @@ class QuotationInfo extends Model
     protected $table = 'Quote_QuotationInfo';
 
     protected $primaryKey = 'ID';
-    public $incrementing = false;        // ← ADD THIS
-    protected $keyType = 'string';       // ← ADD THIS
+    public $incrementing = false;
+    protected $keyType = 'string';
 
     public $timestamps = false;
 
@@ -28,15 +28,15 @@ class QuotationInfo extends Model
         'status',
         'userid',
         'username',
-        'useremail',         // keep if column exists for backwards compat
-        'SalesPersonEmail',  // ← ADD
-        'SalesPersonCode',   // ← ADD
+        'useremail',
+        'SalesPersonEmail',
+        'SalesPersonCode',
         'teamid',
         'teamname',
         'origincountry',
         'destinationcountry',
         'process',
-        'incoterm',          // ← was 'incoterms' (wrong)
+        'incoterm',
         'shipmentmode',
         'TransportMode',
         'ServiceClass',
@@ -44,19 +44,21 @@ class QuotationInfo extends Model
         'scopevolume',
         'cargovolume',
         'containerlist',
-        'CustomerType',      // ← ADD
-        'AgentType',         // ← ADD
-        'AgentTypeId',       // ← ADD
-        'OfficeCode',        // ← ADD
+        'CustomerType',
+        'AgentType',
+        'AgentTypeId',
+        'OfficeCode',
         'QuotationTCTemplate',
         'QuotationEmailTemplate',
-        'pri_partner_steet',   // ← was pri_partner_street (DB has typo)
-        'pri_partner_steet2',  // ← was pri_partner_street2 (DB has typo)
+        'contact_name',
+        'pri_partnermaster_name',
+        'pri_partner_industrytype',
+        'pri_partner_steet',
+        'pri_partner_steet2',
         'pri_partner_city',
-        'pri_partner_state',   // note: DB has partner_statename not pri_partner_state
+        'pri_partner_statename',
         'pri_partner_zip',
         'pri_partner_countryname',
-        'pri_partnername',     // note: DB has pri_partnermaster_name — verify this
         'pri_partner_phone',
         'pri_partner_email',
         'industryname',
@@ -66,4 +68,14 @@ class QuotationInfo extends Model
         'SCMINTStatus',
         'SCMBookingXML',
     ];
+
+    // ── Accessors ────────────────────────────────────────────────────────────
+    // Trim trailing/leading spaces from OfficeCode on every read.
+    // Root cause: Cust_Office.Code stores 'KE ' (with trailing space) and this
+    // gets written directly to Quote_QuotationInfo.OfficeCode without RTRIM.
+    // Fixing here ensures all consumers (blade, controller, SP calls) get clean value.
+    public function getOfficeCodeAttribute(?string $value): string
+    {
+        return trim($value ?? '');
+    }
 }
