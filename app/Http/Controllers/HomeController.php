@@ -134,26 +134,33 @@ class HomeController extends Controller
                 'failed' => $scm_profit_stats_obj->failed ?? 0,
             ];
 
-            try {
-                $quotation_stats_obj = DB::connection('sqlsrv')
-                    ->table('Quote_QuotationInfo')
-                    ->selectRaw("
-            COUNT(*) as total,
-            SUM(CASE WHEN QuoteStatus = 'In Progress' THEN 1 ELSE 0 END) as pending,
-            SUM(CASE WHEN QuoteStatus = 'Won' THEN 1 ELSE 0 END) as success,
-            SUM(CASE WHEN QuoteStatus = 'Failed Progress' THEN 1 ELSE 0 END) as failed
-        ")
-                    ->first();
+            // Quotation Card Permission
+            $azureUser = \App\Models\AzureUser::where('userPrincipalName', Auth::user()->Email)->first();
 
-                $quotation_stats = [
-                    'total'   => $quotation_stats_obj->total ?? 0,
-                    'pending' => $quotation_stats_obj->pending ?? 0,
-                    'success' => $quotation_stats_obj->success ?? 0,
-                    'failed'  => $quotation_stats_obj->failed ?? 0,
-                ];
+            $roles = [];
+
+            if ($azureUser && !empty($azureUser->AzureId)) {
+                $roles = DB::table('Azure_Application_UserMapping')
+                    ->whereRaw('AzureUserID = CAST(? AS UNIQUEIDENTIFIER)', [$azureUser->AzureId])
+                    ->pluck('RoleCode')
+                    ->map(fn($r) => strtoupper(trim($r)))
+                    ->toArray();
+            } else {
+                \Log::warning('Azure user not resolved', [
+                    'auth_email' => Auth::user()->Email,
+                ]);
+            }
+
+            $canViewQuotationCard = in_array('QUOTATIONUSER', $roles);
+
+            // Quotation Stats
+            try {
+                $quotation_stats = $canViewQuotationCard
+                    ? \App\Http\Controllers\QuotationController::getHomeStats()
+                    : ['total' => 0, 'in_progress' => 0, 'failed_int' => 0, 'failed_progress' => 0];
             } catch (\Exception $e) {
                 \Log::error('Quotation Stats Error: ' . $e->getMessage());
-                $quotation_stats = ['total' => 0, 'pending' => 0, 'success' => 0, 'failed' => 0];
+                $quotation_stats = ['total' => 0, 'in_progress' => 0, 'failed_int' => 0, 'failed_progress' => 0];
             }
 
             return view(
@@ -175,6 +182,7 @@ class HomeController extends Controller
                     'azureStats',
                     'shipment_reports_stats',
                     'scm_profit_stats',
+                    'canViewQuotationCard',
                     'quotation_stats'
                 )
             );

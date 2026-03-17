@@ -4316,7 +4316,8 @@
                 companyId: $('#companyId').val(),
                 companyCode: $('#companyCode').val(),
                 requestType: new URLSearchParams(window.location.search).get('type')
-            });biz
+            });
+            biz
         };
     </script>
 
