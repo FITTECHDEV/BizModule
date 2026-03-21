@@ -982,14 +982,12 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
 // ============================================================================
 // QUOTATION INTEGRATION ROUTES
 // ============================================================================
-Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function () {
+Route::middleware(['auth', 'can:view-quotation'])->group(function () {
 
     Route::get('/quotation', [App\Http\Controllers\QuotationController::class, 'index'])
         ->name('quotation.index');
     Route::get('/quotation/data', [App\Http\Controllers\QuotationController::class, 'data'])
         ->name('quotation.data');
-    Route::get('/quotation/stats', [App\Http\Controllers\QuotationController::class, 'stats'])
-        ->name('quotation.stats');
 
     // ============================================
     // STATIC LOOKUP ROUTES — all must be above any {id} wildcard
@@ -1032,7 +1030,8 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
         ->name('quotation.containers');
     Route::get('/quotation/report-data', [App\Http\Controllers\QuotationController::class, 'reportData'])
         ->name('quotation.report-data');
-
+    Route::get('/quotation/debug-lookups', [App\Http\Controllers\QuotationController::class, 'debugLookups']);
+    Route::get('/quotation/debug-countries', [App\Http\Controllers\QuotationController::class, 'debugLookupCountries']);
 
     // ✅ MOVED UP — were incorrectly placed after {id} wildcards
     Route::get('/quotation/inco-terms', [App\Http\Controllers\QuotationController::class, 'getIncoTerms'])
@@ -1119,11 +1118,9 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
         ->name('quotation.cargo.save');
     Route::post('/quotation/booking-integration-response', [App\Http\Controllers\QuotationController::class, 'handleBookingIntegrationResponse'])
         ->name('quotation.bookingIntegrationResponse');
-    // ✅ MOVED UP — inquiry/save is a POST so technically safe, but grouped correctly here
+    // ✅ MOVED UP — inquiry/save is a POST so technically safe, but grouped correctly herefv
     Route::post('/quotation/inquiry/save', [App\Http\Controllers\QuotationController::class, 'saveInquiryDetails'])
         ->name('quotation.inquiry.save');
-    Route::get('/quotation/data-sp', [App\Http\Controllers\QuotationController::class, 'dataFromSP'])
-        ->name('quotation.data.sp');
 
     // ============================================
     // WILDCARD ROUTES — must be last
@@ -1136,6 +1133,11 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
         ->name('quotation.processDuplicate');
     Route::post('/quotation/{bookingno}/copy', [App\Http\Controllers\QuotationController::class, 'copy'])
         ->name('quotation.copy');
+    Route::get('/quotation/portal', [App\Http\Controllers\QuotationController::class, 'portal'])
+        ->name('quotation.portal');
+    Route::get('/quotation/portal-debug', [App\Http\Controllers\QuotationController::class, 'portalDebug'])
+        ->name('quotation.portal.debug');
+
 
     Route::get('/quotation/{id}/versions', [App\Http\Controllers\QuotationController::class, 'getQuotationVersions'])
         ->name('quotation.versions');
@@ -1470,3 +1472,108 @@ Route::get('/azure-sync-user-apps/{email}', function ($email) {
         return "❌ Error: " . $e->getMessage();
     }
 })->middleware('auth');
+
+
+// Add temporarily to routes/web.php
+Route::get('/debug-sp-industry', function () {
+    $pdo  = DB::connection('sqlsrv')->getPdo();
+    $stmt = $pdo->prepare("EXEC sp_IndustryTypeList @Filter = ''");
+    $stmt->execute();
+    $out = [];
+    $i   = 0;
+    do {
+        $i++;
+        try {
+            $rows      = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $out["set_$i"] = [
+                'count'   => count($rows),
+                'columns' => !empty($rows) ? array_keys($rows[0]) : [],
+                'sample'  => $rows[0] ?? null,
+            ];
+        } catch (Exception $e) {
+            $out["set_$i"] = ['error' => $e->getMessage()];
+        }
+    } while ($stmt->nextRowset());
+    return response()->json($out);
+});
+
+
+// Add to routes/web.php temporarily
+Route::get('/debug-lookup-test', function () {
+    $request = request();
+
+    $countries = app(\App\Http\Controllers\QuotationController::class)->lookupCountries($request);
+    $industry  = app(\App\Http\Controllers\QuotationController::class)->lookupIndustryTypes($request);
+
+    return response()->json([
+        'countries_count' => count(json_decode($countries->getContent(), true)),
+        'countries_sample' => array_slice(json_decode($countries->getContent(), true), 0, 2),
+        'industry_count'  => count(json_decode($industry->getContent(), true)),
+        'industry_sample' => array_slice(json_decode($industry->getContent(), true), 0, 2),
+    ]);
+});
+
+
+# Add temporarily to routes/web.php
+Route::get('/debug-crm-sync', function () {
+    $rows = DB::connection('sqlsrv')
+        ->table('Quote_QuotationInfo')
+        ->whereIn('bookingno', [2761, 7351, 7496, 8219, 8488, 8490, 8506, 8507])
+        ->select('bookingno', 'QuoteNo', 'teamid', 'teamname', 'QuoteStatus', 'status', 'LastModifiedBy', 'Updatedon')
+        ->get();
+    return response()->json($rows);
+});
+
+
+
+// routes/web.php — TEMPORARY DEBUG ROUTE, remove after use
+Route::get('/debug/crm-rwanda', function () {
+    try {
+        $pdo = DB::connection('pgsql')->getPdo();
+
+        // Step 1: check if crm_details exists before calling SP
+        $before = $pdo->query("
+            SELECT COUNT(*) as cnt 
+            FROM information_schema.tables 
+            WHERE table_name = 'crm_details'
+        ")->fetch(\PDO::FETCH_OBJ);
+
+        // Step 2: call SP
+        $pdo->exec('CALL sp_QuoteDetails()');
+
+        // Step 3: check if crm_details exists after calling SP
+        $after = $pdo->query("
+            SELECT COUNT(*) as cnt 
+            FROM information_schema.tables 
+            WHERE table_name = 'crm_details'
+        ")->fetch(\PDO::FETCH_OBJ);
+
+        // Step 4: try counting rows
+        $count = 0;
+        $sample = [];
+        $error = null;
+        try {
+            $countResult = $pdo->query("SELECT COUNT(*) as cnt FROM crm_details")->fetch(\PDO::FETCH_OBJ);
+            $count = $countResult->cnt ?? 0;
+
+            // Step 5: get sample with ALL columns to see structure
+            $sample = $pdo->query("SELECT * FROM crm_details LIMIT 3")->fetchAll(\PDO::FETCH_OBJ);
+        } catch (\Exception $e) {
+            $error = $e->getMessage();
+        }
+
+        return response()->json([
+            'table_existed_before_sp' => $before->cnt > 0,
+            'table_exists_after_sp'   => $after->cnt > 0,
+            'row_count'               => $count,
+            'sample'                  => $sample,
+            'error'                   => $error,
+        ], 200, [], JSON_PRETTY_PRINT);
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => $e->getMessage(),
+            'file'  => $e->getFile(),
+            'line'  => $e->getLine(),
+        ], 500);
+    }
+})->middleware(['auth']);

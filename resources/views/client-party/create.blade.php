@@ -2490,6 +2490,65 @@
                 });
             }
 
+            // function fetchCompanyDetails(entityType, companyId) {
+            //     console.log('fetchCompanyDetails: entityType=', entityType, 'companyId=', companyId);
+            //     $.ajax({
+            //         url: '{{ route('company.details') }}',
+            //         method: 'GET',
+            //         data: {
+            //             entityType: entityType,
+            //             companyId: companyId
+            //         },
+            //         success: function(data) {
+            //             console.log('fetchCompanyDetails: Response=', data);
+            //             if (!data.countryCode || !data.countryID) {
+            //                 console.warn('fetchCompanyDetails: Missing countryCode or countryID', {
+            //                     countryCode: data.countryCode,
+            //                     countryID: data.countryID
+            //                 });
+            //                 alert(
+            //                     'Warning: No country code for this company. Please select a country manually.'
+            //                 );
+            //             }
+            //             $('#addressLine1').val(data.addressLine1 || '');
+            //             $('#addressLine2').val(data.addressLine2 || '');
+            //             $('#cityName').val(data.cityName || '');
+            //             $('#zipCode').val(data.zipCode || '');
+            //             $('#provinceName').val(data.provinceName || '');
+            //             $('#provinceID').val(data.provinceID || '');
+            //             $('#provinceCode').val(data.provinceCode || '');
+            //             $('#cityID').val(data.cityID || '');
+            //             $('#cityCode').val(data.cityCode || '');
+            //             $('#countryID').val(data.countryID || '').trigger('change');
+            //             $('#countryCode').val(data.countryCode || '');
+            //             $('#countryName').val(data.countryName || '');
+            //             $('#firstName').val(data.firstName || '-');
+            //             $('#lastName').val(data.lastName || '-');
+            //             $('#department').val(data.department || '');
+            //             $('#phoneNo').val(data.phoneNo || '0');
+            //             $('#contractEmail').val(data.contractEmail || '');
+            //             companyIdInput.val(data.companyId || '');
+            //             companyCodeInput.val(data.companyCode || '');
+            //             if (data.companyId && data.companyCode) {
+            //                 clientIdInput.val(data.companyId);
+            //                 clientCodeInput.val(data.companyCode);
+            //             }
+            //             syncClientFields();
+
+            //             // NEW: Initialize Other fields with client data for accounting mode
+            //             setTimeout(function() {
+            //                 initializeOtherFieldsFromClient();
+            //             }, 100);
+            //         },
+            //         error: function(xhr) {
+            //             console.error('Error fetching company details:', xhr.responseJSON?.error || xhr
+            //                 .statusText);
+            //             clearBasicDetails();
+            //             toggleFieldsReadonly(true);
+            //             alert('Failed to retrieve company details.');
+            //         }
+            //     });
+            // }
             function fetchCompanyDetails(entityType, companyId) {
                 console.log('fetchCompanyDetails: entityType=', entityType, 'companyId=', companyId);
                 $.ajax({
@@ -2507,9 +2566,9 @@
                                 countryID: data.countryID
                             });
                             alert(
-                                'Warning: No country code for this company. Please select a country manually.'
-                            );
+                                'Warning: No country code for this company. Please select a country manually.');
                         }
+
                         $('#addressLine1').val(data.addressLine1 || '');
                         $('#addressLine2').val(data.addressLine2 || '');
                         $('#cityName').val(data.cityName || '');
@@ -2529,13 +2588,45 @@
                         $('#contractEmail').val(data.contractEmail || '');
                         companyIdInput.val(data.companyId || '');
                         companyCodeInput.val(data.companyCode || '');
+
                         if (data.companyId && data.companyCode) {
                             clientIdInput.val(data.companyId);
                             clientCodeInput.val(data.companyCode);
                         }
+
                         syncClientFields();
 
-                        // NEW: Initialize Other fields with client data for accounting mode
+                        // Set otherCode immediately here — don't rely solely on initializeOtherFieldsFromClient
+                        // This fixes the case where companyId/companyCode are set but the timeout fires too late
+                        if (data.companyId && data.companyCode) {
+                            const hasAdminAccess =
+                                {{ Auth::user()->can('create-client-party') ? 'true' : 'false' }};
+                            const partyName = data.companyName || companyAutocomplete.val() ||
+                                companyNameInput.val();
+
+                            if (hasAdminAccess) {
+                                $('#otherInput').val(partyName);
+                                $('#otherID').val(data.companyId);
+                                $('#otherCode').val(data.companyCode);
+                                $('#other_Input').text(data.companyCode);
+                                $('#otherCheck').prop('checked', true);
+                            } else {
+                                $('#hiddenOtherInput').val(partyName);
+                                $('#hiddenOtherID').val(data.companyId);
+                                $('#hiddenOtherCode').val(data.companyCode);
+                                $('#hiddenOtherCheck').val('1');
+                            }
+
+                            console.log('fetchCompanyDetails: otherCode set directly', {
+                                entityType: entityType,
+                                otherCode: data.companyCode,
+                                otherID: data.companyId,
+                                otherName: partyName,
+                                hasAdminAccess: hasAdminAccess
+                            });
+                        }
+
+                        // Also run initializeOtherFieldsFromClient as a backup
                         setTimeout(function() {
                             initializeOtherFieldsFromClient();
                         }, 100);

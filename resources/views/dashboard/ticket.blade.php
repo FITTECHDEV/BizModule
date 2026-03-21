@@ -490,7 +490,7 @@
 
                             <!-- Header -->
                             <div class="widget-user-header bg-info">
-                                <h3 class="widget-user-username">Quote INTEGRATION</h3>
+                                <h3 class="widget-user-username">Quote Management System</h3>
                                 <h5 class="widget-user-desc">Integration Status</h5>
                             </div>
 

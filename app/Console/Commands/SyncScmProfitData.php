@@ -351,7 +351,7 @@ class SyncScmProfitData extends Command
             'pri_partner_countrycode' => $record->pri_partner_countrycode,
             'pri_partner_countryname' => $record->pri_partner_countryname,
             'pri_rrp_industryid' => $record->pri_rrp_industryid,
-            'pri_partner_industrttypecode' => $record->pri_partner_industrttypecode,
+            'pri_partner_industrtypecode' => $record->pri_partner_industrtypecode,
             'pri_partner_industrttype' => $record->pri_partner_industrttype,
             'pri_partner_function' => $record->pri_partner_function,
             'pri_partner_steet' => $record->pri_partner_steet,

@@ -283,7 +283,7 @@ class CrmSyncService
             'pri_partner_countrycode'      => $d['pri_partner_countrycode']         ?? '',
             'pri_partner_countryname'      => $d['pri_partner_countryname']         ?? '',
             'pri_rrp_industryid'           => $d['pri_rrp_industryid']              ?? null,
-            'pri_partner_industrttypecode' => $d['pri_partner_industrttypecode']    ?? '',
+            'pri_partner_industrtypecode' => $d['pri_partner_industrtypecode']    ?? '',
             'pri_partner_industrttype'     => $d['pri_partner_industrttype']        ?? '',
             'pri_partner_function'         => $d['pri_partner_function']            ?? '',
             'pri_partner_steet'            => $d['pri_partner_steet']               ?? '',

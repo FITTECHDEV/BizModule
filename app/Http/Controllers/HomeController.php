@@ -77,8 +77,8 @@ class HomeController extends Controller
             }
 
             try {
-                $azureStats = AzureUser::getStatistics(); // Use the method that returns 'total', 'active', 'pending', 'inactive'
-                $loginTrackerStats = $this->getLoginTrackerStats(); // Keep separate for login tracker
+                $azureStats = AzureUser::getStatistics();
+                $loginTrackerStats = $this->getLoginTrackerStats();
             } catch (\Exception $e) {
                 \Log::error('Azure Stats Error: ' . $e->getMessage());
                 $azureStats = [
@@ -95,7 +95,6 @@ class HomeController extends Controller
                 ];
             }
 
-            // ✅ Get GPS Tracker Statistics
             try {
                 $tracker_stats = $this->getTrackerStats();
             } catch (\Exception $e) {
@@ -108,52 +107,36 @@ class HomeController extends Controller
                 ];
             }
 
-            // Extract individual variables for backward compatibility
             $active_this_month = $loginTrackerStats['active_this_month'];
             $active_last_month = $loginTrackerStats['active_last_month'];
-            $inactive_users = $loginTrackerStats['inactive_users'];
-            $total_users = $loginTrackerStats['total_users'];
+            $inactive_users    = $loginTrackerStats['inactive_users'];
+            $total_users       = $loginTrackerStats['total_users'];
 
             $shipment_reports_stats = ShipmentReportController::getHomeStats();
 
-            // Add SCM Profit Integration stats
             $scm_profit_stats_obj = DB::table('CRM_SCMprofit_integration')
                 ->whereNotNull('clientid')
-                ->whereRaw("CAST(createdon as date) = CAST(GETDATE() as date)")->selectRaw("
-                    COUNT(*) as total,
-                        SUM(CASE WHEN LEN(ISNULL(SCMINTStatus,'')) <= 0 THEN 1 ELSE 0 END) as pending,
-                        SUM(CASE WHEN CHARINDEX('success', LOWER(SCMINTStatus), 1) > 0 THEN 1 ELSE 0 END) as success,
-                        SUM(CASE WHEN LEN(ISNULL(SCMINTStatus,'')) > 0 AND CHARINDEX('success', LOWER(SCMINTStatus), 1) = 0 THEN 1 ELSE 0 END) as failed
-                ")
+                ->whereRaw("CAST(createdon as date) = CAST(GETDATE() as date)")
+                ->selectRaw("
+                COUNT(*) as total,
+                SUM(CASE WHEN LEN(ISNULL(SCMINTStatus,'')) <= 0 THEN 1 ELSE 0 END) as pending,
+                SUM(CASE WHEN CHARINDEX('success', LOWER(SCMINTStatus), 1) > 0 THEN 1 ELSE 0 END) as success,
+                SUM(CASE WHEN LEN(ISNULL(SCMINTStatus,'')) > 0 AND CHARINDEX('success', LOWER(SCMINTStatus), 1) = 0 THEN 1 ELSE 0 END) as failed
+            ")
                 ->first();
 
             $scm_profit_stats = [
-                'total' => $scm_profit_stats_obj->total ?? 0,
+                'total'   => $scm_profit_stats_obj->total   ?? 0,
                 'pending' => $scm_profit_stats_obj->pending ?? 0,
                 'success' => $scm_profit_stats_obj->success ?? 0,
-                'failed' => $scm_profit_stats_obj->failed ?? 0,
+                'failed'  => $scm_profit_stats_obj->failed  ?? 0,
             ];
 
-            // Quotation Card Permission
-            $azureUser = \App\Models\AzureUser::where('userPrincipalName', Auth::user()->Email)->first();
+            // ✅ Single source of truth — delegates to Gate::define('view-quotation')
+            // in AuthServiceProvider, which handles case normalization, IsActive,
+            // IsDelete, BizUserID fallback, and 5-minute caching.
+            $canViewQuotationCard = \Illuminate\Support\Facades\Gate::allows('view-quotation');
 
-            $roles = [];
-
-            if ($azureUser && !empty($azureUser->AzureId)) {
-                $roles = DB::table('Azure_Application_UserMapping')
-                    ->whereRaw('AzureUserID = CAST(? AS UNIQUEIDENTIFIER)', [$azureUser->AzureId])
-                    ->pluck('RoleCode')
-                    ->map(fn($r) => strtoupper(trim($r)))
-                    ->toArray();
-            } else {
-                \Log::warning('Azure user not resolved', [
-                    'auth_email' => Auth::user()->Email,
-                ]);
-            }
-
-            $canViewQuotationCard = in_array('QUOTATIONUSER', $roles);
-
-            // Quotation Stats
             try {
                 $quotation_stats = $canViewQuotationCard
                     ? \App\Http\Controllers\QuotationController::getHomeStats()
