@@ -717,14 +717,12 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
 // ============================================================================
 // QUOTATION INTEGRATION ROUTES
 // ============================================================================
-Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function () {
+Route::middleware(['auth', 'can:view-quotation'])->group(function () {
 
     Route::get('/quotation', [App\Http\Controllers\QuotationController::class, 'index'])
         ->name('quotation.index');
     Route::get('/quotation/data', [App\Http\Controllers\QuotationController::class, 'data'])
         ->name('quotation.data');
-    Route::get('/quotation/stats', [App\Http\Controllers\QuotationController::class, 'stats'])
-        ->name('quotation.stats');
 
     // ============================================
     // STATIC LOOKUP ROUTES — all must be above any {id} wildcard
@@ -767,7 +765,8 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
         ->name('quotation.containers');
     Route::get('/quotation/report-data', [App\Http\Controllers\QuotationController::class, 'reportData'])
         ->name('quotation.report-data');
-
+    Route::get('/quotation/debug-lookups', [App\Http\Controllers\QuotationController::class, 'debugLookups']);
+    Route::get('/quotation/debug-countries', [App\Http\Controllers\QuotationController::class, 'debugLookupCountries']);
 
     // ✅ MOVED UP — were incorrectly placed after {id} wildcards
     Route::get('/quotation/inco-terms', [App\Http\Controllers\QuotationController::class, 'getIncoTerms'])
@@ -852,13 +851,14 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
         ->name('quotation.shipment.save');
     Route::post('/quotation/cargo/save', [App\Http\Controllers\QuotationController::class, 'saveCargoDetails'])
         ->name('quotation.cargo.save');
-    Route::post('/quotation/booking-integration-response', [App\Http\Controllers\QuotationController::class, 'handleBookingIntegrationResponse'])
-        ->name('quotation.bookingIntegrationResponse');
-    // ✅ MOVED UP — inquiry/save is a POST so technically safe, but grouped correctly here
+    // Route::post('/quotation/booking-integration-response', [App\Http\Controllers\QuotationController::class, 'handleBookingIntegrationResponse'])
+    //     ->name('quotation.bookingIntegrationResponse');
+    // ✅ MOVED UP — inquiry/save is a POST so technically safe, but grouped correctly herefv
     Route::post('/quotation/inquiry/save', [App\Http\Controllers\QuotationController::class, 'saveInquiryDetails'])
         ->name('quotation.inquiry.save');
-    Route::get('/quotation/data-sp', [App\Http\Controllers\QuotationController::class, 'dataFromSP'])
-        ->name('quotation.data.sp');
+
+    Route::post('/quotation/push-to-scm', [App\Http\Controllers\QuotationController::class, 'pushBookingToSCM'])
+        ->name('quotation.push-to-scm');
 
     // ============================================
     // WILDCARD ROUTES — must be last
@@ -871,6 +871,11 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
         ->name('quotation.processDuplicate');
     Route::post('/quotation/{bookingno}/copy', [App\Http\Controllers\QuotationController::class, 'copy'])
         ->name('quotation.copy');
+    Route::get('/quotation/portal', [App\Http\Controllers\QuotationController::class, 'portal'])
+        ->name('quotation.portal');
+    Route::get('/quotation/portal-debug', [App\Http\Controllers\QuotationController::class, 'portalDebug'])
+        ->name('quotation.portal.debug');
+
 
     Route::get('/quotation/{id}/versions', [App\Http\Controllers\QuotationController::class, 'getQuotationVersions'])
         ->name('quotation.versions');
@@ -893,6 +898,12 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
     Route::post('/crm/sync/run', [App\Http\Controllers\CrmSyncController::class, 'run'])
         ->name('crm.sync.run');
 });
+Route::post(
+    '/quotation/booking-integration-response',
+    [App\Http\Controllers\QuotationController::class, 'handleBookingIntegrationResponse']
+)
+    ->name('quotation.bookingIntegrationResponse');
+
 
 // ============================================================================
 // RA INTEGRATION ROUTES (Revenue Authority Integration)

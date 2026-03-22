@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
+use Illuminate\Support\Facades\Log;
 use App\Models\ClientParty;
 use App\Models\KRABillingHeader;
 use App\Models\TRABillingHeader;
@@ -46,7 +47,6 @@ class HomeController extends Controller
             $tims_stats = new KRABillingHeader();
             $tims_stats = $tims_stats->timsStats();
 
-            // Azure User Statistics
             try {
                 $azureStats = Cache::remember('azure_user_stats', 300, function () {
                     return [
@@ -57,7 +57,7 @@ class HomeController extends Controller
                     ];
                 });
             } catch (\Exception $e) {
-                \Log::error('Azure Stats Error: ' . $e->getMessage());
+                Log::error('Azure Stats Error: ' . $e->getMessage());
                 $azureStats = ['active' => 0, 'pending' => 0, 'inactive' => 0, 'total' => 0];
             }
 
@@ -66,7 +66,7 @@ class HomeController extends Controller
             try {
                 $efris_stats = DB::select('SET NOCOUNT ON; EXEC EFRIS_InvoiceStatus');
             } catch (\Exception $e) {
-                \Log::error('EFRIS Stats Error: ' . $e->getMessage());
+                Log::error('EFRIS Stats Error: ' . $e->getMessage());
                 $efris_stats = [];
             }
 
@@ -74,7 +74,7 @@ class HomeController extends Controller
                 $traStatsTZ  = TRABillingHeader::getStatsByOfficeCode(['AR']);
                 $traStatsADL = TRABillingHeader::getStatsByOfficeCode(['TZ']);
             } catch (\Exception $e) {
-                \Log::error('TRA Stats Error: ' . $e->getMessage());
+                Log::error('TRA Stats Error: ' . $e->getMessage());
                 $traStatsTZ  = [];
                 $traStatsADL = [];
             }
@@ -83,15 +83,14 @@ class HomeController extends Controller
                 $rra_stats = new RRABillingHeader();
                 $rra_stats = $rra_stats->rraStats();
             } catch (\Exception $e) {
-                \Log::error('RRA Stats Error: ' . $e->getMessage());
+                Log::error('RRA Stats Error: ' . $e->getMessage());
                 $rra_stats = [];
             }
 
-            // Login Tracker Stats
             try {
                 $loginTrackerStats = $this->getLoginTrackerStats();
             } catch (\Exception $e) {
-                \Log::error('Login Tracker Stats Error: ' . $e->getMessage());
+                Log::error('Login Tracker Stats Error: ' . $e->getMessage());
                 $loginTrackerStats = [
                     'total_users'       => 0,
                     'active_this_month' => 0,
@@ -100,11 +99,10 @@ class HomeController extends Controller
                 ];
             }
 
-            // GPS Tracker Stats
             try {
                 $tracker_stats = $this->getTrackerStats();
             } catch (\Exception $e) {
-                \Log::error('Tracker Stats Error: ' . $e->getMessage());
+                Log::error('Tracker Stats Error: ' . $e->getMessage());
                 $tracker_stats = (object)[
                     'created'  => 0,
                     'transit'  => 0,
@@ -120,7 +118,6 @@ class HomeController extends Controller
 
             $shipment_reports_stats = ShipmentReportController::getHomeStats();
 
-            // SCM Profit Stats
             $scm_profit_stats_obj = DB::table('CRM_SCMprofit_integration')
                 ->whereNotNull('clientid')
                 ->whereRaw("CAST(createdon as date) = CAST(GETDATE() as date)")
@@ -139,11 +136,10 @@ class HomeController extends Controller
                 'failed'  => $scm_profit_stats_obj->failed   ?? 0,
             ];
 
-            // RA Integration metrics
             try {
                 $ra_metrics = \App\Http\Controllers\RAIntegrationController::getCardMetrics();
             } catch (\Exception $e) {
-                \Log::error('RA Integration Stats Error: ' . $e->getMessage());
+                Log::error('RA Integration Stats Error: ' . $e->getMessage());
                 $ra_metrics = [
                     'ra_pending_d365'  => 0,
                     'ra_total_failed'  => 0,
@@ -151,32 +147,16 @@ class HomeController extends Controller
                 ];
             }
 
-            // Quotation Card Permission
-            $azureUser = \App\Models\AzureUser::where('userPrincipalName', Auth::user()->Email)->first();
+            // Delegates to Gate::define('view-quotation') in AuthServiceProvider
+            // which handles BizUserID fallback, IsActive, IsDelete, and 5-min caching
+            $canViewQuotationCard = \Illuminate\Support\Facades\Gate::allows('view-quotation');
 
-            $roles = [];
-
-            if ($azureUser && !empty($azureUser->AzureId)) {
-                $roles = DB::table('Azure_Application_UserMapping')
-                    ->whereRaw('AzureUserID = CAST(? AS UNIQUEIDENTIFIER)', [$azureUser->AzureId])
-                    ->pluck('RoleCode')
-                    ->map(fn($r) => strtoupper(trim($r)))
-                    ->toArray();
-            } else {
-                \Log::warning('Azure user not resolved', [
-                    'auth_email' => Auth::user()->Email,
-                ]);
-            }
-
-            $canViewQuotationCard = in_array('QUOTATIONUSER', $roles);
-
-            // Quotation Stats
             try {
                 $quotation_stats = $canViewQuotationCard
                     ? \App\Http\Controllers\QuotationController::getHomeStats()
                     : ['total' => 0, 'in_progress' => 0, 'failed_int' => 0, 'failed_progress' => 0];
             } catch (\Exception $e) {
-                \Log::error('Quotation Stats Error: ' . $e->getMessage());
+                Log::error('Quotation Stats Error: ' . $e->getMessage());
                 $quotation_stats = ['total' => 0, 'in_progress' => 0, 'failed_int' => 0, 'failed_progress' => 0];
             }
 
@@ -204,7 +184,7 @@ class HomeController extends Controller
                 )
             );
         } catch (\Exception $e) {
-            \Log::error('Home Controller Error: ' . $e->getMessage());
+            Log::error('Home Controller Error: ' . $e->getMessage());
             return 'Controller Error: ' . $e->getMessage();
         }
     }

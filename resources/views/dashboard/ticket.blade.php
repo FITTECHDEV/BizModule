@@ -533,14 +533,14 @@
             @endif
 
             <!-- Quote Integration -->
-            @if ($canViewQuotationCard)
+            {{-- @if ($canViewQuotationCard) --}}
                 <div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-3">
                     <a href="{{ route('quotation.index') }}" style="text-decoration: none; color: inherit;">
                         <div class="card card-widget widget-user shadow service-card scm-profit-card">
 
                             <!-- Header -->
                             <div class="widget-user-header bg-info">
-                                <h3 class="widget-user-username">Quote INTEGRATION</h3>
+                                <h3 class="widget-user-username">Quote Management System</h3>
                                 <h5 class="widget-user-desc">Integration Status</h5>
                             </div>
 
@@ -575,7 +575,7 @@
                         </div>
                     </a>
                 </div>
-            @endif
+            {{-- @endif --}}
 
             <!-- Revenue Authority Integration -->
             @if (Auth::user()->can('approve-all-entity-request'))

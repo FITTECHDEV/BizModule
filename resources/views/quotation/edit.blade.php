@@ -827,8 +827,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         MODALS
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         ============================================ -->
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     MODALS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1390,8 +1390,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1834,9 +1834,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -2810,12 +2810,24 @@
 
             // ============================================
             // LOAD UOM WHEN BASED ON CHANGES
+            // After loading the UOM list, call the SP to
+            // pre-fill UOM selection and Quantity defaults.
             // ============================================
             $(document).on('change', 'select[name="revenue_based_on"], select[name="cost_based_on"]', function() {
                 const $select = $(this);
                 const prefix = $select.attr('name').split('_')[0];
                 const basedOnCode = $select.val();
-                loadBasedOnUOM(prefix, basedOnCode);
+
+                if (!basedOnCode) {
+                    loadBasedOnUOM(prefix, basedOnCode);
+                    return;
+                }
+
+                // Step 1: Load UOM list first, then apply defaults from SP
+                loadBasedOnUOMWithCallback(prefix, basedOnCode, function() {
+                    // Step 2: Call SP to get default UOM + Quantity for this Based On
+                    fetchBasedOnDefaults(prefix, basedOnCode, '');
+                });
             });
 
             function loadBasedOnUOM(type, basedOnCode) {
@@ -2828,6 +2840,22 @@
                         .prop('disabled', true);
                     return;
                 }
+
+                // ── NEW: Equipment branch (mirrors loadBasedOnUOMWithCallback) ───────────────
+                if (basedOnCode === 'Equipment') {
+                    loadEquipmentTypeOptions(function() {
+                        $uomSelect.empty()
+                            .append('<option value="">-- Select Container Type --</option>');
+                        equipmentTypeOptions.forEach(function(item) {
+                            $uomSelect.append(
+                                `<option value="${item.Code}">${item.Code}</option>`
+                            );
+                        });
+                        $uomSelect.prop('disabled', false).removeAttr('title');
+                    });
+                    return;
+                }
+                // ── END NEW ──────────────────────────────────────────────────────────────────
 
                 $.ajax({
                     url: '{{ route('quotation.based-on-uom') }}',
@@ -2842,7 +2870,6 @@
                     success: function(response) {
                         if (response.success) {
                             $uomSelect.empty();
-
                             if (!response.uom_list || response.uom_list.length === 0) {
                                 $uomSelect.append('<option value="">No UOM Required</option>');
                                 $uomSelect.prop('disabled', true)
@@ -2911,6 +2938,25 @@
                     return;
                 }
 
+                // ── NEW: Equipment — UOM select is repurposed as container type picker ──────
+                // sp_ChargeBasedOnUOM returns empty for 'Equipment'; equipment types come
+                // from sp_EquipmentType (already loaded into equipmentTypeOptions).
+                if (basedOnCode === 'Equipment') {
+                    loadEquipmentTypeOptions(function() {
+                        $uomSelect.empty()
+                            .append('<option value="">-- Select Container Type --</option>');
+                        equipmentTypeOptions.forEach(function(item) {
+                            $uomSelect.append(
+                                `<option value="${item.Code}">${item.Code}</option>`
+                            );
+                        });
+                        $uomSelect.prop('disabled', false).removeAttr('title');
+                        if (typeof callback === 'function') callback();
+                    });
+                    return;
+                }
+                // ── END NEW ──────────────────────────────────────────────────────────────────
+
                 $.ajax({
                     url: '{{ route('quotation.based-on-uom') }}',
                     type: 'GET',
@@ -2924,7 +2970,6 @@
                     success: function(response) {
                         if (response.success) {
                             $uomSelect.empty();
-
                             if (!response.uom_list || response.uom_list.length === 0) {
                                 $uomSelect.append('<option value="">No UOM Required</option>');
                                 $uomSelect.prop('disabled', true).attr('title',
@@ -2937,7 +2982,6 @@
                                 });
                                 $uomSelect.prop('disabled', false).removeAttr('title');
                             }
-
                             if (typeof callback === 'function') callback();
                         }
                     },
@@ -2947,6 +2991,147 @@
                     }
                 });
             }
+
+            // ============================================
+            // FETCH BASED ON DEFAULTS FROM SP
+            // Calls sp_Quote_ChargeBasedOnDefaultDetails
+            // via the existing getChargeBasedOnDefaults route.
+            // Pre-fills:
+            //   - Based On UOM select (if UOM list has a match)
+            //   - Quantity input
+            // @param prefix        'revenue' or 'cost'
+            // @param basedOnCode   Selected Based On code
+            // @param equipment     Equipment type code ('' unless BasedOn = 'Equipment')
+            // ============================================
+            function fetchBasedOnDefaults(prefix, basedOnCode, equipment) {
+                if (!bookingNo || !basedOnCode) return;
+
+                $.ajax({
+                    url: '{{ route('quotation.charge-based-on-defaults') }}',
+                    type: 'GET',
+                    data: {
+                        booking_no: bookingNo,
+                        based_on: basedOnCode,
+                        equipment: equipment || ''
+                    },
+                    success: function(response) {
+                        if (!response.success) {
+                            // SP returned no defaults — not an error, just nothing to pre-fill
+                            console.info('fetchBasedOnDefaults — no defaults returned', {
+                                basedOnCode,
+                                message: response.message
+                            });
+                            return;
+                        }
+
+                        const $modal = prefix === 'revenue' ? $('#addRevenueModal') : $(
+                            '#addCostModal');
+
+                        // Pre-fill Quantity — only if SP returned a value > 0
+                        if (response.quantity > 0) {
+                            $modal.find(`input[name="${prefix}_quantity"]`).val(response.quantity);
+                        }
+
+                        // Pre-select UOM — match on based_on_uom_code returned by SP
+                        if (response.based_on_uom_code) {
+                            const $uomSelect = $modal.find(`select[name="${prefix}_based_on_uom"]`);
+                            const $matchingOption = $uomSelect.find(
+                                `option[value="${response.based_on_uom_code}"]`
+                            );
+
+                            if ($matchingOption.length) {
+                                $uomSelect.val(response.based_on_uom_code);
+                            } else {
+                                // UOM code not in dropdown — log for investigation, do not crash
+                                console.warn('fetchBasedOnDefaults — UOM code not found in dropdown', {
+                                    prefix,
+                                    basedOnCode,
+                                    uomCode: response.based_on_uom_code,
+                                    uomName: response.based_on_uom
+                                });
+                            }
+                        }
+
+                        // Recalculate amount now that Quantity may have changed
+                        calculateAmount(prefix);
+                    },
+                    error: function(xhr) {
+                        // Non-fatal — defaults simply won't be pre-filled
+                        console.warn('fetchBasedOnDefaults — request failed', {
+                            status: xhr.status,
+                            message: xhr.responseJSON?.message
+                        });
+                    }
+                });
+            }
+
+
+            // ============================================
+            // EQUIPMENT TYPE CHANGE — RE-FETCH DEFAULTS
+            // When Based On is 'Equipment' and the user
+            // picks a container type from a charge row,
+            // re-call the SP with the selected equipment.
+            // This is only relevant inside the charge modal
+            // when the Equipment-specific UOM/Quantity
+            // needs to update after container selection.
+            // ============================================
+            $(document).on('change', '.container-type-select', function() {
+                // Only fires if a charge modal is currently open
+                const $openModal = $('#addRevenueModal.show, #addCostModal.show');
+                if (!$openModal.length) return;
+
+                const prefix = $openModal.attr('id') === 'addRevenueModal' ? 'revenue' : 'cost';
+                const $basedOnSelect = $openModal.find(`select[name="${prefix}_based_on"]`);
+                const basedOnCode = $basedOnSelect.val();
+
+                if (basedOnCode !== 'Equipment') return;
+
+                const equipment = $(this).val();
+                if (!equipment) return;
+
+                fetchBasedOnDefaults(prefix, basedOnCode, equipment);
+            });
+
+            $(document).on('change', '.container-type-select', function() {
+                // Only fires if a charge modal is currently open
+                const $openModal = $('#addRevenueModal.show, #addCostModal.show');
+                if (!$openModal.length) return;
+
+                const prefix = $openModal.attr('id') === 'addRevenueModal' ? 'revenue' : 'cost';
+                const $basedOnSelect = $openModal.find(`select[name="${prefix}_based_on"]`);
+                const basedOnCode = $basedOnSelect.val();
+
+                if (basedOnCode !== 'Equipment') return;
+
+                const equipment = $(this).val();
+                if (!equipment) return;
+
+                fetchBasedOnDefaults(prefix, basedOnCode, equipment);
+            });
+
+            // ── NEW: fires when container type is chosen inside the charge modal ──────────
+            // The UOM select is repurposed as a container type picker when Based On = Equipment.
+            // Selecting a container type triggers SP defaults (quantity) just like the cargo
+            // table coupling above, but scoped to the open modal only.
+            $(document).on('change',
+                'select[name="revenue_based_on_uom"], select[name="cost_based_on_uom"]',
+                function() {
+                    const $uomSelect = $(this);
+                    const prefix = $uomSelect.attr('name').startsWith('revenue') ? 'revenue' : 'cost';
+                    const $modal = prefix === 'revenue' ? $('#addRevenueModal') : $('#addCostModal');
+
+                    if (!$modal.hasClass('show')) return;
+
+                    const basedOnCode = $modal.find(`select[name="${prefix}_based_on"]`).val();
+                    if (basedOnCode !== 'Equipment') return;
+
+                    const equipment = $uomSelect.val();
+                    if (!equipment) return;
+
+                    fetchBasedOnDefaults(prefix, basedOnCode, equipment);
+                }
+            );
+
             // ============================================
             // CHARGE CODE AUTOCOMPLETE
             // FIX: chargeType is now read dynamically from the selected radio button
@@ -3599,16 +3784,43 @@
                     }, 100);
                 }
 
-                // ── Based On → UOM — sequential async chain ──
+                // ── Based On → UOM — sequential async chain ─────────────────────────────────
                 loadBasedOnListWithCallback(type, function() {
-                    if (charge.basedOnCode) {
-                        $modal.find(`select[name="${prefix}_based_on"]`).val(charge.basedOnCode);
+                    if (!charge.basedOnCode) return;
 
+                    $modal.find(`select[name="${prefix}_based_on"]`).val(charge.basedOnCode);
+
+                    // Extract stored equipment/UOM code from basedOnAndUOM.
+                    // SP encodes it as "BasedOn/UOMCode" (e.g. "Equipment/20GP") or just "20GP".
+                    const storedUomCode = charge.uomCode // ← direct DB value
+                        ||
+                        (charge.basedOnAndUOM || '').split('/').pop().trim() // ← fallback for other types
+                        ||
+                        '';
+
+                    // ── ADD THESE TWO LINES ──────────────────────────────────────────────────
+                    console.log('basedOnAndUOM raw:', charge.basedOnAndUOM);
+                    console.log('storedUomCode resolved:', storedUomCode);
+                    // ────────────────────────────────────────────────────────────────────────
+
+
+                    if (charge.basedOnCode === 'Equipment') {
+                        // ── NEW: Equipment — load container types into UOM select, then restore ──
+                        // loadBasedOnUOMWithCallback now populates the select with equipment types
+                        // instead of calling sp_ChargeBasedOnUOM (which returns empty for Equipment).
                         loadBasedOnUOMWithCallback(type, charge.basedOnCode, function() {
-                            if (charge.basedOnAndUOM || charge.basedOnUOM) {
-                                const uomCode = (charge.basedOnAndUOM || '').split('/').pop()
-                                .trim() || charge.basedOnUOM;
-                                $modal.find(`select[name="${prefix}_based_on_uom"]`).val(uomCode);
+                            if (storedUomCode) {
+                                const $uomSelect = $modal.find(
+                                    `select[name="${prefix}_based_on_uom"]`);
+                                $uomSelect.val(storedUomCode);
+                            }
+                        });
+                    } else {
+                        // ── Existing path: unchanged for all non-Equipment Based On types ──────
+                        loadBasedOnUOMWithCallback(type, charge.basedOnCode, function() {
+                            if (storedUomCode) {
+                                $modal.find(`select[name="${prefix}_based_on_uom"]`).val(
+                                    storedUomCode);
                             }
                         });
                     }
