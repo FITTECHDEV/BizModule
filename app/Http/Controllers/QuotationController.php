@@ -3346,31 +3346,150 @@ class QuotationController extends Controller
 
         $quotation = DB::table('Quote_QuotationInfo')
             ->where('bookingno', $bookingNo)
-            ->first(['ID', 'QuoteNo', 'SCMBookingID']);
+            ->first(['ID', 'QuoteNo', 'SCMBookingID', 'SCMBookingXML', 'ClientCreated', 'OfficeCode']);
 
         if (!$quotation) {
             return response()->json(['success' => false, 'message' => 'Quotation not found'], 404);
         }
 
-        if (empty($quotation->SCMBookingID)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'SCM has not yet confirmed this booking. SCMBookingID is not set. '
-                    . 'Wait for SCM to process the booking XML before retriggering.',
-            ], 422);
+        if (empty($quotation->QuoteNo)) {
+            return response()->json(['success' => false, 'message' => 'QuoteNo is not set. Cannot retrigger.'], 422);
         }
 
         $submittedBy = Auth::user()->displayName ?? Auth::user()->Email ?? 'system';
         $quoteNo     = $quotation->QuoteNo;
         $steps       = [];
 
-        Log::info('retrigger - Starting Steps 3 and 4', [
+        Log::info('retrigger - Starting', [
             'booking_no'     => $bookingNo,
             'quote_no'       => $quoteNo,
-            'scm_booking_id' => $quotation->SCMBookingID,
+            'scm_booking_id' => $quotation->SCMBookingID  ?? 'NULL',
+            'xml_present'    => !empty($quotation->SCMBookingXML)
+                ? 'YES (' . strlen($quotation->SCMBookingXML) . ' chars)'
+                : 'NO',
+            'client_created' => $quotation->ClientCreated ?? 'NULL',
+            'office_code'    => $quotation->OfficeCode    ?? 'NULL',
             'user'           => $submittedBy,
         ]);
 
+        // ── Step 2: Re-run if SCMBookingID is not set ─────────────────────────────
+        if (empty($quotation->SCMBookingID)) {
+
+            Log::warning('retrigger - SCMBookingID is NULL, re-running Step 2', [
+                'booking_no' => $bookingNo,
+                'quote_no'   => $quoteNo,
+            ]);
+
+            $step2 = $this->runBookingProcessMain($quoteNo, 'XML');
+
+            $steps[] = [
+                'step'   => 2,
+                'label'  => 'Booking XML',
+                'status' => $step2['status'],
+                'remark' => $step2['remark'],
+            ];
+
+            Log::info('retrigger - Step 2 result', [
+                'booking_no'  => $bookingNo,
+                'quote_no'    => $quoteNo,
+                'sp_called'   => 'sp_Quote_BookingProcessMain',
+                'sp_params'   => ['QuotationNo' => $quoteNo, 'ProcessType' => 'XML'],
+                'sp_status'   => $step2['status'],
+                'sp_remark'   => $step2['remark'],
+                'sql_error'   => $step2['sql_error']   ?? null,
+                'sql_state'   => $step2['sql_state']   ?? null,
+                'result_sets' => $step2['result_sets'] ?? null,
+            ]);
+
+            if ($step2['status'] !== 'Success') {
+                Log::error('retrigger - Step 2 failed', [
+                    'booking_no' => $bookingNo,
+                    'quote_no'   => $quoteNo,
+                    'sp_remark'  => $step2['remark'],
+                ]);
+
+                $this->markAsFailed($quotation->ID, 'Booking XML', $step2['remark'], $submittedBy);
+
+                return response()->json([
+                    'success'      => false,
+                    'failed_step'  => 2,
+                    'failed_label' => 'Booking XML',
+                    'steps'        => $steps,
+                    'message'      => $step2['remark'],
+                ]);
+            }
+
+            // ── Push XML to SCM ───────────────────────────────────────────────────
+            Log::info('retrigger - XML saved, pushing to SCM', [
+                'booking_no' => $bookingNo,
+                'quote_no'   => $quoteNo,
+            ]);
+
+            $pushRequest = new \Illuminate\Http\Request();
+            $pushRequest->merge(['quote_no' => $quoteNo]);
+
+            $pushResponse = json_decode(
+                $this->pushBookingToSCM($pushRequest)->getContent(),
+                true
+            );
+
+            Log::info('retrigger - pushBookingToSCM result', [
+                'booking_no' => $bookingNo,
+                'quote_no'   => $quoteNo,
+                'result'     => $pushResponse,
+            ]);
+
+            if (!($pushResponse['success'] ?? false)) {
+                $this->markAsFailed(
+                    $quotation->ID,
+                    'SCM Push',
+                    $pushResponse['message'] ?? 'SCM push failed',
+                    $submittedBy
+                );
+
+                return response()->json([
+                    'success'      => false,
+                    'failed_step'  => 2,
+                    'failed_label' => 'SCM Push',
+                    'steps'        => $steps,
+                    'message'      => $pushResponse['message'] ?? 'SCM push failed',
+                ]);
+            }
+
+            $steps[] = [
+                'step'   => '2b',
+                'label'  => 'SCM Push',
+                'status' => 'Success',
+                'remark' => $pushResponse['message'] ?? 'Pushed to SCM successfully',
+            ];
+
+            // Re-fetch after push
+            $quotation = DB::table('Quote_QuotationInfo')
+                ->where('bookingno', $bookingNo)
+                ->first(['ID', 'QuoteNo', 'SCMBookingID', 'SCMBookingXML', 'ClientCreated', 'OfficeCode']);
+
+            Log::info('retrigger - SCMBookingID after push', [
+                'booking_no'     => $bookingNo,
+                'scm_booking_id' => $quotation->SCMBookingID ?? 'STILL NULL',
+            ]);
+
+            if (empty($quotation->SCMBookingID)) {
+                Log::error('retrigger - SCMBookingID still NULL after push', [
+                    'booking_no' => $bookingNo,
+                    'quote_no'   => $quoteNo,
+                ]);
+
+                return response()->json([
+                    'success'      => false,
+                    'failed_step'  => 2,
+                    'failed_label' => 'SCM Push',
+                    'steps'        => $steps,
+                    'message'      => 'SCMBookingID is NULL — SCM did not confirm the booking for QuoteNo: ' . $quoteNo,
+                ]);
+            }
+        }
+
+        // ── Steps 3 and 4: Charge and Document Transfer ───────────────────────────
         $retriggerSteps = [
             3 => ['type' => 'Charge',   'label' => 'Charge Transfer'],
             4 => ['type' => 'Document', 'label' => 'Document Transfer'],
@@ -3387,14 +3506,27 @@ class QuotationController extends Controller
             ];
 
             Log::info('retrigger - Step result', [
-                'quote_no' => $quoteNo,
-                'step'     => $stepNo,
-                'type'     => $stepDef['type'],
-                'status'   => $result['status'],
-                'remark'   => $result['remark'],
+                'booking_no'  => $bookingNo,
+                'quote_no'    => $quoteNo,
+                'step'        => $stepNo,
+                'sp_called'   => 'sp_Quote_BookingProcessMain',
+                'sp_params'   => ['QuotationNo' => $quoteNo, 'ProcessType' => $stepDef['type']],
+                'sp_status'   => $result['status'],
+                'sp_remark'   => $result['remark'],
+                'sql_error'   => $result['sql_error']   ?? null,
+                'sql_state'   => $result['sql_state']   ?? null,
+                'result_sets' => $result['result_sets'] ?? null,
             ]);
 
             if ($result['status'] !== 'Success') {
+                Log::error('retrigger - Step failed', [
+                    'booking_no'   => $bookingNo,
+                    'quote_no'     => $quoteNo,
+                    'failed_step'  => $stepNo,
+                    'failed_label' => $stepDef['label'],
+                    'sp_remark'    => $result['remark'],
+                ]);
+
                 $this->markAsFailed($quotation->ID, $stepDef['label'], $result['remark'], $submittedBy);
 
                 foreach ($retriggerSteps as $remainingNo => $remainingDef) {
@@ -3418,6 +3550,7 @@ class QuotationController extends Controller
             }
         }
 
+        // ── All steps passed ──────────────────────────────────────────────────────
         DB::table('Quote_QuotationInfo')
             ->where('ID', $quotation->ID)
             ->update([
@@ -5442,6 +5575,7 @@ class QuotationController extends Controller
                 : '[FITSCM].dbo.';
 
             $locationFilter = "('Station','Location','Airport','Seaport','InlandPort')";
+
             $query = "
             SELECT
                 CL.Id   AS LocationID,
@@ -5455,14 +5589,16 @@ class QuotationController extends Controller
         ";
 
             $bindings = [];
-            if ($includeCountry === 1 && !empty($countryCode)) {
-                $query .= " INNER JOIN Cust_Country CC WITH (NOLOCK)
-                            ON CC.ID = CL.CountryId
-                            AND CC.Code = ? ";
-                $bindings[] = $countryCode;
-            }
 
+            if ($includeCountry === 1 && !empty($countryCode)) {
+                $query .= " INNER JOIN {$db}Cust_Country CC WITH (NOLOCK)
+                    ON CC.Id = CL.CountryId
+                    AND (CC.Code = ? OR CC.Name = ?) ";
+                $bindings[] = strtoupper(trim($countryCode));
+                $bindings[] = trim($countryCode);
+            }
             $query .= " WHERE CL.IsActive = 1 AND CL.IsDeleted = 0 ";
+
             if (!empty($filter)) {
                 $query .= " AND (CL.Name LIKE ? OR CL.Code LIKE ? OR CL.UNCode LIKE ?) ";
                 $bindings[] = $filter . '%';
@@ -5471,16 +5607,22 @@ class QuotationController extends Controller
             }
 
             $query .= " ORDER BY CL.Name ";
+
             $results = DB::select($query, $bindings);
+
+            Log::info('getLocations', [
+                'filter'          => $filter,
+                'include_country' => $includeCountry,
+                'country_code'    => $countryCode,
+                'result_count'    => count($results),
+            ]);
 
             return response()->json([
                 'success'   => true,
                 'locations' => $results,
             ]);
         } catch (\Exception $e) {
-
             Log::error('getLocations failed', ['error' => $e->getMessage()]);
-
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
@@ -6132,15 +6274,65 @@ class QuotationController extends Controller
                 ]);
             }
 
+            // ── After Step 2: Push XML to SCM ─────────────────────────────────────
             if ($stepNo === 2) {
-                // sp_Quote_QuoteBookingCreateInSCM saves XML to SCMBookingXML only.
-                // SCM reads this asynchronously and calls back via handleBookingIntegrationResponse,
-                // which writes SCMBookingID. Steps 3 and 4 require SCMBookingID to be set.
-                // If SCM has not yet called back, Steps 3 and 4 will fail with "Booking Is Still
-                // No Created" — use the retrigger button after SCM has processed the XML.
-                Log::info('processBooking - XML saved, proceeding to Charge step', [
+                Log::info('processBooking - XML saved, pushing to SCM', [
                     'quote_no' => $quoteNo,
-                    'note'     => 'SCMBookingID written by SCM callback — may not be set yet in UAT',
+                ]);
+
+                $pushRequest = new \Illuminate\Http\Request();
+                $pushRequest->merge(['quote_no' => $quoteNo]);
+
+                $pushResponse = json_decode(
+                    $this->pushBookingToSCM($pushRequest)->getContent(),
+                    true
+                );
+
+                Log::info('processBooking - pushBookingToSCM result', [
+                    'quote_no' => $quoteNo,
+                    'result'   => $pushResponse,
+                ]);
+
+                if (!($pushResponse['success'] ?? false)) {
+                    $this->markAsFailed(
+                        $request->id,
+                        'SCM Push',
+                        $pushResponse['message'] ?? 'Failed to push XML to SCM',
+                        $submittedBy
+                    );
+
+                    foreach ($processSteps as $remainingNo => $remainingDef) {
+                        if ($remainingNo > $stepNo) {
+                            $steps[] = [
+                                'step'   => $remainingNo,
+                                'label'  => $remainingDef['label'],
+                                'status' => 'Skipped',
+                                'remark' => 'Skipped due to SCM push failure',
+                            ];
+                        }
+                    }
+
+                    return response()->json([
+                        'success'      => false,
+                        'failed_step'  => $stepNo,
+                        'failed_label' => 'SCM Push',
+                        'steps'        => $steps,
+                        'message'      => $pushResponse['message'] ?? 'Failed to push XML to SCM',
+                    ]);
+                }
+
+                // Add SCM push as a step in the response
+                $steps[] = [
+                    'step'   => '2b',
+                    'label'  => 'SCM Push',
+                    'status' => 'Success',
+                    'remark' => $pushResponse['message'] ?? 'Pushed to SCM successfully',
+                ];
+
+                Log::info('processBooking - SCM Push successful', [
+                    'quote_no'       => $quoteNo,
+                    'scm_booking_id' => $pushResponse['scm_booking_id'] ?? 'NULL',
+                    'scm_booking_no' => $pushResponse['scm_booking_no'] ?? 'NULL',
                 ]);
             }
         }
@@ -6171,7 +6363,6 @@ class QuotationController extends Controller
             'scm_booking_id' => $saved->SCMBookingID ?? null,
         ]);
     }
-
 
     /**
      * Writes SCMINTStatus = 'Failed' and appends the step + error message to
@@ -6281,69 +6472,136 @@ class QuotationController extends Controller
     private function runBookingProcessMain(string $quoteNo, string $processType): array
     {
         try {
-            Log::info('runBookingProcessMain - Executing', [
-                'quote_no'     => $quoteNo,
-                'process_type' => $processType,
-            ]);
-
             $pdo = DB::connection()->getPdo();
-
             $sql = "
-                DECLARE @Status VARCHAR(20), @Remark VARCHAR(200);
-                EXEC dbo.sp_Quote_BookingProcessMain ?, ?,
-                    @Status = @Status OUTPUT,
-                    @Remark = @Remark OUTPUT;
-                SELECT @Status AS Status, @Remark AS Remark
-            ";
+            SET NOCOUNT ON;
+            DECLARE @Status VARCHAR(20), @Remark VARCHAR(200);
+            EXEC dbo.sp_Quote_BookingProcessMain ?, ?,
+                @Status = @Status OUTPUT,
+                @Remark = @Remark OUTPUT;
+            SELECT @Status AS Status, @Remark AS Remark;
+        ";
 
             $stmt = $pdo->prepare($sql);
             $stmt->execute([$quoteNo, $processType]);
 
-            // Walk result sets to find Status/Remark row
-            $result = null;
+            $result     = null;
+            $setIndex   = 0;
+            $setsLogged = [];
+
             do {
+                $setIndex++;
                 try {
                     $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
-                    if (!empty($rows) && isset($rows[0]->Status)) {
+                    if (empty($rows)) continue;
+
+                    $cols     = array_keys((array) $rows[0]);
+                    $firstVal = array_values((array) $rows[0])[0] ?? '';
+
+                    $setsLogged[] = [
+                        'set'       => $setIndex,
+                        'columns'   => $cols,
+                        'first_row' => (array) $rows[0],
+                    ];
+
+                    // ── Detect SP-level error result sets ─────────────────────────
+                    // sp_Quote_BookingProcessMain emits intermediate result sets
+                    // when internal SPs fail (e.g. TempTable collision).
+                    // These come back as single-column rows whose value starts with
+                    // 'Error' or 'Failed' — the SP still sets @Status = 'Success'
+                    // so we CANNOT trust @Status alone.
+                    if (count($cols) === 1 && is_string($firstVal)) {
+                        $trimmed = trim($firstVal);
+                        if (
+                            stripos($trimmed, 'Error')  === 0 ||
+                            stripos($trimmed, 'Failed') === 0 ||
+                            stripos($trimmed, 'There is already') !== false
+                        ) {
+                            Log::error('runBookingProcessMain - SP emitted error result set', [
+                                'quote_no'    => $quoteNo,
+                                'process_type' => $processType,
+                                'sp_error'    => $trimmed,
+                            ]);
+
+                            return [
+                                'status'      => 'Failed',
+                                'remark'      => $trimmed,   // ← actual SCM/SP error
+                                'result_sets' => $setsLogged,
+                            ];
+                        }
+                    }
+
+                    // ── Accept the final OUTPUT SELECT ────────────────────────────
+                    if ($cols === ['Status', 'Remark']) {
                         $result = $rows[0];
                         break;
                     }
                 } catch (\PDOException $e) {
+                    $setsLogged[] = [
+                        'set'        => $setIndex,
+                        'fetch_error' => $e->getMessage(),
+                        'sql_state'  => $e->errorInfo[0] ?? null,
+                        'sql_code'   => $e->errorInfo[1] ?? null,
+                    ];
                     continue;
                 }
             } while ($stmt->nextRowset());
 
             if (!$result) {
-                Log::error('runBookingProcessMain - No output returned', [
-                    'quote_no'     => $quoteNo,
-                    'process_type' => $processType,
-                ]);
-                return ['status' => 'Failed', 'remark' => 'No response from booking process SP'];
+                return [
+                    'status'      => 'Failed',
+                    'remark'      => 'No Status/Remark output returned from SP',
+                    'result_sets' => $setsLogged,
+                ];
             }
 
-            Log::info('runBookingProcessMain - Result', [
-                'quote_no'     => $quoteNo,
-                'process_type' => $processType,
-                'status'       => $result->Status,
-                'remark'       => $result->Remark,
-            ]);
+            // ── Final guard: @Status says Success but an error result set was
+            // emitted earlier. Prefer the error over the misleading @Status. ────
+            $errorSet = collect($setsLogged)->first(function ($s) {
+                $val = $s['first_row'] ? array_values($s['first_row'])[0] ?? '' : '';
+                return count($s['columns'] ?? []) === 1
+                    && is_string($val)
+                    && (
+                        stripos($val, 'Error')  === 0 ||
+                        stripos($val, 'Failed') === 0 ||
+                        stripos($val, 'There is already') !== false
+                    );
+            });
+
+            if ($errorSet) {
+                $spError = array_values($errorSet['first_row'])[0];
+                Log::error('runBookingProcessMain - @Status=Success but error set detected', [
+                    'quote_no'     => $quoteNo,
+                    'process_type' => $processType,
+                    'sp_error'     => $spError,
+                ]);
+
+                return [
+                    'status'      => 'Failed',
+                    'remark'      => $spError,
+                    'result_sets' => $setsLogged,
+                ];
+            }
 
             return [
-                'status' => $result->Status ?? 'Failed',
-                'remark' => $result->Remark ?? '',
+                'status'      => $result->Status ?? 'Failed',
+                'remark'      => $result->Remark ?? '',
+                'result_sets' => $setsLogged,
+            ];
+        } catch (\PDOException $e) {
+            return [
+                'status'    => 'Failed',
+                'remark'    => $e->getMessage(),
+                'sql_error' => $e->errorInfo[1] ?? null,
+                'sql_state' => $e->errorInfo[0] ?? null,
             ];
         } catch (\Exception $e) {
-            Log::error('runBookingProcessMain - Exception', [
-                'quote_no'     => $quoteNo,
-                'process_type' => $processType,
-                'error'        => $e->getMessage(),
-                'file'         => $e->getFile(),
-                'line'         => $e->getLine(),
-            ]);
-            return ['status' => 'Failed', 'remark' => $e->getMessage()];
+            return [
+                'status' => 'Failed',
+                'remark' => $e->getMessage(),
+            ];
         }
     }
-
     // ============================================
     // SHIPMENT MODE DROPDOWN
     // sp_ShipmentMode returns: Id, Code
@@ -7230,65 +7488,77 @@ class QuotationController extends Controller
     // ============================================================
     public function handleBookingIntegrationResponse(Request $request)
     {
-        $request->validate([
-            'quote_no'       => 'required|string',
-            'status'         => 'required|string|in:Success,Failed',
-            'customer_ref_no' => 'nullable|string',
-            'transaction_id' => 'nullable|string',
-            'errors'         => 'nullable|array',
-        ]);
-
         try {
-            // Build XML matching SP's expected structure:
-            // /ArrayOfTransaction/Transaction with ID, Status, CutomerRefNo, TransactionId, Errors/Error
-            $errorsXml = '';
-            if (!empty($request->errors)) {
-                foreach ($request->errors as $err) {
-                    $code        = htmlspecialchars($err['code'] ?? '', ENT_XML1);
-                    $description = htmlspecialchars($err['description'] ?? '', ENT_XML1);
-                    $severity    = (int) ($err['severity'] ?? 1);
-                    $errorsXml  .= "<Error><Code>{$code}</Code><Description>{$description}</Description><Severity>{$severity}</Severity></Error>";
-                }
+            $rawXml = $request->getContent();
+
+            if (empty($rawXml)) {
+                Log::error('handleBookingIntegrationResponse - Empty XML received');
+                return response()->json([
+                    'success' => false,
+                    'message' => 'XML payload is required'
+                ], 400);
             }
 
-            $xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
-        <ArrayOfTransaction>
-            <Transaction>
-                <ID>{$request->quote_no}</ID>
-                <Status>{$request->status}</Status>
-                <CutomerRefNo>" . htmlspecialchars($request->customer_ref_no ?? '', ENT_XML1) . "</CutomerRefNo>
-                <TransactionId>" . htmlspecialchars($request->transaction_id ?? '', ENT_XML1) . "</TransactionId>
-                <Errors>{$errorsXml}</Errors>
-            </Transaction>
-        </ArrayOfTransaction>";
-
-            $pdo  = DB::getPdo();
-            $stmt = $pdo->prepare("EXEC dbo.sp_Quote_BookingCreateInfoUpdate @InputXML = ?");
-            $stmt->execute([$xml]);
-
-            // SP returns a SELECT only on failure — check for error message
-            $result = $stmt->fetch(\PDO::FETCH_ASSOC);
-            if ($result) {
-                $msg = array_values($result)[0] ?? '';
-                if (str_starts_with(trim($msg), 'Failed')) {
-                    Log::error('handleBookingIntegrationResponse - SP failed', [
-                        'quote_no' => $request->quote_no,
-                        'sp_msg'   => $msg,
-                    ]);
-                    return response()->json(['success' => false, 'message' => $msg], 500);
-                }
-            }
-
-            Log::info('handleBookingIntegrationResponse - Success', [
-                'quote_no'   => $request->quote_no,
-                'status'     => $request->status,
-                'booking_no' => $request->customer_ref_no,
+            Log::info('handleBookingIntegrationResponse - Received', [
+                'xml_length' => strlen($rawXml),
+                'preview'    => substr($rawXml, 0, 200),
             ]);
 
-            return response()->json(['success' => true]);
+            $pdo  = DB::connection()->getPdo();
+            $stmt = $pdo->prepare("
+            SET NOCOUNT ON;
+            EXEC dbo.sp_Quote_BookingCreateInfoUpdate ?
+        ");
+            $stmt->execute([$rawXml]);
+
+            // SP emits SELECT @ErrorMessage on failure path
+            // and SELECT 'Failed - ' + ERROR_MESSAGE() on CATCH
+            // Walk result sets to detect either
+            $spError = null;
+            do {
+                try {
+                    $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+                    if (empty($rows)) continue;
+
+                    $firstVal = array_values((array) $rows[0])[0] ?? '';
+                    if (is_string($firstVal) && (
+                        str_starts_with($firstVal, 'Failed') ||
+                        strlen($firstVal) > 0
+                    )) {
+                        $spError = $firstVal;
+                        break;
+                    }
+                } catch (\PDOException $e) {
+                    continue;
+                }
+            } while ($stmt->nextRowset());
+
+            if ($spError) {
+                Log::error('handleBookingIntegrationResponse - SP returned error', [
+                    'sp_error' => $spError,
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => $spError,
+                ], 422);
+            }
+
+            Log::info('handleBookingIntegrationResponse - SP executed successfully');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Booking integration response processed successfully',
+            ]);
         } catch (\Exception $e) {
-            Log::error('handleBookingIntegrationResponse error: ' . $e->getMessage());
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            Log::error('handleBookingIntegrationResponse - Failed', [
+                'error' => $e->getMessage(),
+                'file'  => $e->getFile(),
+                'line'  => $e->getLine(),
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
         }
     }
 
@@ -7874,5 +8144,263 @@ class QuotationController extends Controller
         $output['actual_response_count'] = count($output['actual_method_response'] ?? []);
 
         return response()->json($output, 200, [], JSON_PRETTY_PRINT);
+    }
+
+    public function pushBookingToSCM(Request $request): JsonResponse
+    {
+        $quoteNo   = $request->input('quote_no');
+        $bookingNo = $request->input('booking_no');
+
+        if (!$quoteNo && !$bookingNo) {
+            return response()->json([
+                'success' => false,
+                'message' => 'quote_no or booking_no is required'
+            ], 400);
+        }
+
+        try {
+            // ── Fetch record ──────────────────────────────────────────────────────
+            $quotation = DB::table('Quote_QuotationInfo')
+                ->when($quoteNo,  fn($q) => $q->where('QuoteNo',   $quoteNo))
+                ->when(!$quoteNo, fn($q) => $q->where('bookingno', $bookingNo))
+                ->first(['ID', 'QuoteNo', 'bookingno', 'SCMBookingXML', 'SCMBookingID']);
+
+            if (!$quotation) {
+                return response()->json(['success' => false, 'message' => 'Quotation not found'], 404);
+            }
+
+            if (empty($quotation->SCMBookingXML)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'SCMBookingXML is empty. Run the XML generation step first.'
+                ], 422);
+            }
+
+            Log::info('pushBookingToSCM - Starting', [
+                'quote_no'   => $quotation->QuoteNo,
+                'booking_no' => $quotation->bookingno,
+                'xml_length' => strlen($quotation->SCMBookingXML),
+            ]);
+
+            // ── Step 1: Generate Token ────────────────────────────────────────────
+            $tokenUrl   = env('SCM_TOKEN_URL',   'https://hhtapi.freightintime.com/token');
+            $authString = 'grant_type=password'
+                . '&username=' . urlencode(env('SCM_USERNAME', 'fitexpress'))
+                . '&password=' . urlencode(env('SCM_PASSWORD', 'Forwarder@8082'));
+
+            $curl = curl_init();
+            curl_setopt_array($curl, [
+                CURLOPT_URL            => $tokenUrl,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT        => 30,
+                CURLOPT_CUSTOMREQUEST  => 'POST',
+                CURLOPT_POSTFIELDS     => $authString,
+                CURLOPT_HTTPHEADER     => ['Content-Type: application/x-www-form-urlencoded'],
+            ]);
+
+            $tokenResponse = curl_exec($curl);
+            $tokenError    = curl_error($curl);
+            curl_close($curl);
+
+            if ($tokenError) {
+                Log::error('pushBookingToSCM - Token fetch failed', [
+                    'quote_no' => $quotation->QuoteNo,
+                    'error'    => $tokenError,
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to generate SCM token: ' . $tokenError
+                ], 500);
+            }
+
+            $tokenData = json_decode($tokenResponse);
+            if (json_last_error() !== JSON_ERROR_NONE || !isset($tokenData->access_token)) {
+                Log::error('pushBookingToSCM - Token parse failed', [
+                    'quote_no' => $quotation->QuoteNo,
+                    'response' => $tokenResponse,
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to parse SCM token response'
+                ], 500);
+            }
+
+            $token = $tokenData->access_token;
+
+            Log::info('pushBookingToSCM - Token generated successfully', [
+                'quote_no' => $quotation->QuoteNo,
+            ]);
+
+            // ── Step 2: Push XML to SCM ───────────────────────────────────────────
+            $pushUrl = env('SCM_BOOKING_URL', 'https://hhtapi.freightintime.com/api/v1/Booking/ProcessBooking');
+            $xml     = $quotation->SCMBookingXML;
+
+            $curl = curl_init();
+            curl_setopt_array($curl, [
+                CURLOPT_URL            => $pushUrl,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT        => 60,
+                CURLOPT_CUSTOMREQUEST  => 'POST',
+                CURLOPT_POSTFIELDS     => $xml,
+                CURLOPT_HTTPHEADER     => [
+                    'Content-Type: application/xml; charset=utf-8',
+                    'Authorization: Bearer ' . $token,
+                    'Content-Length: ' . strlen($xml),
+                    'Connection: keep-alive',
+                    'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                ],
+            ]);
+
+            $scmResponse = curl_exec($curl);
+            $curlError   = curl_error($curl);
+            curl_close($curl);
+
+            if ($curlError) {
+                Log::error('pushBookingToSCM - Curl push failed', [
+                    'quote_no' => $quotation->QuoteNo,
+                    'error'    => $curlError,
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to push XML to SCM: ' . $curlError
+                ], 500);
+            }
+
+            Log::info('pushBookingToSCM - SCM raw response', [
+                'quote_no' => $quotation->QuoteNo,
+                'response' => $scmResponse,
+            ]);
+
+            // ── Step 3: Parse SCM XML response ────────────────────────────────────
+            libxml_use_internal_errors(true);
+            $xmlObj = simplexml_load_string($scmResponse, null, LIBXML_NOCDATA);
+
+            if ($xmlObj === false) {
+                Log::error('pushBookingToSCM - Invalid SCM response XML', [
+                    'quote_no' => $quotation->QuoteNo,
+                    'response' => $scmResponse,
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'SCM returned an invalid XML response: ' . $scmResponse
+                ], 500);
+            }
+
+            $json     = json_encode($xmlObj);
+            $response = json_decode($json, true);
+
+            Log::info('pushBookingToSCM - SCM response parsed', [
+                'quote_no'        => $quotation->QuoteNo,
+                'parsed_response' => $response,
+            ]);
+
+            // ── Step 4: Build XML for sp_Quote_BookingCreateInfoUpdate ────────────
+            $status        = $response['Transaction']['Status']        ?? 'Fail';
+            $transactionId = $response['Transaction']['TransactionId'] ?? '';
+            $customerRefNo = $response['Transaction']['ID']            ?? $quotation->QuoteNo;
+
+            $errors   = $response['Transaction']['Errors']['Error'] ?? [];
+            $errorXml = '';
+
+            if (!empty($errors)) {
+                if (isset($errors['Code'])) {
+                    $errors = [$errors];
+                }
+                foreach ($errors as $error) {
+                    $code        = htmlspecialchars($error['Code']        ?? '');
+                    $description = htmlspecialchars($error['Description'] ?? '');
+                    $severity    = htmlspecialchars((string) ($error['Severity'] ?? '0'));
+                    $errorXml   .= "<Error>
+                    <Code>{$code}</Code>
+                    <Description>{$description}</Description>
+                    <Severity>{$severity}</Severity>
+                </Error>";
+                }
+            }
+
+            $inputXml = "
+        <ArrayOfTransaction>
+            <Transaction>
+                <ID>{$quotation->QuoteNo}</ID>
+                <Status>{$status}</Status>
+                <CutomerRefNo>{$customerRefNo}</CutomerRefNo>
+                <TransactionId>{$transactionId}</TransactionId>
+                <Errors>{$errorXml}</Errors>
+            </Transaction>
+        </ArrayOfTransaction>";
+
+            Log::info('pushBookingToSCM - Passing to sp_Quote_BookingCreateInfoUpdate', [
+                'quote_no'  => $quotation->QuoteNo,
+                'status'    => $status,
+                'input_xml' => $inputXml,
+            ]);
+
+            // ── Step 5: Call sp_Quote_BookingCreateInfoUpdate ─────────────────────
+            $pdo  = DB::connection()->getPdo();
+            $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC dbo.sp_Quote_BookingCreateInfoUpdate ?");
+            $stmt->execute([$inputXml]);
+
+            $spError = null;
+            do {
+                try {
+                    $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+                    if (empty($rows)) continue;
+                    $firstVal = array_values((array) $rows[0])[0] ?? '';
+                    if (is_string($firstVal) && str_starts_with($firstVal, 'Failed')) {
+                        $spError = $firstVal;
+                        break;
+                    }
+                } catch (\PDOException $e) {
+                    continue;
+                }
+            } while ($stmt->nextRowset());
+
+            if ($spError) {
+                Log::error('pushBookingToSCM - SP returned error', [
+                    'quote_no' => $quotation->QuoteNo,
+                    'sp_error' => $spError,
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => $spError
+                ], 422);
+            }
+
+            // ── Step 6: Verify SCMBookingID was written ───────────────────────────
+            $updated = DB::table('Quote_QuotationInfo')
+                ->where('QuoteNo', $quotation->QuoteNo)
+                ->first(['SCMBookingID', 'SCMBookingNo', 'QuoteStatus']);
+
+            Log::info('pushBookingToSCM - Completed', [
+                'quote_no'       => $quotation->QuoteNo,
+                'scm_booking_id' => $updated->SCMBookingID ?? 'NULL',
+                'scm_booking_no' => $updated->SCMBookingNo ?? 'NULL',
+                'quote_status'   => $updated->QuoteStatus  ?? 'NULL',
+                'scm_status'     => $status,
+            ]);
+
+            return response()->json([
+                'success'        => $status === 'Success',
+                'message'        => $status === 'Success'
+                    ? 'Booking pushed to SCM successfully'
+                    : 'SCM returned failure — check errors',
+                'scm_booking_id' => $updated->SCMBookingID ?? null,
+                'scm_booking_no' => $updated->SCMBookingNo ?? null,
+                'quote_status'   => $updated->QuoteStatus  ?? null,
+                'scm_status'     => $status,
+                'errors'         => $errors,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('pushBookingToSCM - Exception', [
+                'quote_no' => $quoteNo ?? $bookingNo,
+                'error'    => $e->getMessage(),
+                'file'     => $e->getFile(),
+                'line'     => $e->getLine(),
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 }

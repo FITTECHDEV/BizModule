@@ -1116,11 +1116,14 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
         ->name('quotation.shipment.save');
     Route::post('/quotation/cargo/save', [App\Http\Controllers\QuotationController::class, 'saveCargoDetails'])
         ->name('quotation.cargo.save');
-    Route::post('/quotation/booking-integration-response', [App\Http\Controllers\QuotationController::class, 'handleBookingIntegrationResponse'])
-        ->name('quotation.bookingIntegrationResponse');
+    // Route::post('/quotation/booking-integration-response', [App\Http\Controllers\QuotationController::class, 'handleBookingIntegrationResponse'])
+    //     ->name('quotation.bookingIntegrationResponse');
     // ✅ MOVED UP — inquiry/save is a POST so technically safe, but grouped correctly herefv
     Route::post('/quotation/inquiry/save', [App\Http\Controllers\QuotationController::class, 'saveInquiryDetails'])
         ->name('quotation.inquiry.save');
+
+    Route::post('/quotation/push-to-scm', [App\Http\Controllers\QuotationController::class, 'pushBookingToSCM'])
+        ->name('quotation.push-to-scm');
 
     // ============================================
     // WILDCARD ROUTES — must be last
@@ -1160,6 +1163,12 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
     Route::post('/crm/sync/run', [App\Http\Controllers\CrmSyncController::class, 'run'])
         ->name('crm.sync.run');
 });
+Route::post(
+    '/quotation/booking-integration-response',
+    [App\Http\Controllers\QuotationController::class, 'handleBookingIntegrationResponse']
+)
+    ->name('quotation.bookingIntegrationResponse');
+
 
 
 

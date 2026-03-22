@@ -508,7 +508,7 @@
     <style>
         /* COMPACT CARD STYLING */
         .compact-card {
-            min-height: 75px !important;
+            min-height: 90px !important;
             margin-bottom: 0.5rem;
             cursor: pointer;
             border-radius: 0.25rem;
@@ -534,6 +534,19 @@
             font-size: 38px !important;
             top: 8px;
             right: 8px;
+        }
+
+        /* Non-clickable cards should not show pointer cursor */
+        .compact-card:not(.card-filter-trigger) {
+            cursor: default;
+        }
+
+        /* Hover — desktop/mouse only */
+        @media (hover: hover) and (pointer: fine) {
+            .card-filter-trigger:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            }
         }
 
         .compact-card.card-filter-trigger:hover {
@@ -789,9 +802,6 @@
         /* CREATE BOOKING MODAL — LOCKED STATE */
         #createBookingForm.cb-locked select,
         #createBookingForm.cb-locked input[type="text"] {
-
-
-
             background-color: #f8f9fa;
             pointer-events: none;
             opacity: 0.85;
@@ -1206,18 +1216,6 @@
                         $('#cb_service_template').empty()
                             .append('<option value="" disabled>Failed to load — try again</option>');
                     });
-
-                // For failed_int rows the form is skipped — go straight to the progress view
-                if (cardFilter === 'failed_int') {
-                    $('#createBookingForm').addClass('d-none');
-                    $('#cbProgressPanel').removeClass('d-none');
-                    $('#submitCreateBookingBtn').addClass('d-none');
-                    $('#cancelCreateBookingBtn').addClass('d-none');
-                    $('#cbCloseBtn').removeClass('d-none');
-                    $('#cbEditLink').removeClass('d-none');
-                    renderBookingSteps([]);
-                    return;
-                }
             });
 
             // ── Create Booking modal — on hide ───────────────────────────────────────
@@ -1472,28 +1470,6 @@
             });
 
             // ── Booking step renderer ─────────────────────────────────────────────────
-            var BOOKING_STEPS = [{
-                    step: 0,
-                    label: 'Save Booking Info'
-                },
-                {
-                    step: 1,
-                    label: 'Client Creation'
-                },
-                {
-                    step: 2,
-                    label: 'Booking XML'
-                },
-                {
-                    step: 3,
-                    label: 'Charge Transfer'
-                },
-                {
-                    step: 4,
-                    label: 'Document Transfer'
-                }
-            ];
-
             function renderBookingSteps(completedSteps) {
                 var $list = $('#cbStepList').empty();
                 BOOKING_STEPS.forEach(function(def) {
@@ -1540,6 +1516,7 @@
 
             // ── Submit Create Booking ─────────────────────────────────────────────────
             $('#submitCreateBookingBtn').on('click', function() {
+                var $btn = $(this);
                 var quotationId = $('#createBookingModal').data('quotation-id');
                 var bookingNo = $('#createBookingModal').data('booking-no');
                 var serviceTemplate = $('#cb_service_template').val();
@@ -1559,6 +1536,10 @@
                     alert('Please complete the following required fields:\n• ' + errors.join('\n• '));
                     return;
                 }
+
+                // Disable button to prevent double submission
+                $btn.prop('disabled', true).html(
+                    '<i class="fas fa-spinner fa-spin mr-1"></i> Processing...');
 
                 $('#createBookingForm').addClass('d-none');
                 $('#cbProgressPanel').removeClass('d-none');
@@ -1614,6 +1595,7 @@
                         if (xhr.responseJSON?.steps) renderBookingSteps(xhr.responseJSON.steps);
                     },
                     complete: function() {
+                        $btn.prop('disabled', false).html('Create');
                         $('#cbCloseBtn').removeClass('d-none');
                     }
                 });
