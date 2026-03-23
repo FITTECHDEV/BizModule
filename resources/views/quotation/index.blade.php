@@ -817,6 +817,34 @@
 
             var currentCardFilter = 'in_progress';
 
+            // ── Booking step definitions ──────────────────────────────────────────────
+            // Must stay in sync with processBooking() step order in QuotationController.
+            const BOOKING_STEPS = [{
+                    step: 0,
+                    label: 'Save Booking Info'
+                },
+                {
+                    step: 1,
+                    label: 'Client Creation'
+                },
+                {
+                    step: 2,
+                    label: 'Booking XML'
+                },
+                {
+                    step: '2b',
+                    label: 'SCM Push'
+                },
+                {
+                    step: 3,
+                    label: 'Charge Transfer'
+                },
+                {
+                    step: 4,
+                    label: 'Document Transfer'
+                },
+            ];
+
             // Set date filter before DataTable initialises so the first request picks it up
             $('#dateFilter').val('all');
 

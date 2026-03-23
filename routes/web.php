@@ -867,7 +867,7 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
     // ============================================
     Route::post('/quotation/{id}/generate-pdf', [App\Http\Controllers\QuotationController::class, 'generatePdf'])
         ->name('quotation.generate-pdf');
-    Route::post('/quotation/{bookingno}/duplicate', [App\Http\Controllers\QuotationController::class, 'processDuplicate'])
+    Route::post('/quotation/{quoteno}/duplicate', [App\Http\Controllers\QuotationController::class, 'processDuplicate'])
         ->name('quotation.processDuplicate');
     Route::post('/quotation/{bookingno}/copy', [App\Http\Controllers\QuotationController::class, 'copy'])
         ->name('quotation.copy');
