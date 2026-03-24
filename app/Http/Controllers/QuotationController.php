@@ -1931,467 +1931,169 @@ class QuotationController extends Controller
     {
         try {
             // ============================================
-            // GET QUOTATION CONTEXT FOR DETAILED LOGGING
+            // BASIC INPUT
             // ============================================
-
             $bookingNo = $request->input('booking_no');
-            $quotation = DB::table('Quote_QuotationInfo')
-                ->where('bookingno', $bookingNo)
-                ->first(['ID', 'teamid', 'ServiceVerticalname', 'origincountry', 'destinationcountry', 'QuoteStatus', 'status']);
-
-            $officeCode = 'Unknown';
-            if ($quotation) {
-                $office = DB::table('Cust_Office')
-                    ->where('TeamCode', $quotation->teamid)
-                    ->where('IsActive', 1)
-                    ->where('IsDeleted', 0)
-                    ->first(['Code']);
-                $officeCode = $office ? trim($office->Code) : 'Unknown';
-            }
 
             // ============================================
-            // LOG INCOMING REQUEST WITH CONTEXT
-            // ============================================
-            Log::info('Save Charge Request - Start', [
-                'booking_no' => $bookingNo,
-                'charge_code' => $request->input('charge_code'),
-                'based_on_code' => $request->input('based_on_code'),
-                'based_on_uom' => $request->input('based_on_uom'),
-                'action' => $request->input('action'),
-                'revenue_or_cost' => $request->input('revenue_or_cost'),
-                'user' => Auth::user()->displayName ?? Auth::user()->Email ?? 'system',
-                'context' => [
-                    'quotation_id' => $quotation->ID ?? 'N/A',
-                    'office_code' => $officeCode,
-                    'service_type' => $quotation->ServiceVerticalname ?? 'N/A',
-                    'status' => $quotation->QuoteStatus ?? $quotation->status ?? 'Unknown',
-                ]
-            ]);
-
-            // ============================================
-            // VALIDATE REQUIRED FIELDS
+            // VALIDATION
             // ============================================
             $validator = \Validator::make($request->all(), [
                 'booking_no' => 'required|string',
                 'charge_code' => 'required|string',
                 'based_on_code' => 'required|string',
-                'revenue_or_cost' => 'required|string',
+                'revenue_or_cost' => 'required|string|in:Revenue,Cost,Cost with Markup',
                 'action' => 'required|in:Add,Edit,Delete',
             ]);
 
             if ($validator->fails()) {
-                Log::warning('Save Charge Validation Failed', [
-                    'booking_no' => $bookingNo,
-                    'errors' => $validator->errors()->toArray(),
-                    'request_data' => $request->all()
-                ]);
-
                 return response()->json([
                     'success' => false,
-                    'message' => 'Validation failed: ' . $validator->errors()->first(),
-                    'errors' => $validator->errors()->toArray()
+                    'message' => $validator->errors()->first(),
+                    'errors' => $validator->errors()
                 ], 422);
             }
 
             // ============================================
-            // VERIFY QUOTATION EXISTS
+            // GET QUOTATION (ONLY FOR QUOTENO)
             // ============================================
+            $quotation = DB::table('Quote_QuotationInfo')
+                ->where('bookingno', $bookingNo)
+                ->first(['QuoteNo', 'ID']);
 
             if (!$quotation) {
-                Log::error('Save Charge - Quotation not found', [
-                    'booking_no' => $bookingNo,
-                    'action' => $request->input('action'),
-                    'user' => Auth::user()->displayName ?? Auth::user()->Email ?? 'system'
-                ]);
-
                 return response()->json([
                     'success' => false,
-                    'message' => 'Quotation not found for booking number: ' . $bookingNo
+                    'message' => 'Quotation not found'
                 ], 404);
             }
 
-            // Validate RevenueOrCost matches exactly what the SP expects
-            $validChargeTypes = ['Revenue', 'Cost', 'Cost with Markup'];
-            if (!in_array($request->input('revenue_or_cost'), $validChargeTypes)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Invalid charge type. Must be Revenue, Cost, or Cost with Markup'
-                ], 422);
-            }
+            $quoteNo = $quotation->QuoteNo;
 
             // ============================================
-            // DEBUG AUTH USER
+            // FIX: USE CORRECT UOM FIELD
             // ============================================
-
-            $user = Auth::user();
-            Log::info('Current authenticated user', [
-                'user' => $user ? [
-                    'id' => $user->id ?? null,
-                    'username' => $user->username ?? null,
-                    'email' => $user->email ?? null,
-                    'name' => $user->name ?? null,
-                ] : 'No user authenticated'
-            ]);
+            $basedOnUOM = $request->input('based_on_uom'); // ✅ FIXED
 
             // ============================================
-            // PREPARE STORED PROCEDURE INPUT
+            // PREPARE INPUT JSON (SP WILL HANDLE EVERYTHING)
             // ============================================
-            $quoteNo = DB::table('Quote_QuotationInfo')
-                ->where('bookingno', $bookingNo)
-                ->value('QuoteNo');
-
-            if (!$quoteNo) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'QuoteNo not found for booking: ' . $bookingNo,
-                ], 404);
-            }
-
             $inputJson = json_encode([
                 'OperationType' => 'QuotationAddorEditCharge',
                 'SubmittedDatetime' => now()->format('YmdHis'),
                 'SubmittedBy' => Auth::check()
-                    ? (Auth::user()->displayName ?? Auth::user()->Email ?? 'system')
+                    ? (Auth::user()->displayName ?? Auth::user()->email ?? 'system')
                     : 'system',
-                'Action' => $request->input('action', 'Add'),
+
+                'Action' => $request->input('action'),
                 'QuotationNo' => $quoteNo,
-                'QuoteChargeID' => $request->input('quote_charge_id', ''),
-                'PartyCode' => $request->input('party_code', ''),
+                'QuoteChargeID' => $request->input('quote_charge_id', null),
+                'PartyCode' => $request->input('party_code', null),
                 'RevenueOrCost' => $request->input('revenue_or_cost'),
                 'ChargeCode' => $request->input('charge_code'),
+
                 'Quantity' => (float)$request->input('quantity', 0),
                 'Rate' => (float)$request->input('rate', 0),
                 'AmtInChgCurr' => (float)$request->input('amt_in_chg_curr', 0),
                 'AmtInBaseCurr' => (float)$request->input('amt_in_base_curr', 0),
                 'ExChangeRate' => (float)$request->input('exchange_rate', 1),
-                'ChgCurr' => $request->input('chg_curr', 'KES'),
-                'BasedOnCode' => $request->input('based_on_code'),
-                'BasedOnUOM' => $request->input('based_on_and_uom', ''),
 
-                'ChargeRemark' => $request->input('charge_remark', ''),
+                'ChgCurr' => $request->input('chg_curr', 'KES'),
+
+                'BasedOnCode' => $request->input('based_on_code'),
+                'BasedOnUOM' => $basedOnUOM,
+
+                'ChargeRemark' => $request->input('charge_remark', null),
                 'ToBeAdded' => (int)$request->input('to_be_added', 0),
                 'IncreaseBy' => (float)$request->input('increase_by', 0),
                 'IncreaseType' => $request->input('increase_type', 'Percentage'),
                 'SourceType' => ucfirst(strtolower($request->input('source_type', 'manual')))
             ]);
 
-            Log::info('SP Input - BasedOn fields', [
-                'booking_no'       => $bookingNo,
-                'based_on_code'    => $request->input('based_on_code'),
-                'based_on_uom'     => $request->input('based_on_uom'),
-                'based_on_and_uom' => $request->input('based_on_and_uom'),
-                'input_json'       => $inputJson,
-            ]);
-
-            Log::info('Stored Procedure Input JSON', [
+            // ============================================
+            // LOG INPUT (DEBUG ONLY)
+            // ============================================
+            Log::info('SP INPUT', [
                 'booking_no' => $bookingNo,
-                'action' => $request->input('action'),
-                'json' => $inputJson,
-                'json_decoded' => json_decode($inputJson, true)
+                'quote_no' => $quoteNo,
+                'json' => json_decode($inputJson, true)
             ]);
 
             // ============================================
-
-            // EXECUTE STORED PROCEDURE WITH PDO
-
+            // EXECUTE STORED PROCEDURE
             // ============================================
-            Log::info('Executing Stored Procedure: sp_Quote_Quotaiton_ChargesAddorEdit', [
-                'booking_no' => $bookingNo,
-                'office_code' => $officeCode
-            ]);
-
             $pdo = DB::connection()->getPdo();
+
             $stmt = $pdo->prepare("
-                SET NOCOUNT ON;
-                DECLARE @OutputJson VARCHAR(2000);
-                EXEC sp_Quote_Quotaiton_ChargesAddorEdit ?, @OutputJson OUTPUT;
-                SELECT @OutputJson AS OutputJson
+            SET NOCOUNT ON;
+            DECLARE @OutputJson VARCHAR(2000);
+            EXEC sp_Quote_Quotaiton_ChargesAddorEdit ?, @OutputJson OUTPUT;
+            SELECT @OutputJson AS OutputJson;
+        ");
 
-                ");
-
-            $executeSuccess = $stmt->execute([$inputJson]);
-            if (!$executeSuccess) {
-                $errorInfo = $stmt->errorInfo();
-                Log::error('Stored procedure execution failed', [
-                    'booking_no' => $bookingNo,
-                    'error_code' => $errorInfo[0] ?? 'Unknown',
-                    'sql_state' => $errorInfo[1] ?? 'Unknown',
-                    'error_message' => $errorInfo[2] ?? 'Unknown',
-                    'input_json' => $inputJson
-                ]);
-
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to execute stored procedure',
-                    'error_details' => config('app.debug') ? $errorInfo[2] : null
-                ], 500);
-            }
-
-            // ============================================
-            // ENHANCED RESULT SET PROCESSING
-            // ============================================
+            $stmt->execute([$inputJson]);
 
             $result = null;
-            $resultSetCount = 0;
 
             do {
-                $resultSetCount++;
-                try {
-                    $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
-                    Log::debug("Result set #$resultSetCount", [
-                        'booking_no' => $bookingNo,
-                        'count' => count($rows),
-                        'first_row' => !empty($rows) ? (array)$rows[0] : null
-                    ]);
+                $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
 
-                    // ============================================
-                    // ENHANCED ERROR DETECTION IN RESULT SET
-                    // ============================================
-
-                    if (!empty($rows) && is_object($rows[0])) {
-                        $properties = get_object_vars($rows[0]);
-
-                        // Check for error indicators
-                        $hasError = false;
-                        foreach ($properties as $key => $value) {
-                            if (
-                                empty($key) ||
-                                $key === '' ||
-                                (is_string($value) && (
-                                    strpos($value, 'Error Message') !== false ||
-                                    strpos($value, 'Failed -') !== false
-                                ))
-                            ) {
-                                Log::error('Stored procedure returned error object:', [
-                                    'booking_no' => $bookingNo,
-                                    'result_set' => $resultSetCount,
-                                    'error_property_name' => $key,
-                                    'error_message' => $value,
-                                    'all_properties' => $properties,
-                                    'context' => [
-                                        'office_code' => $officeCode,
-                                        'service_type' => $quotation->ServiceVerticalname ?? 'N/A',
-                                        'action' => $request->input('action'),
-                                    ]
-                                ]);
-                                $hasError = true;
-                                break;
-                            }
-                        }
-
-                        if ($hasError) {
-                            continue; // Skip this result set
-                        }
-
-                        // Valid result set with OutputJson
-                        if (isset($rows[0]->OutputJson)) {
-                            $result = $rows;
-                            Log::info('✓ Found OutputJson in result set #' . $resultSetCount, [
-                                'booking_no' => $bookingNo
-                            ]);
-                            break;
-                        }
-                    }
-                } catch (\PDOException $e) {
-
-                    // Skip empty result sets
-                    Log::debug("Result set #$resultSetCount error (skipping)", [
-                        'booking_no' => $bookingNo,
-                        'error' => $e->getMessage()
-                    ]);
-                    continue;
+                if (!empty($rows) && isset($rows[0]->OutputJson)) {
+                    $result = $rows;
+                    break;
                 }
             } while ($stmt->nextRowset());
 
             if (!$result) {
-                Log::error('Stored procedure did not return OutputJson', [
-                    'booking_no' => $bookingNo,
-                    'total_result_sets' => $resultSetCount,
-                    'action' => $request->input('action'),
-                    'office_code' => $officeCode,
-                    'probable_cause' => 'Stored procedure may have failed silently or returned unexpected format'
-                ]);
-
                 return response()->json([
                     'success' => false,
-                    'message' => 'Stored procedure did not return expected output'
+                    'message' => 'No response from stored procedure'
                 ], 500);
             }
 
             // ============================================
-            // LOG RAW STORED PROCEDURE OUTPUT
+            // PARSE RESPONSE
             // ============================================
-
-            Log::info('Stored Procedure Raw Output', [
-                'booking_no' => $bookingNo,
-                'result' => $result,
-                'output_json' => $result[0]->OutputJson ?? null
-            ]);
-
-            // ============================================
-            // PARSE OUTPUT WITH ENHANCED ERROR HANDLING
-            // ============================================
-
-            $outputJson = $result[0]->OutputJson ?? '{}';
-            $output = json_decode($outputJson, true);
-
-            // Check if JSON decode failed
+            $output = json_decode($result[0]->OutputJson, true);
 
             if (json_last_error() !== JSON_ERROR_NONE) {
-
-                Log::error('Failed to decode stored procedure output', [
-                    'booking_no' => $bookingNo,
-                    'json_error' => json_last_error_msg(),
-                    'json_error_code' => json_last_error(),
-                    'raw_output' => $outputJson,
-                    'context' => [
-                        'office_code' => $officeCode,
-                        'action' => $request->input('action'),
-                    ]
-                ]);
-
                 return response()->json([
                     'success' => false,
-                    'message' => 'Failed to parse stored procedure response: ' . json_last_error_msg(),
-                    'error_details' => config('app.debug') ? $outputJson : null
+                    'message' => 'Invalid response from stored procedure'
                 ], 500);
             }
 
-            Log::info('Stored Procedure Parsed Output', [
-                'booking_no' => $bookingNo,
-                'output' => $output,
-                'status' => $output['Status'] ?? 'Unknown',
-                'remarks' => $output['Remarks'] ?? []
-            ]);
-
             // ============================================
-            // HANDLE SUCCESS RESPONSE
+            // SUCCESS
             // ============================================
-
             if (($output['Status'] ?? '') === 'Success') {
-                Log::info('Charge saved successfully', [
-                    'booking_no' => $bookingNo,
-                    'charge_id' => $output['ChargeID'] ?? null,
-                    'action' => $request->input('action'),
-                    'revenue_or_cost' => $request->input('revenue_or_cost'),
-                    'charge_code' => $request->input('charge_code'),
-                    'amount' => $request->input('amt_in_base_curr'),
-                    'user' => Auth::user()->displayName ?? Auth::user()->Email ?? 'system'
-                ]);
-
                 return response()->json([
                     'success' => true,
-                    'message' => $output['Remarks'][0]['Remark'] ?? 'Charge saved successfully',
+                    'message' => $output['Remarks'][0]['Remark'] ?? 'Success',
                     'charge_id' => $output['ChargeID'] ?? null,
                     'data' => $output
                 ]);
             }
 
             // ============================================
-            // HANDLE FAILURE RESPONSE
+            // FAILURE
             // ============================================
-
-            $errorMessage = $output['Remarks'][0]['Remark'] ?? 'Failed to save charge';
-            Log::warning('Stored Procedure returned failure', [
-                'booking_no' => $bookingNo,
-                'status' => $output['Status'] ?? 'Unknown',
-                'message' => $errorMessage,
-                'full_output' => $output,
-                'context' => [
-                    'office_code' => $officeCode,
-                    'action' => $request->input('action'),
-                    'charge_code' => $request->input('charge_code'),
-                    'revenue_or_cost' => $request->input('revenue_or_cost'),
-                ]
-            ]);
-
             return response()->json([
                 'success' => false,
-                'message' => $errorMessage,
+                'message' => $output['Remarks'][0]['Remark'] ?? 'Failed',
                 'details' => $output['Remarks'] ?? []
             ], 422);
-        } catch (\PDOException $e) {
-
-            // ============================================
-            // PDO-SPECIFIC ERRORS
-            // ============================================
-
-            Log::error('Save charge failed with PDO exception', [
-                'booking_no' => $request->input('booking_no'),
-                'error_message' => $e->getMessage(),
-                'error_code' => $e->getCode(),
-                'error_file' => $e->getFile(),
-                'error_line' => $e->getLine(),
-                'sql_state' => $e->errorInfo[0] ?? 'Unknown',
-                'driver_error_code' => $e->errorInfo[1] ?? 'Unknown',
-                'driver_error_message' => $e->errorInfo[2] ?? 'Unknown',
-                'trace' => $e->getTraceAsString(),
-                'request_data' => $request->all()
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Database connection error while saving charge',
-                'error_code' => 'PDO_ERROR',
-                'details' => config('app.debug') ? [
-                    'message' => $e->getMessage(),
-                    'sql_state' => $e->errorInfo[0] ?? null,
-                ] : null
-
-            ], 500);
-        } catch (\Illuminate\Database\QueryException $e) {
-
-            // ============================================
-            // LARAVEL QUERY ERRORS
-            // ============================================
-
-            Log::error('Save charge failed with query exception', [
-                'booking_no' => $request->input('booking_no'),
-                'error_message' => $e->getMessage(),
-                'error_code' => $e->getCode(),
-                'error_file' => $e->getFile(),
-                'error_line' => $e->getLine(),
-                'sql' => $e->getSql() ?? 'N/A',
-                'bindings' => $e->getBindings() ?? [],
-                'trace' => $e->getTraceAsString(),
-                'request_data' => $request->all()
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Database query error while saving charge',
-                'error_code' => 'QUERY_ERROR',
-                'details' => config('app.debug') ? [
-                    'message' => $e->getMessage(),
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine(),
-                ] : null
-
-            ], 500);
         } catch (\Exception $e) {
 
-            // ============================================
-            // GENERAL ERRORS
-            // ============================================
-
-            Log::error('Save charge failed with general exception', [
-                'booking_no' => $request->input('booking_no'),
-                'error_message' => $e->getMessage(),
-                'error_file' => $e->getFile(),
-                'error_line' => $e->getLine(),
+            Log::error('SAVE CHARGE ERROR', [
+                'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
-                'request_data' => $request->all()
+                'request' => $request->all()
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to save charge: ' . $e->getMessage(),
-                'error_code' => 'GENERAL_ERROR',
-                'details' => config('app.debug') ? [
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine(),
-                ] : null
-
+                'message' => 'Unexpected error occurred'
             ], 500);
         }
     }
@@ -5226,60 +4928,67 @@ class QuotationController extends Controller
     public function getCurrencies(Request $request)
     {
         try {
-            $officeCode = $request->office_code;
+            $officeId = trim($request->office_id);
 
-            Log::info('getCurrencies called', ['office_code' => $officeCode]);
-
-            if (!$officeCode) {
+            if (!$officeId) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Office code is required'
+                    'message' => 'Office ID is required'
                 ], 400);
             }
 
-            // Query FITSCMUAT database (where currency data lives)
-            // In getCurrencies(), replace the existing query with:
-            $currencies = DB::connection('sqlsrv')
-                ->select("
-        SELECT DISTINCT CC.Id as CurrencyID, CC.Code as CurrencyCode, CC.Name as CurrencyName
-        FROM [FITSCMUAT].dbo.Cust_Office CO WITH (NOLOCK)
-        INNER JOIN [FITSCMUAT].dbo.Bill_ChargeCodeOfficeMap BCO WITH (NOLOCK) 
-            ON BCO.OfficeId = CO.Id AND BCO.IsActive = 1
-        INNER JOIN [FITSCMUAT].dbo.Cust_Currency CC WITH (NOLOCK) 
-            ON CC.Id = BCO.DefaultCurrencyId
-        WHERE CO.Code = ?
-            AND CO.IsActive = 1 
-            AND CO.IsDeleted = 0
-            AND CC.IsActive = 1 
-            AND CC.IsDeleted = 0
-            GROUP BY CC.Id, CC.Code, CC.Name  -- group instead of DISTINCT to collapse duplicates
-            ORDER BY CC.Code
-        ", [trim($officeCode)]);
+            $pdo  = DB::connection()->getPdo();
+            $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC dbo.sp_CurrencyList ?, ?");
+            $stmt->execute([$officeId, '']);
 
-            Log::info('Currencies fetched', [
-                'office_code' => $officeCode,
-                'count' => count($currencies)
-            ]);
+            $currencies = [];
+            do {
+                try {
+                    $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+                    if (empty($rows)) continue;
+
+                    $firstVal = array_values((array) $rows[0])[0] ?? '';
+                    if (is_string($firstVal) && (
+                        str_contains($firstVal, 'mandatory') ||
+                        str_contains($firstVal, 'does not exist')
+                    )) {
+                        Log::warning('getCurrencies - SP guard error', [
+                            'office_id' => $officeId,
+                            'message'   => $firstVal,
+                        ]);
+                        return response()->json([
+                            'success' => false,
+                            'message' => $firstVal
+                        ], 404);
+                    }
+
+                    if (isset($rows[0]->CurrencyID, $rows[0]->CurrencyCode)) {
+                        $currencies = $rows;
+                        break;
+                    }
+                } catch (\PDOException $e) {
+                    continue;
+                }
+            } while ($stmt->nextRowset());
 
             return response()->json([
-                'success' => true,
-                'currencies' => $currencies
+                'success'    => true,
+                'currencies' => array_map(fn($c) => [
+                    'CurrencyID'   => $c->CurrencyID,
+                    'CurrencyCode' => $c->CurrencyCode,
+                ], $currencies),
             ]);
         } catch (\Exception $e) {
-
-            Log::error('Failed to get currencies', [
-                'office_code' => $request->office_code,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+            Log::error('getCurrencies - exception', [
+                'office_id' => $request->office_id ?? '',
+                'error'     => $e->getMessage(),
             ]);
-
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve currencies: ' . $e->getMessage()
             ], 500);
         }
     }
-
     /**
      * Get exchange rate for currency
      */
