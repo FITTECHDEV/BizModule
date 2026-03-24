@@ -2066,12 +2066,21 @@ class QuotationController extends Controller
                 'ExChangeRate' => (float)$request->input('exchange_rate', 1),
                 'ChgCurr' => $request->input('chg_curr', 'KES'),
                 'BasedOnCode' => $request->input('based_on_code'),
-                'BasedOnUOM' => $request->input('based_on_uom', ''),
+                'BasedOnUOM' => $request->input('based_on_and_uom', ''),
+
                 'ChargeRemark' => $request->input('charge_remark', ''),
                 'ToBeAdded' => (int)$request->input('to_be_added', 0),
                 'IncreaseBy' => (float)$request->input('increase_by', 0),
                 'IncreaseType' => $request->input('increase_type', 'Percentage'),
                 'SourceType' => ucfirst(strtolower($request->input('source_type', 'manual')))
+            ]);
+
+            Log::info('SP Input - BasedOn fields', [
+                'booking_no'       => $bookingNo,
+                'based_on_code'    => $request->input('based_on_code'),
+                'based_on_uom'     => $request->input('based_on_uom'),
+                'based_on_and_uom' => $request->input('based_on_and_uom'),
+                'input_json'       => $inputJson,
             ]);
 
             Log::info('Stored Procedure Input JSON', [
@@ -5229,22 +5238,23 @@ class QuotationController extends Controller
             }
 
             // Query FITSCMUAT database (where currency data lives)
+            // In getCurrencies(), replace the existing query with:
             $currencies = DB::connection('sqlsrv')
                 ->select("
-                SELECT DISTINCT CC.Id as CurrencyID, CC.Code as CurrencyCode, CC.Name as CurrencyName
-                FROM [FITSCMUAT].dbo.Cust_Office CO WITH (NOLOCK)
-                INNER JOIN [FITSCMUAT].dbo.Bill_ChargeCodeOfficeMap BCO WITH (NOLOCK) 
-                    ON BCO.OfficeId = CO.Id AND BCO.IsActive = 1
-                INNER JOIN [FITSCMUAT].dbo.Cust_Currency CC WITH (NOLOCK) 
-                    ON CC.Id = BCO.DefaultCurrencyId
-                WHERE CO.Code = ?
-                    AND CO.IsActive = 1 
-                    AND CO.IsDeleted = 0
-                    AND CC.IsActive = 1 
-                    AND CC.IsDeleted = 0
-                ORDER BY CC.Code
-
-            ", [trim($officeCode)]);
+        SELECT DISTINCT CC.Id as CurrencyID, CC.Code as CurrencyCode, CC.Name as CurrencyName
+        FROM [FITSCMUAT].dbo.Cust_Office CO WITH (NOLOCK)
+        INNER JOIN [FITSCMUAT].dbo.Bill_ChargeCodeOfficeMap BCO WITH (NOLOCK) 
+            ON BCO.OfficeId = CO.Id AND BCO.IsActive = 1
+        INNER JOIN [FITSCMUAT].dbo.Cust_Currency CC WITH (NOLOCK) 
+            ON CC.Id = BCO.DefaultCurrencyId
+        WHERE CO.Code = ?
+            AND CO.IsActive = 1 
+            AND CO.IsDeleted = 0
+            AND CC.IsActive = 1 
+            AND CC.IsDeleted = 0
+            GROUP BY CC.Id, CC.Code, CC.Name  -- group instead of DISTINCT to collapse duplicates
+            ORDER BY CC.Code
+        ", [trim($officeCode)]);
 
             Log::info('Currencies fetched', [
                 'office_code' => $officeCode,

@@ -827,8 +827,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             MODALS
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             ============================================ -->
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         MODALS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -925,7 +925,8 @@
                                         </div>
                                         <div class="col-6">
                                             <label for="revenue_base_amount" class="form-label text-nowrap">
-                                                Amount in Base Currency <span class="text-muted">(KES)</span></label>
+                                                Amount in Base Currency <span class="text-muted"
+                                                    id="revenue_base_currency_label">(KES)</span></label>
                                             <input type="number" class="form-control" id="revenue_base_amount"
                                                 name="revenue_base_amount" step="0.01" value="0.00" readonly>
                                         </div>
@@ -1094,7 +1095,8 @@
                                         </div>
                                         <div class="col-6">
                                             <label for="cost_base_amount" class="form-label text-nowrap">
-                                                Amount in Base Currency <span class="text-muted">(KES)</span></label>
+                                                Amount in Base Currency <span class="text-muted"
+                                                    id="cost_base_currency_label">(KES)</span></label>
                                             <input type="number" class="form-control" id="cost_base_amount"
                                                 name="cost_base_amount" step="0.01" value="0.00" readonly>
                                         </div>
@@ -1390,8 +1392,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1834,9 +1836,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -2061,6 +2063,26 @@
                 } else {
                     $btn.removeAttr('title');
                 }
+            }
+
+            function getBaseCurrency() {
+                return OFFICE_BASE_CURRENCY[officeCode] ?? 'KES';
+            }
+
+            function updateBaseCurrencyLabels() {
+                const bc = getBaseCurrency();
+                $('#revenue_base_currency_label').text('(' + bc + ')');
+                $('#cost_base_currency_label').text('(' + bc + ')');
+            }
+
+            function getBaseCurrency() {
+                return OFFICE_BASE_CURRENCY[officeCode] ?? 'KES';
+            }
+
+            function updateBaseCurrencyLabels() {
+                const bc = getBaseCurrency();
+                $('#revenue_base_currency_label').text('(' + bc + ')');
+                $('#cost_base_currency_label').text('(' + bc + ')');
             }
 
             // Hidden field to hold the ClientID selected from Company Name autocomplete
@@ -2395,6 +2417,9 @@
                     }
                 });
             });
+
+            updateBaseCurrencyLabels();
+
 
             // ── T&C Gate ─────────────────────────────────────────────
             // Unblock Generate Quote immediately if T&C was previously applied
@@ -2815,6 +2840,10 @@
 
                 // ── NEW: Equipment branch (mirrors loadBasedOnUOMWithCallback) ───────────────
                 if (basedOnCode === 'Equipment') {
+                    $uomSelect.empty()
+                        .append('<option value="">-- Select Container Type --</option>')
+                        .prop('disabled', true);
+
                     loadEquipmentTypeOptions(function() {
                         $uomSelect.empty()
                             .append('<option value="">-- Select Container Type --</option>');
@@ -2914,6 +2943,10 @@
                 // sp_ChargeBasedOnUOM returns empty for 'Equipment'; equipment types come
                 // from sp_EquipmentType (already loaded into equipmentTypeOptions).
                 if (basedOnCode === 'Equipment') {
+                    $uomSelect.empty()
+                        .append('<option value="">-- Select Container Type --</option>')
+                        .prop('disabled', true);
+
                     loadEquipmentTypeOptions(function() {
                         $uomSelect.empty()
                             .append('<option value="">-- Select Container Type --</option>');
@@ -3585,7 +3618,7 @@
                     chg_curr: $modal.find(`select[name="${prefix}_currency"] option:selected`).data('code') ||
                         'KES',
                     based_on_code: $modal.find(`select[name="${prefix}_based_on"]`).val() || '',
-                    based_on_and_uom: $modal.find(`select[name="${prefix}_based_on_uom"]`).val() || '',
+                    based_on_uom: $modal.find(`select[name="${prefix}_based_on_uom"]`).val() || '',
                     charge_remark: $modal.find(`input[name="${prefix}_remark"]`).val() || '',
                     to_be_added: toBeAdded,
                     increase_by: 0,
@@ -3609,6 +3642,13 @@
                     showNotification('Please select Based On', 'error');
                     return;
                 }
+
+                const $uomSelect = $modal.find(`select[name="${prefix}_based_on_uom"]`);
+                console.log('[saveCharge] UOM select element found:', $uomSelect.length);
+                console.log('[saveCharge] UOM select options count:', $uomSelect.find('option').length);
+                console.log('[saveCharge] UOM select current value:', $uomSelect.val());
+                console.log('[saveCharge] based_on_code:', $modal.find(`select[name="${prefix}_based_on"]`).val());
+
 
                 $.ajax({
                     url: '{{ route('quotation.charge.save') }}',
@@ -3856,7 +3896,7 @@
                                 <td class="text-right">${parseFloat(charge.rate || 0).toFixed(2)}</td>
                                 <td class="text-right col-extra">${parseFloat(charge.quantity || 0).toFixed(2)}</td>
                                 <td class="col-extra">${charge.basedOnAndUOM || charge.basedOnUOM || ''}</td>
-                                <td class="col-extra">${charge.chgCurr || 'KES'}</td>
+                                <td class="col-extra">${charge.chgCurr || getBaseCurrency()}</td>
                                 <td class="text-right">${parseFloat(charge.amtInChgCurr  || 0).toFixed(2)}</td>
                                 <td class="text-right">${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
                                 <td class="text-center">
@@ -3874,8 +3914,9 @@
                     });
                 }
 
-                $('#totalRevenueAmount').text('KES ' + totalAmount.toFixed(2));
-                $('#totalRevenueBaseAmount').text('KES ' + totalBaseAmount.toFixed(2));
+                const revBC = getBaseCurrency();
+                $('#totalRevenueAmount').text(revBC + ' ' + totalAmount.toFixed(2));
+                $('#totalRevenueBaseAmount').text(revBC + ' ' + totalBaseAmount.toFixed(2));
                 $('#revenueTotalHeaderAmount').text(totalBaseAmount.toFixed(2));
 
                 const revenueExpanded = $('.show-items-link[data-table="revenue"]').data('expanded') || false;
@@ -3901,7 +3942,7 @@
                                 <td class="text-right">${parseFloat(charge.rate || 0).toFixed(2)}</td>
                                 <td class="text-right col-extra">${parseFloat(charge.quantity || 0).toFixed(2)}</td>
                                 <td class="col-extra">${charge.basedOnAndUOM || charge.basedOnUOM || ''}</td>
-                                <td class="col-extra">${charge.chgCurr || 'KES'}</td>
+                                <td class="col-extra">${charge.chgCurr || getBaseCurrency()}</td>
                                 <td class="text-right">${parseFloat(charge.amtInChgCurr  || 0).toFixed(2)}</td>
                                 <td class="text-right">${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
                                 <td class="text-center">
@@ -3919,8 +3960,9 @@
                     });
                 }
 
-                $('#totalCostAmount').text('KES ' + totalAmount.toFixed(2));
-                $('#totalCostBaseAmount').text('KES ' + totalBaseAmount.toFixed(2));
+                const costBC = getBaseCurrency();
+                $('#totalCostAmount').text(costBC + ' ' + totalAmount.toFixed(2));
+                $('#totalCostBaseAmount').text(costBC + ' ' + totalBaseAmount.toFixed(2));
                 $('#costTotalHeaderAmount').text(totalBaseAmount.toFixed(2));
 
                 const costExpanded = $('.show-items-link[data-table="cost"]').data('expanded') || false;
@@ -3937,8 +3979,9 @@
                 const margin = totalRevenue - totalCost;
                 const marginPercentage = totalRevenue > 0 ? (margin / totalRevenue * 100) : 0;
 
-                $('#quotedRevenue').val('KES ' + totalRevenue.toFixed(2));
-                $('#quotedMargin').val('KES ' + margin.toFixed(2) + ' (' + marginPercentage.toFixed(2) + '%)');
+                const bc = getBaseCurrency();
+                $('#quotedRevenue').val(bc + ' ' + totalRevenue.toFixed(2));
+                $('#quotedMargin').val(bc + ' ' + margin.toFixed(2) + ' (' + marginPercentage.toFixed(2) + '%)');
             }
 
             // ============================================
