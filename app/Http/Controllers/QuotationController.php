@@ -6044,6 +6044,8 @@ class QuotationController extends Controller
         }
     }
 
+
+
     /**
      * GET /quotation/create-booking/locations
      * Calls sp_LocationList with LocationType = 'Road' (always static per spec)
@@ -6055,6 +6057,14 @@ class QuotationController extends Controller
         $filter         = $request->query('filter', '');
         $includeCountry = (int) $request->query('include_country', 0);
         $countryCode    = $request->query('country_code', '');
+
+        Log::info('getLocations - params', [
+            'filter'          => $filter,
+            'include_country' => $includeCountry,
+            'country_code'    => $countryCode,
+            'db_name'         => DB::getDatabaseName(),
+            'db_prefix'       => DB::getDatabaseName() === 'FITSYSUAT' ? '[FITSCMUAT].dbo.' : '[FITSCM].dbo.',
+        ]);
 
         try {
             $db = DB::getDatabaseName() === 'FITSYSUAT'
@@ -6092,6 +6102,12 @@ class QuotationController extends Controller
             }
 
             $query .= " ORDER BY CL.Name ";
+
+            Log::info('getLocations - query', [
+                'sql'      => $query,
+                'bindings' => $bindings,
+            ]);
+            
             $results = DB::select($query, $bindings);
 
             return response()->json([
