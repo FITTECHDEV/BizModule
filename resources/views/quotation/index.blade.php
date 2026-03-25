@@ -1345,6 +1345,8 @@
                                             background: '#fff',
                                             marginTop: '-1px'
                                         }
+                                    }).on('mousedown', function(e) {
+                                        e.preventDefault();
                                     });
 
                                     $.each(res.locations, function(i, loc) {
@@ -1422,6 +1424,8 @@
                                             background: '#fff',
                                             marginTop: '-1px'
                                         }
+                                    }).on('mousedown', function(e) {
+                                        e.preventDefault();
                                     });
 
                                     $.each(res.parties, function(i, p) {
@@ -1490,11 +1494,26 @@
             );
 
             $('#cb_include_country').on('change', function() {
-                $('#cb_place_of_receipt, #cb_place_of_delivery').val('');
+                // Only clear the hidden code/id fields so a re-search is triggered on next input.
+                // Do NOT clear the visible text inputs — the user typed those and should keep them.
+                // Do NOT clear if the fields are already empty (nothing to invalidate).
                 $('#cb_place_of_receipt_code, #cb_place_of_receipt_id').val('');
                 $('#cb_place_of_delivery_code, #cb_place_of_delivery_id').val('');
+
+                // Remove any open suggestion dropdowns since the filter has changed
                 removeSuggestions('cb_place_of_receipt');
                 removeSuggestions('cb_place_of_delivery');
+
+                // If there's already text in either field, retrigger the search immediately
+                // so the dropdown reflects the new include_country state
+                var receiptVal = $('#cb_place_of_receipt').val().trim();
+                var deliveryVal = $('#cb_place_of_delivery').val().trim();
+                if (receiptVal.length >= 2) {
+                    $('#cb_place_of_receipt').trigger('input');
+                }
+                if (deliveryVal.length >= 2) {
+                    $('#cb_place_of_delivery').trigger('input');
+                }
             });
 
             // ── Booking step renderer ─────────────────────────────────────────────────

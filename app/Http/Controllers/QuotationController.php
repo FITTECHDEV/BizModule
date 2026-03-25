@@ -1975,8 +1975,11 @@ class QuotationController extends Controller
             // ============================================
 
             $bookingNo = $request->input('booking_no');
+            $officeCodeFromRequest = $request->input('office_code');
+
             $quotation = DB::table('Quote_QuotationInfo')
                 ->where('bookingno', $bookingNo)
+                ->when($officeCodeFromRequest, fn($q) => $q->where('OfficeCode', $officeCodeFromRequest))
                 ->first(['ID', 'teamid', 'ServiceVerticalname', 'origincountry', 'destinationcountry', 'QuoteStatus', 'status']);
 
             $officeCode = 'Unknown';
@@ -2457,8 +2460,11 @@ class QuotationController extends Controller
             // GET QUOTATION CONTEXT FOR DETAILED LOGGING
             // ============================================
 
+            $officeCodeFromRequest = $request->input('office_code');
+
             $quotation = DB::table('Quote_QuotationInfo')
                 ->where('bookingno', $bookingNo)
+                ->when($officeCodeFromRequest, fn($q) => $q->where('OfficeCode', $officeCodeFromRequest))
                 ->first(['ID', 'teamid', 'ServiceVerticalname', 'origincountry', 'destinationcountry', 'QuoteStatus', 'status']);
 
             $officeCode = 'Unknown';
@@ -2606,6 +2612,7 @@ class QuotationController extends Controller
 
             $quoteNo = DB::table('Quote_QuotationInfo')
                 ->where('bookingno', $bookingNo)
+                ->when($officeCodeFromRequest, fn($q) => $q->where('OfficeCode', $officeCodeFromRequest))
                 ->value('QuoteNo');
 
             if (!$quoteNo) {
