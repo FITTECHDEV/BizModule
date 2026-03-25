@@ -1780,19 +1780,33 @@ class QuotationController extends Controller
                 return response()->json(['success' => false, 'message' => 'Quotation not found'], 404);
             }
 
+            // ADD THIS DEBUG QUERY to verify charges exist in DB
+            $debugCharges = DB::table('Quote_Quotation_ChargeSheet')
+                ->where('QuotationInfoID', $quotation->ID)
+                ->where('IsDeleted', 0)
+                ->select('Id', 'ChargeCodeId', 'Quantity', 'EstChargeAmount', 'ChargeType')
+                ->get();
+
+            Log::info('getCharges - Debug: Direct DB check', [
+                'booking_no' => $bookingNo,
+                'quotation_id' => $quotation->ID,
+                'charges_found' => $debugCharges->count(),
+                'charges' => $debugCharges->toArray(),
+            ]);
+
             $pdo     = DB::connection()->getPdo();
             $revenue = $this->fetchChargeListFromSP($pdo, $quotation->ID, 1);
             $cost    = $this->fetchChargeListFromSP($pdo, $quotation->ID, 0);
 
-            Log::info('getCharges - Success', [
-                'booking_no'    => $bookingNo,
+            Log::info('getCharges - SP results', [
+                'booking_no' => $bookingNo,
                 'revenue_count' => count($revenue),
-                'cost_count'    => count($cost),
+                'cost_count' => count($cost),
+                'first_revenue' => !empty($revenue) ? $revenue[0] : null,
             ]);
 
             return response()->json(['success' => true, 'revenue' => $revenue, 'cost' => $cost]);
         } catch (\RuntimeException $e) {
-            // SP-level error — surface clearly for DBA investigation
             Log::error('getCharges - SP error (DBA action required)', [
                 'booking_no' => $bookingNo,
                 'sp_error'   => $e->getMessage(),
@@ -1808,54 +1822,73 @@ class QuotationController extends Controller
         }
     }
 
-    private function fetchChargeListFromSP(\PDO $pdo, string $quotationId, int $isRevenue): array
-    {
-        $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC dbo.sp_Quote_Quotation_ChargeList ?, ?, NULL");
-        $stmt->execute([$quotationId, $isRevenue]);
+ private function fetchChargeListFromSP(\PDO $pdo, string $quotationId, int $isRevenue): array
+{
+    $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC dbo.sp_Quote_Quotation_ChargeList ?, ?, NULL");
+    $stmt->execute([$quotationId, $isRevenue]);
 
-        $rows = [];
-        do {
-            try {
-                $fetched  = $stmt->fetchAll(\PDO::FETCH_OBJ);
-                if (empty($fetched)) continue;
-
-                $firstVal = array_values((array) $fetched[0])[0] ?? '';
-                if (is_string($firstVal) && str_starts_with($firstVal, 'Failed')) {
-                    Log::error('fetchChargeListFromSP - SP failure', [
-                        'quotation_id' => $quotationId,
-                        'is_revenue'   => $isRevenue,
-                        'message'      => $firstVal,
-                    ]);
-                    throw new \RuntimeException('sp_Quote_Quotation_ChargeList: ' . $firstVal);
-                }
-
-                if (isset($fetched[0]->Id)) {
-                    $rows = $fetched;
-                    break;
-                }
-            } catch (\PDOException $e) {
+    $rows = [];
+    do {
+        try {
+            $fetched  = $stmt->fetchAll(\PDO::FETCH_OBJ);
+            if (empty($fetched)) {
+                Log::debug('fetchChargeListFromSP - Empty result set', [
+                    'quotation_id' => $quotationId,
+                    'is_revenue' => $isRevenue,
+                ]);
                 continue;
             }
-        } while ($stmt->nextRowset());
 
-        return array_map(fn($row) => [
-            'id'            => $row->Id,
-            'chargeCode'    => $row->ChargeCode       ?? '',
-            'chargeName'    => $row->ChargeDesp        ?? '',
-            'rate'          => (float) ($row->EstChargeRate   ?? 0),
-            'quantity'      => (float) ($row->Quantity ?? 0),
-            'amtInChgCurr'  => (float) ($row->EstChargeAmount ?? 0),
-            'amtInBaseCurr' => (float) ($row->EstBaseAmount   ?? 0),
-            'exChangeRate'  => (float) ($row->BaseExchRate    ?? 1),
-            'chgCurr'       => $row->EstChargeCurrCode ?? 'KES',
-            'basedOnCode'   => '',  // not in list SP — fetched on edit
-            'basedOnAndUOM' => $row->BasedOnAndUOM     ?? '',
-            'chargeRemark'  => '',  // not in list SP — fetched on edit
-            'partyCode'     => '',  // not in list SP — fetched on edit
-            'revenueOrCost' => $isRevenue ? 'Revenue' : 'Cost',
-            'sourceType'    => 'manual',
-        ], $rows);
-    }
+            $firstVal = array_values((array) $fetched[0])[0] ?? '';
+            if (is_string($firstVal) && str_starts_with($firstVal, 'Failed')) {
+                Log::error('fetchChargeListFromSP - SP failure', [
+                    'quotation_id' => $quotationId,
+                    'is_revenue'   => $isRevenue,
+                    'message'      => $firstVal,
+                ]);
+                throw new \RuntimeException('sp_Quote_Quotation_ChargeList: ' . $firstVal);
+            }
+
+            if (isset($fetched[0]->Id)) {
+                $rows = $fetched;
+                Log::info('fetchChargeListFromSP - Found charges', [
+                    'quotation_id' => $quotationId,
+                    'is_revenue' => $isRevenue,
+                    'count' => count($rows),
+                ]);
+                break;
+            } else {
+                Log::debug('fetchChargeListFromSP - No Id column in result set', [
+                    'quotation_id' => $quotationId,
+                    'columns' => array_keys((array) $fetched[0]),
+                ]);
+            }
+        } catch (\PDOException $e) {
+            Log::debug('fetchChargeListFromSP - Skipping result set', [
+                'error' => $e->getMessage(),
+            ]);
+            continue;
+        }
+    } while ($stmt->nextRowset());
+
+    return array_map(fn($row) => [
+        'id'            => $row->Id,
+        'chargeCode'    => $row->ChargeCode       ?? '',
+        'chargeName'    => $row->ChargeDesp        ?? '',
+        'rate'          => (float) ($row->EstChargeRate   ?? 0),
+        'quantity'      => (float) ($row->Quantity ?? 0),
+        'amtInChgCurr'  => (float) ($row->EstChargeAmount ?? 0),
+        'amtInBaseCurr' => (float) ($row->EstBaseAmount   ?? 0),
+        'exChangeRate'  => (float) ($row->BaseExchRate    ?? 1),
+        'chgCurr'       => $row->EstChargeCurrCode ?? 'KES',
+        'basedOnCode'   => '',  // not in list SP — fetched on edit
+        'basedOnAndUOM' => $row->BasedOnAndUOM     ?? '',
+        'chargeRemark'  => '',  // not in list SP — fetched on edit
+        'partyCode'     => '',  // not in list SP — fetched on edit
+        'revenueOrCost' => $isRevenue ? 'Revenue' : 'Cost',
+        'sourceType'    => 'manual',
+    ], $rows);
+}
 
     public function getChargeDetails(Request $request)
     {
@@ -1878,20 +1911,30 @@ class QuotationController extends Controller
                 return response()->json(['success' => false, 'message' => 'Quotation not found'], 404);
             }
 
-            // Fetch fields the SP does not return — IsRevenue needed to call SP correctly
             $supplement = DB::selectOne("
-                SELECT
-                    QC.IsRevenue,
-                    QC.Quantity,
-                    ISNULL(QC.Remarks,    '')       AS ChargeRemark,
-                    ISNULL(CP.Code,       '')       AS PartyCode,
-                    ISNULL(QC.ChargeType, 'manual') AS SourceType,
-                    ISNULL(CB.Code,       '')       AS BasedOnCode
-                FROM Quote_Quotation_ChargeSheet QC WITH (NOLOCK)
-                LEFT JOIN Cust_ChargecodeBasedOn     CB WITH (NOLOCK) ON CB.Id = QC.BasedOnId
-                LEFT JOIN [FITSCMUAT].dbo.Cust_Party CP WITH (NOLOCK) ON CP.Id = QC.PartyID
-                WHERE QC.Id = ? AND QC.IsDeleted = 0
-            ", [$chargeId]);
+            SELECT
+                QC.IsRevenue,
+                QC.Quantity,
+                ISNULL(QC.Remarks,    '')       AS ChargeRemark,
+                ISNULL(CP.Code,       '')       AS PartyCode,
+                ISNULL(QC.ChargeType, 'manual') AS SourceType,
+                ISNULL(CB.Code,       '')       AS BasedOnCode,
+                ISNULL(SU.Code,       '')       AS UOMCode
+            FROM Quote_Quotation_ChargeSheet QC WITH (NOLOCK)
+            LEFT JOIN Cust_ChargecodeBasedOn CB WITH (NOLOCK) ON CB.Id = QC.BasedOnId
+            LEFT JOIN Cust_Party             CP WITH (NOLOCK) ON CP.Id = QC.PartyID
+            LEFT JOIN Sys_UOM                SU WITH (NOLOCK) ON SU.Id = QC.UOMId
+            WHERE QC.Id = ? AND QC.IsDeleted = 0
+        ", [$chargeId]);
+
+            Log::info('getChargeDetails - Equipment debug', [
+                'charge_id'     => $chargeId,
+                'uom_code'      => $supplement->UOMCode      ?? 'NULL',
+                'based_on_code' => $supplement->BasedOnCode  ?? 'NULL',
+                'raw_uom_id'    => DB::table('Quote_Quotation_ChargeSheet')
+                    ->where('Id', $chargeId)
+                    ->value('UOMId'),
+            ]);
 
             if (!$supplement) {
                 return response()->json(['success' => false, 'message' => 'Charge not found'], 404);
@@ -1899,7 +1942,6 @@ class QuotationController extends Controller
 
             $isRevenue = (int) $supplement->IsRevenue;
 
-            // Call SP with specific QuoteChargeID
             $pdo  = DB::connection()->getPdo();
             $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC dbo.sp_Quote_Quotation_ChargeList ?, ?, ?");
             $stmt->execute([$quotation->ID, $isRevenue, $chargeId]);
@@ -2329,6 +2371,7 @@ class QuotationController extends Controller
             // ============================================
 
             $errorMessage = $output['Remarks'][0]['Remark'] ?? 'Failed to save charge';
+            
             Log::warning('Stored Procedure returned failure', [
                 'booking_no' => $bookingNo,
                 'status' => $output['Status'] ?? 'Unknown',
@@ -5334,63 +5377,61 @@ class QuotationController extends Controller
 
     public function getExchangeRate(Request $request)
     {
-        $officeCode = trim($request->office_code);
-        $fromCurrency = trim($request->from_currency);
-        $toCurrency = trim($request->to_currency ?? 'KES');
+        $rawOfficeCode = trim($request->office_code);
+        $fromCurrency  = trim($request->from_currency);
+        $toCurrency    = trim($request->to_currency ?? 'KES');
 
-        // ============================================
-        // SIMPLE FIX: Convert UUID to short code if needed
-        // ============================================
-        // Check if it's a UUID (has hyphens)
-        if (str_contains($officeCode, '-')) {
-            $officeCode = DB::table('Cust_Office')
-                ->where('Id', $officeCode)
+        // ── Resolve UUID → short code ─────────────────────────────────────────────
+        $officeCode = $rawOfficeCode;
+
+        if (str_contains($rawOfficeCode, '-')) {
+            $resolved = DB::table('Cust_Office')
+                ->where('Id', $rawOfficeCode)
                 ->where('IsActive', 1)
                 ->where('IsDeleted', 0)
                 ->value('Code');
 
-            if (!$officeCode) {
+            if (!$resolved) {
+                Log::warning('getExchangeRate - UUID could not be resolved to office code', [
+                    'raw_office_code' => $rawOfficeCode,
+                ]);
                 return response()->json([
                     'success' => false,
-                    'message' => 'Invalid office ID'
+                    'message' => 'Invalid office ID',
                 ], 404);
             }
+
+            $officeCode = trim($resolved); // ← only reassign after confirming non-null
         }
 
-        // Accept any date format from frontend, normalize to '05/Mar/2026'
-        // AFTER
+        // ── Normalise date ────────────────────────────────────────────────────────
         try {
             $dateFor = $request->date_for
                 ? \Carbon\Carbon::parse($request->date_for)->format('d/M/Y')
                 : now()->format('d/M/Y');
         } catch (\Exception $e) {
-            Log::warning('getExchangeRate - Invalid date_for value, falling back to today', [
+            Log::warning('getExchangeRate - Invalid date_for, falling back to today', [
                 'date_for_raw' => $request->date_for,
                 'error'        => $e->getMessage(),
             ]);
             $dateFor = now()->format('d/M/Y');
         }
 
+        // ── Basic validation ──────────────────────────────────────────────────────
         if (!$officeCode || !$fromCurrency) {
             return response()->json([
                 'success' => false,
-                'message' => 'Office code and from currency are required'
+                'message' => 'Office code and from currency are required',
             ], 400);
         }
 
         if ($fromCurrency === $toCurrency) {
-            return response()->json([
-                'success'       => true,
-                'exchange_rate' => 1.000000
-            ]);
+            return response()->json(['success' => true, 'exchange_rate' => 1.0]);
         }
 
+        // ── Rate lookup with reverse fallback ─────────────────────────────────────
         try {
-            $result = DB::selectOne("
-            SELECT dbo.fn_GetCurrentExRateUsingCodeandPeriod(?, ?, ?, ?) AS ExchangeRate
-        ", [$officeCode, $fromCurrency, $toCurrency, $dateFor]);
-
-            $rate = $result ? (float) $result->ExchangeRate : null;
+            $rate = $this->resolveExchangeRate($officeCode, $fromCurrency, $toCurrency, $dateFor);
 
             Log::info('getExchangeRate - Result', [
                 'office_code'   => $officeCode,
@@ -5401,7 +5442,7 @@ class QuotationController extends Controller
             ]);
 
             if (!$rate || $rate <= 0) {
-                Log::warning('getExchangeRate - No rate found', [
+                Log::warning('getExchangeRate - No rate found (forward or reverse)', [
                     'office_code'   => $officeCode,
                     'from_currency' => $fromCurrency,
                     'to_currency'   => $toCurrency,
@@ -5410,7 +5451,8 @@ class QuotationController extends Controller
 
                 return response()->json([
                     'success' => false,
-                    'message' => "No exchange rate found for {$fromCurrency} → {$toCurrency} in office {$officeCode} on {$dateFor}",
+                    'message' => "No exchange rate found for {$fromCurrency} → {$toCurrency} "
+                        . "in office {$officeCode} on {$dateFor}. Please enter the rate manually.",
                 ], 404);
             }
 
@@ -5419,7 +5461,7 @@ class QuotationController extends Controller
                 'exchange_rate' => $rate,
             ]);
         } catch (\Exception $e) {
-            Log::error('getExchangeRate - Failed', [
+            Log::error('getExchangeRate - Exception', [
                 'office_code'   => $officeCode,
                 'from_currency' => $fromCurrency,
                 'to_currency'   => $toCurrency,
@@ -5429,9 +5471,58 @@ class QuotationController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to retrieve exchange rate: ' . $e->getMessage()
+                'message' => 'Failed to retrieve exchange rate: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Try forward rate first; if zero/null, try the inverse and reciprocate.
+     *
+     * Many systems only store one direction (e.g. SSP → USD = 0.00077)
+     * but not the reverse (USD → SSP). This handles both cases transparently.
+     */
+    private function resolveExchangeRate(
+        string $officeCode,
+        string $fromCurrency,
+        string $toCurrency,
+        string $dateFor
+    ): ?float {
+        $forward = $this->queryExchangeRate($officeCode, $fromCurrency, $toCurrency, $dateFor);
+
+        if ($forward && $forward > 0) {
+            return $forward;
+        }
+
+        // Try the reverse direction and reciprocate
+        $reverse = $this->queryExchangeRate($officeCode, $toCurrency, $fromCurrency, $dateFor);
+
+        if ($reverse && $reverse > 0) {
+            Log::info('getExchangeRate - Using reciprocal of reverse rate', [
+                'office_code'    => $officeCode,
+                'reverse_pair'   => "{$toCurrency} → {$fromCurrency}",
+                'reverse_rate'   => $reverse,
+                'reciprocal'     => 1 / $reverse,
+            ]);
+            return 1 / $reverse;
+        }
+
+        return null;
+    }
+
+    private function queryExchangeRate(
+        string $officeCode,
+        string $fromCurrency,
+        string $toCurrency,
+        string $dateFor
+    ): ?float {
+        $result = DB::selectOne("
+        SELECT dbo.fn_GetCurrentExRateUsingCodeandPeriod(?, ?, ?, ?) AS ExchangeRate
+    ", [$officeCode, $fromCurrency, $toCurrency, $dateFor]);
+
+        $rate = $result ? (float) $result->ExchangeRate : null;
+
+        return ($rate && $rate > 0) ? $rate : null;
     }
 
     public function getContractCharges(Request $request)
