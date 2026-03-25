@@ -2111,7 +2111,7 @@ class QuotationController extends Controller
                 'ExChangeRate' => (float)$request->input('exchange_rate', 1),
                 'ChgCurr' => $request->input('chg_curr', 'KES'),
                 'BasedOnCode' => $request->input('based_on_code'),
-                'BasedOnUOM' => $request->input('based_on_and_uom', ''),
+                'BasedOnUOM' => $request->input('based_on_uom', ''),
 
                 'ChargeRemark' => $request->input('charge_remark', ''),
                 'ToBeAdded' => (int)$request->input('to_be_added', 0),
@@ -5357,7 +5357,6 @@ class QuotationController extends Controller
             }
         }
 
-
         // Accept any date format from frontend, normalize to '05/Mar/2026'
         // AFTER
         try {
@@ -6107,7 +6106,7 @@ class QuotationController extends Controller
                 'sql'      => $query,
                 'bindings' => $bindings,
             ]);
-            
+
             $results = DB::select($query, $bindings);
 
             return response()->json([
