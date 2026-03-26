@@ -7716,41 +7716,53 @@ class QuotationController extends Controller
     {
         try {
             $pdo  = DB::connection('sqlsrv')->getPdo();
+
+            // ✅ Normalize filter (handles null, whitespace, undefined cases)
+            $filter = trim((string) $request->get('filter', ''));
+
+            Log::info('lookupCountries filter used:', ['filter' => $filter]);
+
             $stmt = $pdo->prepare("EXEC sp_CountryList @Filter = ?");
-            $stmt->execute([$request->get('filter', '')]);
+            $stmt->execute([$filter]);
 
             $rows = [];
+
+            // ✅ Loop through ALL result sets and keep the last valid one
             do {
                 try {
                     $fetched = $stmt->fetchAll(\PDO::FETCH_ASSOC);
-                    if (!empty($fetched) && empty($rows)) {
+
+                    if (!empty($fetched)) {
                         $rows = $fetched;
                     }
                 } catch (\Exception $e) {
-                    // skip unfetchable result sets (temp table drops)
+                    // Ignore non-fetchable result sets (row count messages, temp table ops)
                 }
             } while ($stmt->nextRowset());
 
             if (empty($rows)) {
-                Log::warning('lookupCountries — SP returned no rows');
+                Log::warning('lookupCountries — SP returned no rows', [
+                    'filter' => $filter
+                ]);
                 return response()->json([]);
             }
 
-            // SP confirmed columns: CountryID (UUID = CC.id), CountCode (ISO), CountryName
+            // ✅ Normalize response for frontend
             $normalised = array_map(function ($row) {
                 return [
-                    'CountryID'   => trim($row['CountryID']   ?? ''), // UUID — sent to SP as CountryCode
-                    'CountryCode' => trim($row['CountCode']   ?? ''), // ISO e.g. "KE" — used for pre-selection
-                    'CountryName' => trim($row['CountryName'] ?? ''), // display label
+                    'CountryID'   => trim($row['CountryID']   ?? ''),
+                    'CountryCode' => trim($row['CountCode']   ?? ''),
+                    'CountryName' => trim($row['CountryName'] ?? ''),
                 ];
             }, $rows);
 
             return response()->json($normalised);
         } catch (\Exception $e) {
             Log::error('lookupCountries error: ' . $e->getMessage(), [
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
+                'file'   => $e->getFile(),
+                'line'   => $e->getLine(),
             ]);
+
             return response()->json([]);
         }
     }
@@ -7784,28 +7796,49 @@ class QuotationController extends Controller
     {
         try {
             $pdo  = DB::connection('sqlsrv')->getPdo();
-            $stmt = $pdo->prepare("EXEC sp_IndustryTypeList @Filter = ?");
-            $stmt->execute([$request->get('filter', '')]);
 
-            // sp_IndustryTypeList uses EXEC sp_executesql internally (dynamic SQL).
-            // Same multi-result-set problem — loop until we find the data rows.
+            // ✅ Normalize filter (critical)
+            $filter = trim((string) $request->get('filter', ''));
+
+            Log::info('lookupIndustryTypes filter used:', ['filter' => $filter]);
+
+            $stmt = $pdo->prepare("EXEC sp_IndustryTypeList @Filter = ?");
+            $stmt->execute([$filter]);
+
             $rows = [];
+
+            // ✅ Loop through ALL result sets (no break!)
             do {
                 try {
                     $fetched = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
                     if (!empty($fetched)) {
-                        $rows = $fetched;
-                        break;
+                        $rows = $fetched; // keep latest valid dataset
                     }
                 } catch (\Exception $fetchEx) {
-                    // This result set has no fields — advance to next
+                    // ignore non-fetchable result sets
                 }
             } while ($stmt->nextRowset());
 
-            Log::info('lookupIndustryTypes success', ['count' => count($rows)]);
+            if (empty($rows)) {
+                Log::warning('lookupIndustryTypes — SP returned no rows', [
+                    'filter' => $filter
+                ]);
+                return response()->json([]);
+            }
+
+            Log::info('lookupIndustryTypes success', [
+                'count'  => count($rows),
+                'filter' => $filter
+            ]);
+
             return response()->json($rows);
         } catch (\Exception $e) {
-            Log::error('lookupIndustryTypes error: ' . $e->getMessage());
+            Log::error('lookupIndustryTypes error: ' . $e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
             return response()->json([]);
         }
     }
