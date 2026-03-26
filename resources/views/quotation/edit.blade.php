@@ -827,8 +827,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 MODALS
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 ============================================ -->
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 MODALS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1413,8 +1413,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1857,9 +1857,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -2455,33 +2455,6 @@
             console.log('Quotation Status:', quotationStatus);
             console.log('Team ID:', teamId);
 
-            // // ============================================
-            // // INITIALIZE OFFICE CODE ON PAGE LOAD
-            // // ============================================
-            // if (teamId) {
-            //     getOfficeCode(teamId);
-            // }
-
-            // function getOfficeCode(teamId) {
-            //     $.ajax({
-            //         url: '/quotation/office-code',
-            //         type: 'GET',
-            //         data: {
-            //             team_id: teamId
-            //         },
-            //         success: function(response) {
-            //             if (response.success && response.office_code) {
-            //                 officeCode = response.office_code.trim();
-            //                 console.log('Office Code loaded:', officeCode);
-            //                 loadTermsTemplates();
-            //             }
-            //         },
-            //         error: function(xhr) {
-            //             console.error('Failed to load office code:', xhr);
-            //         }
-            //     });
-            // }
-
             // ============================================
             // MODAL CLOSE HANDLERS
             // ============================================
@@ -2563,8 +2536,8 @@
                     type: 'GET',
                     data: {
                         booking_no: bookingNo,
-                        office_code: officeCode
-
+                        office_code: officeCode,
+                        quotation_id: quotationId, 
                     },
                     beforeSend: function() {
                         $('#revenueChargesTable, #costChargesTable').html(
@@ -3056,6 +3029,7 @@
                     type: 'GET',
                     data: {
                         booking_no: bookingNo,
+                        quote_no: quoteNo,
                         based_on: basedOnCode,
                         equipment: equipment || ''
                     },
@@ -3233,6 +3207,7 @@
                             type: 'GET',
                             data: {
                                 booking_no: bookingNo,
+                                office_code: officeCode, // ← add this
                                 charge_type: chargeType,
                                 filter: request.term
                             },
@@ -3868,40 +3843,49 @@
 
                     $modal.find(`select[name="${prefix}_based_on"]`).val(charge.basedOnCode);
 
-                    // Extract stored equipment/UOM code from basedOnAndUOM.
-                    // SP encodes it as "BasedOn/UOMCode" (e.g. "Equipment/20GP") or just "20GP".
-                    const storedUomCode = charge.uomCode // ← direct DB value
+                    // Robustly resolve the stored UOM code regardless of Based On type.
+                    // Priority: explicit uomCode field → last segment of basedOnAndUOM → empty
+                    const rawUom = charge.uomCode ||
+                        charge.basedOnUOM // ← ADD: try alternate field name
                         ||
-                        (charge.basedOnAndUOM || '').split('/').pop().trim() // ← fallback for other types
+                        charge.BasedOnUOM // ← ADD: try PascalCase variant
                         ||
                         '';
 
-                    // ── ADD THESE TWO LINES ──────────────────────────────────────────────────
-                    console.log('basedOnAndUOM raw:', charge.basedOnAndUOM);
-                    console.log('storedUomCode resolved:', storedUomCode);
-                    // ────────────────────────────────────────────────────────────────────────
+                    console.log('DEBUG populateModal charge object:', JSON.stringify(charge));
+
+                    // ── DEBUG LOGS — remove after fix is confirmed ──
+                    console.log('DEBUG populateModal charge object:', JSON.stringify(charge));
+                    console.log('DEBUG uomCode field:', charge.uomCode);
+                    console.log('DEBUG basedOnAndUOM field:', charge.basedOnAndUOM);
+                    // ── END DEBUG ──
 
 
-                    if (charge.basedOnCode === 'Equipment') {
-                        // ── NEW: Equipment — load container types into UOM select, then restore ──
-                        // loadBasedOnUOMWithCallback now populates the select with equipment types
-                        // instead of calling sp_ChargeBasedOnUOM (which returns empty for Equipment).
-                        loadBasedOnUOMWithCallback(type, charge.basedOnCode, function() {
-                            if (storedUomCode) {
-                                const $uomSelect = $modal.find(
-                                    `select[name="${prefix}_based_on_uom"]`);
-                                $uomSelect.val(storedUomCode);
-                            }
-                        });
-                    } else {
-                        // ── Existing path: unchanged for all non-Equipment Based On types ──────
-                        loadBasedOnUOMWithCallback(type, charge.basedOnCode, function() {
-                            if (storedUomCode) {
-                                $modal.find(`select[name="${prefix}_based_on_uom"]`).val(
-                                    storedUomCode);
-                            }
-                        });
-                    }
+                    const storedUomCode = rawUom.trim() ||
+                        ((charge.basedOnAndUOM || '').includes('/') ?
+                            (charge.basedOnAndUOM || '').split('/').pop().trim() :
+                            (charge.basedOnAndUOM || '').trim());
+
+                    console.log('DEBUG storedUomCode final:', storedUomCode, '| charge:', charge);
+
+                    loadBasedOnUOMWithCallback(type, charge.basedOnCode, function() {
+                        if (!storedUomCode) return;
+
+                        const $uomSelect = $modal.find(`select[name="${prefix}_based_on_uom"]`);
+
+                        // Verify the option exists before setting — surface mismatches clearly
+                        const $matchingOption = $uomSelect.find(`option[value="${storedUomCode}"]`);
+                        if ($matchingOption.length) {
+                            $uomSelect.val(storedUomCode);
+                            console.log('DEBUG UOM pre-selected:', storedUomCode);
+                        } else {
+                            console.warn('DEBUG UOM option not found in select:', storedUomCode,
+                                '| Available:', $uomSelect.find('option').map(function() {
+                                    return $(this).val();
+                                }).get()
+                            );
+                        }
+                    });
                 });
             }
 

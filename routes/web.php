@@ -860,6 +860,13 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
     Route::post('/quotation/push-to-scm', [App\Http\Controllers\QuotationController::class, 'pushBookingToSCM'])
         ->name('quotation.push-to-scm');
 
+    Route::get('/quotation/portal', [App\Http\Controllers\QuotationController::class, 'portal'])
+        ->name('quotation.portal');
+    Route::get('/quotation/portal-debug', [App\Http\Controllers\QuotationController::class, 'portalDebug'])
+        ->name('quotation.portal.debug');
+
+
+
     // ============================================
     // WILDCARD ROUTES — must be last
     // {id} in a GET route matches ANY path segment.
@@ -871,11 +878,6 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
         ->name('quotation.processDuplicate');
     Route::post('/quotation/{bookingno}/copy', [App\Http\Controllers\QuotationController::class, 'copy'])
         ->name('quotation.copy');
-    Route::get('/quotation/portal', [App\Http\Controllers\QuotationController::class, 'portal'])
-        ->name('quotation.portal');
-    Route::get('/quotation/portal-debug', [App\Http\Controllers\QuotationController::class, 'portalDebug'])
-        ->name('quotation.portal.debug');
-
 
     Route::get('/quotation/{id}/versions', [App\Http\Controllers\QuotationController::class, 'getQuotationVersions'])
         ->name('quotation.versions');

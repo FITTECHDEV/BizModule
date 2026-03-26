@@ -1764,103 +1764,11 @@ class QuotationController extends Controller
             ->values();
     }
 
-    public function getCharges(Request $request)
-    {
-        $bookingNo = $request->input('booking_no');
-        if (!$bookingNo) {
-            return response()->json(['success' => false, 'message' => 'Booking number is required'], 400);
-        }
-
-        try {
-            $quotation = DB::table('Quote_QuotationInfo')
-                ->where('bookingno', $bookingNo)
-                ->first(['ID']);
-
-            if (!$quotation) {
-                return response()->json(['success' => false, 'message' => 'Quotation not found'], 404);
-            }
-
-            $pdo     = DB::connection()->getPdo();
-            $revenue = $this->fetchChargeListFromSP($pdo, $quotation->ID, 1);
-            $cost    = $this->fetchChargeListFromSP($pdo, $quotation->ID, 0);
-
-            Log::info('getCharges - Success', [
-                'booking_no'    => $bookingNo,
-                'revenue_count' => count($revenue),
-                'cost_count'    => count($cost),
-            ]);
-
-            return response()->json(['success' => true, 'revenue' => $revenue, 'cost' => $cost]);
-        } catch (\RuntimeException $e) {
-            // SP-level error — surface clearly for DBA investigation
-            Log::error('getCharges - SP error (DBA action required)', [
-                'booking_no' => $bookingNo,
-                'sp_error'   => $e->getMessage(),
-            ]);
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-                'dba_action_required' => true,
-            ], 500);
-        } catch (\Exception $e) {
-            Log::error('getCharges failed', ['booking_no' => $bookingNo, 'error' => $e->getMessage()]);
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
-        }
-    }
-
-    private function fetchChargeListFromSP(\PDO $pdo, string $quotationId, int $isRevenue): array
-    {
-        $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC dbo.sp_Quote_Quotation_ChargeList ?, ?, NULL");
-        $stmt->execute([$quotationId, $isRevenue]);
-
-        $rows = [];
-        do {
-            try {
-                $fetched  = $stmt->fetchAll(\PDO::FETCH_OBJ);
-                if (empty($fetched)) continue;
-
-                $firstVal = array_values((array) $fetched[0])[0] ?? '';
-                if (is_string($firstVal) && str_starts_with($firstVal, 'Failed')) {
-                    Log::error('fetchChargeListFromSP - SP failure', [
-                        'quotation_id' => $quotationId,
-                        'is_revenue'   => $isRevenue,
-                        'message'      => $firstVal,
-                    ]);
-                    throw new \RuntimeException('sp_Quote_Quotation_ChargeList: ' . $firstVal);
-                }
-
-                if (isset($fetched[0]->Id)) {
-                    $rows = $fetched;
-                    break;
-                }
-            } catch (\PDOException $e) {
-                continue;
-            }
-        } while ($stmt->nextRowset());
-
-        return array_map(fn($row) => [
-            'id'            => $row->Id,
-            'chargeCode'    => $row->ChargeCode       ?? '',
-            'chargeName'    => $row->ChargeDesp        ?? '',
-            'rate'          => (float) ($row->EstChargeRate   ?? 0),
-            'quantity'      => (float) ($row->Quantity ?? 0),
-            'amtInChgCurr'  => (float) ($row->EstChargeAmount ?? 0),
-            'amtInBaseCurr' => (float) ($row->EstBaseAmount   ?? 0),
-            'exChangeRate'  => (float) ($row->BaseExchRate    ?? 1),
-            'chgCurr'       => $row->EstChargeCurrCode ?? 'KES',
-            'basedOnCode'   => '',  // not in list SP — fetched on edit
-            'basedOnAndUOM' => $row->BasedOnAndUOM     ?? '',
-            'chargeRemark'  => '',  // not in list SP — fetched on edit
-            'partyCode'     => '',  // not in list SP — fetched on edit
-            'revenueOrCost' => $isRevenue ? 'Revenue' : 'Cost',
-            'sourceType'    => 'manual',
-        ], $rows);
-    }
-
     public function getChargeDetails(Request $request)
     {
-        $bookingNo = $request->input('booking_no');
-        $chargeId  = $request->input('charge_id');
+        $bookingNo   = $request->input('booking_no');
+        $chargeId    = $request->input('charge_id');
+        $quotationId = trim($request->input('quotation_id', ''));
 
         if (!$bookingNo || !$chargeId) {
             return response()->json([
@@ -1870,39 +1778,45 @@ class QuotationController extends Controller
         }
 
         try {
-            $quotation = DB::table('Quote_QuotationInfo')
-                ->where('bookingno', $bookingNo)
-                ->first(['ID']);
-
-            if (!$quotation) {
-                return response()->json(['success' => false, 'message' => 'Quotation not found'], 404);
-            }
-
-            // Fetch fields the SP does not return — IsRevenue needed to call SP correctly
+            // ---------------------------------------------------------------
+            // FIX: Derive QuotationInfoID directly from the charge row itself.
+            // Previously we looked up Quote_QuotationInfo by bookingno, which
+            // returns the first match and fails when a booking has multiple
+            // quotation revisions — the charge may belong to a different one.
+            // ---------------------------------------------------------------
             $supplement = DB::selectOne("
-                SELECT
-                    QC.IsRevenue,
-                    QC.Quantity,
-                    ISNULL(QC.Remarks,    '')       AS ChargeRemark,
-                    ISNULL(CP.Code,       '')       AS PartyCode,
-                    ISNULL(QC.ChargeType, 'manual') AS SourceType,
-                    ISNULL(CB.Code,       '')       AS BasedOnCode
-                FROM Quote_Quotation_ChargeSheet QC WITH (NOLOCK)
-                LEFT JOIN Cust_ChargecodeBasedOn     CB WITH (NOLOCK) ON CB.Id = QC.BasedOnId
-                LEFT JOIN [FITSCMUAT].dbo.Cust_Party CP WITH (NOLOCK) ON CP.Id = QC.PartyID
-                WHERE QC.Id = ? AND QC.IsDeleted = 0
-            ", [$chargeId]);
+            SELECT
+                QC.QuotationInfoID,
+                QC.IsRevenue,
+                QC.Quantity,
+                ISNULL(QC.Remarks,        '')       AS ChargeRemark,
+                ISNULL(CP.Code,           '')       AS PartyCode,
+                ISNULL(QC.ChargeType,     'manual') AS SourceType,
+                ISNULL(CB.Code,           '')       AS BasedOnCode,
+                ISNULL(EQ.Code,           '')       AS UOMCode_Equipment,
+                ISNULL(UOM.Code,          '')       AS UOMCode_UOM
+            FROM Quote_Quotation_ChargeSheet QC WITH (NOLOCK)
+            LEFT JOIN Cust_ChargecodeBasedOn          CB  WITH (NOLOCK) ON CB.Id  = QC.BasedOnId
+            LEFT JOIN [FITSCMUAT].dbo.Cust_Party      CP  WITH (NOLOCK) ON CP.Id  = QC.PartyID
+            LEFT JOIN [FITSCMUAT].dbo.Cust_Equipment  EQ  WITH (NOLOCK) ON EQ.Id  = QC.UOMId AND QC.UOMType = 'Equipment'
+            LEFT JOIN [FITSCMUAT].dbo.Sys_UOM         UOM WITH (NOLOCK) ON UOM.Id = QC.UOMId AND QC.UOMType != 'Equipment'
+            WHERE QC.Id = ? AND QC.IsDeleted = 0
+        ", [$chargeId]);
 
             if (!$supplement) {
                 return response()->json(['success' => false, 'message' => 'Charge not found'], 404);
             }
 
-            $isRevenue = (int) $supplement->IsRevenue;
+            $isRevenue        = (int) $supplement->IsRevenue;
+            $quotationInfoId  = $supplement->QuotationInfoID; // guaranteed to match SP's FK check
 
-            // Call SP with specific QuoteChargeID
+            // Call SP — now passing the QuotationInfoID that owns this charge
             $pdo  = DB::connection()->getPdo();
             $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC dbo.sp_Quote_Quotation_ChargeList ?, ?, ?");
-            $stmt->execute([$quotation->ID, $isRevenue, $chargeId]);
+            $stmt->bindValue(1, $quotationInfoId, \PDO::PARAM_STR);
+            $stmt->bindValue(2, $isRevenue,       \PDO::PARAM_INT);
+            $stmt->bindValue(3, $chargeId,        \PDO::PARAM_STR);
+            $stmt->execute();
 
             $spRow = null;
             do {
@@ -1913,8 +1827,9 @@ class QuotationController extends Controller
                     $firstVal = array_values((array) $rows[0])[0] ?? '';
                     if (is_string($firstVal) && str_starts_with($firstVal, 'Failed')) {
                         Log::error('getChargeDetails - SP failure (DBA action required)', [
-                            'charge_id' => $chargeId,
-                            'message'   => $firstVal,
+                            'charge_id'        => $chargeId,
+                            'quotation_info_id' => $quotationInfoId,
+                            'message'          => $firstVal,
                         ]);
                         return response()->json([
                             'success'             => false,
@@ -1939,23 +1854,25 @@ class QuotationController extends Controller
             return response()->json([
                 'success'       => true,
                 'id'            => $spRow->Id,
-                'chargeCode'    => $spRow->ChargeCode       ?? '',
-                'chargeName'    => $spRow->ChargeDesp        ?? '',
+                'chargeCode'    => $spRow->ChargeCode          ?? '',
+                'chargeName'    => $spRow->ChargeDesp          ?? '',
                 'rate'          => (float) ($spRow->EstChargeRate    ?? 0),
                 'quantity'      => (float) ($supplement->Quantity    ?? 0),
                 'amtInChgCurr'  => (float) ($spRow->EstChargeAmount  ?? 0),
                 'amtInBaseCurr' => (float) ($spRow->EstBaseAmount    ?? 0),
                 'exChangeRate'  => (float) ($spRow->BaseExchRate     ?? 1),
-                'chgCurr'       => $spRow->EstChargeCurrCode ?? 'KES',
-                'basedOnCode'   => $supplement->BasedOnCode  ?? '',
-                'basedOnAndUOM' => $spRow->BasedOnAndUOM     ?? '',
-                'uomCode'       => $supplement->UOMCode      ?? '',
-                'chargeRemark'  => $supplement->ChargeRemark ?? '',
-                'partyCode'     => $supplement->PartyCode    ?? '',
+                'chgCurr'       => $spRow->EstChargeCurrCode   ?? 'KES',
+                'basedOnCode'   => $supplement->BasedOnCode    ?? '',
+                'basedOnAndUOM' => $spRow->BasedOnAndUOM       ?? '',
+                'uomCode'       => (!empty($supplement->UOMCode_Equipment)
+                    ? $supplement->UOMCode_Equipment
+                    : $supplement->UOMCode_UOM) ?? '',
+                'chargeRemark'  => $supplement->ChargeRemark   ?? '',
+                'partyCode'     => $supplement->PartyCode      ?? '',
                 'revenueOrCost' => $isRevenue ? 'Revenue' : 'Cost',
-                'sourceType'    => $supplement->SourceType   ?? 'manual',
+                'sourceType'    => $supplement->SourceType     ?? 'manual',
                 'increaseBy'    => (float) ($supplement->IncreaseBy  ?? 0),
-                'increaseType'  => $supplement->IncreaseType ?? 'Percentage',
+                'increaseType'  => $supplement->IncreaseType   ?? 'Percentage',
             ]);
         } catch (\Exception $e) {
             Log::error('getChargeDetails failed', [
@@ -5080,17 +4997,127 @@ class QuotationController extends Controller
         }
     }
 
+    public function getCharges(Request $request)
+    {
+        $bookingNo   = $request->input('booking_no');
+        $quotationId = trim($request->input('quotation_id', ''));
+
+        if (!$bookingNo) {
+            return response()->json(['success' => false, 'message' => 'Booking number is required'], 400);
+        }
+
+        try {
+            // Use quotation_id directly if passed — avoids hitting the wrong row
+            // when multiple quotations share the same bookingno across offices.
+            if (!$quotationId) {
+                $quotation = DB::table('Quote_QuotationInfo')
+                    ->where('bookingno', $bookingNo)
+                    ->first(['ID']);
+
+                if (!$quotation) {
+                    return response()->json(['success' => false, 'message' => 'Quotation not found'], 404);
+                }
+
+                $quotationId = $quotation->ID;
+            }
+
+            $pdo     = DB::connection()->getPdo();
+            $revenue = $this->fetchChargeListFromSP($pdo, $quotationId, 1);
+            $cost    = $this->fetchChargeListFromSP($pdo, $quotationId, 0);
+
+            Log::info('getCharges - Success', [
+                'booking_no'      => $bookingNo,
+                'quotation_id'    => $quotationId,
+                'quotation_source' => $request->has('quotation_id') ? 'request' : 'db_lookup',
+                'revenue_count'   => count($revenue),
+                'cost_count'      => count($cost),
+            ]);
+
+            return response()->json(['success' => true, 'revenue' => $revenue, 'cost' => $cost]);
+        } catch (\RuntimeException $e) {
+            Log::error('getCharges - SP error (DBA action required)', [
+                'booking_no' => $bookingNo,
+                'sp_error'   => $e->getMessage(),
+            ]);
+            return response()->json([
+                'success'              => false,
+                'message'              => $e->getMessage(),
+                'dba_action_required'  => true,
+            ], 500);
+        } catch (\Exception $e) {
+            Log::error('getCharges failed', [
+                'booking_no' => $bookingNo,
+                'error'      => $e->getMessage(),
+            ]);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    private function fetchChargeListFromSP(\PDO $pdo, string $quotationId, int $isRevenue): array
+    {
+        $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC dbo.sp_Quote_Quotation_ChargeList ?, ?, NULL");
+        $stmt->execute([$quotationId, $isRevenue]);
+
+        $rows = [];
+
+        do {
+            try {
+                $fetched = $stmt->fetchAll(\PDO::FETCH_OBJ);
+
+                if (empty($fetched)) continue;
+
+                $firstVal = array_values((array) $fetched[0])[0] ?? '';
+
+                if (is_string($firstVal) && str_starts_with($firstVal, 'Failed')) {
+                    Log::error('fetchChargeListFromSP - SP failure', [
+                        'quotation_id' => $quotationId,
+                        'is_revenue'   => $isRevenue,
+                        'message'      => $firstVal,
+                    ]);
+                    throw new \RuntimeException('sp_Quote_Quotation_ChargeList: ' . $firstVal);
+                }
+
+                if (isset($fetched[0]->Id)) {
+                    $rows = $fetched;
+                    break;
+                }
+            } catch (\PDOException $e) {
+                continue;
+            }
+        } while ($stmt->nextRowset());
+
+        return array_map(fn($row) => [
+            'id'            => $row->Id,
+            'chargeCode'    => $row->ChargeCode        ?? '',
+            'chargeName'    => $row->ChargeDesp         ?? '',
+            'rate'          => (float) ($row->EstChargeRate    ?? 0),
+            'quantity'      => (float) ($row->Quantity  ?? 0),
+            'amtInChgCurr'  => (float) ($row->EstChargeAmount  ?? 0),
+            'amtInBaseCurr' => (float) ($row->EstBaseAmount    ?? 0),
+            'exChangeRate'  => (float) ($row->BaseExchRate     ?? 1),
+            'chgCurr'       => $row->EstChargeCurrCode  ?? 'KES',
+            'basedOnCode'   => '',   // not in list SP — fetched on edit
+            'basedOnAndUOM' => $row->BasedOnAndUOM      ?? '',
+            'chargeRemark'  => '',   // not in list SP — fetched on edit
+            'partyCode'     => '',   // not in list SP — fetched on edit
+            'revenueOrCost' => $isRevenue ? 'Revenue' : 'Cost',
+            'sourceType'    => 'manual',
+        ], $rows);
+    }
+
     public function getChargeCodes(Request $request)
     {
-        $bookingNo = $request->input('booking_no');
+        $bookingNo  = $request->input('booking_no');
         $chargeType = $request->input('charge_type', 'Revenue');
-        $filter = $request->input('filter', '');
+        $filter     = $request->input('filter', '');
+        $officeCode = trim($request->input('office_code', ''));
 
         Log::info('=== GET CHARGE CODES CALLED ===', [
-            'booking_no' => $bookingNo,
+            'booking_no'  => $bookingNo,
             'charge_type' => $chargeType,
-            'filter' => $filter,
-            'filter_length' => strlen($filter)
+            'filter'      => $filter,
+            'filter_length' => strlen($filter),
+            'office_code_from_request' => $officeCode ?: null,
         ]);
 
         if (!$bookingNo) {
@@ -5098,58 +5125,61 @@ class QuotationController extends Controller
         }
 
         try {
-            $quotation = DB::table('Quote_QuotationInfo')
-                ->where('bookingno', $bookingNo)
-                ->first(['teamid']);
+            // Only hit the DB if office_code was not passed from the frontend.
+            // Prefer the passed value — it comes from $quotation->OfficeCode which
+            // is the same value used for save, exchange rate, and all other SP calls.
+            if (!$officeCode) {
+                $quotation = DB::table('Quote_QuotationInfo')
+                    ->where('bookingno', $bookingNo)
+                    ->first(['teamid']);
 
-            if (!$quotation) {
-                Log::warning('Quotation not found', ['booking_no' => $bookingNo]);
-                return response()->json(['success' => false, 'message' => 'Quotation not found'], 404);
+                if (!$quotation) {
+                    Log::warning('Quotation not found', ['booking_no' => $bookingNo]);
+                    return response()->json(['success' => false, 'message' => 'Quotation not found'], 404);
+                }
+
+                Log::info('Quotation found', ['team_id' => $quotation->teamid]);
+
+                $office = DB::table('Cust_Office')
+                    ->where('TeamCode', $quotation->teamid)
+                    ->where('IsActive', 1)
+                    ->where('IsDeleted', 0)
+                    ->first(['Code']);
+
+                if (!$office) {
+                    Log::warning('Office not found', ['team_id' => $quotation->teamid]);
+                    return response()->json(['success' => false, 'message' => 'Office not found'], 404);
+                }
+
+                $officeCode = trim($office->Code);
             }
-
-            Log::info('Quotation found', ['team_id' => $quotation->teamid]);
-
-            $office = DB::table('Cust_Office')
-                ->where('TeamCode', $quotation->teamid)
-                ->where('IsActive', 1)
-                ->where('IsDeleted', 0)
-                ->first(['Code']);
-
-            if (!$office) {
-                Log::warning('Office not found', ['team_id' => $quotation->teamid]);
-                return response()->json(['success' => false, 'message' => 'Office not found'], 404);
-            }
-
-            // FIX: Trim the office code to remove trailing spaces
-            $officeCode = trim($office->Code);
 
             Log::info('=== EXECUTING SP_CHARGECODE ===', [
-                'office_code' => $officeCode,
-                'office_code_raw' => $office->Code, // Log both to compare
-                'charge_type' => $chargeType,
-                'filter' => $filter
+                'office_code'     => $officeCode,
+                'charge_type'     => $chargeType,
+                'filter'          => $filter,
+                'office_source'   => $request->has('office_code') ? 'request' : 'db_lookup',
             ]);
 
-            $pdo = DB::connection()->getPdo();
+            $pdo  = DB::connection()->getPdo();
             $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC sp_ChargeCode ?, ?, ?");
-            $stmt->execute([$officeCode, $chargeType, $filter]); // Use trimmed code
-            $chargeCodes = [];
+            $stmt->execute([$officeCode, $chargeType, $filter]);
 
+            $chargeCodes    = [];
             $resultSetCount = 0;
 
             do {
                 $resultSetCount++;
                 try {
                     $results = $stmt->fetchAll(\PDO::FETCH_OBJ);
+
                     Log::info("Result set #$resultSetCount", [
-                        'count' => count($results),
-                        'first_row' => !empty($results) ? (array)$results[0] : null
+                        'count'     => count($results),
+                        'first_row' => !empty($results) ? (array) $results[0] : null,
                     ]);
 
                     if (!empty($results)) {
                         $firstRow = $results[0];
-
-                        // Check if this is the data result set
                         if (isset($firstRow->Id) && isset($firstRow->Code)) {
                             $chargeCodes = $results;
                             Log::info('✓ Found charge codes result set', ['count' => count($chargeCodes)]);
@@ -5157,7 +5187,6 @@ class QuotationController extends Controller
                         }
                     }
                 } catch (\Exception $e) {
-
                     Log::debug("Result set #$resultSetCount error", ['error' => $e->getMessage()]);
                     continue;
                 }
@@ -5165,22 +5194,21 @@ class QuotationController extends Controller
 
             Log::info('=== FINAL RESULT ===', [
                 'charge_codes_found' => count($chargeCodes),
-                'total_result_sets' => $resultSetCount
+                'total_result_sets'  => $resultSetCount,
             ]);
 
             return response()->json([
-                'success' => true,
-                'charge_codes' => $chargeCodes
+                'success'      => true,
+                'charge_codes' => $chargeCodes,
             ]);
         } catch (\Exception $e) {
-
             Log::error('Charge codes error: ' . $e->getMessage(), [
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to load charge codes: ' . $e->getMessage()
+                'message' => 'Failed to load charge codes: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -7293,6 +7321,8 @@ class QuotationController extends Controller
         $bookingNo  = $request->input('booking_no');
         $basedOn    = $request->input('based_on');
         $equipment  = $request->input('equipment', '');
+        $quoteNo   = trim($request->input('quote_no', ''));  // ← add this
+
 
         if (!$bookingNo || !$basedOn) {
             return response()->json(['success' => false, 'message' => 'booking_no and based_on are required'], 400);
