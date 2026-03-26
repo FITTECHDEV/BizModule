@@ -7486,9 +7486,6 @@ class QuotationController extends Controller
 
         $submittedBy = substr(auth()->user()->displayName ?? auth()->user()->Email ?? 'system', 0, 25);
 
-        // Mirror saveInquiryDetails — verify QuoteNo exists in DB before calling SP.
-        // This ensures the SP receives the exact string stored in the table,
-        // eliminating any casing or whitespace mismatch from the request.
         $quoteNo = DB::connection('sqlsrv')
             ->table('Quote_QuotationInfo')
             ->where('QuoteNo', $request->quote_no)
@@ -7504,17 +7501,30 @@ class QuotationController extends Controller
             ], 404);
         }
 
-        $scopeVolume = $request->input('scope_volume', '');
+        // ── Direct column updates (mirrors scopevolume pattern) ───────────────
+        $directUpdate = [];
 
-        if (!empty($scopeVolume)) {
+        if (!empty($request->input('scope_volume', ''))) {
+            $directUpdate['scopevolume'] = $request->input('scope_volume');
+        }
+
+        if ($request->filled('commodity')) {
+            $directUpdate['commodity'] = $request->commodity;
+        }
+
+        if ($request->has('cargo_volume')) {
+            $directUpdate['cargovolume'] = (float) ($request->cargo_volume ?? 0);
+        }
+
+        if (!empty($directUpdate)) {
             DB::connection('sqlsrv')
                 ->table('Quote_QuotationInfo')
                 ->where('QuoteNo', $quoteNo)
-                ->update(['scopevolume' => $scopeVolume]);
+                ->update($directUpdate);
 
-            Log::info('saveCargoDetails - scopevolume updated', [
-                'quote_no'     => $quoteNo,
-                'scope_volume' => $scopeVolume,
+            Log::info('saveCargoDetails - direct fields updated', [
+                'quote_no' => $quoteNo,
+                'fields'   => array_keys($directUpdate),
             ]);
         }
 
@@ -7541,7 +7551,7 @@ class QuotationController extends Controller
             'SubmittedDatetime' => now()->format('YmdHis'),
             'SubmittedBy'       => $submittedBy,
             'Action'            => 'Update',
-            'QuotationNo'       => $quoteNo,          // ← verified from DB, not raw request
+            'QuotationNo'       => $quoteNo,
             'Commodity'         => $request->commodity ?? '',
             'CargoVolume'       => (float) ($request->cargo_volume ?? 0),
             'Containers'        => $containers,
@@ -7673,21 +7683,37 @@ class QuotationController extends Controller
 
         $submittedBy = Auth::user()->displayName ?? Auth::user()->Email ?? 'system';
 
-        $quotation = DB::connection('sqlsrv')
+        $quoteNo = DB::connection('sqlsrv')
             ->table('Quote_QuotationInfo')
             ->where('bookingno', $request->booking_no)
             ->value('QuoteNo');
 
-        if (!$quotation) {
+        if (!$quoteNo) {
             return response()->json(['success' => false, 'message' => 'Quotation not found']);
         }
+
+        // ── Direct column update so edit() reload reflects the new salesperson ──
+        DB::connection('sqlsrv')
+            ->table('Quote_QuotationInfo')
+            ->where('bookingno', $request->booking_no)
+            ->update([
+                'username'       => $request->sales_person_email,
+                'LastModifiedBy' => $submittedBy,
+                'updatedon'      => now(),
+            ]);
+
+        Log::info('saveInquiryDetails - username updated directly', [
+            'booking_no'         => $request->booking_no,
+            'sales_person_email' => $request->sales_person_email,
+            'sales_person_code'  => $request->sales_person_code,
+        ]);
 
         $input = json_encode([
             'OperationType'     => 'InquiryDetails',
             'SubmittedDatetime' => now()->format('YmdHis'),
             'SubmittedBy'       => $submittedBy,
             'Action'            => 'Update',
-            'QuotationNo'       => $quotation,
+            'QuotationNo'       => $quoteNo,
             'SalesPersonCode'   => $request->sales_person_code,
             'SalesPersonEmail'  => $request->sales_person_email,
         ]);
