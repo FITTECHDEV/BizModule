@@ -6201,12 +6201,12 @@ class QuotationController extends Controller
             $quotation = DB::connection('sqlsrv')
                 ->table('Quote_QuotationInfo')
                 ->where('QuoteNo', $request->booking_no)
-                ->first(['ID', 'QuoteNo', 'bookingno', 'CustomerType', 'AgentType', 'clientid']);
+                ->first(['ID', 'QuoteNo', 'bookingno', 'CustomerType', 'AgentType', 'pri_id']);
         } else {
             $quotation = DB::connection('sqlsrv')
                 ->table('Quote_QuotationInfo')
                 ->where('ID', $request->id)
-                ->first(['ID', 'QuoteNo', 'bookingno', 'CustomerType', 'AgentType', 'clientid']);
+                ->first(['ID', 'QuoteNo', 'bookingno', 'CustomerType', 'AgentType', 'pri_id']);
         }
 
         if (!$quotation) {
@@ -6224,12 +6224,12 @@ class QuotationController extends Controller
         $address1      = $resolve('address1',       'pri_partner_steet');
         $address2      = $resolve('address2',       'pri_partner_steet2');
         $city          = $resolve('city',           'pri_partner_city');
-        $zipCode       = $resolve('zip_code',       'pri_partner_zip');
+        $zipCode       = $resolve('zip',            'zip_code',       'pri_partner_zip');
         $state         = $resolve('state',          'pri_partner_statename');
         $contactPerson = $resolve('contact_person', 'pri_partnermaster_name');
         $email         = $resolve('email',          'pri_partner_email');
         $phone         = $resolve('phone',          'pri_partner_phone');
-        $clientId      = $resolve('client_id',      'clientid');
+        $clientCode    = $resolve('client_code', 'clientcode') ?: ($quotation->pri_id ?? '');
         $industryName  = $resolve('industry',       'industryname');
 
         $customerType = $resolve('customer_type', 'CustomerType')
@@ -6320,7 +6320,7 @@ class QuotationController extends Controller
             'SubmittedBy'       => $submittedBy,
             'Action'            => 'Update',
             'QuotationNo'       => $quoteNo,
-            'ClientID'          => $clientId,
+            'ClientCode'        => $clientCode,
             'Company'           => $company,
             'Address1'          => $address1,
             'Address2'          => $address2,
@@ -7194,7 +7194,7 @@ class QuotationController extends Controller
     public function saveShipmentDetails(Request $request)
     {
         $request->validate([
-            'booking_no'     => 'required|string',
+            'quotation_id'   => 'required|string',
             'shipment_mode'  => 'required|string',
             'transport_mode' => 'required|string',
         ]);
@@ -7203,25 +7203,14 @@ class QuotationController extends Controller
             ?? auth()->user()->Email
             ?? 'system';
 
-        $quotation = DB::table('Quote_QuotationInfo')
-            ->where('bookingno', $request->booking_no)
-            ->value('QuoteNo');
-
-        if (!$quotation) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Quotation not found for booking number: ' . $request->booking_no,
-            ], 404);
-        }
-
         $input = json_encode([
             'OperationType'            => 'ShipmentDetails',
             'SubmittedDatetime'        => now()->format('YmdHis'),
             'SubmittedBy'              => $submittedBy,
             'Action'                   => 'Update',
-            'QuotationNo'              => $quotation,
-            'CountryOfOriginCode'      => $request->origincountry ?? '',      // FIXED: was OriginCountryCode
-            'CountryOfDestinationCode' => $request->destinationcountry ?? '', // FIXED: was DestinationCountryCode
+            'QuotationID'              => $request->quotation_id,
+            'CountryOfOriginCode'      => $request->origincountry ?? '',
+            'CountryOfDestinationCode' => $request->destinationcountry ?? '',
             'IncoTermCode'             => $request->incoterm ?? '',
             'ShipmentModeCode'         => $request->shipment_mode,
             'TransportModeCode'        => $request->transport_mode,
@@ -7239,32 +7228,12 @@ class QuotationController extends Controller
             $result = $this->executeDetailsUpdateSP($input);
 
             if (($result['Status'] ?? '') === 'Failed') {
-                // Collect remarks — SP may return single Remark or nested Remarks array
                 $message = $result['Remark']
                     ?? implode(', ', array_column($result['Remarks'] ?? [], 'Remark'))
                     ?: 'Shipment update failed';
 
-                Log::warning('saveShipmentDetails - SP returned failure', [
-                    'booking_no' => $request->booking_no,
-                    'quote_no'   => $quotation,
-                    'message'    => $message,
-                    'input'      => $input,
-                ]);
-
-                return response()->json([
-                    'success' => false,
-                    'message' => $message,
-                ]);
+                return response()->json(['success' => false, 'message' => $message]);
             }
-
-            Log::info('saveShipmentDetails - Success', [
-                'booking_no'   => $request->booking_no,
-                'quote_no'     => $quotation,
-                'shipment_mode' => $request->shipment_mode,
-                'transport_mode' => $request->transport_mode,
-                'incoterm'     => $request->incoterm ?? 'N/A',
-                'user'         => $submittedBy,
-            ]);
 
             return response()->json([
                 'success' => true,
@@ -7272,16 +7241,13 @@ class QuotationController extends Controller
             ]);
         } catch (\Exception $e) {
             Log::error('saveShipmentDetails - Exception', [
-                'booking_no' => $request->booking_no,
-                'error'      => $e->getMessage(),
-                'file'       => $e->getFile(),
-                'line'       => $e->getLine(),
+                'quotation_id' => $request->quotation_id,
+                'error'        => $e->getMessage(),
+                'file'         => $e->getFile(),
+                'line'         => $e->getLine(),
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-            ], 500);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
 
@@ -7666,28 +7632,21 @@ class QuotationController extends Controller
     public function saveInquiryDetails(Request $request)
     {
         $request->validate([
-            'booking_no'         => 'required|string',
+            'quotation_id'       => 'required|string',
             'sales_person_code'  => 'required|string',
             'sales_person_email' => 'required|email',
         ]);
 
-        $submittedBy = Auth::user()->displayName ?? Auth::user()->Email ?? 'system';
-
-        $quotation = DB::connection('sqlsrv')
-            ->table('Quote_QuotationInfo')
-            ->where('bookingno', $request->booking_no)
-            ->value('QuoteNo');
-
-        if (!$quotation) {
-            return response()->json(['success' => false, 'message' => 'Quotation not found']);
-        }
+        $submittedBy = auth()->user()->displayName
+            ?? auth()->user()->Email
+            ?? 'system';
 
         $input = json_encode([
             'OperationType'     => 'InquiryDetails',
             'SubmittedDatetime' => now()->format('YmdHis'),
             'SubmittedBy'       => $submittedBy,
             'Action'            => 'Update',
-            'QuotationNo'       => $quotation,
+            'QuotationID'       => $request->quotation_id, // ← GUID directly
             'SalesPersonCode'   => $request->sales_person_code,
             'SalesPersonEmail'  => $request->sales_person_email,
         ]);
