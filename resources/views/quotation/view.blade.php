@@ -1087,7 +1087,7 @@
                     '<i class="fas fa-spinner fa-spin mr-1"></i> Duplicating...');
 
                 $.ajax({
-                    url: '{{ route('quotation.processDuplicate', $quotation->bookingno) }}',
+                    url: '{{ route('quotation.processDuplicate', $quotation->QuoteNo) }}',
                     type: 'POST',
                     headers: {
                         'X-CSRF-TOKEN': '{{ csrf_token() }}',

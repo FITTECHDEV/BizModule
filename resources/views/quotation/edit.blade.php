@@ -827,8 +827,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 MODALS
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 ============================================ -->
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 MODALS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -879,7 +879,8 @@
                                             name="revenue_charge_code" required>
                                     </div>
                                     <div class="mb-3">
-                                        <label for="revenue_bill_to_party" class="form-label">Bill to Party</label>
+                                        <label for="revenue_bill_to_party" class="form-label"
+                                            id="revenueBillToPartyLabel">Bill to Party</label>
                                         <input type="text" class="form-control" id="revenue_bill_to_party"
                                             name="revenue_bill_to_party">
                                         <input type="hidden" id="revenue_bill_to_party_code"
@@ -925,7 +926,8 @@
                                         </div>
                                         <div class="col-6">
                                             <label for="revenue_base_amount" class="form-label text-nowrap">
-                                                Amount in Base Currency <span class="text-muted">(KES)</span></label>
+                                                Amount in Base Currency <span class="text-muted"
+                                                    id="revenue_base_currency_label">(KES)</span></label>
                                             <input type="number" class="form-control" id="revenue_base_amount"
                                                 name="revenue_base_amount" step="0.01" value="0.00" readonly>
                                         </div>
@@ -954,6 +956,25 @@
                                         <label for="revenue_remark" class="form-label">Remark</label>
                                         <input type="text" class="form-control" id="revenue_remark"
                                             name="revenue_remark">
+                                    </div>
+                                    <div class="mb-3" id="revenueIsAccruableContainer" style="display:none;">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="revenueIsAccruable"
+                                                name="revenue_is_accruable">
+                                            <label class="form-check-label fw-semibold" for="revenueIsAccruable">
+                                                Is Accruable
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-3" id="revenueIsReimbursableContainer" style="display:none;">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="revenueIsReimbursable"
+                                                name="revenue_is_reimbursable">
+                                            <label class="form-check-label fw-semibold" for="revenueIsReimbursable">
+                                                Is Reimbursable <small class="text-muted">(Adds to Revenue)</small>
+                                            </label>
+                                        </div>
                                     </div>
                                     <div class="mb-3">
                                         <div class="mb-3" id="revenueSecondaryBillToPartyContainer"
@@ -990,167 +1011,169 @@
                             <span aria-hidden="true">&times;</span>
                         </button>
                     </div>
-                    <div class="modal-body">
-                        <form id="addCostChargesForm">
-                            <input type="hidden" id="FITExpressChargeIDCost" name="cost_charge_id" />
+                    <form id="addCostChargesForm">
+                        <input type="hidden" id="FITExpressChargeIDCost" name="cost_charge_id" />
 
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <div>
-                                    <div class="form-check form-check-inline">
-                                        <input class="form-check-input" type="radio" name="costChargeType"
-                                            id="costTypeRevenue" value="revenue">
-                                        <label class="form-check-label" for="costTypeRevenue">Revenue</label>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="costChargeType"
+                                        id="costTypeRevenue" value="revenue">
+                                    <label class="form-check-label" for="costTypeRevenue">Revenue</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="costChargeType"
+                                        id="costTypeCost" value="cost" checked>
+                                    <label class="form-check-label" for="costTypeCost">Cost</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="costChargeType"
+                                        id="costTypeCostMarkup" value="costmarkup">
+                                    <label class="form-check-label" for="costTypeCostMarkup">Cost with markup</label>
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <p class="text-muted mb-0">Base Currency: <strong class="office-base-currency">—</strong>
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <!-- LEFT COLUMN -->
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="cost_charge_code" class="form-label">
+                                        <span class="text-danger">*</span> Charge Code</label>
+                                    <input type="text" class="form-control" id="cost_charge_code"
+                                        name="cost_charge_code" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="cost_bill_to_party" class="form-label" id="costBillToPartyLabel">Bill to
+                                        Party</label>
+                                    <input type="text" class="form-control" id="cost_bill_to_party"
+                                        name="cost_bill_to_party">
+                                    <input type="hidden" id="cost_bill_to_party_code" name="cost_bill_to_party_code" />
+                                </div>
+                                <div class="mb-3">
+                                    <label for="cost_based_on" class="form-label">
+                                        <span class="text-danger">*</span> Based On</label>
+                                    <select class="form-select form-control" id="cost_based_on" name="cost_based_on"
+                                        required>
+                                        <option value="">Select</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="cost_quantity" class="form-label">Quantity</label>
+                                    <input type="number" class="form-control" id="cost_quantity" name="cost_quantity"
+                                        step="0.01">
+                                </div>
+                                <div class="row mb-3 rate-row">
+                                    <div class="col-6">
+                                        <label for="cost_rate" class="form-label">Rate</label>
+                                        <div class="input-group">
+                                            <input type="number" class="form-control" id="cost_rate" name="cost_rate"
+                                                step="0.01">
+                                            <select class="form-select form-control" id="cost_currency"
+                                                name="cost_currency">
+                                                <option value="">Select</option>
+                                            </select>
+                                        </div>
                                     </div>
-                                    <div class="form-check form-check-inline">
-                                        <input class="form-check-input" type="radio" name="costChargeType"
-                                            id="costTypeCost" value="cost" checked>
-                                        <label class="form-check-label" for="costTypeCost">Cost</label>
-                                    </div>
-                                    <div class="form-check form-check-inline">
-                                        <input class="form-check-input" type="radio" name="costChargeType"
-                                            id="costTypeCostMarkup" value="costmarkup">
-                                        <label class="form-check-label" for="costTypeCostMarkup">Cost with markup</label>
+                                    <div class="col-6">
+                                        <label for="cost_amount" class="form-label">Amount</label>
+                                        <input type="number" class="form-control" id="cost_amount" name="cost_amount"
+                                            step="0.01" value="0.00" readonly>
                                     </div>
                                 </div>
-                                <div class="text-end">
-                                    <p class="text-muted mb-0">Base Currency: <strong
-                                            class="office-base-currency">—</strong></p>
+                                <div class="row mb-3 cost-markup-row" style="display: none;">
+                                    <div class="col-6">
+                                        <label for="cost_increase_by" class="form-label">Increase By</label>
+                                        <div class="input-group no-divider">
+                                            <input type="number" class="form-control" id="cost_increase_by"
+                                                name="cost_increase_by" step="0.01" value="0.00" placeholder="0">
+                                            <select class="form-select form-control" id="cost_increase_type"
+                                                name="cost_increase_type" style="max-width: 120px;">
+                                                <option value="">Select</option>
+                                                <option value="Percentage">Percentage</option>
+                                                <option value="Fixed">Fixed</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <label for="cost_revenue_amount" class="form-label">Amount</label>
+                                        <input type="number" class="form-control" id="cost_revenue_amount"
+                                            name="cost_revenue_amount" step="0.01" value="0.00" readonly>
+                                    </div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-6">
+                                        <label for="cost_exchange_rate" class="form-label">
+                                            <span class="text-danger">*</span> Exchange Rate</label>
+                                        <input type="number" class="form-control" id="cost_exchange_rate"
+                                            name="cost_exchange_rate" readonly>
+                                    </div>
+                                    <div class="col-6">
+                                        <label for="cost_base_amount" class="form-label text-nowrap">
+                                            Amount in Base Currency <span class="text-muted"
+                                                id="cost_base_currency_label">(KES)</span></label>
+                                        <input type="number" class="form-control" id="cost_base_amount"
+                                            name="cost_base_amount" step="0.01" value="0.00" readonly>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="mb-3">
-                                        <label for="cost_charge_code" class="form-label">
-                                            <span class="text-danger">*</span> Charge Code</label>
-                                        <input type="text" class="form-control" id="cost_charge_code"
-                                            name="cost_charge_code" required>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="cost_bill_to_party" class="form-label">Bill to Party</label>
-                                        <input type="text" class="form-control" id="cost_bill_to_party"
-                                            name="cost_bill_to_party">
-                                        <input type="hidden" id="cost_bill_to_party_code"
-                                            name="cost_bill_to_party_code" />
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="cost_based_on" class="form-label">
-                                            <span class="text-danger">*</span> Based On</label>
-                                        <select class="form-select form-control" id="cost_based_on" name="cost_based_on"
-                                            required>
-                                            <option value="">Select</option>
-                                        </select>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="cost_quantity" class="form-label">Quantity</label>
-                                        <input type="number" class="form-control" id="cost_quantity"
-                                            name="cost_quantity" step="0.01">
-                                    </div>
-                                    <div class="row mb-3 rate-row">
-                                        <div class="col-6">
-                                            <label for="cost_rate" class="form-label">Rate</label>
-                                            <div class="input-group">
-                                                <input type="number" class="form-control" id="cost_rate"
-                                                    name="cost_rate" step="0.01">
-                                                <select class="form-select form-control" id="cost_currency"
-                                                    name="cost_currency">
-                                                    <option value="">Select</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div class="col-6">
-                                            <label for="cost_amount" class="form-label">Amount</label>
-                                            <input type="number" class="form-control" id="cost_amount"
-                                                name="cost_amount" step="0.01" value="0.00" readonly>
-                                        </div>
-                                    </div>
-                                    <div class="row mb-3 cost-markup-row" style="display: none;">
-                                        <div class="col-6">
-                                            <label for="cost_increase_by" class="form-label">Increase By</label>
-                                            <div class="input-group no-divider">
-                                                <input type="number" class="form-control" id="cost_increase_by"
-                                                    name="cost_increase_by" step="0.01" value="0.00"
-                                                    placeholder="0">
-                                                <select class="form-select form-control" id="cost_increase_type"
-                                                    name="cost_increase_type" style="max-width: 120px;">
-                                                    <option value="">Select</option>
-                                                    <option value="Percentage">Percentage</option>
-                                                    <option value="Fixed">Fixed</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div class="col-6">
-                                            <label for="cost_revenue_amount" class="form-label">Amount</label>
-                                            <input type="number" class="form-control" id="cost_revenue_amount"
-                                                name="cost_revenue_amount" step="0.01" value="0.00" readonly>
-                                        </div>
-                                    </div>
-                                    <div class="row mb-3">
-                                        <div class="col-6">
-                                            <label for="cost_exchange_rate" class="form-label">
-                                                <span class="text-danger">*</span> Exchange Rate</label>
-                                            <input type="number" class="form-control" id="cost_exchange_rate"
-                                                name="cost_exchange_rate" readonly>
-                                        </div>
-                                        <div class="col-6">
-                                            <label for="cost_base_amount" class="form-label text-nowrap">
-                                                Amount in Base Currency <span class="text-muted">(KES)</span></label>
-                                            <input type="number" class="form-control" id="cost_base_amount"
-                                                name="cost_base_amount" step="0.01" value="0.00" readonly>
-                                        </div>
+                            <!-- RIGHT COLUMN -->
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="cost_description" class="form-label">Description</label>
+                                    <input type="text" class="form-control" id="cost_description"
+                                        name="cost_description" readonly>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="cost_tax_applicable" class="form-label">Tax Applicable</label>
+                                    <input type="number" class="form-control" id="cost_tax_applicable"
+                                        name="cost_tax_applicable" step="0.01" readonly>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="cost_based_on_uom" class="form-label">
+                                        <span class="text-danger">*</span> Based On UOM</label>
+                                    <select class="form-select form-control" id="cost_based_on_uom"
+                                        name="cost_based_on_uom" required>
+                                        <option value="">Select</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="cost_remark" class="form-label">Remark</label>
+                                    <input type="text" class="form-control" id="cost_remark" name="cost_remark">
+                                </div>
+                                <div class="mb-3" id="costIsReimbursedContainer">
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" id="costIsReimbursed"
+                                            name="cost_is_reimbursed">
+                                        <label class="form-check-label fw-semibold" for="costIsReimbursed">
+                                            Is Reimbursable <small class="text-muted">(Adds to Revenue)</small>
+                                        </label>
                                     </div>
                                 </div>
-                                <div class="col-md-6">
-                                    <div class="mb-3">
-                                        <label for="cost_description" class="form-label">Description</label>
-                                        <input type="text" class="form-control" id="cost_description"
-                                            name="cost_description" readonly>
+                                <div class="mb-3" id="costIsAccruedContainer" style="display:none;">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="costIsAccrued"
+                                            name="cost_is_accrued">
+                                        <label class="form-check-label fw-semibold" for="costIsAccrued">
+                                            Is Accrued <small class="text-muted">(Adds to Cost)</small>
+                                        </label>
                                     </div>
-                                    <div class="mb-3">
-                                        <label for="cost_tax_applicable" class="form-label">Tax Applicable</label>
-                                        <input type="number" class="form-control" id="cost_tax_applicable"
-                                            name="cost_tax_applicable" step="0.01" readonly>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="cost_based_on_uom" class="form-label">
-                                            <span class="text-danger">*</span> Based On UOM</label>
-                                        <select class="form-select form-control" id="cost_based_on_uom"
-                                            name="cost_based_on_uom" required>
-                                            <option value="">Select</option>
-                                        </select>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="cost_remark" class="form-label">Remark</label>
-                                        <input type="text" class="form-control" id="cost_remark" name="cost_remark">
-                                    </div>
-                                    <div class="mb-3">
-                                        <div class="form-check mb-2">
-                                            <input class="form-check-input" type="checkbox" id="costIsReimbursed"
-                                                name="cost_is_reimbursed">
-                                            <label class="form-check-label fw-semibold" for="costIsReimbursed">
-                                                Is Reimbursed <small class="text-muted">(Adds to Revenue)</small>
-                                            </label>
-                                        </div>
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" id="costIsAccrued"
-                                                name="cost_is_accrued">
-                                            <label class="form-check-label fw-semibold" for="costIsAccrued">
-                                                Is Accrued <small class="text-muted">(Adds to Cost)</small>
-                                            </label>
-                                        </div>
-                                        <div class="mb-3 mt-2" id="costSecondaryBillToPartyContainer"
-                                            style="display:none;">
-                                            <label for="costSecondaryBillToParty" class="form-label">
-                                                <span class="text-danger">*</span> Secondary Bill To Party</label>
-                                            <input type="text" class="form-control" id="costSecondaryBillToParty"
-                                                placeholder="Select Secondary Party">
-                                            <input type="hidden" id="costSecondaryBillToPartyCode">
-                                        </div>
-                                    </div>
+                                </div>
+                                <div class="mb-3" id="costSecondaryBillToPartyContainer" style="display:none;">
+                                    <label for="costSecondaryBillToParty" class="form-label">
+                                        <span class="text-danger">*</span> Secondary Bill To Party</label>
+                                    <input type="text" class="form-control" id="costSecondaryBillToParty"
+                                        placeholder="Select Secondary Party">
+                                    <input type="hidden" id="costSecondaryBillToPartyCode">
                                 </div>
                             </div>
-                        </form>
-                    </div>
+                        </div>
+                    </form>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-success" id="saveCostCharge">Save</button>
                         <button type="button" class="btn btn-primary" id="saveAddMoreCostCharge">Save & Add
@@ -1390,8 +1413,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1834,9 +1857,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -2063,6 +2086,26 @@
                 }
             }
 
+            function getBaseCurrency() {
+                return OFFICE_BASE_CURRENCY[officeCode] ?? 'KES';
+            }
+
+            function updateBaseCurrencyLabels() {
+                const bc = getBaseCurrency();
+                $('#revenue_base_currency_label').text('(' + bc + ')');
+                $('#cost_base_currency_label').text('(' + bc + ')');
+            }
+
+            function getBaseCurrency() {
+                return OFFICE_BASE_CURRENCY[officeCode] ?? 'KES';
+            }
+
+            function updateBaseCurrencyLabels() {
+                const bc = getBaseCurrency();
+                $('#revenue_base_currency_label').text('(' + bc + ')');
+                $('#cost_base_currency_label').text('(' + bc + ')');
+            }
+
             // Hidden field to hold the ClientID selected from Company Name autocomplete
             $('input[data-field="companyname"]').closest('.form-group').find('.col-sm-8')
                 .append('<input type="hidden" id="selectedClientId" value="">');
@@ -2210,7 +2253,6 @@
                         filter: ''
                     },
                     success: function(data) {
-
                         const list = Array.isArray(data) ? data : [];
 
                         function fill(selectId, savedCode) {
@@ -2397,6 +2439,9 @@
                 });
             });
 
+            updateBaseCurrencyLabels();
+
+
             // ── T&C Gate ─────────────────────────────────────────────
             // Unblock Generate Quote immediately if T&C was previously applied
             // Seed termsState from server-rendered flag so the gate
@@ -2517,7 +2562,9 @@
                     url: '{{ route('quotation.charges') }}',
                     type: 'GET',
                     data: {
-                        booking_no: bookingNo
+                        booking_no: bookingNo,
+                        office_code: officeCode,
+                        quotation_id: quotationId, // ← this was never added
                     },
                     beforeSend: function() {
                         $('#revenueChargesTable, #costChargesTable').html(
@@ -2565,16 +2612,13 @@
             // ============================================
             $('#addRevenueModal').on('show.bs.modal', function() {
                 $(this).find('.increase-by-row').removeClass('active').css('display', 'none');
+                loadEquipmentTypeOptions(function() {}); // ← pre-load silently on modal open
                 if (!currentEditingCharge) {
-                    // Add mode — initialize dropdowns fresh
                     $('#revenueTypeRevenue').prop('checked', true);
                     toggleRevenueFormFields('revenue');
                     loadBasedOnList('revenue');
                     populateCurrencyDropdown('revenue');
                 } else {
-                    // Edit mode — populateModal already owns the loading sequence via
-                    // loadBasedOnListWithCallback → loadBasedOnUOMWithCallback.
-                    // Only ensure currency is populated (it has its own populated guard).
                     populateCurrencyDropdown('revenue');
                 }
                 setTimeout(function() {
@@ -2585,16 +2629,14 @@
 
             $('#addCostModal').on('show.bs.modal', function() {
                 $(this).find('.cost-markup-row').removeClass('active').css('display', 'none');
+                loadEquipmentTypeOptions(function() {}); // ← pre-load silently on modal open
                 if (!currentEditingCharge) {
-                    // Add mode — initialize dropdowns fresh
                     $('#costTypeCost').prop('checked', true);
                     toggleCostFormFields('cost');
+                    $('#costIsReimbursedContainer').show();
                     loadBasedOnList('cost');
                     populateCurrencyDropdown('cost');
                 } else {
-                    // Edit mode — populateModal already owns the loading sequence via
-                    // loadBasedOnListWithCallback → loadBasedOnUOMWithCallback.
-                    // Only ensure currency is populated (it has its own populated guard).
                     populateCurrencyDropdown('cost');
                 }
                 setTimeout(function() {
@@ -2640,7 +2682,7 @@
                     url: '/quotation/currencies',
                     type: 'GET',
                     data: {
-                        office_code: officeCode
+                        office_id: officeId
                     },
                     beforeSend: function() {
                         $currencySelect.prop('disabled', true).empty().append(
@@ -2714,7 +2756,7 @@
                     url: '/quotation/exchange-rate',
                     type: 'GET',
                     data: {
-                        office_code: officeCode,
+                        office_code: officeId,
                         from_currency: currencyCode,
                         to_currency: baseCurrency,
                         date_for: dateFor
@@ -2809,16 +2851,6 @@
                 });
             }
 
-            // ============================================
-            // LOAD UOM WHEN BASED ON CHANGES
-            // ============================================
-            $(document).on('change', 'select[name="revenue_based_on"], select[name="cost_based_on"]', function() {
-                const $select = $(this);
-                const prefix = $select.attr('name').split('_')[0];
-                const basedOnCode = $select.val();
-                loadBasedOnUOM(prefix, basedOnCode);
-            });
-
             function loadBasedOnUOM(type, basedOnCode) {
                 const prefix = type === 'revenue' ? 'revenue' : 'cost';
                 const $uomSelect = $(`select[name="${prefix}_based_on_uom"]`);
@@ -2829,6 +2861,26 @@
                         .prop('disabled', true);
                     return;
                 }
+
+                // ── NEW: Equipment branch (mirrors loadBasedOnUOMWithCallback) ───────────────
+                if (basedOnCode === 'Equipment') {
+                    $uomSelect.empty()
+                        .append('<option value="">-- Select Container Type --</option>')
+                        .prop('disabled', true);
+
+                    loadEquipmentTypeOptions(function() {
+                        $uomSelect.empty()
+                            .append('<option value="">-- Select Container Type --</option>');
+                        equipmentTypeOptions.forEach(function(item) {
+                            $uomSelect.append(
+                                `<option value="${item.Code}">${item.Code}</option>`
+                            );
+                        });
+                        $uomSelect.prop('disabled', false).removeAttr('title');
+                    });
+                    return;
+                }
+                // ── END NEW ──────────────────────────────────────────────────────────────────
 
                 $.ajax({
                     url: '{{ route('quotation.based-on-uom') }}',
@@ -2843,7 +2895,6 @@
                     success: function(response) {
                         if (response.success) {
                             $uomSelect.empty();
-
                             if (!response.uom_list || response.uom_list.length === 0) {
                                 $uomSelect.append('<option value="">No UOM Required</option>');
                                 $uomSelect.prop('disabled', true)
@@ -2912,6 +2963,29 @@
                     return;
                 }
 
+                // ── NEW: Equipment — UOM select is repurposed as container type picker ──────
+                // sp_ChargeBasedOnUOM returns empty for 'Equipment'; equipment types come
+                // from sp_EquipmentType (already loaded into equipmentTypeOptions).
+                if (basedOnCode === 'Equipment') {
+                    $uomSelect.empty()
+                        .append('<option value="">-- Select Container Type --</option>')
+                        .prop('disabled', true);
+
+                    loadEquipmentTypeOptions(function() {
+                        $uomSelect.empty()
+                            .append('<option value="">-- Select Container Type --</option>');
+                        equipmentTypeOptions.forEach(function(item) {
+                            $uomSelect.append(
+                                `<option value="${item.Code}">${item.Code}</option>`
+                            );
+                        });
+                        $uomSelect.prop('disabled', false).removeAttr('title');
+                        if (typeof callback === 'function') callback();
+                    });
+                    return;
+                }
+                // ── END NEW ──────────────────────────────────────────────────────────────────
+
                 $.ajax({
                     url: '{{ route('quotation.based-on-uom') }}',
                     type: 'GET',
@@ -2925,7 +2999,6 @@
                     success: function(response) {
                         if (response.success) {
                             $uomSelect.empty();
-
                             if (!response.uom_list || response.uom_list.length === 0) {
                                 $uomSelect.append('<option value="">No UOM Required</option>');
                                 $uomSelect.prop('disabled', true).attr('title',
@@ -2938,7 +3011,6 @@
                                 });
                                 $uomSelect.prop('disabled', false).removeAttr('title');
                             }
-
                             if (typeof callback === 'function') callback();
                         }
                     },
@@ -2948,6 +3020,183 @@
                     }
                 });
             }
+
+            // ============================================
+            // FETCH BASED ON DEFAULTS FROM SP
+            // ============================================
+            function fetchBasedOnDefaults(prefix, basedOnCode, equipment) {
+                if (!bookingNo || !basedOnCode) return;
+
+                const $modal = prefix === 'revenue' ? $('#addRevenueModal') : $('#addCostModal');
+
+                if (basedOnCode === 'Equipment' && !equipment) {
+                    const containerTypes = $('#cargoDetailsCard #containerListBody')
+                        .find('tr[data-container-row]')
+                        .map(function() {
+                            const fromSelect = $(this).find('td:first select').val();
+                            const fromText = $(this).find('td:first').text().trim();
+                            return fromSelect || fromText;
+                        })
+                        .get()
+                        .filter(Boolean);
+
+                    if (containerTypes.length > 0) {
+                        equipment = containerTypes[0];
+                        const $uomSelect = $modal.find(`select[name="${prefix}_based_on_uom"]`);
+                        if ($uomSelect.find(`option[value="${equipment}"]`).length) {
+                            $uomSelect.val(equipment);
+                        }
+                    } else {
+                        return;
+                    }
+                }
+
+                $.ajax({
+                    url: '{{ route('quotation.charge-based-on-defaults') }}',
+                    type: 'GET',
+                    data: {
+                        booking_no: bookingNo,
+                        quote_no: quoteNo,
+                        based_on: basedOnCode,
+                        equipment: equipment || ''
+                    },
+                    success: function(response) {
+                        if (!response.success) return;
+
+                        if (response.quantity > 0) {
+                            $modal.find(`input[name="${prefix}_quantity"]`).val(response.quantity);
+                        }
+
+                        if (basedOnCode === 'Equipment' && equipment) {
+                            const $uomSelect = $modal.find(`select[name="${prefix}_based_on_uom"]`);
+                            if ($uomSelect.find(`option[value="${equipment}"]`).length) {
+                                $uomSelect.val(equipment);
+                            }
+                        } else if (response.based_on_uom_code) {
+                            const $uomSelect = $modal.find(`select[name="${prefix}_based_on_uom"]`);
+                            if ($uomSelect.find(`option[value="${response.based_on_uom_code}"]`)
+                                .length) {
+                                $uomSelect.val(response.based_on_uom_code);
+                            }
+                        }
+
+                        calculateAmount(prefix);
+                    },
+                    error: function(xhr) {
+                        console.warn('fetchBasedOnDefaults — request failed', {
+                            status: xhr.status,
+                            message: xhr.responseJSON?.message
+                        });
+                    }
+                });
+            }
+
+            // ============================================
+            // FETCH BASED ON DEFAULTS FROM SP
+            // Calls sp_Quote_ChargeBasedOnDefaultDetails
+            // via the existing getChargeBasedOnDefaults route.
+            // Pre-fills:
+            //   - Based On UOM select (if UOM list has a match)
+            //   - Quantity input
+            // @param prefix        'revenue' or 'cost'
+            // @param basedOnCode   Selected Based On code
+            // @param equipment     Equipment type code ('' unless BasedOn = 'Equipment')
+            // ============================================
+            $(document).on('change', 'select[name="revenue_based_on"], select[name="cost_based_on"]', function() {
+                const $select = $(this);
+                const prefix = $select.attr('name').split('_')[0];
+                const basedOnCode = $select.val();
+
+                if (!basedOnCode) {
+                    loadBasedOnUOM(prefix, basedOnCode);
+                    return;
+                }
+
+                loadBasedOnUOMWithCallback(prefix, basedOnCode, function() {
+                    if (basedOnCode === 'Equipment') {
+                        // ── Auto-select first container type from cargo details ────────────
+                        // Runs INSIDE the callback — guaranteed after UOM options are rendered.
+                        // Handles both read-only (text cell) and edit mode (select element).
+                        const $modal = prefix === 'revenue' ? $('#addRevenueModal') : $(
+                            '#addCostModal');
+                        const containerTypes = $('#cargoDetailsCard #containerListBody')
+                            .find('tr[data-container-row]')
+                            .map(function() {
+                                const fromSelect = $(this).find('td:first select').val();
+                                const fromText = $(this).find('td:first').text().trim();
+                                return fromSelect || fromText;
+                            })
+                            .get()
+                            .filter(Boolean);
+
+                        if (containerTypes.length > 0) {
+                            const firstContainer = containerTypes[0];
+                            const $uomSelect = $modal.find(`select[name="${prefix}_based_on_uom"]`);
+
+
+
+                            // Confirm option exists before setting — no silent failures
+                            if ($uomSelect.find(`option[value="${firstContainer}"]`).length) {
+                                $uomSelect.val(firstContainer);
+                                fetchBasedOnDefaults(prefix, basedOnCode, firstContainer);
+                            }
+                        }
+                        // No containers found — leave UOM blank, user must add cargo first
+                    } else {
+                        fetchBasedOnDefaults(prefix, basedOnCode, '');
+                    }
+                });
+            });
+
+            // ============================================
+            // AUTO-FILL QUANTITY WHEN BASED ON UOM CHANGES
+            // Only fires for Equipment — other Based On types
+            // are handled by fetchBasedOnDefaults after UOM loads.
+            // ============================================
+            $(document).on(
+                'change',
+                'select[name="revenue_based_on_uom"], select[name="cost_based_on_uom"]',
+                function() {
+                    const $uomSelect = $(this);
+                    const prefix = $uomSelect.attr('name').split('_based_on_uom')[0];
+                    const $modal = prefix === 'revenue' ? $('#addRevenueModal') : $('#addCostModal');
+                    const basedOn = $modal.find(`select[name="${prefix}_based_on"]`).val();
+                    const uomCode = $uomSelect.val();
+
+                    // Only Equipment needs this — other types already handled by fetchBasedOnDefaults
+                    if (basedOn !== 'Equipment' || !uomCode) return;
+
+                    fetchBasedOnDefaults(prefix, basedOn, uomCode);
+                }
+            );
+
+            // ============================================
+            // EQUIPMENT TYPE CHANGE — RE-FETCH DEFAULTS
+            // When Based On is 'Equipment' and the user
+            // picks a container type from a charge row,
+            // re-call the SP with the selected equipment.
+            // This is only relevant inside the charge modal
+            // when the Equipment-specific UOM/Quantity
+            // needs to update after container selection.
+            // ============================================
+            $(document).on('change', '.container-type-select', function() {
+                // Only fires if a charge modal is currently open
+                const $openModal = $('#addRevenueModal.show, #addCostModal.show');
+                if (!$openModal.length) return;
+
+                const prefix = $openModal.attr('id') === 'addRevenueModal' ? 'revenue' : 'cost';
+                const $basedOnSelect = $openModal.find(`select[name="${prefix}_based_on"]`);
+                const basedOnCode = $basedOnSelect.val();
+
+                if (basedOnCode !== 'Equipment') return;
+
+                const equipment = $(this).val();
+                if (!equipment) return;
+
+                fetchBasedOnDefaults(prefix, basedOnCode, equipment);
+            });
+
+
             // ============================================
             // CHARGE CODE AUTOCOMPLETE
             // FIX: chargeType is now read dynamically from the selected radio button
@@ -2985,6 +3234,7 @@
                             type: 'GET',
                             data: {
                                 booking_no: bookingNo,
+                                office_code: officeCode, // ← add this
                                 charge_type: chargeType,
                                 filter: request.term
                             },
@@ -3228,6 +3478,19 @@
 
                 $increaseByRow.removeClass('active').css('display', 'none');
 
+                // Label: "Bill to Party" for Revenue, "Vendor" for Cost/Cost with Markup
+                $('#revenueBillToPartyLabel').text(
+                    (type === 'cost' || type === 'costmarkup') ? 'Vendor' : 'Bill to Party'
+                );
+
+
+                // Show Is Accruable only for Revenue radio
+                $('#revenueIsAccruableContainer').css('display', type === 'revenue' ? 'block' : 'none');
+
+                // Show Is Reimbursable only for Cost radio  ← THIS IS THE FIX
+                $('#revenueIsReimbursableContainer').css('display', type === 'cost' ? 'block' : 'none');
+
+
                 if (type === 'costmarkup') {
                     if ($increaseByRow.length === 0) {
                         const increaseByHtml = `
@@ -3263,24 +3526,26 @@
             function toggleCostFormFields(type) {
                 const $modal = $('#addCostModal');
                 const $markupRow = $modal.find('.cost-markup-row');
-                const $isReimbursedContainer = $('#costIsReimbursed').closest('.form-check');
+
+                $('#costBillToPartyLabel').text(
+                    (type === 'cost' || type === 'costmarkup') ? 'Vendor' : 'Bill to Party'
+                );
+
+                $('#costIsReimbursedContainer').css('display', type === 'cost' ? 'block' : 'none');
 
                 if (type === 'costmarkup') {
                     $markupRow.addClass('active').css('display', 'flex');
-                    $isReimbursedContainer.hide();
                     console.log('Showing cost markup row');
                 } else if (type === 'revenue') {
                     $markupRow.removeClass('active').css('display', 'none');
                     $markupRow.find('input[type="number"]').val('0.00');
                     $markupRow.find('select').prop('selectedIndex', 0);
-                    $isReimbursedContainer.hide();
                     console.log('Hiding cost markup row - Revenue selected');
                 } else {
                     // type === 'cost'
                     $markupRow.removeClass('active').css('display', 'none');
                     $markupRow.find('input[type="number"]').val('0.00');
                     $markupRow.find('select').prop('selectedIndex', 0);
-                    $isReimbursedContainer.show();
                     console.log('Hiding cost markup row - Cost selected');
                 }
             }
@@ -3365,23 +3630,25 @@
                 const prefix = type === 'revenue' ? 'revenue' : 'cost';
                 const chargeType = $modal.find(`input[name="${prefix}ChargeType"]:checked`).val();
 
-                // Derive revenueOrCost from the radio button, not the modal context
                 const revenueOrCost = chargeType === 'revenue' ? 'Revenue' :
                     chargeType === 'costmarkup' ? 'Cost with Markup' : 'Cost';
 
-                console.log('Saving charge — modal:', type, '| radio:', chargeType, '| revenueOrCost:',
-                    revenueOrCost);
-
                 let toBeAdded = 0;
-                if (type === 'cost') {
-                    toBeAdded = ($modal.find('#costIsReimbursed').is(':checked') ||
-                        $modal.find('#costIsAccrued').is(':checked')) ? 1 : 0;
+                if (revenueOrCost === 'Revenue') {
+                    toBeAdded = $modal.find('#revenueIsAccruable').is(':checked') ? 1 : 0;
+                } else if (revenueOrCost === 'Cost') {
+                    // Revenue modal uses #revenueIsReimbursable, Cost modal uses #costIsReimbursed
+                    // Both are scoped to $modal so only the correct one is ever found
+                    const $reimbursableCheck = $modal.find('#revenueIsReimbursable, #costIsReimbursed');
+                    toBeAdded = $reimbursableCheck.is(':checked') ? 1 : 0;
                 }
 
+                // Prepare data payload — SP will handle currency, office, base amounts
                 const chargeData = {
                     _token: '{{ csrf_token() }}',
                     action: currentEditingCharge ? 'Edit' : 'Add',
                     booking_no: bookingNo,
+                    office_code: officeCode,
                     quote_charge_id: currentEditingCharge || '',
                     party_code: $modal.find(`input[name="${prefix}_bill_to_party_code"]`).val() || '',
                     revenue_or_cost: revenueOrCost,
@@ -3392,9 +3659,9 @@
                     amt_in_base_curr: parseFloat($modal.find(`input[name="${prefix}_base_amount"]`).val()) || 0,
                     exchange_rate: parseFloat($modal.find(`input[name="${prefix}_exchange_rate"]`).val()) || 1,
                     chg_curr: $modal.find(`select[name="${prefix}_currency"] option:selected`).data('code') ||
-                        'KES',
+                        '',
                     based_on_code: $modal.find(`select[name="${prefix}_based_on"]`).val() || '',
-                    based_on_and_uom: $modal.find(`select[name="${prefix}_based_on_uom"]`).val() || '',
+                    based_on_uom: $modal.find(`select[name="${prefix}_based_on_uom"]`).val() || '',
                     charge_remark: $modal.find(`input[name="${prefix}_remark"]`).val() || '',
                     to_be_added: toBeAdded,
                     increase_by: 0,
@@ -3402,6 +3669,7 @@
                     source_type: 'manual'
                 };
 
+                // Cost with Markup adjustments
                 if (chargeType === 'costmarkup') {
                     chargeData.increase_by = parseFloat($modal.find(`input[name="${prefix}_increase_by"]`).val()) ||
                         0;
@@ -3409,11 +3677,11 @@
                         'Percentage';
                 }
 
+                // Local validation before sending to SP
                 if (!chargeData.charge_code) {
                     showNotification('Please enter a charge code', 'error');
                     return;
                 }
-
                 if (!chargeData.based_on_code) {
                     showNotification('Please select Based On', 'error');
                     return;
@@ -3427,27 +3695,20 @@
                         $modal.find('.btn').prop('disabled', true);
                     },
                     success: function(response) {
-                        if (response.success) {
-                            showNotification(response.message, 'success');
+                        const isSuccess = response.success === true;
+                        showNotification(response.message || (isSuccess ? 'Charge saved successfully' :
+                                'Failed to save charge'),
+                            isSuccess ? 'success' : 'error');
 
+                        if (isSuccess) {
                             if (addMore) {
-                                // Clear modal first so user can start entering next charge immediately
-                                // loadCharges() reloads in the background — no visual flicker
-                                if (type === 'revenue') {
-                                    clearRevenueModalForm();
-                                } else {
-                                    clearCostModalForm();
-                                }
+                                type === 'revenue' ? clearRevenueModalForm() : clearCostModalForm();
                                 loadCharges();
                             } else {
-                                // Hide modal first for snappy UX, then reload charge tables
                                 $modal.modal('hide');
                                 loadCharges();
                             }
-
                             currentEditingCharge = null;
-                        } else {
-                            showNotification(response.message, 'error');
                         }
                     },
                     error: function(xhr) {
@@ -3472,6 +3733,7 @@
                     data: {
                         _token: '{{ csrf_token() }}',
                         booking_no: bookingNo,
+                        office_code: officeCode,
                         quote_charge_id: chargeId
                     },
                     success: function(response) {
@@ -3497,7 +3759,9 @@
                     type: 'GET',
                     data: {
                         booking_no: bookingNo,
-                        charge_id: chargeId
+                        charge_id: chargeId,
+                        office_code: officeCode
+
                     },
                     beforeSend: function() {
                         // Show the modal immediately with a loading state
@@ -3600,19 +3864,55 @@
                     }, 100);
                 }
 
-                // ── Based On → UOM — sequential async chain ──
+                // ── Based On → UOM — sequential async chain ─────────────────────────────────
                 loadBasedOnListWithCallback(type, function() {
-                    if (charge.basedOnCode) {
-                        $modal.find(`select[name="${prefix}_based_on"]`).val(charge.basedOnCode);
+                    if (!charge.basedOnCode) return;
 
-                        loadBasedOnUOMWithCallback(type, charge.basedOnCode, function() {
-                            if (charge.basedOnAndUOM || charge.basedOnUOM) {
-                                const uomCode = (charge.basedOnAndUOM || '').split('/').pop()
-                                    .trim() || charge.basedOnUOM;
-                                $modal.find(`select[name="${prefix}_based_on_uom"]`).val(uomCode);
-                            }
-                        });
-                    }
+                    $modal.find(`select[name="${prefix}_based_on"]`).val(charge.basedOnCode);
+
+                    // Robustly resolve the stored UOM code regardless of Based On type.
+                    // Priority: explicit uomCode field → last segment of basedOnAndUOM → empty
+                    const rawUom = charge.uomCode ||
+                        charge.basedOnUOM // ← ADD: try alternate field name
+                        ||
+                        charge.BasedOnUOM // ← ADD: try PascalCase variant
+                        ||
+                        '';
+
+                    console.log('DEBUG populateModal charge object:', JSON.stringify(charge));
+
+                    // ── DEBUG LOGS — remove after fix is confirmed ──
+                    console.log('DEBUG populateModal charge object:', JSON.stringify(charge));
+                    console.log('DEBUG uomCode field:', charge.uomCode);
+                    console.log('DEBUG basedOnAndUOM field:', charge.basedOnAndUOM);
+                    // ── END DEBUG ──
+
+
+                    const storedUomCode = rawUom.trim() ||
+                        ((charge.basedOnAndUOM || '').includes('/') ?
+                            (charge.basedOnAndUOM || '').split('/').pop().trim() :
+                            (charge.basedOnAndUOM || '').trim());
+
+                    console.log('DEBUG storedUomCode final:', storedUomCode, '| charge:', charge);
+
+                    loadBasedOnUOMWithCallback(type, charge.basedOnCode, function() {
+                        if (!storedUomCode) return;
+
+                        const $uomSelect = $modal.find(`select[name="${prefix}_based_on_uom"]`);
+
+                        // Verify the option exists before setting — surface mismatches clearly
+                        const $matchingOption = $uomSelect.find(`option[value="${storedUomCode}"]`);
+                        if ($matchingOption.length) {
+                            $uomSelect.val(storedUomCode);
+                            console.log('DEBUG UOM pre-selected:', storedUomCode);
+                        } else {
+                            console.warn('DEBUG UOM option not found in select:', storedUomCode,
+                                '| Available:', $uomSelect.find('option').map(function() {
+                                    return $(this).val();
+                                }).get()
+                            );
+                        }
+                    });
                 });
             }
 
@@ -3638,7 +3938,7 @@
                                 <td class="text-right">${parseFloat(charge.rate || 0).toFixed(2)}</td>
                                 <td class="text-right col-extra">${parseFloat(charge.quantity || 0).toFixed(2)}</td>
                                 <td class="col-extra">${charge.basedOnAndUOM || charge.basedOnUOM || ''}</td>
-                                <td class="col-extra">${charge.chgCurr || 'KES'}</td>
+                                <td class="col-extra">${charge.chgCurr || getBaseCurrency()}</td>
                                 <td class="text-right">${parseFloat(charge.amtInChgCurr  || 0).toFixed(2)}</td>
                                 <td class="text-right">${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
                                 <td class="text-center">
@@ -3656,8 +3956,9 @@
                     });
                 }
 
-                $('#totalRevenueAmount').text('KES ' + totalAmount.toFixed(2));
-                $('#totalRevenueBaseAmount').text('KES ' + totalBaseAmount.toFixed(2));
+                const revBC = getBaseCurrency();
+                $('#totalRevenueAmount').text(revBC + ' ' + totalAmount.toFixed(2));
+                $('#totalRevenueBaseAmount').text(revBC + ' ' + totalBaseAmount.toFixed(2));
                 $('#revenueTotalHeaderAmount').text(totalBaseAmount.toFixed(2));
 
                 const revenueExpanded = $('.show-items-link[data-table="revenue"]').data('expanded') || false;
@@ -3683,7 +3984,7 @@
                                 <td class="text-right">${parseFloat(charge.rate || 0).toFixed(2)}</td>
                                 <td class="text-right col-extra">${parseFloat(charge.quantity || 0).toFixed(2)}</td>
                                 <td class="col-extra">${charge.basedOnAndUOM || charge.basedOnUOM || ''}</td>
-                                <td class="col-extra">${charge.chgCurr || 'KES'}</td>
+                                <td class="col-extra">${charge.chgCurr || getBaseCurrency()}</td>
                                 <td class="text-right">${parseFloat(charge.amtInChgCurr  || 0).toFixed(2)}</td>
                                 <td class="text-right">${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
                                 <td class="text-center">
@@ -3701,8 +4002,9 @@
                     });
                 }
 
-                $('#totalCostAmount').text('KES ' + totalAmount.toFixed(2));
-                $('#totalCostBaseAmount').text('KES ' + totalBaseAmount.toFixed(2));
+                const costBC = getBaseCurrency();
+                $('#totalCostAmount').text(costBC + ' ' + totalAmount.toFixed(2));
+                $('#totalCostBaseAmount').text(costBC + ' ' + totalBaseAmount.toFixed(2));
                 $('#costTotalHeaderAmount').text(totalBaseAmount.toFixed(2));
 
                 const costExpanded = $('.show-items-link[data-table="cost"]').data('expanded') || false;
@@ -3719,8 +4021,9 @@
                 const margin = totalRevenue - totalCost;
                 const marginPercentage = totalRevenue > 0 ? (margin / totalRevenue * 100) : 0;
 
-                $('#quotedRevenue').val('KES ' + totalRevenue.toFixed(2));
-                $('#quotedMargin').val('KES ' + margin.toFixed(2) + ' (' + marginPercentage.toFixed(2) + '%)');
+                const bc = getBaseCurrency();
+                $('#quotedRevenue').val(bc + ' ' + totalRevenue.toFixed(2));
+                $('#quotedMargin').val(bc + ' ' + margin.toFixed(2) + ' (' + marginPercentage.toFixed(2) + '%)');
             }
 
             // ============================================
@@ -4809,9 +5112,7 @@
 
             // AFTER — remove the search event binding entirely
             function loadCustomerDropdowns(callback) {
-                console.log('loadCustomerDropdowns called, flag:', customerDropdownsLoaded);
                 if (customerDropdownsLoaded) {
-                    console.log('returning early — already loaded');
                     if (typeof callback === 'function') callback();
                     return;
                 }
@@ -4820,14 +5121,13 @@
 
                 function oneDone() {
                     remaining--;
-                    console.log('oneDone, remaining:', remaining);
                     if (remaining === 0) {
                         customerDropdownsLoaded = true;
                         if (typeof callback === 'function') callback();
                     }
                 }
 
-                // Countries
+                // Countries — dropdown only, no search
                 $.ajax({
                     url: '{{ route('quotation.lookup.countries') }}',
                     type: 'GET',
@@ -4835,29 +5135,30 @@
                         filter: ''
                     },
                     success: function(data) {
-                        console.log('countries success, count:', data.length, data[0]);
-                        const list = Array.isArray(data) ? data : [];
                         const $sel = $('#customerCountrySelect').empty()
                             .append('<option value="">-- Select --</option>');
-                        list.forEach(function(c) {
+
+                        (Array.isArray(data) ? data : []).forEach(function(c) {
                             const name = (c.CountryName || '').trim();
-                            const isoCode = (c.CountryCode || '').trim();
-                            const countryId = (c.CountryID || '').trim();
+                            const isoCode = (c.CountryCode || '')
+                                .trim(); // e.g. "KE"
+                            const countryId = (c.CountryID || '').trim(); // UUID
+
+                            // Pre-select by ISO code match against savedCustomerCountryCode
                             const isSelected = isoCode === savedCustomerCountryCode;
+
                             $sel.append(
-                                `<option value="${countryId}" data-name="${name}" data-code="${isoCode}" ${isSelected ? 'selected' : ''}>${name}</option>`
+                                `<option value="${countryId}" 
+                                data-name="${name}" 
+                                data-code="${isoCode}"
+                                ${isSelected ? 'selected' : ''}>${name}</option>`
                             );
                         });
-                        console.log('country options after fill:', $('#customerCountrySelect option')
-                            .length);
-                    },
-                    error: function(xhr) {
-                        console.log('countries FAILED:', xhr.status, xhr.responseText);
                     },
                     complete: oneDone
                 });
 
-                // Industry Types
+                // Industry Types — unchanged
                 $.ajax({
                     url: '{{ route('quotation.lookup.industryTypes') }}',
                     type: 'GET',
@@ -4865,21 +5166,14 @@
                         filter: ''
                     },
                     success: function(data) {
-                        console.log('industry success, count:', data.length, data[0]);
-                        const list = Array.isArray(data) ? data : [];
                         const $sel = $('#customerIndustrySelect').empty()
                             .append('<option value="">-- Select --</option>');
-                        list.forEach(function(i) {
-                            const name = (i.Name || '').trim();
+                        (Array.isArray(data) ? data : []).forEach(function(i) {
+                            const name = i.Name || '';
                             $sel.append(
                                 `<option value="${name}" ${name === savedCustomerIndustry ? 'selected' : ''}>${name}</option>`
                             );
                         });
-                        console.log('industry options after fill:', $('#customerIndustrySelect option')
-                            .length);
-                    },
-                    error: function(xhr) {
-                        console.log('industry FAILED:', xhr.status, xhr.responseText);
                     },
                     complete: oneDone
                 });
@@ -4888,7 +5182,6 @@
             $('#editCustomerDetailsBtn').on('click', function() {
                 originalCustomerType = $('#customerTypeSelect').val();
                 originalAgentType = $('#agentTypeSelect').val();
-
 
                 // Capture with stable, explicit keys — never overwritten until next Edit click
                 originalCustomerSnapshot = {
@@ -4918,7 +5211,6 @@
                 loadCustomerDropdowns(function() {
                     $('#customerCountryDisplay').hide();
                     $('#customerCountryEditWrap').show();
-                    $('#customerCountrySelect').show()
                     $('#customerIndustryDisplay').hide();
                     $('#customerIndustrySelect').show();
 
@@ -5015,8 +5307,6 @@
                 // FIX 1: syncAgentTypeState() called AFTER editBtn is shown so
                 // inEditMode correctly evaluates to false → agentTypeSelect is locked.
                 syncAgentTypeState();
-
-                customerDropdownsLoaded = false;
             });
 
             $('#customerTypeSelect').on('change', function() {

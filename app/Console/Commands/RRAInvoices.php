@@ -45,7 +45,7 @@ class RRAInvoices extends Command
     // }
 public function handle()
 {
-    Log::notice("RRA push running");
+    // Log::notice("RRA push running");
 
     $invoiceId = $this->argument('invoiceId');
 

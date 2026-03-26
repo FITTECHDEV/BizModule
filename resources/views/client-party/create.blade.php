@@ -2566,7 +2566,8 @@
                                 countryID: data.countryID
                             });
                             alert(
-                                'Warning: No country code for this company. Please select a country manually.');
+                                'Warning: No country code for this company. Please select a country manually.'
+                            );
                         }
 
                         $('#addressLine1').val(data.addressLine1 || '');
@@ -3318,6 +3319,8 @@
                         .attr('readonly', true)
                         .css('pointer-events', 'none');
 
+                         $('#licenceTypeCode').val('NIL');
+
                     console.log('Global override: Set licence fields for overseas entity with NIL value');
                 } else {
                     // Reset fields when unchecked
@@ -3633,12 +3636,42 @@
                 console.log('Form submission - validating files...');
                 console.log('Form submission - ensuring Other fields for accounting mode...');
 
+
+
+                // ── FIX: Ensure otherCode is set for non-client entity types ──────────
+                const entityType = partyEntityType.val();
+                const nonClientTypes = ['Trucker / Transporter', 'Airline', 'Shipping Line'];
+
+                if (nonClientTypes.includes(entityType)) {
+                    const code = companyCodeInput.val();
+                    const id = companyIdInput.val();
+                    const name = companyAutocomplete.val() || companyNameInput.val();
+
+                    if (code && id) {
+                        $('#otherCode').val(code);
+                        $('#otherID').val(id);
+                        $('#otherInput').val(name);
+                        $('#hiddenOtherCode').val(code);
+                        $('#hiddenOtherID').val(id);
+                        $('#hiddenOtherInput').val(name);
+                        console.log('otherCode fixed for ' + entityType + ':', code);
+                    } else {
+                        console.warn(
+                            'otherCode fix skipped - companyCode or companyId empty for:',
+                            entityType);
+                    }
+                }
+                // ── END FIX ────────────────────────────────────────────────────────────
+
+
+
                 // CRITICAL: Ensure Other fields are populated for accounting mode before submission
                 if (requestType === 'accounting') {
                     const hasAdminAccess =
                         {{ Auth::user()->can('create-client-party') ? 'true' : 'false' }};
 
-                    console.log('Form submission - ensuring Other fields for accounting mode only');
+                    console.log(
+                        'Form submission - ensuring Other fields for accounting mode only');
                     ensureOtherFieldsForAccountingMode();
                     validateGuidFields();
 
@@ -3676,20 +3709,27 @@
                     }
 
                     // Log final Other fields state for accounting mode
-                    console.log('Final Other fields state before submission (accounting mode):', {
-                        hasAdminAccess: hasAdminAccess,
-                        otherInput: hasAdminAccess ? $('#otherInput').val() : $('#hiddenOtherInput')
-                            .val(),
-                        otherID: hasAdminAccess ? $('#otherID').val() : $('#hiddenOtherID').val(),
-                        otherCode: hasAdminAccess ? $('#otherCode').val() : $('#hiddenOtherCode')
-                            .val(),
-                        otherChecked: hasAdminAccess ? $('#otherCheck').is(':checked') : $(
-                            '#hiddenOtherCheck').val() === '1',
-                        companyName: companyNameInput.val() || companyAutocomplete.val(),
-                        mode: 'accounting'
-                    });
+                    console.log(
+                        'Final Other fields state before submission (accounting mode):', {
+                            hasAdminAccess: hasAdminAccess,
+                            otherInput: hasAdminAccess ? $('#otherInput').val() : $(
+                                    '#hiddenOtherInput')
+                                .val(),
+                            otherID: hasAdminAccess ? $('#otherID').val() : $(
+                                '#hiddenOtherID').val(),
+                            otherCode: hasAdminAccess ? $('#otherCode').val() : $(
+                                    '#hiddenOtherCode')
+                                .val(),
+                            otherChecked: hasAdminAccess ? $('#otherCheck').is(':checked') : $(
+                                '#hiddenOtherCheck').val() === '1',
+                            companyName: companyNameInput.val() || companyAutocomplete
+                                .val(),
+                            mode: 'accounting'
+                        });
                 } else {
-                    console.log('Operational mode - Other fields not required, skipping initialization');
+                    console.log(
+                        'Operational mode - Other fields not required, skipping initialization'
+                    );
                 }
 
                 // FIXED: Update license code before form submission
@@ -3698,7 +3738,8 @@
                 // Validate company selection
                 if (!validateCompanySelection()) {
                     e.preventDefault();
-                    console.log('Form submission prevented due to company selection validation');
+                    console.log(
+                        'Form submission prevented due to company selection validation');
                     return;
                 }
 
@@ -3778,7 +3819,9 @@
                         .removeAttr('readonly')
                         .css('pointer-events', 'auto');
 
-                    console.log('Form submit: operational mode, ensured license fields submit with NIL');
+                    console.log(
+                        'Form submit: operational mode, ensured license fields submit with NIL'
+                    );
 
                 } else if (overseasEntityCheckbox.is(':checked')) {
                     // For accounting mode with overseas entity
@@ -3797,8 +3840,12 @@
                         .removeAttr('readonly')
                         .css('pointer-events', 'auto');
 
+                        // ADD THIS:
+                        $('#licenceTypeCode').val('NIL');
+
                     console.log(
-                        'Form submit: overseas entity checked, license fields will submit with NIL');
+                        'Form submit: overseas entity checked, license fields will submit with NIL'
+                    );
                 }
 
                 // Log submission data
@@ -3832,16 +3879,19 @@
                         // Active fields being submitted
                         activeOtherInput: hasAdminAccess ? $('#otherInput').val() : $(
                             '#hiddenOtherInput').val(),
-                        activeOtherID: hasAdminAccess ? $('#otherID').val() : $('#hiddenOtherID')
+                        activeOtherID: hasAdminAccess ? $('#otherID').val() : $(
+                                '#hiddenOtherID')
                             .val(),
                         activeOtherCode: hasAdminAccess ? $('#otherCode').val() : $(
                             '#hiddenOtherCode').val(),
-                        activeOtherChecked: hasAdminAccess ? $('#otherCheck').is(':checked') : $(
+                        activeOtherChecked: hasAdminAccess ? $('#otherCheck').is(
+                            ':checked') : $(
                             '#hiddenOtherCheck').val() === '1',
                         requestType: requestType
                     });
                 } else {
-                    console.log('Form submitting - operational mode, no Other fields data required');
+                    console.log(
+                        'Form submitting - operational mode, no Other fields data required');
                 }
 
                 if ($('#clientPartyForm')[0].checkValidity() === false) {
@@ -3868,7 +3918,9 @@
                     } else if (oldCompanyName) {
                         // We have company data but no Other data, initialize it
                         ensureOtherFieldsForAccountingMode();
-                        console.log('Auto-initialized Other fields on page load for accounting mode');
+                        console.log(
+                            'Auto-initialized Other fields on page load for accounting mode'
+                        );
                     }
                 }
             }, 1000);
@@ -3942,30 +3994,40 @@
                             console.warn('Required attribute changed:', {
                                 element: mutation.target.id,
                                 required: $(mutation.target).attr('required'),
-                                isOverseas: overseasEntityCheckbox.is(':checked'),
+                                isOverseas: overseasEntityCheckbox.is(
+                                    ':checked'),
                                 requestType: requestType,
                                 timestamp: new Date().toISOString()
                             });
-                            if (requestType === 'operational' || overseasEntityCheckbox.is(
+                            if (requestType === 'operational' || overseasEntityCheckbox
+                                .is(
                                     ':checked')) {
                                 if (['legalEntityType', 'billingCurrency', 'creditDays',
-                                        'maxCreditLimit', 'licenceTypeValue', 'licenceTypeID'
-                                    ].includes(mutation.target.id) && $(mutation.target).attr(
+                                        'maxCreditLimit', 'licenceTypeValue',
+                                        'licenceTypeID'
+                                    ].includes(mutation.target.id) && $(mutation.target)
+                                    .attr(
                                         'required')) {
                                     console.warn(
                                         `Conflict: ${mutation.target.id} required despite operational mode or overseasEntity checked. Forcing removal.`
                                     );
-                                    $(mutation.target).removeAttr('required').removeClass(
-                                        'is-invalid');
+                                    $(mutation.target).removeAttr('required')
+                                        .removeClass(
+                                            'is-invalid');
                                     if (mutation.target.id === 'licenceTypeValue') {
-                                        $(mutation.target).val('NIL').prop('readonly', true).prop(
-                                            'disabled', false); // Keep enabled for submission
+                                        $(mutation.target).val('NIL').prop('readonly',
+                                            true).prop(
+                                            'disabled', false
+                                        ); // Keep enabled for submission
                                     } else if (mutation.target.id === 'licenceTypeID') {
-                                        $(mutation.target).prop('disabled', false).addClass(
-                                            'readonly-select').attr('readonly', true).css(
-                                            'pointer-events', 'none');
+                                        $(mutation.target).prop('disabled', false)
+                                            .addClass(
+                                                'readonly-select').attr('readonly',
+                                                true).css(
+                                                'pointer-events', 'none');
                                     } else {
-                                        $(mutation.target).val('').prop('disabled', true);
+                                        $(mutation.target).val('').prop('disabled',
+                                            true);
                                     }
                                 }
                             }
@@ -3973,7 +4035,8 @@
                     });
                 });
 
-                ['legalEntityType', 'billingCurrency', 'creditDays', 'maxCreditLimit', 'licenceTypeValue',
+                ['legalEntityType', 'billingCurrency', 'creditDays', 'maxCreditLimit',
+                    'licenceTypeValue',
                     'licenceTypeID'
                 ].forEach(id => {
                     if (document.getElementById(id)) {
@@ -4181,32 +4244,31 @@
 
             // Add CSS for overseas readonly styling
             const overseaStyles = `
-          .overseas-readonly {
-            background-color: #f8f9fa !important;
-            color: #6c757d !important;
-            cursor: not-allowed !important;
-            border-color: #ced4da !important;
-             }
+                          .overseas-readonly {
+                         background-color: #f8f9fa !important;
+                         cursor: not-allowed !important;
+                         border-color: #ced4da !important;
+                         }
 
-          .overseas-readonly:focus {
-            background-color: #f8f9fa !important;
-            border-color: #ced4da !important;
-            box-shadow: none !important;
-         }
+                         .overseas-readonly:focus {
+                            background-color: #f8f9fa !important;
+                            border-color: #ced4da !important;
+                            box-shadow: none !important;
+                            }
 
-            .overseas-readonly::placeholder {
-            color: #6c757d !important;
-            opacity: 0.8 !important;
-         }
-         `;
+                            .overseas-readonly::placeholder {
+                                color: #6c757d !important;
+                                opacity: 0.8 !important;
+                                }
+                                `;
 
             // Append styles to head if not already present
             if (!$('head').find('style[data-overseas-styles]').length) {
                 $('<style>').attr('data-overseas-styles', 'true').text(overseaStyles).appendTo('head');
             }
             /* --------------------------------------------------------------
-               MAX CREDIT LIMIT – comma separator (any length, no errors)
-               -------------------------------------------------------------- */
+            MAX CREDIT LIMIT – comma separator (any length, no errors)
+            -------------------------------------------------------------- */
             function fmtNum(n) {
                 return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
             }

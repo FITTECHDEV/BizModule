@@ -127,10 +127,10 @@ class ClientPartyController extends Controller
             $response = DB::select(
                 'SET NOCOUNT ON;
                 Declare  @OfficeID as Uniqueidentifier,
-                @PartyType as Varchar(60),
-                @Filter as Varchar(50)
+@PartyTypeas Varchar(60),
+@Filteras Varchar(50)
                 Exec sp_PartyList
-                @OfficeID = ?, @PartyType = ?, @Filter = ?',
+@OfficeID= ?, @PartyType = ?, @Filter = ?',
                 [$query['officeID'], $type, $query['query']]
             );
             $debtorVendors = [];
@@ -178,9 +178,9 @@ class ClientPartyController extends Controller
             $response = DB::select(
                 'SET NOCOUNT ON;
                 Declare  @Country as char(2),
-                @Filter as Varchar(50)
+@Filteras Varchar(50)
                 Exec sp_StateList
-                @country = ?, @Filter = ?',
+@country= ?, @Filter = ?',
                 [$request['country_code'], $request['query']]
             );
             $cities = [];
@@ -208,8 +208,8 @@ class ClientPartyController extends Controller
             Declare  @Country as char(2)
             Declare  @Filter as Varchar(50)
             Exec sp_StateList
-            @country = ?,
-            @Filter = ?',
+@country= ?,
+@Filter= ?',
             [$request['country_code'], $request['query']]
         );
         $provinces = [];
@@ -239,10 +239,10 @@ class ClientPartyController extends Controller
         $response = DB::select(
             'SET NOCOUNT ON;
             Declare @office as varchar(60),
-            @officeID as  Uniqueidentifier
+@officeIDas  Uniqueidentifier
             Exec sp_TariffList
-            @office = ?,
-            @officeID = ?',
+@office= ?,
+@officeID= ?',
             ['Kenya - UPS', $query]
         );
         if (\request()->ajax()) {
@@ -258,14 +258,14 @@ class ClientPartyController extends Controller
         $response = DB::select(
             'SET NOCOUNT ON;
             Declare @LocationType as Char(3),
-            @IncludeCountry as Bit,
-            @CountryCode as Char(2),
-            @Filter as Varchar(50)
+@IncludeCountryas Bit,
+@CountryCodeas Char(2),
+@Filteras Varchar(50)
             Exec [dbo].[sp_LocationList]
-            @LocationType = ?,
-            @IncludeCountry = ?,
-            @CountryCode = ?,
-            @Filter = ?',
+@LocationType= ?,
+@IncludeCountry= ?,
+@CountryCode= ?,
+@Filter= ?',
             [$locationType, $request['includeCountry'], $request['includeCode'], $request['query']]
         );
         $locations = [];
@@ -295,7 +295,7 @@ class ClientPartyController extends Controller
             'SET NOCOUNT ON;
                 Declare @OfficeID as Uniqueidentifier
                 Exec [dbo].[sp_BaseOfficeCurrency]
-                @officeID = ?',
+@officeID= ?',
             [$query]
         );
         $baseCurrency = [];
@@ -326,7 +326,7 @@ class ClientPartyController extends Controller
             'SET NOCOUNT ON;
                 Declare @OfficeID as Uniqueidentifier
                 Exec [dbo].[sp_EntityType]
-                @OfficeCode = ?',
+@OfficeCode= ?',
             [$query]
         );
         $v = [];
@@ -370,7 +370,7 @@ class ClientPartyController extends Controller
                 'SET NOCOUNT ON;
                 Declare @filter varchar(60)
                 Exec sp_ClientList
-                @filter = ?',
+@filter= ?',
                 [$query]
             );
             if (count($response) > 0) {
@@ -436,12 +436,12 @@ class ClientPartyController extends Controller
         $response = DB::select(
             'SET NOCOUNT ON;
             Declare @OfficeID as Uniqueidentifier,
-            @PartyType as Varchar(60),
-            @Filter as Varchar(50)
+@PartyTypeas Varchar(60),
+@Filteras Varchar(50)
             Exec [dbo].[sp_PartyList]
-            @OfficeID = ?,
-            @PartyType = ?,
-            @Filter = ?',
+@OfficeID= ?,
+@PartyType= ?,
+@Filter= ?',
             [$request['officeID'], $request['partyType'], $request['query']]
         );
         $partyList = [];
@@ -466,7 +466,7 @@ class ClientPartyController extends Controller
             'SET NOCOUNT ON;
             Declare @Filter as Varchar(50)
             Exec [dbo].[sp_IncoTerms]
-            @Filter = ?',
+@Filter= ?',
             ['']
         );
 
@@ -574,11 +574,11 @@ class ClientPartyController extends Controller
             $response = DB::select(
                 'SET NOCOUNT ON;
                 Declare
-                @OfficeID as Uniqueidentifier,
-                @Filter as Varchar(50)
+@OfficeIDas Uniqueidentifier,
+@Filteras Varchar(50)
                 Exec [dbo].[sp_CurrencyList]
-                @OfficeID = ?,
-                @Filter = ?',
+@OfficeID= ?,
+@Filter= ?',
                 [$query, '']
             );
         } else {
@@ -595,12 +595,12 @@ class ClientPartyController extends Controller
             $response = DB::select(
                 'SET NOCOUNT ON;
                 Declare @OfficeID as Uniqueidentifier,
-                @PICType as Char(1),
-                @Filter as Varchar(50)
+@PICTypeas Char(1),
+@Filteras Varchar(50)
                 Exec [dbo].[sp_PersonInCharge]
-                @OfficeID = ?,
-                @PICType = ?,
-                @Filter = ?',
+@OfficeID= ?,
+@PICType= ?,
+@Filter= ?',
                 [$query['officeID'], $var, $query['query']]
             );
             $infos = [];
@@ -625,12 +625,12 @@ class ClientPartyController extends Controller
         $response = DB::select(
             'SET NOCOUNT ON;
             Declare @OfficeID as Uniqueidentifier,
-            @PICType as Char(1),
-            @Filter as Varchar(50)
+@PICTypeas Char(1),
+@Filteras Varchar(50)
             Exec [dbo].[sp_PartyList]
-            @OfficeID = ?,
-            @PartyType = ?,
-            @Filter = ?',
+@OfficeID= ?,
+@PartyType= ?,
+@Filter= ?',
             [$query['officeID'], $var, $query['query']]
         );
         $list = [];
@@ -795,16 +795,29 @@ class ClientPartyController extends Controller
         ]);
 
         // ── Determine ClientCode vs OtherPartyCode based on entity type ─────
-        // SMART FALLBACKS (this fixes the empty ClientCode bug)
-        $clientCode = $request->clientCode
-            ?? $request->companyCode
-            ?? $request->otherCode
-            ?? '';
+        $isClientType = in_array($partyEntityType, ['Client', 'Agent / Forwarder']);
 
+        // ClientCode only relevant for Client / Agent types
+        $clientCode = $isClientType
+            ? ($request->clientCode ?? $request->companyCode ?? $request->otherCode ?? '')
+            : '';
+
+        // OtherPartyCode: for non-client types fall back to companyCode
+        // (companyCode is always submitted via #companyCode hidden input)
         $otherPartyCode = $request->otherCode
-            ?? $request->companyCode
+            ?? ($isClientType ? null : ($request->companyCode ?? null))
             ?? $request->clientCode
             ?? '';
+
+        \Log::info('Code resolution', [
+            'partyEntityType'  => $partyEntityType,
+            'isClientType'     => $isClientType,
+            'otherCode_raw'    => $request->otherCode,
+            'companyCode_raw'  => $request->companyCode,
+            'clientCode_raw'   => $request->clientCode,
+            'resolved_clientCode'     => $clientCode,
+            'resolved_otherPartyCode' => $otherPartyCode,
+        ]);
 
         $payload = [
             'OperationType' => $operationType,
@@ -833,22 +846,31 @@ class ClientPartyController extends Controller
 
         if ($operationType === 'AccountingEntity' || $request->has('legalEntityType')) {
             $creditDaysValue = $request->creditDays !== '' && is_numeric($request->creditDays) ? $request->creditDays : '0';
-            $creditLimitValue = $request->maxCreditLimit !== '' && is_numeric($request->maxCreditLimit) ? $request->maxCreditLimit : '0';
+            // Fix: strip commas from credit limit before is_numeric check
+            $rawCreditLimit = str_replace(',', '', $request->maxCreditLimit ?? '0');
+            $creditLimitValue = is_numeric($rawCreditLimit) && $rawCreditLimit !== ''
+                ? $rawCreditLimit
+                : '0';
+
+            // Fix: fallback LicenceTypeCode to NIL if empty (overseas entity case)
+            $licenceTypeCode = !empty(trim($request->licenceTypeCode ?? ''))
+                ? $request->licenceTypeCode
+                : 'NIL';
 
             $payload = array_merge($payload, [
-                'LegalEntityType' => $request->legalEntityType ?? '',
-                'CreditDays' => $creditDaysValue,
-                'CreditLimit' => $creditLimitValue,
+                'LegalEntityType'        => $request->legalEntityType ?? '',
+                'CreditDays'             => $creditDaysValue,
+                'CreditLimit'            => $creditLimitValue,
                 'CreditLimitCurrencyCode' => $request->creditLimitCurrencyCode ?? '',
-                'BillingCurrencyCode' => $request->billingCurrencyCode ?? '',
-                'BaseCurrencyCode' => $request->baseCurrencyCode ?? '',
-                'LicenceTypeCode' => $request->licenceTypeCode ?? '',
-                'LicenceTypeValue' => $request->licenceTypeValue ?? '',
-                'DebtorType' => $request->debtorType ?? '',
-                'VendorType' => $request->vendorType ?? '',
+                'BillingCurrencyCode'    => $request->billingCurrencyCode ?? '',
+                'BaseCurrencyCode'       => $request->baseCurrencyCode ?? '',
+                'LicenceTypeCode'        => $licenceTypeCode,   // ← NIL if empty
+                'LicenceTypeValue'       => $request->licenceTypeValue ?? '',
+                'DebtorType'             => $request->debtorType ?? '',
+                'VendorType'             => $request->vendorType ?? '',
+
             ]);
         }
-
         \Log::info('Payload prepared for SP', [
             'operation_type' => $operationType,
             'party_entity_type' => $partyEntityType,
@@ -2220,17 +2242,17 @@ class ClientPartyController extends Controller
             $results = DB::select(
                 'SET NOCOUNT ON;
              DECLARE @Status VARCHAR(30), @Remark VARCHAR(1000), @ClientCode VARCHAR(60),
-                     @ClientID UNIQUEIDENTIFIER, @OtherCode VARCHAR(60), @OtherID UNIQUEIDENTIFIER;
+@ClientIDUNIQUEIDENTIFIER, @OtherCode VARCHAR(60), @OtherID UNIQUEIDENTIFIER;
              EXEC [dbo].[Sp_OperationEntityCreation]
-                 @RequestID = ?,
-                 @Status = @Status OUTPUT,
-                 @Remark = @Remark OUTPUT,
-                 @ClientCode = @ClientCode OUTPUT,
-                 @ClientID = @ClientID OUTPUT,
-                 @OtherCode = @OtherCode OUTPUT,
-                 @OtherID = @OtherID OUTPUT;
+@RequestID= ?,
+@Status= @Status OUTPUT,
+@Remark= @Remark OUTPUT,
+@ClientCode= @ClientCode OUTPUT,
+@ClientID= @ClientID OUTPUT,
+@OtherCode= @OtherCode OUTPUT,
+@OtherID= @OtherID OUTPUT;
              SELECT @Status AS Status, @Remark AS Remark, @ClientCode AS ClientCode,
-                    @ClientID AS ClientID, @OtherCode AS OtherCode, @OtherID AS OtherID',
+@ClientIDAS ClientID, @OtherCode AS OtherCode, @OtherID AS OtherID',
                 [$requestID]
             );
 
@@ -2688,10 +2710,10 @@ class ClientPartyController extends Controller
             $results = DB::select(
                 'SET NOCOUNT ON;
                  DECLARE @Status AS VARCHAR(20),
-                         @Remark AS VARCHAR(100),
-                         @IsDuplicate AS BIT;
+@RemarkAS VARCHAR(100),
+@IsDuplicateAS BIT;
                  EXEC dbo.sp_LicenseNoCheck @officeCode = ?, @PartyType = ?, @LicenseNo = ?,
-                      @Status = @Status OUTPUT, @Remark = @Remark OUTPUT, @IsDuplicate = @IsDuplicate OUTPUT;
+@Status= @Status OUTPUT, @Remark = @Remark OUTPUT, @IsDuplicate = @IsDuplicate OUTPUT;
                  SELECT @Status AS Status, @Remark AS Remark, @IsDuplicate AS IsDuplicate',
                 [$officeCode, $partyType, $licenseNo]
             );
