@@ -736,6 +736,12 @@
 
 @section('js')
     <script>
+        const OFFICE_BASE_CURRENCY = @json(\App\Http\Controllers\QuotationController::OFFICE_BASE_CURRENCY);
+        const officeCode = '{{ trim($quotation->OfficeCode ?? '') }}';
+
+        function getBaseCurrency() {
+            return OFFICE_BASE_CURRENCY[officeCode] ?? 'KES';
+        }
         $(document).ready(function() {
 
             const bookingNo = '{{ $quotation->bookingno ?? '' }}';
@@ -1172,7 +1178,7 @@
                         <td class="text-right">${parseFloat(c.rate || 0).toFixed(2)}</td>
                         <td class="text-right col-extra">${parseFloat(c.quantity || 0).toFixed(2)}</td>
                         <td class="col-extra">${c.basedOnUOM || ''}</td>
-                        <td class="col-extra">${c.chgCurr || 'KES'}</td>
+                        <td class="col-extra">${c.chgCurr || getBaseCurrency()}</td>
                         <td class="text-right">${parseFloat(c.amtInChgCurr || 0).toFixed(2)}</td>
                         <td class="text-right">${parseFloat(c.amtInBaseCurr || 0).toFixed(2)}</td>
                     </tr>`);
@@ -1200,7 +1206,7 @@
                         <td class="text-right">${parseFloat(c.rate || 0).toFixed(2)}</td>
                         <td class="text-right col-extra">${parseFloat(c.quantity || 0).toFixed(2)}</td>
                         <td class="col-extra">${c.basedOnUOM || ''}</td>
-                        <td class="col-extra">${c.chgCurr || 'KES'}</td>
+                        <td class="col-extra">${c.chgCurr || getBaseCurrency()}</td>
                         <td class="text-right">${parseFloat(c.amtInChgCurr || 0).toFixed(2)}</td>
                         <td class="text-right">${parseFloat(c.amtInBaseCurr || 0).toFixed(2)}</td>
                     </tr>`);
@@ -1216,8 +1222,9 @@
                 const totalCost = costCharges.reduce((s, c) => s + parseFloat(c.amtInBaseCurr || 0), 0);
                 const margin = totalRevenue - totalCost;
                 const marginPct = totalRevenue > 0 ? (margin / totalRevenue * 100) : 0;
-                $('#viewQuotedRevenue').val('KES ' + totalRevenue.toFixed(2));
-                $('#viewQuotedMargin').val('KES ' + margin.toFixed(2) + ' (' + marginPct.toFixed(2) + '%)');
+                const bc = getBaseCurrency();
+                $('#viewQuotedRevenue').val(bc + ' ' + totalRevenue.toFixed(2));
+                $('#viewQuotedMargin').val(bc + ' ' + margin.toFixed(2) + ' (' + marginPct.toFixed(2) + '%)');
             }
 
             // ============================================================

@@ -828,8 +828,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 MODALS
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 ============================================ -->
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         MODALS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1013,167 +1013,174 @@
                         </button>
                     </div>
                     <form id="addCostChargesForm">
-                        <input type="hidden" id="FITExpressChargeIDCost" name="cost_charge_id" />
+                        <div class="modal-body">
+                            <input type="hidden" id="FITExpressChargeIDCost" name="cost_charge_id" />
 
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <div>
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" name="costChargeType"
-                                        id="costTypeRevenue" value="revenue">
-                                    <label class="form-check-label" for="costTypeRevenue">Revenue</label>
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="costChargeType"
+                                            id="costTypeRevenue" value="revenue">
+                                        <label class="form-check-label" for="costTypeRevenue">Revenue</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="costChargeType"
+                                            id="costTypeCost" value="cost" checked>
+                                        <label class="form-check-label" for="costTypeCost">Cost</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="costChargeType"
+                                            id="costTypeCostMarkup" value="costmarkup">
+                                        <label class="form-check-label" for="costTypeCostMarkup">Cost with markup</label>
+                                    </div>
                                 </div>
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" name="costChargeType"
-                                        id="costTypeCost" value="cost" checked>
-                                    <label class="form-check-label" for="costTypeCost">Cost</label>
-                                </div>
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" name="costChargeType"
-                                        id="costTypeCostMarkup" value="costmarkup">
-                                    <label class="form-check-label" for="costTypeCostMarkup">Cost with markup</label>
+                                <div class="text-end">
+                                    <p class="text-muted mb-0">Base Currency: <strong
+                                            class="office-base-currency">—</strong>
+                                    </p>
                                 </div>
                             </div>
-                            <div class="text-end">
-                                <p class="text-muted mb-0">Base Currency: <strong class="office-base-currency">—</strong>
-                                </p>
-                            </div>
-                        </div>
 
-                        <div class="row">
-                            <!-- LEFT COLUMN -->
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="cost_charge_code" class="form-label">
-                                        <span class="text-danger">*</span> Charge Code</label>
-                                    <input type="text" class="form-control" id="cost_charge_code"
-                                        name="cost_charge_code" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="cost_bill_to_party" class="form-label" id="costBillToPartyLabel">Bill to
-                                        Party</label>
-                                    <input type="text" class="form-control" id="cost_bill_to_party"
-                                        name="cost_bill_to_party">
-                                    <input type="hidden" id="cost_bill_to_party_code" name="cost_bill_to_party_code" />
-                                </div>
-                                <div class="mb-3">
-                                    <label for="cost_based_on" class="form-label">
-                                        <span class="text-danger">*</span> Based On</label>
-                                    <select class="form-select form-control" id="cost_based_on" name="cost_based_on"
-                                        required>
-                                        <option value="">Select</option>
-                                    </select>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="cost_quantity" class="form-label">Quantity</label>
-                                    <input type="number" class="form-control" id="cost_quantity" name="cost_quantity"
-                                        step="0.01">
-                                </div>
-                                <div class="row mb-3 rate-row">
-                                    <div class="col-6">
-                                        <label for="cost_rate" class="form-label">Rate</label>
-                                        <div class="input-group">
-                                            <input type="number" class="form-control" id="cost_rate" name="cost_rate"
-                                                step="0.01">
-                                            <select class="form-select form-control" id="cost_currency"
-                                                name="cost_currency">
-                                                <option value="">Select</option>
-                                            </select>
+                            <div class="row">
+                                <!-- LEFT COLUMN -->
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="cost_charge_code" class="form-label">
+                                            <span class="text-danger">*</span> Charge Code</label>
+                                        <input type="text" class="form-control" id="cost_charge_code"
+                                            name="cost_charge_code" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="cost_bill_to_party" class="form-label" id="costBillToPartyLabel">Bill
+                                            to
+                                            Party</label>
+                                        <input type="text" class="form-control" id="cost_bill_to_party"
+                                            name="cost_bill_to_party">
+                                        <input type="hidden" id="cost_bill_to_party_code"
+                                            name="cost_bill_to_party_code" />
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="cost_based_on" class="form-label">
+                                            <span class="text-danger">*</span> Based On</label>
+                                        <select class="form-select form-control" id="cost_based_on" name="cost_based_on"
+                                            required>
+                                            <option value="">Select</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="cost_quantity" class="form-label">Quantity</label>
+                                        <input type="number" class="form-control" id="cost_quantity"
+                                            name="cost_quantity" step="0.01">
+                                    </div>
+                                    <div class="row mb-3 rate-row">
+                                        <div class="col-6">
+                                            <label for="cost_rate" class="form-label">Rate</label>
+                                            <div class="input-group">
+                                                <input type="number" class="form-control" id="cost_rate"
+                                                    name="cost_rate" step="0.01">
+                                                <select class="form-select form-control" id="cost_currency"
+                                                    name="cost_currency">
+                                                    <option value="">Select</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <label for="cost_amount" class="form-label">Amount</label>
+                                            <input type="number" class="form-control" id="cost_amount"
+                                                name="cost_amount" step="0.01" value="0.00" readonly>
                                         </div>
                                     </div>
-                                    <div class="col-6">
-                                        <label for="cost_amount" class="form-label">Amount</label>
-                                        <input type="number" class="form-control" id="cost_amount" name="cost_amount"
-                                            step="0.01" value="0.00" readonly>
-                                    </div>
-                                </div>
-                                <div class="row mb-3 cost-markup-row" style="display: none;">
-                                    <div class="col-6">
-                                        <label for="cost_increase_by" class="form-label">Increase By</label>
-                                        <div class="input-group no-divider">
-                                            <input type="number" class="form-control" id="cost_increase_by"
-                                                name="cost_increase_by" step="0.01" value="0.00" placeholder="0">
-                                            <select class="form-select form-control" id="cost_increase_type"
-                                                name="cost_increase_type" style="max-width: 120px;">
-                                                <option value="">Select</option>
-                                                <option value="Percentage">Percentage</option>
-                                                <option value="Fixed">Fixed</option>
-                                            </select>
+                                    <div class="row mb-3 cost-markup-row" style="display: none;">
+                                        <div class="col-6">
+                                            <label for="cost_increase_by" class="form-label">Increase By</label>
+                                            <div class="input-group no-divider">
+                                                <input type="number" class="form-control" id="cost_increase_by"
+                                                    name="cost_increase_by" step="0.01" value="0.00"
+                                                    placeholder="0">
+                                                <select class="form-select form-control" id="cost_increase_type"
+                                                    name="cost_increase_type" style="max-width: 120px;">
+                                                    <option value="">Select</option>
+                                                    <option value="Percentage">Percentage</option>
+                                                    <option value="Fixed">Fixed</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <label for="cost_revenue_amount" class="form-label">Amount</label>
+                                            <input type="number" class="form-control" id="cost_revenue_amount"
+                                                name="cost_revenue_amount" step="0.01" value="0.00" readonly>
                                         </div>
                                     </div>
-                                    <div class="col-6">
-                                        <label for="cost_revenue_amount" class="form-label">Amount</label>
-                                        <input type="number" class="form-control" id="cost_revenue_amount"
-                                            name="cost_revenue_amount" step="0.01" value="0.00" readonly>
+                                    <div class="row mb-3">
+                                        <div class="col-6">
+                                            <label for="cost_exchange_rate" class="form-label">
+                                                <span class="text-danger">*</span> Exchange Rate</label>
+                                            <input type="number" class="form-control" id="cost_exchange_rate"
+                                                name="cost_exchange_rate" readonly>
+                                        </div>
+                                        <div class="col-6">
+                                            <label for="cost_base_amount" class="form-label text-nowrap">
+                                                Amount in Base Currency <span class="text-muted"
+                                                    id="cost_base_currency_label">(KES)</span></label>
+                                            <input type="number" class="form-control" id="cost_base_amount"
+                                                name="cost_base_amount" step="0.01" value="0.00" readonly>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="row mb-3">
-                                    <div class="col-6">
-                                        <label for="cost_exchange_rate" class="form-label">
-                                            <span class="text-danger">*</span> Exchange Rate</label>
-                                        <input type="number" class="form-control" id="cost_exchange_rate"
-                                            name="cost_exchange_rate" readonly>
-                                    </div>
-                                    <div class="col-6">
-                                        <label for="cost_base_amount" class="form-label text-nowrap">
-                                            Amount in Base Currency <span class="text-muted"
-                                                id="cost_base_currency_label">(KES)</span></label>
-                                        <input type="number" class="form-control" id="cost_base_amount"
-                                            name="cost_base_amount" step="0.01" value="0.00" readonly>
-                                    </div>
-                                </div>
-                            </div>
 
-                            <!-- RIGHT COLUMN -->
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="cost_description" class="form-label">Description</label>
-                                    <input type="text" class="form-control" id="cost_description"
-                                        name="cost_description" readonly>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="cost_tax_applicable" class="form-label">Tax Applicable</label>
-                                    <input type="number" class="form-control" id="cost_tax_applicable"
-                                        name="cost_tax_applicable" step="0.01" readonly>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="cost_based_on_uom" class="form-label">
-                                        <span class="text-danger">*</span> Based On UOM</label>
-                                    <select class="form-select form-control" id="cost_based_on_uom"
-                                        name="cost_based_on_uom" required>
-                                        <option value="">Select</option>
-                                    </select>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="cost_remark" class="form-label">Remark</label>
-                                    <input type="text" class="form-control" id="cost_remark" name="cost_remark">
-                                </div>
-                                <div class="mb-3" id="costIsReimbursedContainer">
-                                    <div class="form-check mb-2">
-                                        <input class="form-check-input" type="checkbox" id="costIsReimbursed"
-                                            name="cost_is_reimbursed">
-                                        <label class="form-check-label fw-semibold" for="costIsReimbursed">
-                                            Is Reimbursable <small class="text-muted">(Adds to Revenue)</small>
-                                        </label>
+                                <!-- RIGHT COLUMN -->
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="cost_description" class="form-label">Description</label>
+                                        <input type="text" class="form-control" id="cost_description"
+                                            name="cost_description" readonly>
                                     </div>
-                                </div>
-                                <div class="mb-3" id="costIsAccruedContainer" style="display:none;">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="costIsAccrued"
-                                            name="cost_is_accrued">
-                                        <label class="form-check-label fw-semibold" for="costIsAccrued">
-                                            Is Accrued <small class="text-muted">(Adds to Cost)</small>
-                                        </label>
+                                    <div class="mb-3">
+                                        <label for="cost_tax_applicable" class="form-label">Tax Applicable</label>
+                                        <input type="number" class="form-control" id="cost_tax_applicable"
+                                            name="cost_tax_applicable" step="0.01" readonly>
                                     </div>
-                                </div>
-                                <div class="mb-3" id="costSecondaryBillToPartyContainer" style="display:none;">
-                                    <label for="costSecondaryBillToParty" class="form-label">
-                                        <span class="text-danger">*</span> Secondary Bill To Party</label>
-                                    <input type="text" class="form-control" id="costSecondaryBillToParty"
-                                        placeholder="Select Secondary Party">
-                                    <input type="hidden" id="costSecondaryBillToPartyCode">
+                                    <div class="mb-3">
+                                        <label for="cost_based_on_uom" class="form-label">
+                                            <span class="text-danger">*</span> Based On UOM</label>
+                                        <select class="form-select form-control" id="cost_based_on_uom"
+                                            name="cost_based_on_uom" required>
+                                            <option value="">Select</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="cost_remark" class="form-label">Remark</label>
+                                        <input type="text" class="form-control" id="cost_remark"
+                                            name="cost_remark">
+                                    </div>
+                                    <div class="mb-3" id="costIsReimbursedContainer">
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="checkbox" id="costIsReimbursed"
+                                                name="cost_is_reimbursed">
+                                            <label class="form-check-label fw-semibold" for="costIsReimbursed">
+                                                Is Reimbursable <small class="text-muted">(Adds to Revenue)</small>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3" id="costIsAccruedContainer" style="display:none;">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="costIsAccrued"
+                                                name="cost_is_accrued">
+                                            <label class="form-check-label fw-semibold" for="costIsAccrued">
+                                                Is Accrued <small class="text-muted">(Adds to Cost)</small>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3" id="costSecondaryBillToPartyContainer" style="display:none;">
+                                        <label for="costSecondaryBillToParty" class="form-label">
+                                            <span class="text-danger">*</span> Secondary Bill To Party</label>
+                                        <input type="text" class="form-control" id="costSecondaryBillToParty"
+                                            placeholder="Select Secondary Party">
+                                        <input type="hidden" id="costSecondaryBillToPartyCode">
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        </div>{{-- end modal-body --}}
                     </form>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-success" id="saveCostCharge">Save</button>
@@ -1414,8 +1421,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1858,9 +1865,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -2094,16 +2101,7 @@
                 const bc = getBaseCurrency();
                 $('#revenue_base_currency_label').text('(' + bc + ')');
                 $('#cost_base_currency_label').text('(' + bc + ')');
-            }
-
-            function getBaseCurrency() {
-                return OFFICE_BASE_CURRENCY[officeCode] ?? 'KES';
-            }
-
-            function updateBaseCurrencyLabels() {
-                const bc = getBaseCurrency();
-                $('#revenue_base_currency_label').text('(' + bc + ')');
-                $('#cost_base_currency_label').text('(' + bc + ')');
+                $('.office-base-currency').text(bc);
             }
 
             // Hidden fields to hold the ClientID and ClientCode selected from Company Name autocomplete
@@ -5485,7 +5483,7 @@
                     error: function(xhr) {
                         console.error('Save error:', xhr);
                         showNotification(xhr.responseJSON?.message || 'Failed to save',
-                        'error');
+                            'error');
                     },
                     complete: function() {
                         $('#saveCustomerDetailsBtn').prop('disabled', false)
@@ -6548,7 +6546,7 @@
 
                                     if (!res.success) {
                                         console.error('Client details failed:', res
-                                        .message);
+                                            .message);
                                         showNotification(res.message ||
                                             'Failed to load client details', 'error');
                                         return;
@@ -6564,7 +6562,7 @@
 
                                     // Populate Contact fields
                                     $('#customerContactInput').val(res.contact_person ||
-                                    '');
+                                        '');
                                     $('#customerPhoneInput').val(res.phone || '');
                                     $('#customerEmailInput').val(res.email || '');
 
@@ -6588,7 +6586,7 @@
                                     // Populate Industry
                                     if (res.industry_name) {
                                         $('#customerIndustryDisplay').val(res
-                                        .industry_name);
+                                            .industry_name);
                                         const $iSel = $('#customerIndustrySelect');
                                         if ($iSel.find(
                                                 `option[value="${res.industry_name}"]`)
