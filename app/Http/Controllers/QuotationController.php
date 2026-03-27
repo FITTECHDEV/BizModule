@@ -3985,104 +3985,23 @@ class QuotationController extends Controller
 
     public function getCommunicationTemplates(Request $request)
     {
+        $module = $request->input('module');
+        $subModule = $request->input('sub_module');
+        $officeCode = $request->input('office_code');
 
+        // This likely queries Cust_CommunicationDetails table
+        $templates = DB::table('Cust_CommunicationDetails')
+            ->where('Module', $module)
+            ->where('SubModule', $subModule)
+            ->where('OfficeCode', $officeCode)
+            ->where('IsActive', 1)
+            ->select('Name', 'Description')
+            ->get();
 
-        Log::info('getCommunicationTemplates - incoming', [
-            'all'        => $request->all(),
-            'sub_module' => $request->input('sub_module'),
-            'booking_no' => $request->input('booking_no'),
+        return response()->json([
+            'success' => true,
+            'templates' => $templates
         ]);
-
-        $module     = $request->input('module', 'Quotation');
-        $subModule  = $request->input('sub_module');
-        $officeCode = trim($request->input('office_code', ''));
-        $bookingNo  = $request->input('booking_no');
-
-        if (!$subModule) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Sub module and office code are required'
-            ], 400);
-        }
-
-        // ── T&C: route through sp_Quote_CommunicationDetail_List ─────────────────
-        // The SP resolves Service, Process, and OfficeCode internally from QuoteNo,
-        // so it returns templates correctly filtered for this specific quotation.
-        // Email still uses the direct query below (office_code path).
-        if ($subModule === 'T&C' && $bookingNo) {
-            return $this->getCommunicationTemplatesViaSP($module, $subModule, $bookingNo);
-        }
-
-        // ── Email (and any other sub_module): original direct query ──────────────
-        if (!$officeCode) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Sub module and office code are required'
-            ], 400);
-        }
-
-        try {
-            $officeExists = DB::table('Cust_Office')
-                ->whereRaw("TRIM(Code) = ?", [$officeCode])
-                ->where('IsActive', 1)
-                ->where('IsDeleted', 0)
-                ->exists();
-
-            if (!$officeExists) {
-                Log::warning('getCommunicationTemplates - Office not found', [
-                    'office_code' => $officeCode,
-                    'module'      => $module,
-                    'sub_module'  => $subModule,
-                ]);
-
-                return response()->json([
-                    'success' => false,
-                    'code'    => 'OFFICE_NOT_FOUND',
-                    'message' => "Office '{$officeCode}' is not configured in the system."
-                ], 404);
-            }
-
-            $templates = DB::select(
-                "SELECT Name, Description
-                    FROM Cust_CommunicationDetails WITH (NOLOCK)
-                    WHERE Module     = ?
-                        AND SubModule  = ?
-                        AND TRIM(OfficeCode) = ?
-                        AND IsActive   = 1
-                    ORDER BY Name",
-                [$module, $subModule, $officeCode]
-            );
-
-            Log::info('getCommunicationTemplates', [
-                'office_code'    => $officeCode,
-                'module'         => $module,
-                'sub_module'     => $subModule,
-                'template_count' => count($templates),
-            ]);
-
-            if (empty($templates)) {
-                return response()->json([
-                    'success' => false,
-                    'code'    => 'NOT_CONFIGURED',
-                    'message' => "No '{$subModule}' templates are configured for office '{$officeCode}'. Please contact your administrator."
-                ], 404);
-            }
-
-            return response()->json([
-                'success'   => true,
-                'templates' => $templates
-            ]);
-        } catch (\Exception $e) {
-            Log::error('getCommunicationTemplates failed', [
-                'office_code' => $officeCode,
-                'error'       => $e->getMessage(),
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to load templates: ' . $e->getMessage()
-            ], 500);
-        }
     }
 
     /**
