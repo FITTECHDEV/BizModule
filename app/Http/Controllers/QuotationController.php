@@ -1418,7 +1418,7 @@ class QuotationController extends Controller
                 'pri_partner_email'       => 'pri_partner_email',
                 'pri_partner_phone'       => 'pri_partner_phone',
                 'pri_partnermaster_name'  => 'pri_partnermaster_name',
-                'clientid'                => 'clientid',
+                'clientid'                => 'pri_id',
                 'industryname'            => 'industryname',
 
                 // Inquiry
@@ -6319,8 +6319,8 @@ class QuotationController extends Controller
             'SubmittedDatetime' => now()->format('YmdHis'),
             'SubmittedBy'       => $submittedBy,
             'Action'            => 'Update',
-            'QuotationNo'       => $quoteNo,
-            'ClientCode'        => $clientCode,
+            'QuotationID'       => $quotation->ID,  
+            'ClientCode'        => $clientCode,       
             'Company'           => $company,
             'Address1'          => $address1,
             'Address2'          => $address2,
@@ -6329,6 +6329,7 @@ class QuotationController extends Controller
             'State'             => $state,
             'CountryCode'       => $countryCode,
             'ContactPerson'     => $contactPerson,
+            'Department'        => '',               
             'EmailID'           => $email ?: null,
             'PhoneNo'           => $phone,
             'IndustryCode'      => $industryCode,
@@ -6336,7 +6337,6 @@ class QuotationController extends Controller
             'CustomerType'      => $customerType,
             'AgentType'         => $agentType,
         ]);
-
         if (strlen($input) > 2000) {
 
             return response()->json([

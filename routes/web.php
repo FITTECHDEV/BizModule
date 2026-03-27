@@ -1259,50 +1259,15 @@ Route::get('/quotation/{id}/pdf-preview', function ($id) {
 //         ], 500);
 //     }
 // })->middleware('auth'); // keep auth middleware for safety
-Route::get('/debug/quotation-data/{quoteNo}', function ($quoteNo) {
+Route::get('/debug/sp-definition', function () {
     try {
-        $data = DB::connection('sqlsrv')
-            ->table('Quote_QuotationInfo')
-            ->where('QuoteNo', $quoteNo)
-            ->first([
-                'QuoteNo',
-                'pri_id',
-                'pri_partnermaster_name',
-                'pri_partner_steet',
-                'pri_partner_steet2',
-                'pri_partner_city',
-                'pri_partner_zip',
-                'pri_partner_statename',
-                'pri_partner_countrycode',
-                'pri_partner_countryname',
-                'pri_partner_email',
-                'pri_partner_phone',
-                'pri_partner_industrytypecode',
-                'pri_partner_industrytype',
-                'CustomerType',
-                'AgentType',
-            ]);
-
-        return response()->json($data, 200, [], JSON_PRETTY_PRINT);
-    } catch (\Exception $e) {
-        return response()->json(['error' => $e->getMessage()], 500);
-    }
-})->middleware('auth');
-
-
-Route::get('/debug/sp-customer-update', function () {
-    try {
-        $result = DB::connection('sqlsrv')->select("
-            SELECT m.definition
-            FROM sys.sql_modules m
-            INNER JOIN sys.objects o ON m.object_id = o.object_id
-            WHERE o.name = 'sp_Quote_CustomerUpdate'
-            AND o.type = 'P'
-        ");
-        return response()->json(
-            collect($result)->first(),
-            200, [], JSON_PRETTY_PRINT
-        );
+        $pdo = DB::connection('sqlsrv')->getPdo();
+        $stmt = $pdo->prepare("SELECT OBJECT_DEFINITION(OBJECT_ID('sp_Azure_BIZOfficeandModuleList')) AS sp_definition");
+        $stmt->execute();
+        $row = $stmt->fetch(\PDO::FETCH_OBJ);
+        return response()->json([
+            'sp_definition' => $row->sp_definition ?? 'NULL - SP not found',
+        ], 200, [], JSON_PRETTY_PRINT);
     } catch (\Exception $e) {
         return response()->json(['error' => $e->getMessage()], 500);
     }
