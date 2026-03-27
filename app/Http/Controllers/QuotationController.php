@@ -4003,7 +4003,7 @@ class QuotationController extends Controller
             'templates' => $templates
         ]);
     }
-    
+
 
     /**
      * Load T&C templates via sp_Quote_CommunicationDetail_List.
@@ -7106,56 +7106,17 @@ class QuotationController extends Controller
 
     public function getChargeBasedOnDefaults(Request $request)
     {
-        $bookingNo  = $request->input('booking_no');
-        $basedOn    = $request->input('based_on');
-        $equipment  = $request->input('equipment', '');
-        $quoteNo   = trim($request->input('quote_no', ''));  // ← add this
+        $bookingNo   = $request->input('booking_no');
+        $basedOn     = $request->input('based_on');
+        $equipment   = $request->input('equipment', ''); // This is now always a Code string
+        $quoteNo     = trim($request->input('quote_no', ''));
 
+        // ... existing quotation lookup ...
 
-        if (!$bookingNo || !$basedOn) {
-            return response()->json(['success' => false, 'message' => 'booking_no and based_on are required'], 400);
-        }
-
-        // ── Resolve QuoteNo from bookingno ──────────────────────────────────────
-        // sp_ChargeBasedOnDefaultDetails uses WHERE QI.QuoteNo = @QuotationNo
-        // QuoteNo is the formatted reference (e.g. 'QT-5298'), NOT the numeric bookingno.
-        // $quotation = DB::table('Quote_QuotationInfo')
-        //     ->where('bookingno', $bookingNo)
-        //     ->first(['QuoteNo']);
-
-        // if (!$quotation || empty($quotation->QuoteNo)) {
-        //     Log::warning('getChargeBasedOnDefaults - QuoteNo not found', ['booking_no' => $bookingNo]);
-        //     return response()->json(['success' => false, 'message' => 'QuoteNo not found for this booking'], 404);
-        // }
-
-        // $quoteNo = trim($quotation->QuoteNo);
-
-        $quotation = DB::table('Quote_QuotationInfo')
-            ->where('bookingno', $bookingNo)
-            ->first(['ID']);
-
-        if (!$quotation || empty($quotation->ID)) {
-            Log::warning('getChargeBasedOnDefaults - QuotationID not found', ['booking_no' => $bookingNo]);
-            return response()->json(['success' => false, 'message' => 'Quotation not found for this booking'], 404);
-        }
-
-        // ── Strip trailing comma from containerlist before SP reads it ──────────
-        // sp_Quote_CargoDetailsUpdate stores containerlist with a trailing comma
-        // (e.g. '40GPX3,') which causes STRING_SPLIT to produce an empty token,
-        // breaking CHARINDEX and silently returning Quantity = 0 for Equipment.
-        DB::table('Quote_QuotationInfo')
-            ->where('ID', $quotation->ID)
-            ->whereRaw("RIGHT(RTRIM(containerlist), 1) = ','")
-            ->update([
-                'containerlist' => DB::raw("LEFT(RTRIM(containerlist), LEN(RTRIM(containerlist)) - 1)")
-            ]);
-
-        Log::info('getChargeBasedOnDefaults - Calling SP', [
-            'booking_no' => $bookingNo,
-            'quote_no'   => $quoteNo,
-            'based_on'   => $basedOn,
-            'equipment'  => $equipment ?: 'N/A',
-        ]);
+        // REMOVE the old UUID-resolution block that was here:
+        // $resolvedEquipment = DB::table('[FITSCMUAT].dbo.Cust_Equipment')
+        //     ->where('Id', $equipment)->value('Code');
+        // That lookup was wrong direction. SP needs the Code.
 
         try {
             $pdo  = DB::getPdo();
@@ -7170,11 +7131,13 @@ class QuotationController extends Controller
                 @Quantity       = @Quantity       OUTPUT;
 
             SELECT @BasedOnUOMCode AS BasedOnUOMCode,
-                @BasedOnUOM     AS BasedOnUOM,
-                @Quantity       AS Quantity;
+                   @BasedOnUOM     AS BasedOnUOM,
+                   @Quantity       AS Quantity;
         ");
 
+            // Pass equipment Code directly — matches EquipmentType column in DB
             $stmt->execute([$quotation->ID, $basedOn, $equipment]);
+
 
             $result = null;
             do {
