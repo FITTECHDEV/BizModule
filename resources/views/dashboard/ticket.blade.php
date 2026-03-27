@@ -3,9 +3,40 @@
 @section('title', 'Home-Dashboard')
 
 @section('content_header')
+    @if ($hasAzure && (count($otherOffices) > 0 || $baseOffice))
+        <div class="d-flex justify-content-end align-items-center flex-wrap" style="gap: 6px;">
+            <small class="text-muted mr-1">
+                <i class="fas fa-building mr-1"></i>Office:
+            </small>
+
+            {{-- Base office button --}}
+            <form method="POST" action="{{ route('home.switch-office') }}" class="d-inline m-0">
+                @csrf
+                <input type="hidden" name="office_code" value="{{ $baseOffice }}">
+                <button type="submit"
+                    class="btn btn-xs {{ !$activeOfficeCode || $activeOfficeCode === $baseOffice ? 'btn-primary' : 'btn-outline-primary' }}">
+                    {{ $baseOffice }} <small>(Base)</small>
+                </button>
+            </form>
+
+            {{-- Other office buttons --}}
+            @foreach ($otherOffices as $office)
+                <form method="POST" action="{{ route('home.switch-office') }}" class="d-inline m-0">
+                    @csrf
+                    <input type="hidden" name="office_code"
+                        value="{{ $office['OfficeCode'] ?? ($office->OfficeCode ?? '') }}">
+                    <button type="submit"
+                        class="btn btn-xs {{ $activeOfficeCode === ($office['OfficeCode'] ?? ($office->OfficeCode ?? '')) ? 'btn-primary' : 'btn-outline-secondary' }}">
+                        {{ $office['OfficeName'] ?? ($office->OfficeName ?? ($office['OfficeCode'] ?? '')) }}
+                    </button>
+                </form>
+            @endforeach
+        </div>
+    @endif
 @stop
 
 @section('plugins.Datatables', true)
+
 @section('css')
     <style>
         .service-card {
@@ -19,7 +50,6 @@
         }
 
         .service-card:hover {
-            box-shadow: 4px 4px 4px rgba(58, 105, 243, 0.3);
             -webkit-transform: translate(0, -8px);
             -moz-transform: translate(0, -8px);
             -ms-transform: translate(0, -8px);
@@ -99,37 +129,12 @@
 @stop
 
 @section('content')
+
+    {{-- Cards grid — always rendered, independent of office switcher --}}
     <div class="container-fluid p-2 p-md-3">
         <div class="row">
-            {{-- <!-- Ticketing System -->
-            <div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-3">
-                <a href="/tickets" style="text-decoration: none; color: inherit;">
-                    <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
-                        <div class="widget-user-header bg-info">
-                            <h3 class="widget-user-username">TICKETING SYSTEM</h3>
-                            <h5 class="widget-user-desc">Raise A Concern</h5>
-                        </div>
-                        <div class="widget-user-image">
-                            <img class="img-circle elevation-2" src="{{ asset('site_imgs/images.png') }}" alt="Phone Avatar">
-    </div>
-    <div class="card-footer">
-        <div class="row justify-content-center">
-            @foreach ($ticketStatistics as $ticketStat)
-            <div class="col-4 border">
-                <div class="description-block">
-                    <h5 class="description-header"><span
-                            class="badge badge-info">{{ $ticketStat->StatusCount }}</span></h5>
-                    <span class="description-text small">{{ $ticketStat->StatusName }}</span>
-                </div>
-            </div>
-            @endforeach
-        </div>
-    </div>
-</div>
-</a>
-</div> --}}
 
-            <!-- Client Party System -->
+            <!-- Client Party System — visible to all -->
             <div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-3">
                 <a href="/client-party?my_request=true" style="text-decoration: none; color: inherit;">
                     <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
@@ -147,7 +152,8 @@
                                     <div class="col-4 border">
                                         <div class="description-block">
                                             <h5 class="description-header"><span
-                                                    class="badge badge-primary">{{ $entityStats->StatusCount }}</span></h5>
+                                                    class="badge badge-primary">{{ $entityStats->StatusCount }}</span>
+                                            </h5>
                                             <span class="description-text small">{{ $entityStats->StatusName }}</span>
                                         </div>
                                     </div>
@@ -212,7 +218,8 @@
                                                 <h5 class="description-header"><span
                                                         class="badge badge-primary">{{ $entityStats->EfrisStatus }}</span>
                                                 </h5>
-                                                <span class="description-text small">{{ $entityStats->NoOfInvoice }}</span>
+                                                <span
+                                                    class="description-text small">{{ $entityStats->NoOfInvoice }}</span>
                                             </div>
                                         </div>
                                     @endforeach
@@ -223,31 +230,8 @@
                 </div>
             @endif
 
-            <!-- Quote Logger -->
-            {{-- @if (Auth::user()->can('quote-access'))
-                <div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-3">
-                    <a href="{{ URL::signedRoute('quote-logger') }}" style="text-decoration: none; color: inherit;">
-<div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
-    <div class="widget-user-header bg-teal">
-        <h3 class="widget-user-username">QUOTE LOGGErrrrR</h3>
-        <h5 class="widget-user-desc">Quote-Log System</h5>
-    </div>
-    <div class="widget-user-image">
-        <img class="img-circle elevation-2" src="{{ asset('site_imgs/quotation2.png') }}"
-            alt="Quote Avatar">
-    </div>
-    <div class="card-footer">
-        <div class="row justify-content-center">
-            <!-- Placeholder for future stats -->
-        </div>
-    </div>
-</div>
-</a>
-</div>
-@endif --}}
-
             <!-- TRA Integration (Tanzania) -->
-            @if (Auth::user()->can('tra-tz-access'))
+            @if (Auth::user()->can('tra-tz-access') && ($canSeeAll || in_array('TRAFIT', $activeModules)))
                 <div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-3">
                     <a href="/tra" style="text-decoration: none; color: inherit;">
                         <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
@@ -280,7 +264,7 @@
             @endif
 
             <!-- TRA Integration (ADL) -->
-            @if (Auth::user()->can('tra-adl-access'))
+            @if (Auth::user()->can('tra-adl-access') && ($canSeeAll || in_array('TRAADL', $activeModules)))
                 <div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-3">
                     <a href="/traADL" style="text-decoration: none; color: inherit;">
                         <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
@@ -532,25 +516,20 @@
                 </div>
             @endif
 
-            <!-- Quote Integration -->
-            {{-- @if ($canViewQuotationCard) --}}
+            <!-- Quote Management System -->
+            {{-- @if ($canSeeAll || in_array('Quotation', $activeModules) || in_array('QMS', $activeModules)) --}}
                 <div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-3">
                     <a href="{{ route('quotation.index') }}" style="text-decoration: none; color: inherit;">
                         <div class="card card-widget widget-user shadow service-card scm-profit-card">
-
-                            <!-- Header -->
                             <div class="widget-user-header bg-info">
                                 <h3 class="widget-user-username">Quote Management System</h3>
                                 <h5 class="widget-user-desc">Integration Status</h5>
                             </div>
-
-                            <!-- Floating Icon (THIS is the key part) -->
                             <div class="widget-user-image">
-                                <img class="img-circle elevation-2" src="{{ asset('img/supply-chain-management.png') }}"
-                                    alt="SCM Icon" style="background: white; padding: 5px; width: 60px; height: 60px;">
+                                <img class="img-circle elevation-2"
+                                    src="{{ asset('img/supply-chain-management.png') }}" alt="SCM Icon"
+                                    style="background: white; padding: 5px; width: 60px; height: 60px;">
                             </div>
-
-                            <!-- Footer -->
                             <div class="card-footer">
                                 <div class="row">
                                     <div class="col-3 border-right">
@@ -571,11 +550,11 @@
                                     </div>
                                 </div>
                             </div>
-
                         </div>
                     </a>
                 </div>
             {{-- @endif --}}
+            {{-- END Quote Management System --}}
 
             <!-- Revenue Authority Integration -->
             @if (Auth::user()->can('approve-all-entity-request'))
@@ -626,6 +605,7 @@
 
         </div>
     </div>
+
 @stop
 
 @section('js')

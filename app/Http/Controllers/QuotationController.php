@@ -5077,10 +5077,12 @@ class QuotationController extends Controller
                     throw new \RuntimeException('sp_Quote_Quotation_ChargeList: ' . $firstVal);
                 }
 
-                if (isset($fetched[0]->Id)) {
-                    $rows = $fetched;
-                    break;
-                }
+                // if (isset($fetched[0]->Id)) {
+                //     $rows = $fetched;
+                //     break;
+                // }
+                $rows = $fetched;
+                break;
             } catch (\PDOException $e) {
                 continue;
             }
@@ -6319,8 +6321,8 @@ class QuotationController extends Controller
             'SubmittedDatetime' => now()->format('YmdHis'),
             'SubmittedBy'       => $submittedBy,
             'Action'            => 'Update',
-            'QuotationID'       => $quotation->ID,  
-            'ClientCode'        => $clientCode,       
+            'QuotationID'       => $quotation->ID,
+            'ClientCode'        => $clientCode,
             'Company'           => $company,
             'Address1'          => $address1,
             'Address2'          => $address2,
@@ -6329,7 +6331,7 @@ class QuotationController extends Controller
             'State'             => $state,
             'CountryCode'       => $countryCode,
             'ContactPerson'     => $contactPerson,
-            'Department'        => '',               
+            'Department'        => '',
             'EmailID'           => $email ?: null,
             'PhoneNo'           => $phone,
             'IndustryCode'      => $industryCode,

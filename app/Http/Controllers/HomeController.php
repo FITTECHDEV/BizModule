@@ -147,8 +147,6 @@ class HomeController extends Controller
                 ];
             }
 
-            // Delegates to Gate::define('view-quotation') in AuthServiceProvider
-            // which handles BizUserID fallback, IsActive, IsDelete, and 5-min caching
             $canViewQuotationCard = \Illuminate\Support\Facades\Gate::allows('view-quotation');
 
             try {
@@ -159,6 +157,34 @@ class HomeController extends Controller
                 Log::error('Quotation Stats Error: ' . $e->getMessage());
                 $quotation_stats = ['total' => 0, 'in_progress' => 0, 'failed_int' => 0, 'failed_progress' => 0];
             }
+
+            // ---------------------------------------------------------------
+            // Office switcher — resolve active office from session
+            // ---------------------------------------------------------------
+            $activeOfficeCode = session('active_office_code');
+            $azureOfficeData  = $this->getAzureOfficeData($activeOfficeCode);
+
+            $activeModules    = $azureOfficeData['modules'];
+            $otherOffices     = $azureOfficeData['otherOffices'];
+            $baseOffice       = $azureOfficeData['baseOffice'];
+            $hasAzure         = $azureOfficeData['hasAzure'];
+
+            // canSeeAll is true ONLY when the SP returns ALL or null module
+            // for the currently selected office — not a permanent bypass
+            $canSeeAll = $hasAzure && (
+                in_array('ALL', $activeModules) ||
+                in_array(null, $activeModules)
+            );
+
+            Log::info('Office Switcher State', [
+                'user'              => Auth::user()->Email,
+                'activeOfficeCode'  => $activeOfficeCode,
+                'baseOffice'        => $baseOffice,
+                'activeModules'     => $activeModules,
+                'canSeeAll'         => $canSeeAll,
+                'otherOffices'      => $otherOffices,
+            ]);
+            // ---------------------------------------------------------------
 
             return view(
                 'dashboard.ticket',
@@ -180,13 +206,138 @@ class HomeController extends Controller
                     'scm_profit_stats',
                     'ra_metrics',
                     'canViewQuotationCard',
-                    'quotation_stats'
+                    'quotation_stats',
+                    'activeModules',
+                    'otherOffices',
+                    'baseOffice',
+                    'hasAzure',
+                    'canSeeAll',
+                    'activeOfficeCode'
                 )
             );
         } catch (\Exception $e) {
             Log::error('Home Controller Error: ' . $e->getMessage());
             return 'Controller Error: ' . $e->getMessage();
         }
+    }
+
+    // ---------------------------------------------------------------
+    // Office data from SP
+    // ---------------------------------------------------------------
+    private function getAzureOfficeData(?string $officeCode = null): array
+    {
+        try {
+            $email = Auth::user()->Email;
+
+            $azureUser = DB::table('Azure_Users')
+                ->where('userPrincipalName', $email)
+                ->whereNotNull('AzureId')
+                ->first();
+
+            if (!$azureUser) {
+                Log::info('No Azure record found for user', ['email' => $email]);
+                return [
+                    'modules'      => [],
+                    'otherOffices' => [],
+                    'baseOffice'   => null,
+                    'hasAzure'     => false,
+                ];
+            }
+
+            $azureId    = $azureUser->AzureId;
+            $office     = $officeCode ?? '';
+            $outputJson = null;
+
+            $pdo  = DB::connection()->getPdo();
+            $stmt = $pdo->prepare(
+                "EXEC sp_Azure_BIZOfficeandModuleList @AzureID = ?, @OfficeCode = ?, @OutputJson = ? OUTPUT"
+            );
+            $stmt->bindParam(1, $azureId,    \PDO::PARAM_STR);
+            $stmt->bindParam(2, $office,     \PDO::PARAM_STR);
+            $stmt->bindParam(3, $outputJson, \PDO::PARAM_STR | \PDO::PARAM_INPUT_OUTPUT, 2000);
+            $stmt->execute();
+
+            // Drain any extra result sets to avoid connection issues
+            while ($stmt->nextRowset()) {
+            }
+
+            Log::info('SP Azure Office Data Raw Output', [
+                'azureId'    => $azureId,
+                'office'     => $office,
+                'outputJson' => $outputJson,
+            ]);
+
+            if (empty($outputJson)) {
+                Log::warning('sp_Azure_BIZOfficeandModuleList returned empty output', [
+                    'azureId' => $azureId,
+                    'office'  => $office,
+                ]);
+                return [
+                    'modules'      => [],
+                    'otherOffices' => [],
+                    'baseOffice'   => $azureUser->BaseOfficeCode,
+                    'hasAzure'     => true,
+                ];
+            }
+
+            $data = json_decode($outputJson, true);
+
+            // SP returned a failure response
+            if (isset($data['Status']) && $data['Status'] === 'Failed') {
+                Log::warning('sp_Azure_BIZOfficeandModuleList returned failure', [
+                    'remarks' => $data['Remarks'] ?? 'No remarks',
+                    'azureId' => $azureId,
+                    'office'  => $office,
+                ]);
+                return [
+                    'modules'      => [],
+                    'otherOffices' => [],
+                    'baseOffice'   => $azureUser->BaseOfficeCode,
+                    'hasAzure'     => true,
+                ];
+            }
+
+            $modules      = collect($data['Module'] ?? [])->pluck('ModuleName')->toArray();
+            $otherOffices = $data['OtherOffices'] ?? [];
+            $baseOffice   = $data['Basedoffice'] ?? $azureUser->BaseOfficeCode;
+
+            return [
+                'modules'      => $modules,
+                'otherOffices' => $otherOffices,
+                'baseOffice'   => $baseOffice,
+                'hasAzure'     => true,
+            ];
+        } catch (\Exception $e) {
+            Log::error('getAzureOfficeData failed: ' . $e->getMessage(), [
+                'line'  => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return [
+                'modules'      => [],
+                'otherOffices' => [],
+                'baseOffice'   => null,
+                'hasAzure'     => false,
+            ];
+        }
+    }
+
+    // ---------------------------------------------------------------
+    // Switch office — store in session and redirect
+    // ---------------------------------------------------------------
+    public function switchOffice(Request $request)
+    {
+        $request->validate(['office_code' => 'required|string|max:5']);
+
+        $officeCode = strtoupper(trim($request->office_code));
+
+        session(['active_office_code' => $officeCode]);
+
+        Log::info('Office switched', [
+            'user'        => Auth::user()->Email,
+            'office_code' => $officeCode,
+        ]);
+
+        return redirect()->route('home');
     }
 
     /**
