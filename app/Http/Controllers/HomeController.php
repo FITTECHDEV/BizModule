@@ -164,6 +164,12 @@ class HomeController extends Controller
             $activeOfficeCode = session('active_office_code');
             $azureOfficeData  = $this->getAzureOfficeData($activeOfficeCode);
 
+            // If no office selected yet, default session to base office
+            if (!$activeOfficeCode && !empty($azureOfficeData['baseOffice'])) {
+                $activeOfficeCode = $azureOfficeData['baseOffice'];
+                session(['active_office_code' => $activeOfficeCode]);
+            }
+
             $activeModules    = $azureOfficeData['modules'];
             $otherOffices     = $azureOfficeData['otherOffices'];
             $baseOffice       = $azureOfficeData['baseOffice'];
@@ -249,17 +255,26 @@ class HomeController extends Controller
             $outputJson = null;
 
             $pdo  = DB::connection()->getPdo();
-            $stmt = $pdo->prepare(
-                "EXEC sp_Azure_BIZOfficeandModuleList @AzureID = ?, @OfficeCode = ?, @OutputJson = ? OUTPUT"
-            );
-            $stmt->bindParam(1, $azureId,    \PDO::PARAM_STR);
-            $stmt->bindParam(2, $office,     \PDO::PARAM_STR);
-            $stmt->bindParam(3, $outputJson, \PDO::PARAM_STR | \PDO::PARAM_INPUT_OUTPUT, 2000);
+            $stmt = $pdo->prepare("
+                DECLARE @OutputJson NVARCHAR(MAX);
+                EXEC sp_Azure_BIZOfficeandModuleList
+                    @AzureID     = ?,
+                    @OfficeCode  = ?,
+                    @OutputJson  = @OutputJson OUTPUT;
+                SELECT @OutputJson AS OutputJson;
+            ");
+            $stmt->bindParam(1, $azureId, \PDO::PARAM_STR);
+            $stmt->bindParam(2, $office,  \PDO::PARAM_STR);
             $stmt->execute();
 
-            // Drain any extra result sets to avoid connection issues
-            while ($stmt->nextRowset()) {
-            }
+            $outputJson = null;
+            do {
+                $row = $stmt->fetch(\PDO::FETCH_OBJ);
+                if ($row && isset($row->OutputJson)) {
+                    $outputJson = $row->OutputJson;
+                    break;
+                }
+            } while ($stmt->nextRowset());
 
             Log::info('SP Azure Office Data Raw Output', [
                 'azureId'    => $azureId,

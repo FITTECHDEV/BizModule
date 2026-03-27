@@ -317,11 +317,12 @@
                         </div>
                     </div>
                     <div class="modal-footer d-flex justify-content-between align-items-center">
-                        <a href="#" id="cbEditLink" class="btn btn-sm btn-outline-secondary d-none"
-                            title="Edit booking information">
-                            <i class="fas fa-edit mr-1"></i> Edit
-                        </a>
-                        <span id="cbEditLinkPlaceholder"></span>
+                        <div>
+                            <a href="#" id="cbEditLink" class="btn btn-sm btn-outline-secondary d-none"
+                                title="Edit booking information">
+                                <i class="fas fa-edit mr-1"></i> Edit
+                            </a>
+                        </div>
                         <div class="d-flex align-items-center">
                             <a href="#" class="text-primary mr-3" id="cancelCreateBookingBtn"
                                 style="font-weight: 500; text-decoration: underline;">Cancel</a>
@@ -1195,7 +1196,7 @@
                 var $btn = $(this);
                 $('#createBookingModal')
                     .data('quotation-id', $btn.data('id'))
-                    .data('booking-no', $btn.data('booking'))
+                    .data('booking-no', $btn.data('quoteno'))
                     .data('team-id', $btn.data('team'))
                     .data('quote-no', $btn.data('quoteno'))
                     .data('origin-country', $btn.data('origin'))
@@ -1205,16 +1206,53 @@
             });
 
             // ── Create Booking modal — on show ───────────────────────────────────────
+            // AFTER — restore previous state if same quotation
             $('#createBookingModal').on('show.bs.modal', function() {
                 var modal = $(this);
                 var quoteNo = modal.data('quote-no');
                 var teamId = modal.data('team-id');
                 var cardFilter = modal.data('card-filter') || 'in_progress';
+                var lastQuoteNo = modal.data('last-quote-no');
+                var savedState = modal.data('saved-form-state');
 
+                // If reopening for the same quotation after a failure, restore form state
+                if (savedState && String(lastQuoteNo) === String(quoteNo)) {
+                    resetCreateBookingForm();
+                    setDropdownLoading('#cb_service_template');
+                    $.get('{{ route('quotation.booking.service-templates') }}', {
+                            quotation_id: quoteNo
+                        })
+                        .done(function(res) {
+                            var $s = $('#cb_service_template').empty().append(
+                                '<option value=""></option>');
+                            if (res.success && res.templates && res.templates.length) {
+                                $.each(res.templates, function(i, t) {
+                                    $s.append($('<option>', {
+                                        value: t.Name,
+                                        text: t.Name
+                                    }));
+                                });
+                                $s.val(savedState.serviceTemplate);
+                            }
+                        });
+                    $('#cb_bill_to_party').val(savedState.billToPartyText);
+                    $('#cb_bill_to_party_code').val(savedState.billToPartyCode);
+                    $('#cb_forwarder').val(savedState.forwarderText);
+                    $('#cb_forwarder_code').val(savedState.forwarderCode);
+                    $('#cb_include_country').prop('checked', savedState.includeCountry);
+                    $('#cb_place_of_receipt').val(savedState.receiptText);
+                    $('#cb_place_of_receipt_code').val(savedState.receiptCode);
+                    $('#cb_place_of_receipt_id').val(savedState.receiptId);
+                    $('#cb_place_of_delivery').val(savedState.deliveryText);
+                    $('#cb_place_of_delivery_code').val(savedState.deliveryCode);
+                    $('#cb_place_of_delivery_id').val(savedState.deliveryId);
+                    return;
+                }
+
+                // Fresh open — full reset
+                modal.data('last-quote-no', quoteNo);
                 resetCreateBookingForm();
                 setDropdownLoading('#cb_service_template');
-
-                // 1. Service Templates
                 $.get('{{ route('quotation.booking.service-templates') }}', {
                         quotation_id: quoteNo
                     })
@@ -1229,8 +1267,8 @@
                             });
                         } else {
                             var msg = res.code === 'NO_TEMPLATES_CONFIGURED' ?
-                                'No templates available for this office.' :
-                                (res.message || 'No templates available for this office.');
+                                'No templates available for this office.' : (res.message ||
+                                    'No templates available for this office.');
                             $s.append('<option value="" disabled>No templates available</option>');
                             $('#cb_service_template').closest('.form-group').append(
                                 '<small class="text-danger cb-config-warning mt-1 d-block">' +
@@ -1241,14 +1279,17 @@
                         }
                     })
                     .fail(function() {
-                        $('#cb_service_template').empty()
-                            .append('<option value="" disabled>Failed to load — try again</option>');
+                        $('#cb_service_template').empty().append(
+                            '<option value="" disabled>Failed to load — try again</option>');
                     });
             });
 
             // ── Create Booking modal — on hide ───────────────────────────────────────
             $('#createBookingModal').on('hidden.bs.modal', function() {
                 $('.location-suggestions').remove();
+                if ($('#cbProgressSuccess').hasClass('d-none')) {} else {
+                    $('#createBookingModal').removeData('saved-form-state').removeData('last-quote-no');
+                }
                 $('#createBookingForm').removeClass('d-none cb-locked');
                 $('#cbProgressPanel').addClass('d-none');
                 $('#submitCreateBookingBtn, #cancelCreateBookingBtn').removeClass('d-none');
@@ -1270,16 +1311,35 @@
 
             $('#cbEditLink').on('click', function(e) {
                 e.preventDefault();
-                $('#cb_service_template').prop('disabled', false);
-                $('#cb_bill_to_party, #cb_forwarder').val('').prop('disabled', false);
-                $('#cb_bill_to_party_code, #cb_forwarder_code').val('');
-                $('#cb_include_country, #cb_place_of_receipt, #cb_place_of_delivery').prop('disabled',
-                    false);
+                var savedState = $('#createBookingModal').data('saved-form-state');
+
+                // Show the form panel, hide the progress panel
                 $('#createBookingForm').removeClass('cb-locked d-none');
                 $('#cbProgressPanel').addClass('d-none');
                 $('#submitCreateBookingBtn, #cancelCreateBookingBtn').removeClass('d-none');
                 $('#cbCloseBtn').addClass('d-none');
                 $(this).addClass('d-none');
+
+                // Re-enable all fields
+                $('#cb_service_template').prop('disabled', false);
+                $('#cb_bill_to_party, #cb_forwarder').prop('disabled', false);
+                $('#cb_include_country, #cb_place_of_receipt, #cb_place_of_delivery').prop('disabled',
+                    false);
+
+                // Restore saved values if available
+                if (savedState) {
+                    $('#cb_bill_to_party').val(savedState.billToPartyText);
+                    $('#cb_bill_to_party_code').val(savedState.billToPartyCode);
+                    $('#cb_forwarder').val(savedState.forwarderText);
+                    $('#cb_forwarder_code').val(savedState.forwarderCode);
+                    $('#cb_include_country').prop('checked', savedState.includeCountry);
+                    $('#cb_place_of_receipt').val(savedState.receiptText);
+                    $('#cb_place_of_receipt_code').val(savedState.receiptCode);
+                    $('#cb_place_of_receipt_id').val(savedState.receiptId);
+                    $('#cb_place_of_delivery').val(savedState.deliveryText);
+                    $('#cb_place_of_delivery_code').val(savedState.deliveryCode);
+                    $('#cb_place_of_delivery_id').val(savedState.deliveryId);
+                }
             });
 
             // ── Booking form helpers ──────────────────────────────────────────────────
@@ -1584,6 +1644,22 @@
                     return;
                 }
 
+                // Save form state so it can be restored if booking fails
+                $('#createBookingModal').data('saved-form-state', {
+                    serviceTemplate: serviceTemplate,
+                    billToPartyText: $('#cb_bill_to_party').val(),
+                    billToPartyCode: billToParty,
+                    forwarderText: $('#cb_forwarder').val(),
+                    forwarderCode: forwarder,
+                    includeCountry: $('#cb_include_country').is(':checked'),
+                    receiptText: $('#cb_place_of_receipt').val(),
+                    receiptCode: placeOfReceipt,
+                    receiptId: $('#cb_place_of_receipt_id').val(),
+                    deliveryText: $('#cb_place_of_delivery').val(),
+                    deliveryCode: placeOfDelivery,
+                    deliveryId: $('#cb_place_of_delivery_id').val(),
+                });
+
                 // Disable button to prevent double submission
                 $btn.prop('disabled', true).html(
                     '<i class="fas fa-spinner fa-spin mr-1"></i> Processing...');
@@ -1622,7 +1698,8 @@
                                 msg += '<strong>SCM Booking ID: ' + res.scm_booking_id +
                                 '</strong>';
                             $('#cbProgressSuccess').html(msg).removeClass('d-none');
-                            // table reload triggers dataSrc which updates the cards automatically
+                            $('#createBookingModal').removeData('saved-form-state').removeData(
+                                'last-quote-no');
                             table.ajax.reload(null, false);
                         } else {
                             var failedStep = (res.steps || []).find(function(s) {
@@ -1634,12 +1711,14 @@
                                     (failedStep ? failedStep.remark : 'Unknown error'))
                                 .removeClass('d-none');
                             table.ajax.reload(null, false);
+                            $('#cbEditLink').removeClass('d-none');
                         }
                     },
                     error: function(xhr) {
                         var msg = xhr.responseJSON?.message || 'An unexpected error occurred.';
                         $('#cbProgressError').text(msg).removeClass('d-none');
                         if (xhr.responseJSON?.steps) renderBookingSteps(xhr.responseJSON.steps);
+                        $('#cbEditLink').removeClass('d-none');
                     },
                     complete: function() {
                         $btn.prop('disabled', false).html('Create');

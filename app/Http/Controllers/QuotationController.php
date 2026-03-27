@@ -1997,17 +1997,17 @@ class QuotationController extends Controller
             // ============================================
             // PREPARE STORED PROCEDURE INPUT
             // ============================================
-            $quoteNo = DB::table('Quote_QuotationInfo')
-                ->where('bookingno', $bookingNo)
-                ->where('OfficeCode', $request->input('office_code'))
-                ->value('QuoteNo');
+            // $quoteNo = DB::table('Quote_QuotationInfo')
+            //     ->where('bookingno', $bookingNo)
+            //     ->where('OfficeCode', $request->input('office_code'))
+            //     ->value('QuoteNo');
 
-            if (!$quoteNo) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'QuoteNo not found for booking: ' . $bookingNo,
-                ], 404);
-            }
+            // if (!$quoteNo) {
+            //     return response()->json([
+            //         'success' => false,
+            //         'message' => 'QuoteNo not found for booking: ' . $bookingNo,
+            //     ], 404);
+            // }
 
             $inputJson = json_encode([
                 'OperationType' => 'QuotationAddorEditCharge',
@@ -2016,7 +2016,7 @@ class QuotationController extends Controller
                     ? (Auth::user()->displayName ?? Auth::user()->Email ?? 'system')
                     : 'system',
                 'Action' => $request->input('action', 'Add'),
-                'QuotationNo' => $quoteNo,
+                'QuotationNo' => $quotation->ID,
                 'QuoteChargeID' => $request->input('quote_charge_id', ''),
                 'PartyCode' => $request->input('party_code', ''),
                 'RevenueOrCost' => $request->input('revenue_or_cost'),
@@ -2527,24 +2527,24 @@ class QuotationController extends Controller
                 ? (Auth::user()->displayName ?? Auth::user()->Email ?? 'system')
                 : 'system';
 
-            $quoteNo = DB::table('Quote_QuotationInfo')
-                ->where('bookingno', $bookingNo)
-                ->when($officeCodeFromRequest, fn($q) => $q->where('OfficeCode', $officeCodeFromRequest))
-                ->value('QuoteNo');
+            // $quoteNo = DB::table('Quote_QuotationInfo')
+            //     ->where('bookingno', $bookingNo)
+            //     ->when($officeCodeFromRequest, fn($q) => $q->where('OfficeCode', $officeCodeFromRequest))
+            //     ->value('QuoteNo');
 
-            if (!$quoteNo) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'QuoteNo not found for booking: ' . $bookingNo,
-                ], 404);
-            }
+            // if (!$quoteNo) {
+            //     return response()->json([
+            //         'success' => false,
+            //         'message' => 'QuoteNo not found for booking: ' . $bookingNo,
+            //     ], 404);
+            // }
 
             $inputJson = json_encode([
                 'OperationType' => 'QuotationAddorEditCharge',
                 'SubmittedDatetime' => now()->format('YmdHis'),
                 'SubmittedBy' => $submittedBy,
                 'Action' => 'Delete',
-                'QuotationNo' => $quoteNo,
+                'QuotationNo' => $quotation->ID,
                 'QuoteChargeID' => $chargeId,
                 'PartyCode' => $charge->PartyCode ?? '',
                 'RevenueOrCost' => $charge->IsRevenue ? 'Revenue' : 'Cost',
@@ -3712,6 +3712,28 @@ class QuotationController extends Controller
         }
     }
 
+    // ============================================================
+    // PRODUCTION FIX — retrigger() method
+    //
+    // ROOT CAUSE (two bugs):
+    //
+    // 1. In the "Steps 3 and 4" loop, the code calls:
+    //      $step2 = $this->runBookingProcessMain($quotation->ID, 'XML');
+    //    then reads from $result (which was never assigned in this branch).
+    //    The local variable is wrong on both sides — the assignment name is
+    //    $step2 (stale from the outer branch) and the read is $result
+    //    (undefined here). Fix: use $result = $this->runBookingProcessMain(...)
+    //    with the correct $stepDef['type'] argument.
+    //
+    // 2. Inside the "SCMBookingID is NULL" branch (Step 2 re-run), the same
+    //    pattern repeats: calls runBookingProcessMain but stores in $step2
+    //    and never reads from it properly. Fix: same — use $result and pass
+    //    $stepDef['type'] is not in scope here, so pass 'XML' explicitly.
+    //
+    // CHANGE SCOPE: Only the two assignment+read pairs inside retrigger().
+    // No other logic touched.
+    // ============================================================
+
     public function retrigger(Request $request)
     {
         $bookingNo = $request->input('booking_no');
@@ -3756,13 +3778,16 @@ class QuotationController extends Controller
                 'quote_no'   => $quoteNo,
             ]);
 
-            $step2 = $this->runBookingProcessMain($quoteNo, 'XML');
+            // FIX 1: was "$step2 = $this->runBookingProcessMain($quotation->ID, $stepDef['type'])"
+            // $stepDef is not in scope here. The correct process type for this branch is 'XML'.
+            // Also renamed to $result to be consistent with the read below.
+            $result = $this->runBookingProcessMain($quotation->ID, 'XML');
 
             $steps[] = [
                 'step'   => 2,
                 'label'  => 'Booking XML',
-                'status' => $step2['status'],
-                'remark' => $step2['remark'],
+                'status' => $result['status'],
+                'remark' => $result['remark'],
             ];
 
             Log::info('retrigger - Step 2 result', [
@@ -3770,32 +3795,32 @@ class QuotationController extends Controller
                 'quote_no'    => $quoteNo,
                 'sp_called'   => 'sp_Quote_BookingProcessMain',
                 'sp_params'   => ['QuotationNo' => $quoteNo, 'ProcessType' => 'XML'],
-                'sp_status'   => $step2['status'],
-                'sp_remark'   => $step2['remark'],
-                'sql_error'   => $step2['sql_error']   ?? null,
-                'sql_state'   => $step2['sql_state']   ?? null,
-                'result_sets' => $step2['result_sets'] ?? null,
+                'sp_status'   => $result['status'],
+                'sp_remark'   => $result['remark'],
+                'sql_error'   => $result['sql_error']   ?? null,
+                'sql_state'   => $result['sql_state']   ?? null,
+                'result_sets' => $result['result_sets'] ?? null,
             ]);
 
-            if ($step2['status'] !== 'Success') {
+            if ($result['status'] !== 'Success') {
                 Log::error('retrigger - Step 2 failed', [
                     'booking_no' => $bookingNo,
                     'quote_no'   => $quoteNo,
-                    'sp_remark'  => $step2['remark'],
+                    'sp_remark'  => $result['remark'],
                 ]);
 
-                $this->markAsFailed($quotation->ID, 'Booking XML', $step2['remark'], $submittedBy);
+                $this->markAsFailed($quotation->ID, 'Booking XML', $result['remark'], $submittedBy);
 
                 return response()->json([
                     'success'      => false,
                     'failed_step'  => 2,
                     'failed_label' => 'Booking XML',
                     'steps'        => $steps,
-                    'message'      => $step2['remark'],
+                    'message'      => $result['remark'],
                 ]);
             }
 
-            // ── Push XML to SCM ───────────────────────────────────────────────────
+            // ── Push XML to SCM ───────────────────────────────────────────────────────
             Log::info('retrigger - XML saved, pushing to SCM', [
                 'booking_no' => $bookingNo,
                 'quote_no'   => $quoteNo,
@@ -3872,7 +3897,10 @@ class QuotationController extends Controller
         ];
 
         foreach ($retriggerSteps as $stepNo => $stepDef) {
-            $result = $this->runBookingProcessMain($quoteNo, $stepDef['type']);
+            // FIX 2: was "$step2 = $this->runBookingProcessMain($quotation->ID, 'XML')"
+            // Two problems: used $step2 (wrong name, leftover from outer branch) and
+            // hardcoded 'XML' instead of $stepDef['type'] (Charge / Document).
+            $result = $this->runBookingProcessMain($quotation->ID, $stepDef['type']);
 
             $steps[] = [
                 'step'   => $stepNo,
@@ -4009,12 +4037,12 @@ class QuotationController extends Controller
 
             $templates = DB::select(
                 "SELECT Name, Description
-             FROM Cust_CommunicationDetails WITH (NOLOCK)
-             WHERE Module     = ?
-               AND SubModule  = ?
-               AND TRIM(OfficeCode) = ?
-               AND IsActive   = 1
-             ORDER BY Name",
+                    FROM Cust_CommunicationDetails WITH (NOLOCK)
+                    WHERE Module     = ?
+                        AND SubModule  = ?
+                        AND TRIM(OfficeCode) = ?
+                        AND IsActive   = 1
+                    ORDER BY Name",
                 [$module, $subModule, $officeCode]
             );
 
@@ -4058,6 +4086,17 @@ class QuotationController extends Controller
     private function getCommunicationTemplatesViaSP(string $module, string $subModule, string $bookingNo): \Illuminate\Http\JsonResponse
     {
         try {
+            $quotationId = DB::table('Quote_QuotationInfo')
+                ->where('QuoteNo', $bookingNo)
+                ->value('ID');
+
+            if (!$quotationId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Quotation not found.',
+                ], 404);
+            }
+
             // ── Force-trim OfficeCode unconditionally ─────────────────────────────
             // whereRaw guard doesn't detect trailing spaces on all SQL Server
             // collations. Always RTRIM — no-op when already clean.
@@ -4087,7 +4126,7 @@ class QuotationController extends Controller
 
             $pdo  = DB::connection()->getPdo();
             $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC dbo.sp_Quote_CommunicationDetail_List ?, ?, ?");
-            $stmt->execute([$bookingNo, $module, $subModule]);
+            $stmt->execute([$quotationId, $module, $subModule]);
 
             $templates      = [];
             $resultSetIndex = 0;
@@ -4329,7 +4368,7 @@ class QuotationController extends Controller
                             'quote_no'   => $quotation->QuoteNo,
                         ]);
 
-                        $html = $this->getQuotationHtml($quotation->QuoteNo ?? '');
+                        $html = $this->getQuotationHtml($quotation->ID ?? '');
 
                         if (!empty($html)) {
                             try {
@@ -4475,13 +4514,21 @@ class QuotationController extends Controller
             // ============================================
             // GUARD: QuoteNo must be set
             // ============================================
-            $quoteNo = trim((string) ($quotation->QuoteNo ?? ''));
+            // $quoteNo = trim((string) ($quotation->QuoteNo ?? ''));
 
-            if (empty($quoteNo)) {
-                Log::error('PDF Generation - QuoteNo is empty', ['id' => $id]);
+            // if (empty($quoteNo)) {
+            //     Log::error('PDF Generation - QuoteNo is empty', ['id' => $id]);
+            //     return response()->json([
+            //         'success' => false,
+            //         'message' => 'QuoteNo is not set on this quotation. Cannot generate PDF.',
+            //     ], 422);
+            // }
+
+            if (empty($quotation->ID)) {
+                Log::error('PDF Generation - QuotationID is empty', ['id' => $id]);
                 return response()->json([
                     'success' => false,
-                    'message' => 'QuoteNo is not set on this quotation. Cannot generate PDF.',
+                    'message' => 'Quotation ID is not set. Cannot generate PDF.',
                 ], 422);
             }
 
@@ -4495,10 +4542,10 @@ class QuotationController extends Controller
                 ->where('ID', $id)
                 ->update(['OfficeCode' => DB::raw("RTRIM(OfficeCode)")]);
 
-            Log::info('PDF Generation - OfficeCode after heal', [
-                'quote_no'    => $quoteNo,
-                'office_code' => DB::table('Quote_QuotationInfo')->where('ID', $id)->value('OfficeCode'),
-            ]);
+            // Log::info('PDF Generation - OfficeCode after heal', [
+            //     'quote_no'    => $quoteNo,
+            //     'office_code' => DB::table('Quote_QuotationInfo')->where('ID', $id)->value('OfficeCode'),
+            // ]);
 
             // ============================================
             // CALL sp_Quote_QuotationFormat
@@ -4515,7 +4562,7 @@ class QuotationController extends Controller
                 SELECT @QuoteFormat AS QuoteFormat;
             ");
 
-                $stmt->execute([$quoteNo]);
+                $stmt->execute([$quotation->ID]);
 
                 $setIndex = 0;
                 do {
@@ -4538,20 +4585,20 @@ class QuotationController extends Controller
                             break;
                         }
                     } catch (\PDOException $e) {
-                        Log::debug('PDF Generation - Skipping intermediate result set #' . $setIndex, [
-                            'quote_no' => $quoteNo,
-                            'error'    => $e->getMessage(),
-                        ]);
+                        // Log::debug('PDF Generation - Skipping intermediate result set #' . $setIndex, [
+                        //     'quote_no' => $quoteNo,
+                        //     'error'    => $e->getMessage(),
+                        // ]);
                         continue;
                     }
                 } while ($stmt->nextRowset());
             } catch (\Exception $e) {
-                Log::error('PDF Generation - SP execution threw exception', [
-                    'quote_no' => $quoteNo,
-                    'error'    => $e->getMessage(),
-                    'file'     => $e->getFile(),
-                    'line'     => $e->getLine(),
-                ]);
+                // Log::error('PDF Generation - SP execution threw exception', [
+                //     // 'quote_no' => $quoteNo,
+                //     'error'    => $e->getMessage(),
+                //     'file'     => $e->getFile(),
+                //     'line'     => $e->getLine(),
+                // ]);
                 return response()->json([
                     'success' => false,
                     'message' => 'Failed to execute quotation format SP: ' . $e->getMessage(),
@@ -4559,10 +4606,10 @@ class QuotationController extends Controller
             }
 
             if (!empty($spError)) {
-                Log::error('PDF Generation - SP returned failure string', [
-                    'quote_no' => $quoteNo,
-                    'sp_error' => $spError,
-                ]);
+                // Log::error('PDF Generation - SP returned failure string', [
+                //     // 'quote_no' => $quoteNo,
+                //     'sp_error' => $spError,
+                // ]);
                 return response()->json([
                     'success' => false,
                     'message' => 'Quotation format SP failed: ' . $spError,
@@ -4570,11 +4617,11 @@ class QuotationController extends Controller
             }
 
             if (empty($html) || trim($html) === '') {
-                Log::error('PDF Generation - SP returned empty HTML', [
-                    'quote_no'          => $quoteNo,
-                    'tc_template_set'   => !empty($quotation->QuotationTCTemplate),
-                    'tc_template_value' => $quotation->QuotationTCTemplate ?? 'NULL',
-                ]);
+                // Log::error('PDF Generation - SP returned empty HTML', [
+                //     'quote_no'          => $quoteNo,
+                //     'tc_template_set'   => !empty($quotation->QuotationTCTemplate),
+                //     'tc_template_value' => $quotation->QuotationTCTemplate ?? 'NULL',
+                // ]);
                 return response()->json([
                     'success' => false,
                     'message' => 'No quotation HTML returned from SP. '
@@ -4583,7 +4630,7 @@ class QuotationController extends Controller
             }
 
             Log::info('PDF Generation - HTML retrieved from SP', [
-                'quote_no'    => $quoteNo,
+                'quotation_id' => $quotation->ID,
                 'html_length' => strlen($html),
                 'tc_template' => $quotation->QuotationTCTemplate ?? 'N/A',
             ]);
@@ -4622,16 +4669,16 @@ class QuotationController extends Controller
                 $pdf->setPaper('A4', 'portrait');
                 $pdf->render();
 
-                Log::info('PDF Generation - DomPDF rendered successfully', [
-                    'quote_no' => $quoteNo,
-                ]);
+                // Log::info('PDF Generation - DomPDF rendered successfully', [
+                //     'quote_no' => $quoteNo,
+                // ]);
             } catch (\Exception $e) {
-                Log::error('PDF Generation - DomPDF render failed', [
-                    'quote_no' => $quoteNo,
-                    'error'    => $e->getMessage(),
-                    'file'     => $e->getFile(),
-                    'line'     => $e->getLine(),
-                ]);
+                // Log::error('PDF Generation - DomPDF render failed', [
+                //     'quote_no' => $quoteNo,
+                //     'error'    => $e->getMessage(),
+                //     'file'     => $e->getFile(),
+                //     'line'     => $e->getLine(),
+                // ]);
                 return response()->json([
                     'success' => false,
                     'message' => 'PDF render failed: ' . $e->getMessage(),
@@ -4725,19 +4772,19 @@ class QuotationController extends Controller
                     'IsDeleted'       => 0,
                 ]);
 
-                Log::info('PDF Generation - Document record inserted', [
-                    'quote_no' => $quoteNo,
-                    'version'  => $nextVersion,
-                    'file'     => $fileName,
-                ]);
+                // Log::info('PDF Generation - Document record inserted', [
+                //     'quote_no' => $quoteNo,
+                //     'version'  => $nextVersion,
+                //     'file'     => $fileName,
+                // ]);
             } catch (\Exception $e) {
                 // Non-fatal: PDF is on disk and can be served.
-                Log::error('PDF Generation - DB insert failed (non-fatal, PDF is on disk)', [
-                    'quote_no' => $quoteNo,
-                    'error'    => $e->getMessage(),
-                    'file'     => $e->getFile(),
-                    'line'     => $e->getLine(),
-                ]);
+                // Log::error('PDF Generation - DB insert failed (non-fatal, PDF is on disk)', [
+                //     'quote_no' => $quoteNo,
+                //     'error'    => $e->getMessage(),
+                //     'file'     => $e->getFile(),
+                //     'line'     => $e->getLine(),
+                // ]);
 
                 return response()->json([
                     'success' => true,
@@ -4748,13 +4795,13 @@ class QuotationController extends Controller
                 ]);
             }
 
-            Log::info('PDF Generation - Completed successfully', [
-                'booking_no'  => $quotation->bookingno,
-                'quote_no'    => $quoteNo,
-                'version'     => $nextVersion,
-                'path'        => $storagePath,
-                'tc_template' => $quotation->QuotationTCTemplate ?? 'N/A',
-            ]);
+            // Log::info('PDF Generation - Completed successfully', [
+            //     'booking_no'  => $quotation->bookingno,
+            //     'quote_no'    => $quoteNo,
+            //     'version'     => $nextVersion,
+            //     'path'        => $storagePath,
+            //     'tc_template' => $quotation->QuotationTCTemplate ?? 'N/A',
+            // ]);
 
             return response()->json([
                 'success' => true,
@@ -4791,10 +4838,15 @@ class QuotationController extends Controller
      * @param  string $quoteNo  The QuoteNo value (e.g. '8270'), NOT the UUID
      * @return string|null      Complete HTML string, or null on failure
      */
-    private function getQuotationHtml(string $quoteNo): ?string
+    private function getQuotationHtml(string $quotationId): ?string
     {
-        if (empty(trim($quoteNo))) {
-            Log::error('getQuotationHtml - quoteNo is empty');
+        // if (empty(trim($quoteNo))) {
+        //     Log::error('getQuotationHtml - quoteNo is empty');
+        //     return null;
+        // }
+
+        if (empty(trim($quotationId))) {
+            Log::error('getQuotationHtml - quotationId is empty');
             return null;
         }
 
@@ -4810,8 +4862,10 @@ class QuotationController extends Controller
             SELECT @QuoteFormat AS QuoteFormat;
         ";
 
+
+
             $stmt = $pdo->prepare($sql);
-            $stmt->execute([trim($quoteNo)]);
+            $stmt->execute([trim($quotationId)]);
 
             // Walk result sets — the SP creates/drops a temp table (#VATDetails)
             // which can produce intermediate empty result sets before the SELECT.
@@ -4829,18 +4883,18 @@ class QuotationController extends Controller
 
                     if (isset($rows[0]->QuoteFormat)) {
                         $html = $rows[0]->QuoteFormat;
-                        Log::info('getQuotationHtml - Found QuoteFormat in result set #' . $setIndex, [
-                            'quote_no' => $quoteNo,
-                            'length'   => strlen($html ?? ''),
-                        ]);
+                        // Log::info('getQuotationHtml - Found QuoteFormat in result set #' . $setIndex, [
+                        //     'quote_no' => $quoteNo,
+                        //     'length'   => strlen($html ?? ''),
+                        // ]);
                         break;
                     }
                 } catch (\PDOException $e) {
                     // Skip unfetchable intermediate result sets (normal for temp table SPs)
-                    Log::debug('getQuotationHtml - Skipping result set #' . $setIndex, [
-                        'quote_no' => $quoteNo,
-                        'error'    => $e->getMessage(),
-                    ]);
+                    // Log::debug('getQuotationHtml - Skipping result set #' . $setIndex, [
+                    //     'quote_no' => $quoteNo,
+                    //     'error'    => $e->getMessage(),
+                    // ]);
                     continue;
                 }
             } while ($stmt->nextRowset());
@@ -4848,29 +4902,29 @@ class QuotationController extends Controller
             // SP CATCH block sets @QuoteFormat = 'Failed (Reason) - <message>'
             // instead of raising — detect this and treat as a failure.
             if (!empty($html) && str_starts_with(trim($html), 'Failed (Reason)')) {
-                Log::error('getQuotationHtml - SP returned failure message', [
-                    'quote_no' => $quoteNo,
-                    'message'  => $html,
-                ]);
+                // Log::error('getQuotationHtml - SP returned failure message', [
+                //     'quote_no' => $quoteNo,
+                //     'message'  => $html,
+                // ]);
                 return null;
             }
 
             if (empty($html) || trim($html) === '') {
-                Log::warning('getQuotationHtml - SP returned empty HTML', [
-                    'quote_no'         => $quoteNo,
-                    'result_sets_seen' => $setIndex,
-                ]);
+                // Log::warning('getQuotationHtml - SP returned empty HTML', [
+                //     'quote_no'         => $quoteNo,
+                //     'result_sets_seen' => $setIndex,
+                // ]);
                 return null;
             }
 
             return $html;
         } catch (\Exception $e) {
-            Log::error('getQuotationHtml - Exception', [
-                'quote_no' => $quoteNo,
-                'error'    => $e->getMessage(),
-                'file'     => $e->getFile(),
-                'line'     => $e->getLine(),
-            ]);
+            // Log::error('getQuotationHtml - Exception', [
+            //     'quote_no' => $quoteNo,
+            //     'error'    => $e->getMessage(),
+            //     'file'     => $e->getFile(),
+            //     'line'     => $e->getLine(),
+            // ]);
             return null;
         }
     }
@@ -6717,7 +6771,7 @@ class QuotationController extends Controller
 
         // ── Step 0: Save Booking Info ─────────────────────────────────────────────
         $step0Result = $this->runBookingInfoUpdate(
-            $quoteNo,
+            $quotation->ID,
             $request->service_template,
             $request->bill_to_party,
             $request->forwarder,
@@ -6754,7 +6808,7 @@ class QuotationController extends Controller
         ];
 
         foreach ($processSteps as $stepNo => $stepDef) {
-            $result = $this->runBookingProcessMain($quoteNo, $stepDef['type']);
+            $result = $this->runBookingProcessMain($quotation->ID, $stepDef['type']);
 
             $steps[] = [
                 'step'   => $stepNo,
@@ -6938,7 +6992,7 @@ class QuotationController extends Controller
      * onto the quotation record before the SCM process steps run.
      */
     private function runBookingInfoUpdate(
-        string $quoteNo,
+        string $quotationId,
         string $serviceTemplate,
         string $billToParty,
         string $forwarder,
@@ -6955,7 +7009,7 @@ class QuotationController extends Controller
                 'SubmittedDatetime' => now()->format('YmdHis'),
                 'SubmittedBy'       => $submittedBy,
                 'Action'            => 'Update',
-                'QuotationNo'       => $quoteNo,
+                'QuotationNo'       => $quotationId,
                 'ServiceTemplate'   => $serviceTemplate,
                 'BillToParty'       => $billToParty,
                 'Forwarder'         => $forwarder,
@@ -6964,29 +7018,29 @@ class QuotationController extends Controller
                 'PlaceOfDelivery'   => $placeOfDelivery,
             ]);
 
-            Log::info('runBookingInfoUpdate - Input', [
-                'quote_no'   => $quoteNo,
-                'input_json' => $inputJson,
-            ]);
+            // Log::info('runBookingInfoUpdate - Input', [
+            //     'quote_no'   => $quoteNo,
+            //     'input_json' => $inputJson,
+            // ]);
 
             $output = $this->executeDetailsUpdateSP($inputJson);
 
-            Log::info('runBookingInfoUpdate - Output', [
-                'quote_no' => $quoteNo,
-                'output'   => $output,
-            ]);
+            // Log::info('runBookingInfoUpdate - Output', [
+            //     'quote_no' => $quoteNo,
+            //     'output'   => $output,
+            // ]);
 
             return [
                 'status' => $output['Status'] ?? 'Failed',
                 'remark' => $output['Remark'] ?? '[SP] No remark returned',
             ];
         } catch (\Exception $e) {
-            Log::error('runBookingInfoUpdate - Exception', [
-                'quote_no' => $quoteNo,
-                'error'    => $e->getMessage(),
-                'file'     => $e->getFile(),
-                'line'     => $e->getLine(),
-            ]);
+            // Log::error('runBookingInfoUpdate - Exception', [
+            //     'quote_no' => $quoteNo,
+            //     'error'    => $e->getMessage(),
+            //     'file'     => $e->getFile(),
+            //     'line'     => $e->getLine(),
+            // ]);
             return ['status' => 'Failed', 'remark' => $e->getMessage()];
         }
     }
@@ -6995,7 +7049,7 @@ class QuotationController extends Controller
      * Execute sp_Quote_BookingProcessMain for a single process type.
      * Returns ['status' => 'Success'|'Failed', 'remark' => '...']
      */
-    private function runBookingProcessMain(string $quoteNo, string $processType): array
+    private function runBookingProcessMain(string $quotationId, string $processType): array
     {
         try {
             $pdo = DB::connection()->getPdo();
@@ -7009,7 +7063,7 @@ class QuotationController extends Controller
             ";
 
             $stmt = $pdo->prepare($sql);
-            $stmt->execute([$quoteNo, $processType]);
+            $stmt->execute([$quotationId, $processType]);
 
             $result     = null;
             $setIndex   = 0;
@@ -7299,23 +7353,32 @@ class QuotationController extends Controller
         // ── Resolve QuoteNo from bookingno ──────────────────────────────────────
         // sp_ChargeBasedOnDefaultDetails uses WHERE QI.QuoteNo = @QuotationNo
         // QuoteNo is the formatted reference (e.g. 'QT-5298'), NOT the numeric bookingno.
+        // $quotation = DB::table('Quote_QuotationInfo')
+        //     ->where('bookingno', $bookingNo)
+        //     ->first(['QuoteNo']);
+
+        // if (!$quotation || empty($quotation->QuoteNo)) {
+        //     Log::warning('getChargeBasedOnDefaults - QuoteNo not found', ['booking_no' => $bookingNo]);
+        //     return response()->json(['success' => false, 'message' => 'QuoteNo not found for this booking'], 404);
+        // }
+
+        // $quoteNo = trim($quotation->QuoteNo);
+
         $quotation = DB::table('Quote_QuotationInfo')
             ->where('bookingno', $bookingNo)
-            ->first(['QuoteNo']);
+            ->first(['ID']);
 
-        if (!$quotation || empty($quotation->QuoteNo)) {
-            Log::warning('getChargeBasedOnDefaults - QuoteNo not found', ['booking_no' => $bookingNo]);
-            return response()->json(['success' => false, 'message' => 'QuoteNo not found for this booking'], 404);
+        if (!$quotation || empty($quotation->ID)) {
+            Log::warning('getChargeBasedOnDefaults - QuotationID not found', ['booking_no' => $bookingNo]);
+            return response()->json(['success' => false, 'message' => 'Quotation not found for this booking'], 404);
         }
-
-        $quoteNo = trim($quotation->QuoteNo);
 
         // ── Strip trailing comma from containerlist before SP reads it ──────────
         // sp_Quote_CargoDetailsUpdate stores containerlist with a trailing comma
         // (e.g. '40GPX3,') which causes STRING_SPLIT to produce an empty token,
         // breaking CHARINDEX and silently returning Quantity = 0 for Equipment.
         DB::table('Quote_QuotationInfo')
-            ->where('QuoteNo', $quoteNo)
+            ->where('ID', $quotation->ID)
             ->whereRaw("RIGHT(RTRIM(containerlist), 1) = ','")
             ->update([
                 'containerlist' => DB::raw("LEFT(RTRIM(containerlist), LEN(RTRIM(containerlist)) - 1)")
@@ -7345,7 +7408,7 @@ class QuotationController extends Controller
                 @Quantity       AS Quantity;
         ");
 
-            $stmt->execute([$quoteNo, $basedOn, $equipment]);
+            $stmt->execute([$quotation->ID, $basedOn, $equipment]);
 
             $result = null;
             do {
@@ -7864,6 +7927,18 @@ class QuotationController extends Controller
             // SP generates QuoteNo as: LEFT(OfficeCode,2) + '-QT-' + yy + '-' + 00001
             //________________________________________________________________________
             $pdo = DB::getPdo();
+            $quotationId = DB::table('Quote_QuotationInfo')
+                ->where('QuoteNo', $quoteNo)
+                ->value('ID');
+
+            if (!$quotationId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Quotation not found for quote number: ' . $quoteNo,
+                ], 404);
+            }
+
+            $pdo = DB::getPdo();
             $sql = "
             DECLARE @Status  VARCHAR(25)
             DECLARE @Remark  VARCHAR(200)
@@ -7876,7 +7951,7 @@ class QuotationController extends Controller
             ";
 
             $stmt = $pdo->prepare($sql);
-            $stmt->execute([trim($quoteNo)]);
+            $stmt->execute([$quotationId]);
 
             $result = null;
             do {

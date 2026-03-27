@@ -95,6 +95,7 @@ Route::group(['middleware' => ['auth', 'HtmlMinifier']], function () {
      * Home
      */
     Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
+    Route::post('/home/switch-office', [App\Http\Controllers\HomeController::class, 'switchOffice'])->name('home.switch-office');
     Route::get('/archive', [App\Http\Controllers\HomeController::class, 'archive'])->name('archive');
     Route::post('/reports/filter', [App\Http\Controllers\HomeController::class, 'reportsFilter'])->name('reportsFilter');
     Route::get('/archive/data', [App\Http\Controllers\HomeController::class, 'getMasterData'])->name('archive.data');
