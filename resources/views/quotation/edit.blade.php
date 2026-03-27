@@ -828,8 +828,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         MODALS
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         ============================================ -->
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 MODALS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1414,8 +1414,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1858,9 +1858,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -2106,9 +2106,10 @@
                 $('#cost_base_currency_label').text('(' + bc + ')');
             }
 
-            // Hidden field to hold the ClientID selected from Company Name autocomplete
+            // Hidden fields to hold the ClientID and ClientCode selected from Company Name autocomplete
             $('input[data-field="companyname"]').closest('.form-group').find('.col-sm-8')
-                .append('<input type="hidden" id="selectedClientId" value="">');
+                .append('<input type="hidden" id="selectedClientId" value="">')
+                .append('<input type="hidden" id="selectedClientCode" value="">');
 
 
             // ============================================
@@ -3620,6 +3621,7 @@
                 const chargeData = {
                     _token: '{{ csrf_token() }}',
                     action: currentEditingCharge ? 'Edit' : 'Add',
+                    quotation_id: quotationId,
                     booking_no: bookingNo,
                     office_code: officeCode,
                     quote_charge_id: currentEditingCharge || '',
@@ -5105,7 +5107,7 @@
                     }
                 }
 
-                // Countries — dropdown only, no search
+                // Countries - store both code and name
                 $.ajax({
                     url: '{{ route('quotation.lookup.countries') }}',
                     type: 'GET',
@@ -5118,25 +5120,23 @@
 
                         (Array.isArray(data) ? data : []).forEach(function(c) {
                             const name = (c.CountryName || '').trim();
-                            const isoCode = (c.CountryCode || '')
-                                .trim(); // e.g. "KE"
-                            const countryId = (c.CountryID || '').trim(); // UUID
+                            const isoCode = (c.CountryCode || '').trim();
+                            const countryId = (c.CountryID || '').trim();
 
-                            // Pre-select by ISO code match against savedCustomerCountryCode
                             const isSelected = isoCode === savedCustomerCountryCode;
 
                             $sel.append(
-                                `<option value="${countryId}" 
-                                data-name="${name}" 
-                                data-code="${isoCode}"
-                                ${isSelected ? 'selected' : ''}>${name}</option>`
+                                `<option value="${isoCode}"  // Store the code as the value
+                    data-name="${name}"
+                    data-code="${isoCode}"
+                    ${isSelected ? 'selected' : ''}>${name}</option>`
                             );
                         });
                     },
                     complete: oneDone
                 });
 
-                // Industry Types — unchanged
+                // Industry Types - store both code and name
                 $.ajax({
                     url: '{{ route('quotation.lookup.industryTypes') }}',
                     type: 'GET',
@@ -5148,10 +5148,16 @@
                             .append('<option value="">-- Select --</option>');
                         (Array.isArray(data) ? data : []).forEach(function(i) {
                             const name = i.Name || '';
+                            const code = i.Code || ''; // Assuming the API returns Code field
                             $sel.append(
-                                `<option value="${name}" ${name === savedCustomerIndustry ? 'selected' : ''}>${name}</option>`
+                                `<option value="${code}" data-name="${name}">${name}</option>`
                             );
                         });
+
+                        // Pre-select if we have saved industry
+                        if (savedCustomerIndustry) {
+                            $sel.val(savedCustomerIndustry);
+                        }
                     },
                     complete: oneDone
                 });
@@ -5367,10 +5373,14 @@
                 const agentType = $('#agentTypeSelect').val() || '';
                 const companyName = $('input[data-field="companyname"]').val()?.trim() || '';
                 const address1 = $('input[data-field="pri_partner_steet"]').val()?.trim() || '';
-                const country = $('#customerCountrySelect option:selected').data('code')
-                    ?.trim() || '';
-                const industry = $('#customerIndustrySelect').val()?.trim() || '';
 
+                const countryCode = $('#customerCountrySelect option:selected').data('code')?.trim() || '';
+                const countryName = $('#customerCountrySelect option:selected').text()?.trim() || '';
+
+                const industryCode = $('#customerIndustrySelect option:selected').val()?.trim() || '';
+                const industryName = $('#customerIndustrySelect option:selected').text()?.trim() || '';
+
+                // Validation
                 if (!customerType) {
                     showNotification('Customer Type is required', 'error');
                     return;
@@ -5388,82 +5398,94 @@
                     showNotification('Address 1 is required', 'error');
                     return;
                 }
-                if (!country) {
+                if (!countryCode) {
                     showNotification('Country is required', 'error');
                     return;
                 }
-                if (!industry) {
+                if (!industryCode) {
                     showNotification('Industry Type is required', 'error');
                     return;
                 }
+
+                // Format date as YYYYMMDDHHMMSS (14 digits, no letters, no separators)
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                const day = String(now.getDate()).padStart(2, '0');
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const seconds = String(now.getSeconds()).padStart(2, '0');
+                const submittedDatetime = `${year}${month}${day}${hours}${minutes}${seconds}`;
+
+                console.log('Formatted datetime:', submittedDatetime); // Should be like: 20260327151222
+
+                // Build the JSON input
+                const inputJson = JSON.stringify({
+                    OperationType: "CustomerUpdate",
+                    SubmittedDatetime: submittedDatetime,
+                    SubmittedBy: "{{ Auth::user()->username ?? 'system' }}",
+                    Action: "Update",
+                    QuotationID: quotationId,
+                    ClientCode: $('#selectedClientCode').val() || '',
+                    Company: companyName,
+                    Address1: address1,
+                    Address2: $('#customerAddress2Input').val()?.trim() || '',
+                    City: $('#customerCityInput').val()?.trim() || '',
+                    ZipCode: $('#customerZipInput').val()?.trim() || '',
+                    State: $('#customerStateInput').val()?.trim() || '',
+                    CountryCode: countryCode,
+                    ContactPerson: $('#customerContactInput').val()?.trim() || '',
+                    Department: '',
+                    EmailID: $('#customerEmailInput').val()?.trim() || '',
+                    PhoneNo: $('#customerPhoneInput').val()?.trim() || '',
+                    IndustryCode: industryCode,
+                    Industry: industryName,
+                    CustomerType: customerType,
+                    AgentType: agentType
+                });
+
+                console.log('Saving with ClientCode:', $('#selectedClientCode').val());
+                console.log('Saving JSON:', inputJson);
 
                 $.ajax({
                     url: '{{ route('quotation.customer.save') }}',
                     type: 'POST',
                     data: {
                         _token: '{{ csrf_token() }}',
-                        booking_no: quoteNo,
-                        customer_type: customerType,
-                        agent_type: agentType,
-                        company: companyName,
-                        address1: address1,
-                        address2: $('#customerAddress2Input').val()?.trim() || '',
-                        city: $('#customerCityInput').val()?.trim() || '',
-                        state: $('#customerStateInput').val()?.trim() || '',
-                        contact_person: $('#customerContactInput').val()?.trim() || '',
-                        phone: $('#customerPhoneInput').val()?.trim() || '',
-                        zip: $('#customerZipInput').val()?.trim() || '',
-                        email: $('#customerEmailInput').val()?.trim() || '',
-                        country: country,
-                        industry: industry,
-                        client_id: $('#selectedClientId').val() ||
-                            '{{ $quotation->clientid ?? '' }}',
+                        input_json: inputJson
                     },
                     beforeSend: function() {
                         $('#saveCustomerDetailsBtn').prop('disabled', true)
-                            .html(
-                                '<i class="fas fa-spinner fa-spin mr-1"></i> Saving...'
-                            );
+                            .html('<i class="fas fa-spinner fa-spin mr-1"></i> Saving...');
                     },
                     success: function(response) {
                         if (response.success) {
-                            showNotification('Customer details saved successfully',
-                                'success');
+                            showNotification(response.message ||
+                                'Customer details saved successfully', 'success');
 
-                            // FIX: country holds the code — show the human-readable name from
-                            // the selected option's data-name attribute instead
-                            $('#customerCountryDisplay').val(
-                                $('#customerCountrySelect option:selected')
-                                .data('name') ||
-                                ''
-                            ).show();
+                            // Update display fields
+                            $('#customerCountryDisplay').val(countryName).show();
                             $('#customerCountryEditWrap').hide();
-
-                            $('#customerIndustryDisplay').val(industry).show();
+                            $('#customerIndustryDisplay').val(industryName).show();
                             $('#customerIndustrySelect').hide();
 
-                            $('input[data-field="companyname"]').attr('readonly',
-                                true);
-                            $('input[data-field="pri_partner_steet"]').attr(
-                                'readonly', true);
+                            $('input[data-field="companyname"]').attr('readonly', true);
+                            $('input[data-field="pri_partner_steet"]').attr('readonly', true);
                             $('.customer-mandatory-star').hide();
 
                             originalCustomerType = customerType;
                             originalAgentType = agentType;
-                            $('#customerTypeSelect, #agentTypeSelect').prop(
-                                'disabled', true);
-                            $('#saveCustomerDetailsBtn, #cancelCustomerDetailsBtn')
-                                .hide();
+                            $('#customerTypeSelect, #agentTypeSelect').prop('disabled', true);
+                            $('#saveCustomerDetailsBtn, #cancelCustomerDetailsBtn').hide();
                             $('#editCustomerDetailsBtn').show();
                         } else {
-                            showNotification(response.message || 'Failed to save',
-                                'error');
+                            showNotification(response.message || 'Failed to save', 'error');
                         }
                     },
                     error: function(xhr) {
-                        showNotification(xhr.responseJSON?.message ||
-                            'Failed to save',
-                            'error');
+                        console.error('Save error:', xhr);
+                        showNotification(xhr.responseJSON?.message || 'Failed to save',
+                        'error');
                     },
                     complete: function() {
                         $('#saveCustomerDetailsBtn').prop('disabled', false)
@@ -5561,11 +5583,36 @@
                 $(this).find('i').toggleClass('fa-chevron-down fa-chevron-up');
             });
 
+            // Replace the existing card-header click handler with this:
             $('.card-header').on('click', function(e) {
-                if (!$(e.target).closest('[data-card-widget="collapse"]').length &&
-                    !$(e.target).closest('.show-items-link').length) {
-                    $(this).find('[data-card-widget="collapse"]').click();
+                if ($(e.target).closest(
+                        '.ui-autocomplete, .ui-autocomplete li, select, input, button, a, label, .show-items-link, [data-card-widget="collapse"]'
+                    ).length) {
+                    return; // Do nothing for autocomplete or form elements
                 }
+                $(this).find('[data-card-widget="collapse"]').click();
+            });
+
+            // Also ensure autocomplete mousedown doesn't bubble (you already have this, but keep it)
+            $(document).on('mousedown', '.ui-autocomplete', function(e) {
+                e.stopPropagation();
+            });
+
+            $(document).on('mousedown', '.ui-autocomplete li', function(e) {
+                // e.preventDefault();
+                e.stopPropagation();
+            });
+
+            // Stop .card-header collapse from swallowing autocomplete dropdown clicks.
+            // mousedown bubbles from .ui-autocomplete up to .card-header, which triggers
+            // collapse and destroys focus before jQuery UI's select (mouseup) fires —
+            // making every suggestion appear un-clickable.
+            $(document).on('mousedown', '.ui-autocomplete', function(e) {
+                e.stopPropagation();
+            });
+
+            $(document).on('mousedown', '.ui-autocomplete li', function(e) {
+                e.preventDefault();
             });
 
             $('.card').not('.card-success, .card-danger').each(function() {
@@ -6418,12 +6465,6 @@
                 };
             }
 
-            // ============================================
-            // COMPANY NAME AUTOCOMPLETE
-            // Calls sp_ClientList for name suggestions.
-            // On selection calls sp_ClientDetails to auto-fill Email + Industry.
-            // Only active while Customer Details is in edit mode.
-            // ============================================
             function initCompanyAutocomplete() {
                 const $input = $('input[data-field="companyname"]');
 
@@ -6434,6 +6475,7 @@
                 $input.autocomplete({
                     minLength: 2,
                     delay: 350,
+                    appendTo: $input.closest('.card-body'),
                     source: function(request, response) {
                         $.ajax({
                             url: '{{ route('quotation.client-list') }}',
@@ -6442,8 +6484,7 @@
                                 filter: request.term
                             },
                             success: function(res) {
-                                if (!res.success || !res.clients || !res.clients
-                                    .length) {
+                                if (!res.success || !res.clients || !res.clients.length) {
                                     response([{
                                         label: 'No clients found for "' +
                                             request.term + '"',
@@ -6454,20 +6495,16 @@
                                 }
                                 response(res.clients.map(function(c) {
                                     return {
-                                        label: (c.ClientCode ||
-                                            '') + ' — ' + (c
+                                        label: (c.ClientCode || '') + ' — ' + (c
                                             .ClientName || ''),
                                         value: c.ClientName || '',
                                         clientId: c.ClientID || '',
-                                        clientCode: c.ClientCode ||
-                                            ''
+                                        clientCode: c.ClientCode || ''
                                     };
                                 }));
                             },
                             error: function(xhr) {
-                                console.error('Client list lookup failed:', xhr
-                                    .status, xhr
-                                    .responseText);
+                                console.error('Client list lookup failed:', xhr);
                                 response([{
                                     label: 'Error loading clients',
                                     value: '',
@@ -6476,77 +6513,85 @@
                             }
                         });
                     },
+                    focus: function(event, ui) {
+                        event.preventDefault();
+                        return false;
+                    },
                     select: function(event, ui) {
+                        console.log('=== AUTOCOMPLETE SELECTED ===');
+                        console.log('Client Code (e.g., KEAA):', ui.item.clientCode);
+                        console.log('Client ID (GUID):', ui.item.clientId);
+
                         if (ui.item.disabled) {
                             event.preventDefault();
                             return false;
                         }
 
+                        // Set the company name and store both ID and Code
                         $input.val(ui.item.value);
                         $('#selectedClientId').val(ui.item.clientId);
+                        $('#selectedClientCode').val(ui.item.clientCode);
 
+                        // Fetch client details using the CLIENT CODE (e.g., "KEAA")
                         if (ui.item.clientCode) {
+                            console.log('Fetching client details with customer_code:', ui.item
+                                .clientCode);
+
                             $.ajax({
                                 url: '{{ route('quotation.client-details') }}',
                                 type: 'GET',
                                 data: {
-                                    quotation_no: quoteNo,
                                     customer_code: ui.item.clientCode
                                 },
                                 success: function(res) {
-                                    if (!res.success) return;
+                                    console.log('Client details response:', res);
 
-                                    // Address
-                                    $('input[data-field="pri_partner_steet"]')
-                                        .val(res
-                                            .address1 || '');
-                                    $('#customerAddress2Input').val(res
-                                        .address2 || '');
+                                    if (!res.success) {
+                                        console.error('Client details failed:', res
+                                        .message);
+                                        showNotification(res.message ||
+                                            'Failed to load client details', 'error');
+                                        return;
+                                    }
+
+                                    // Populate Address fields
+                                    $('input[data-field="pri_partner_steet"]').val(res
+                                        .address1 || '');
+                                    $('#customerAddress2Input').val(res.address2 || '');
                                     $('#customerCityInput').val(res.city || '');
-                                    $('#customerStateInput').val(res.state ||
-                                        '');
+                                    $('#customerStateInput').val(res.state || '');
                                     $('#customerZipInput').val(res.zip || '');
 
-                                    // Contact
-                                    $('#customerContactInput').val(res
-                                        .contact_person ||
-                                        '');
-                                    $('#customerPhoneInput').val(res.phone ||
-                                        '');
-                                    $('#customerEmailInput').val(res.email ||
-                                        '');
+                                    // Populate Contact fields
+                                    $('#customerContactInput').val(res.contact_person ||
+                                    '');
+                                    $('#customerPhoneInput').val(res.phone || '');
+                                    $('#customerEmailInput').val(res.email || '');
 
-                                    // Country — set display + select
+                                    // Populate Country
                                     if (res.country_name) {
-                                        $('#customerCountryDisplay').val(res
-                                            .country_name);
+                                        $('#customerCountryDisplay').val(res.country_name);
                                     }
                                     if (res.country_id) {
-                                        // Append option if not already present, then select
-                                        const $cSel = $(
-                                            '#customerCountrySelect');
-                                        if ($cSel.find(
-                                                `option[value="${res.country_id}"]`
-                                            )
+                                        const $cSel = $('#customerCountrySelect');
+                                        if ($cSel.find(`option[value="${res.country_id}"]`)
                                             .length === 0) {
                                             $cSel.append(
-                                                `<option value="${res.country_id}"
-                                                data-name="${res.country_name}"
-                                                data-code="${res.country_code}">${res.country_name}</option>`
+                                                `<option value="${res.country_id}" 
+                                    data-name="${res.country_name}" 
+                                    data-code="${res.country_code}">${res.country_name}</option>`
                                             );
                                         }
                                         $cSel.val(res.country_id);
                                     }
 
-                                    // Industry — set display + select
+                                    // Populate Industry
                                     if (res.industry_name) {
                                         $('#customerIndustryDisplay').val(res
-                                            .industry_name);
-                                        const $iSel = $(
-                                            '#customerIndustrySelect');
+                                        .industry_name);
+                                        const $iSel = $('#customerIndustrySelect');
                                         if ($iSel.find(
-                                                `option[value="${res.industry_name}"]`
-                                            )
+                                                `option[value="${res.industry_name}"]`)
                                             .length === 0) {
                                             $iSel.append(
                                                 `<option value="${res.industry_name}">${res.industry_name}</option>`
@@ -6555,12 +6600,11 @@
                                         $iSel.val(res.industry_name);
                                     }
 
-                                    // Agent Type — set select if returned
+                                    // Populate Agent Type
                                     if (res.agent_type_name) {
                                         const $aSel = $('#agentTypeSelect');
                                         if ($aSel.find(
-                                                `option[value="${res.agent_type_name}"]`
-                                            )
+                                                `option[value="${res.agent_type_name}"]`)
                                             .length === 0) {
                                             $aSel.append(
                                                 `<option value="${res.agent_type_name}">${res.agent_type_name}</option>`
@@ -6569,31 +6613,56 @@
                                         $aSel.val(res.agent_type_name);
                                     }
 
-                                    // Populate visible Client ID field and store UUID for save payload
-                                    $('#clientIdDisplay').val(res.client_code ||
-                                        '');
-                                    $('#selectedClientId').val(res.client_id ||
-                                        ui.item
-                                        .clientId);
+                                    $('#clientIdDisplay').val(res.client_code || '');
+
+                                    // If in New Agent mode, keep fields editable
+                                    const customerType = $('#customerTypeSelect').val();
+                                    if (customerType === 'New Agent') {
+                                        $('#customerDetailsCard .card-body')
+                                            .find('input:not([type="hidden"])')
+                                            .prop('readonly', false)
+                                            .css({
+                                                'background-color': '#fff9e6',
+                                                'border-color': '#ffc107'
+                                            });
+
+                                        $('input[data-field="pri_partner_steet"]')
+                                            .prop('readonly', false)
+                                            .css({
+                                                'background-color': '#fff9e6',
+                                                'border-color': '#ffc107'
+                                            });
+                                    }
+
+                                    showNotification('Client details loaded successfully',
+                                        'success');
                                 },
                                 error: function(xhr) {
-                                    console.error('getClientDetails failed:',
-                                        xhr
-                                        .responseJSON?.message);
+                                    console.error('getClientDetails failed:', xhr);
+                                    showNotification(xhr.responseJSON?.message ||
+                                        'Failed to load client details', 'error');
                                 }
                             });
                         }
+
+                        event.preventDefault();
                         return false;
+                    },
+                    open: function() {
+                        const $widget = $(this).autocomplete('widget');
+                        $widget.css('z-index', 9999);
+
+                        $widget.off('mousedown.autocomplete-fix').on('mousedown.autocomplete-fix',
+                            function(e) {
+                                e.stopPropagation();
+                                return true;
+                            });
                     }
-                }).autocomplete('instance')._renderItem = function(ul, item) {
-                    return $('<li>')
-                        .addClass(item.disabled ? 'ui-state-disabled' : '')
-                        .append($('<div>').text(item.label))
-                        .appendTo(ul);
-                };
+                });
             }
 
         }); // end document.ready
+
 
         function updateStatus(status, reasonCode, reasonRemark, bookingNo) {
             $.ajax({
