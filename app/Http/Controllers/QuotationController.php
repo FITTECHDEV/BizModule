@@ -4003,6 +4003,7 @@ class QuotationController extends Controller
             'templates' => $templates
         ]);
     }
+    
 
     /**
      * Load T&C templates via sp_Quote_CommunicationDetail_List.
