@@ -7415,17 +7415,16 @@ class QuotationController extends Controller
     // ============================================
     public function getContainers(Request $request)
     {
-        $quoteNo = $request->input('quote_no', '');
+        $quotationId = $request->input('quotation_id', '');
 
-        if (!$quoteNo) {
-            return response()->json(['success' => false, 'message' => 'Quote number required']);
+        if (!$quotationId) {
+            return response()->json(['success' => false, 'message' => 'Quotation ID required']);
         }
 
         try {
             $containers = DB::connection('sqlsrv')
                 ->table('Quote_Quotation_EquipmentDetails as QE')
-                ->join('Quote_QuotationInfo as QI', 'QI.ID', '=', 'QE.QuotationInfoID')
-                ->where('QI.QuoteNo', $quoteNo)
+                ->where('QE.QuotationInfoID', $quotationId)
                 ->where('QE.IsActive', 1)
                 ->where('QE.IsDeleted', 0)
                 ->select('QE.EquipmentType', 'QE.Quantity')
@@ -7446,7 +7445,7 @@ class QuotationController extends Controller
     public function saveCargoDetails(Request $request)
     {
         $request->validate([
-            'quote_no'     => 'required|string',
+            'quotation_id' => 'required|string',
             'commodity'    => 'nullable|string',
             'cargo_volume' => 'nullable|numeric|min:0',
             'containers'   => 'nullable|string',
@@ -7459,13 +7458,10 @@ class QuotationController extends Controller
         // eliminating any casing or whitespace mismatch from the request.
         $quoteNo = DB::connection('sqlsrv')
             ->table('Quote_QuotationInfo')
-            ->where('QuoteNo', $request->quote_no)
+            ->where('ID', $request->quotation_id)
             ->value('QuoteNo');
 
         if (!$quoteNo) {
-            Log::warning('saveCargoDetails - quotation not found', [
-                'quote_no' => $request->quote_no,
-            ]);
             return response()->json([
                 'success' => false,
                 'message' => 'Quotation not found'
@@ -7477,10 +7473,11 @@ class QuotationController extends Controller
         if (!empty($scopeVolume)) {
             DB::connection('sqlsrv')
                 ->table('Quote_QuotationInfo')
-                ->where('QuoteNo', $quoteNo)
+                ->where('ID', $request->quotation_id)
                 ->update(['scopevolume' => $scopeVolume]);
 
             Log::info('saveCargoDetails - scopevolume updated', [
+                'quotation_id' => $request->quotation_id,
                 'quote_no'     => $quoteNo,
                 'scope_volume' => $scopeVolume,
             ]);
@@ -7509,16 +7506,16 @@ class QuotationController extends Controller
             'SubmittedDatetime' => now()->format('YmdHis'),
             'SubmittedBy'       => $submittedBy,
             'Action'            => 'Update',
-            'QuotationNo'       => $quoteNo,          // ← verified from DB, not raw request
+            'QuotationID'       => $request->quotation_id,
             'Commodity'         => $request->commodity ?? '',
             'CargoVolume'       => (float) ($request->cargo_volume ?? 0),
             'Containers'        => $containers,
         ]);
 
         Log::info('saveCargoDetails - payload', [
-            'quote_no'   => $quoteNo,
-            'input_json' => $input,
-            'length'     => strlen($input),
+            'quotation_id' => $request->quotation_id,
+            'input_json'   => $input,
+            'length'       => strlen($input),
         ]);
 
         if (strlen($input) > 2000) {
