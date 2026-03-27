@@ -7532,17 +7532,28 @@ class QuotationController extends Controller
         }
 
         $scopeVolume = $request->input('scope_volume', '');
+        $commodity   = $request->input('commodity', '');
 
+        $directUpdate = [];
         if (!empty($scopeVolume)) {
+            $directUpdate['scopevolume'] = $scopeVolume;
+        }
+        if (!empty($commodity)) {
+            $directUpdate['commodity'] = $commodity;
+        }
+
+        if (!empty($directUpdate)) {
+            $directUpdate['updatedon']      = now();
+            $directUpdate['LastModifiedBy'] = substr($submittedBy, 0, 25);
             DB::connection('sqlsrv')
                 ->table('Quote_QuotationInfo')
                 ->where('ID', $request->quotation_id)
-                ->update(['scopevolume' => $scopeVolume]);
+                ->update($directUpdate);
 
-            Log::info('saveCargoDetails - scopevolume updated', [
+            Log::info('saveCargoDetails - direct column update', [
                 'quotation_id' => $request->quotation_id,
                 'quote_no'     => $quoteNo,
-                'scope_volume' => $scopeVolume,
+                'fields'       => array_keys($directUpdate),
             ]);
         }
 
