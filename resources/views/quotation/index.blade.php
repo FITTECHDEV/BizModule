@@ -1672,20 +1672,20 @@
                 $('#cbProgressError, #cbProgressSuccess').addClass('d-none');
                 renderBookingSteps([]);
 
-                $.ajax({
-                    url: '{{ route('quotation.process-booking') }}',
-                    type: 'POST',
-                    data: {
-                        _token: '{{ csrf_token() }}',
-                        id: quotationId,
-                        booking_no: bookingNo,
-                        service_template: serviceTemplate,
-                        bill_to_party: billToParty,
-                        forwarder: forwarder,
-                        include_country: $('#cb_include_country').is(':checked') ? 1 : 0,
-                        place_of_receipt: placeOfReceipt,
-                        place_of_delivery: placeOfDelivery
-                    },
+          $.ajax({
+    url: '{{ route('quotation.process-booking') }}',
+    type: 'POST',
+    data: {
+        _token: '{{ csrf_token() }}',
+        id: quotationId,           // ← UUID — used by controller to fetch the record
+        booking_no: bookingNo,     // ← kept for logging only
+        service_template: serviceTemplate,
+        bill_to_party: billToParty,
+        forwarder: forwarder,
+        include_country: $('#cb_include_country').is(':checked') ? 1 : 0,
+        place_of_receipt: placeOfReceipt,
+        place_of_delivery: placeOfDelivery
+    },
                     success: function(res) {
                         renderBookingSteps(res.steps || []);
 

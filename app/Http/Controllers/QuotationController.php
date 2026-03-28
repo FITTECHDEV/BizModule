@@ -6624,6 +6624,12 @@ class QuotationController extends Controller
             return response()->json(['success' => false, 'message' => 'Quotation not found'], 404);
         }
 
+        Log::info('processBooking - ID debug', [
+    'request_id'   => $request->id,
+    'db_id'        => $quotation->ID,
+    'json_encoded' => json_encode(['QuotationID' => $quotation->ID]),
+]);
+
         $quoteNo = $quotation->QuoteNo;
 
         if (empty($quoteNo)) {
@@ -6882,7 +6888,7 @@ class QuotationController extends Controller
                 'SubmittedDatetime' => now()->format('YmdHis'),
                 'SubmittedBy'       => $submittedBy,
                 'Action'            => 'Update',
-                'QuotationNo'       => $quotationId,
+                'QuotationID'       => $quotationId,
                 'ServiceTemplate'   => $serviceTemplate,
                 'BillToParty'       => $billToParty,
                 'Forwarder'         => $forwarder,
@@ -7219,43 +7225,36 @@ class QuotationController extends Controller
         $quoteNo   = trim($request->input('quote_no', ''));  // ← add this
 
 
-        if (!$bookingNo || !$basedOn) {
-            return response()->json(['success' => false, 'message' => 'booking_no and based_on are required'], 400);
-        }
+     // REPLACE WITH:
+if (!$bookingNo || !$basedOn) {
+    return response()->json(['success' => false, 'message' => 'booking_no and based_on are required'], 400);
+}
 
-        // ── Resolve QuoteNo from bookingno ──────────────────────────────────────
-        // sp_ChargeBasedOnDefaultDetails uses WHERE QI.QuoteNo = @QuotationNo
-        // QuoteNo is the formatted reference (e.g. 'QT-5298'), NOT the numeric bookingno.
-        // $quotation = DB::table('Quote_QuotationInfo')
-        //     ->where('bookingno', $bookingNo)
-        //     ->first(['QuoteNo']);
+// Use the UUID passed directly from the frontend (quote_no = quotationId in JS).
+// Falling back to bookingno lookup is unsafe — multiple quotations can share
+// the same bookingno integer and ->first() returns an unpredictable row.
+$resolvedId = $quoteNo ?: null;
 
-        // if (!$quotation || empty($quotation->QuoteNo)) {
-        //     Log::warning('getChargeBasedOnDefaults - QuoteNo not found', ['booking_no' => $bookingNo]);
-        //     return response()->json(['success' => false, 'message' => 'QuoteNo not found for this booking'], 404);
-        // }
+if (!$resolvedId) {
+    $quotation = DB::table('Quote_QuotationInfo')
+        ->where('bookingno', $bookingNo)
+        ->first(['ID']);
 
-        // $quoteNo = trim($quotation->QuoteNo);
+    if (!$quotation || empty($quotation->ID)) {
+        Log::warning('getChargeBasedOnDefaults - QuotationID not found', ['booking_no' => $bookingNo]);
+        return response()->json(['success' => false, 'message' => 'Quotation not found for this booking'], 404);
+    }
 
-        $quotation = DB::table('Quote_QuotationInfo')
-            ->where('bookingno', $bookingNo)
-            ->first(['ID']);
+    $resolvedId = $quotation->ID;
+}
 
-        if (!$quotation || empty($quotation->ID)) {
-            Log::warning('getChargeBasedOnDefaults - QuotationID not found', ['booking_no' => $bookingNo]);
-            return response()->json(['success' => false, 'message' => 'Quotation not found for this booking'], 404);
-        }
-
-        // ── Strip trailing comma from containerlist before SP reads it ──────────
-        // sp_Quote_CargoDetailsUpdate stores containerlist with a trailing comma
-        // (e.g. '40GPX3,') which causes STRING_SPLIT to produce an empty token,
-        // breaking CHARINDEX and silently returning Quantity = 0 for Equipment.
-        DB::table('Quote_QuotationInfo')
-            ->where('ID', $quotation->ID)
-            ->whereRaw("RIGHT(RTRIM(containerlist), 1) = ','")
-            ->update([
-                'containerlist' => DB::raw("LEFT(RTRIM(containerlist), LEN(RTRIM(containerlist)) - 1)")
-            ]);
+// ── Strip trailing comma from containerlist before SP reads it ──
+DB::table('Quote_QuotationInfo')
+    ->where('ID', $resolvedId)
+    ->whereRaw("RIGHT(RTRIM(containerlist), 1) = ','")
+    ->update([
+        'containerlist' => DB::raw("LEFT(RTRIM(containerlist), LEN(RTRIM(containerlist)) - 1)")
+    ]);
 
         Log::info('getChargeBasedOnDefaults - Calling SP', [
             'booking_no' => $bookingNo,
@@ -7281,7 +7280,7 @@ class QuotationController extends Controller
                 @Quantity       AS Quantity;
         ");
 
-            $stmt->execute([$quotation->ID, $basedOn, $equipment]);
+            $stmt->execute([$resolvedId, $basedOn, $equipment]);
 
             $result = null;
             do {
