@@ -1211,6 +1211,7 @@
                 var modal = $(this);
                 var quoteNo = modal.data('quote-no');
                 var teamId = modal.data('team-id');
+                var quotationId = modal.data('quotation-id');
                 var cardFilter = modal.data('card-filter') || 'in_progress';
                 var lastQuoteNo = modal.data('last-quote-no');
                 var savedState = modal.data('saved-form-state');
@@ -1220,7 +1221,7 @@
                     resetCreateBookingForm();
                     setDropdownLoading('#cb_service_template');
                     $.get('{{ route('quotation.booking.service-templates') }}', {
-                            quotation_id: quoteNo
+                            quotation_id: quotationId
                         })
                         .done(function(res) {
                             var $s = $('#cb_service_template').empty().append(
@@ -1254,7 +1255,7 @@
                 resetCreateBookingForm();
                 setDropdownLoading('#cb_service_template');
                 $.get('{{ route('quotation.booking.service-templates') }}', {
-                        quotation_id: quoteNo
+                        quotation_id: quotationId
                     })
                     .done(function(res) {
                         var $s = $('#cb_service_template').empty().append('<option value=""></option>');
