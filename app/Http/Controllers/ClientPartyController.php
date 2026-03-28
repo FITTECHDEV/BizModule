@@ -995,10 +995,9 @@ class ClientPartyController extends Controller
             }
 
             // Success response
-            Alert::success('Success', "Entity Request No << {$requestNo} >> Successfully Submitted")
-                ->persistent(true, false);
-
-            return redirect()->route('client-party.index');
+            return redirect()->back()
+                ->with('swal_success_title', 'Success')
+                ->with('swal_success_text', "Entity Request No << {$requestNo} >> Successfully Submitted");
         } catch (\Exception $e) {
             \Log::error('Entity creation failed', [
                 'payload' => $payload,
@@ -1937,7 +1936,9 @@ class ClientPartyController extends Controller
                 }
 
                 Log::info('Group → IT transition completed successfully');
-                Alert::success('Success', 'Entity moved to Pending IT Verification')->showConfirmButton();
+                return redirect()->route('client-party.show', $id)
+                    ->with('swal_success_title', 'Success')
+                    ->with('swal_success_text', 'Entity moved to Pending IT Verification');
                 return redirect()->route('client-party.show', $id);
             } catch (\Exception $e) {
                 Log::error('Group → IT transition failed', [
@@ -1988,13 +1989,14 @@ class ClientPartyController extends Controller
                     'full_response' => $d365Response,
                 ]);
                 // Debtor block
+                // Debtor block
                 if (!$d365Response['status'] || empty($d365Response['responseCode'])) {
                     $d365Error = $d365Response['error'] ?? $d365Response['responseDescription'] ?? 'Unknown D365 error';
                     Log::error('Debtor D365 creation failed', ['error' => $d365Error]);
-                    Alert::error('Debtor Creation Failed', $d365Error)->persistent(true, false);
-                    return redirect()->back()->withInput();
+                    return redirect()->back()->withInput()
+                        ->with('swal_error_title', 'Debtor Creation Failed')
+                        ->with('swal_error_text', $d365Error);
                 }
-
                 $d365Results['debtor'] = $d365Response['responseCode'];
                 Log::info('Debtor successfully created in D365', ['code' => $d365Results['debtor']]);
             } catch (\Exception $e) {
@@ -2034,8 +2036,9 @@ class ClientPartyController extends Controller
                 if (!$d365Response['status'] || empty($d365Response['responseCode'])) {
                     $d365Error = $d365Response['error'] ?? $d365Response['responseDescription'] ?? 'Unknown D365 error';
                     Log::error('Vendor D365 creation failed', ['error' => $d365Error]);
-                    Alert::error('Vendor Creation Failed', $d365Error)->persistent(true, false);
-                    return redirect()->back()->withInput();
+                    return redirect()->back()->withInput()
+                        ->with('swal_error_title', 'Vendor Creation Failed')
+                        ->with('swal_error_text', $d365Error);
                 }
 
                 $d365Results['vendor'] = $d365Response['responseCode'];
@@ -2084,7 +2087,9 @@ class ClientPartyController extends Controller
             }
 
             Log::info('FINAL CREATION SUCCESS - entity created');
-            Alert::success('Success', 'Entity created successfully')->showConfirmButton();
+            return redirect()->route('client-party.index')->with('entity_type', $type ?? 'operational')
+                ->with('swal_success_title', 'Success')
+                ->with('swal_success_text', 'Entity created successfully');
             return redirect()->route('client-party.index')->with('entity_type', $type ?? 'operational');
         } catch (\Exception $e) {
             Log::error('Final creation FAILED - exception caught', [
@@ -2242,17 +2247,17 @@ class ClientPartyController extends Controller
             $results = DB::select(
                 'SET NOCOUNT ON;
              DECLARE @Status VARCHAR(30), @Remark VARCHAR(1000), @ClientCode VARCHAR(60),
-@ClientIDUNIQUEIDENTIFIER, @OtherCode VARCHAR(60), @OtherID UNIQUEIDENTIFIER;
              EXEC [dbo].[Sp_OperationEntityCreation]
-@RequestID= ?,
-@Status= @Status OUTPUT,
-@Remark= @Remark OUTPUT,
-@ClientCode= @ClientCode OUTPUT,
-@ClientID= @ClientID OUTPUT,
-@OtherCode= @OtherCode OUTPUT,
-@OtherID= @OtherID OUTPUT;
+             @ClientIDUNIQUEIDENTIFIER, @OtherCode VARCHAR(60), @OtherID UNIQUEIDENTIFIER;
+             @Status= @Status OUTPUT,
+             @RequestID= ?,
+             @ClientCode= @ClientCode OUTPUT,
+             @Remark= @Remark OUTPUT,
+             @OtherCode= @OtherCode OUTPUT,
+             @ClientID= @ClientID OUTPUT,
+            @OtherID= @OtherID OUTPUT;
              SELECT @Status AS Status, @Remark AS Remark, @ClientCode AS ClientCode,
-@ClientIDAS ClientID, @OtherCode AS OtherCode, @OtherID AS OtherID',
+                @ClientIDAS ClientID, @OtherCode AS OtherCode, @OtherID AS OtherID',
                 [$requestID]
             );
 
@@ -2709,12 +2714,21 @@ class ClientPartyController extends Controller
             // Execute sp_LicenseNoCheck
             $results = DB::select(
                 'SET NOCOUNT ON;
-                 DECLARE @Status AS VARCHAR(20),
-@RemarkAS VARCHAR(100),
-@IsDuplicateAS BIT;
-                 EXEC dbo.sp_LicenseNoCheck @officeCode = ?, @PartyType = ?, @LicenseNo = ?,
-@Status= @Status OUTPUT, @Remark = @Remark OUTPUT, @IsDuplicate = @IsDuplicate OUTPUT;
-                 SELECT @Status AS Status, @Remark AS Remark, @IsDuplicate AS IsDuplicate',
+     DECLARE @Status      VARCHAR(20),
+             @Remark      VARCHAR(100),
+             @IsDuplicate BIT;
+
+     EXEC dbo.sp_LicenseNoCheck
+         @officeCode = ?,
+         @PartyType  = ?,
+         @LicenseNo  = ?,
+         @Status     = @Status OUTPUT,
+         @Remark     = @Remark OUTPUT,
+         @IsDuplicate = @IsDuplicate OUTPUT;
+
+     SELECT @Status AS Status,
+            @Remark AS Remark,
+            @IsDuplicate AS IsDuplicate;',
                 [$officeCode, $partyType, $licenseNo]
             );
 

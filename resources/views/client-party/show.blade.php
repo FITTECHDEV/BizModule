@@ -1037,7 +1037,7 @@
                 </div>
             </div>
 
-        @stop
+@stop
 
         @section('css')
             <!-- ============================================
@@ -1661,11 +1661,45 @@
         @section('js')
             <!-- SweetAlert2 JS -->
             <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.js"></script>
+{{-- Flash error/success via SweetAlert2 --}}
+@if(session('swal_error_title'))
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: '{!! addslashes(session("swal_error_title")) !!}',
+                    text: '{!! addslashes(session("swal_error_text")) !!}',
+                    confirmButtonColor: '#dc3545',
+                    confirmButtonText: 'OK'
+                });
+            }, 300);
+        });
+    </script>
+@endif
+@if(session('swal_success_title'))
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(function() {
+                Swal.fire({
+                    icon: 'success',
+                    title: '{!! addslashes(session("swal_success_title")) !!}',
+                    text: '{!! addslashes(session("swal_success_text")) !!}',
+                    confirmButtonColor: '#28a745',
+                    timer: 3000,
+                    timerProgressBar: true
+                });
+            }, 300);
+        });
+    </script>
+@endif
 
             <script src="//code.jquery.com/jquery-1.12.4.min.js"></script>
             <script src="https://cdn.jsdelivr.net/npm/bs-stepper/dist/js/bs-stepper.min.js"></script>
             <script src="{{ asset('js/client-party/jquery-number/jquery.number.min.js') }}"></script>
             <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+
+
 
             <script>
                 window.isShowView = true;

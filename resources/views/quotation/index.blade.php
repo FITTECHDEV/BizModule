@@ -498,7 +498,7 @@
                     </div>
                 </div>
             </div>
-        </div>{{-- END quotationReportModal --}}
+        </div>
 
     </div>
 @stop
