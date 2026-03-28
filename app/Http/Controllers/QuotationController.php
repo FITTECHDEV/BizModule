@@ -4004,7 +4004,6 @@ class QuotationController extends Controller
         ]);
     }
 
-
     /**
      * Load T&C templates via sp_Quote_CommunicationDetail_List.
      * The SP filters by Service+Process+OfficeCode resolved from the QuoteNo internally,
@@ -7106,17 +7105,56 @@ class QuotationController extends Controller
 
     public function getChargeBasedOnDefaults(Request $request)
     {
-        $bookingNo   = $request->input('booking_no');
-        $basedOn     = $request->input('based_on');
-        $equipment   = $request->input('equipment', ''); // This is now always a Code string
-        $quoteNo     = trim($request->input('quote_no', ''));
+        $bookingNo  = $request->input('booking_no');
+        $basedOn    = $request->input('based_on');
+        $equipment  = $request->input('equipment', '');
+        $quoteNo   = trim($request->input('quote_no', ''));  // ← add this
 
-        // ... existing quotation lookup ...
 
-        // REMOVE the old UUID-resolution block that was here:
-        // $resolvedEquipment = DB::table('[FITSCMUAT].dbo.Cust_Equipment')
-        //     ->where('Id', $equipment)->value('Code');
-        // That lookup was wrong direction. SP needs the Code.
+        if (!$bookingNo || !$basedOn) {
+            return response()->json(['success' => false, 'message' => 'booking_no and based_on are required'], 400);
+        }
+
+        // ── Resolve QuoteNo from bookingno ──────────────────────────────────────
+        // sp_ChargeBasedOnDefaultDetails uses WHERE QI.QuoteNo = @QuotationNo
+        // QuoteNo is the formatted reference (e.g. 'QT-5298'), NOT the numeric bookingno.
+        // $quotation = DB::table('Quote_QuotationInfo')
+        //     ->where('bookingno', $bookingNo)
+        //     ->first(['QuoteNo']);
+
+        // if (!$quotation || empty($quotation->QuoteNo)) {
+        //     Log::warning('getChargeBasedOnDefaults - QuoteNo not found', ['booking_no' => $bookingNo]);
+        //     return response()->json(['success' => false, 'message' => 'QuoteNo not found for this booking'], 404);
+        // }
+
+        // $quoteNo = trim($quotation->QuoteNo);
+
+        $quotation = DB::table('Quote_QuotationInfo')
+            ->where('bookingno', $bookingNo)
+            ->first(['ID']);
+
+        if (!$quotation || empty($quotation->ID)) {
+            Log::warning('getChargeBasedOnDefaults - QuotationID not found', ['booking_no' => $bookingNo]);
+            return response()->json(['success' => false, 'message' => 'Quotation not found for this booking'], 404);
+        }
+
+        // ── Strip trailing comma from containerlist before SP reads it ──────────
+        // sp_Quote_CargoDetailsUpdate stores containerlist with a trailing comma
+        // (e.g. '40GPX3,') which causes STRING_SPLIT to produce an empty token,
+        // breaking CHARINDEX and silently returning Quantity = 0 for Equipment.
+        DB::table('Quote_QuotationInfo')
+            ->where('ID', $quotation->ID)
+            ->whereRaw("RIGHT(RTRIM(containerlist), 1) = ','")
+            ->update([
+                'containerlist' => DB::raw("LEFT(RTRIM(containerlist), LEN(RTRIM(containerlist)) - 1)")
+            ]);
+
+        Log::info('getChargeBasedOnDefaults - Calling SP', [
+            'booking_no' => $bookingNo,
+            'quote_no'   => $quoteNo,
+            'based_on'   => $basedOn,
+            'equipment'  => $equipment ?: 'N/A',
+        ]);
 
         try {
             $pdo  = DB::getPdo();
@@ -7131,13 +7169,11 @@ class QuotationController extends Controller
                 @Quantity       = @Quantity       OUTPUT;
 
             SELECT @BasedOnUOMCode AS BasedOnUOMCode,
-                   @BasedOnUOM     AS BasedOnUOM,
-                   @Quantity       AS Quantity;
+                @BasedOnUOM     AS BasedOnUOM,
+                @Quantity       AS Quantity;
         ");
 
-            // Pass equipment Code directly — matches EquipmentType column in DB
             $stmt->execute([$quotation->ID, $basedOn, $equipment]);
-
 
             $result = null;
             do {
@@ -7367,7 +7403,7 @@ class QuotationController extends Controller
 
         try {
             $query = DB::connection('sqlsrv')
-                ->table('FITSCM.dbo.Cust_Resource AS CR')
+                ->table('FITSCMUAT.dbo.Cust_Resource AS CR')
                 ->join('FITSCM.dbo.Cust_ResOfficeResFuncMap AS CRO', 'CRO.ResourceId', '=', 'CR.Id')
                 ->join('FITSCM.dbo.Sys_ResourceFunction AS RF', 'RF.Id', '=', 'CRO.ResourceFunctionId')
                 ->where('CR.IsActive',  1)
@@ -7478,7 +7514,7 @@ class QuotationController extends Controller
         try {
             $pdo  = DB::connection('sqlsrv')->getPdo();
             $stmt = $pdo->prepare("EXEC sp_CountryList @Filter = ?");
-            $stmt->execute([(string)($request->get('filter') ?? '')]);
+            $stmt->execute([$request->get('filter', '')]);
 
             $rows = [];
             do {
@@ -7522,7 +7558,7 @@ class QuotationController extends Controller
         try {
             $pdo  = DB::getPdo();
             $stmt = $pdo->prepare("EXEC sp_IncoTerms @Filter = ?");
-            $stmt->execute([(string)($request->get('filter') ?? '')]);
+            $stmt->execute([$request->get('filter', '')]);
             return response()->json($stmt->fetchAll(\PDO::FETCH_ASSOC));
         } catch (\Exception $e) {
             return response()->json([]);
@@ -7534,7 +7570,7 @@ class QuotationController extends Controller
         try {
             $pdo  = DB::getPdo();
             $stmt = $pdo->prepare("EXEC sp_ServiceClass @Filter = ?");
-            $stmt->execute([(string)($request->get('filter') ?? '')]);
+            $stmt->execute([$request->get('filter', '')]);
             return response()->json($stmt->fetchAll(\PDO::FETCH_ASSOC));
         } catch (\Exception $e) {
             return response()->json([]);
@@ -7546,7 +7582,7 @@ class QuotationController extends Controller
         try {
             $pdo  = DB::connection('sqlsrv')->getPdo();
             $stmt = $pdo->prepare("EXEC sp_IndustryTypeList @Filter = ?");
-            $stmt->execute([(string)($request->get('filter') ?? '')]);
+            $stmt->execute([$request->get('filter', '')]);
 
             // sp_IndustryTypeList uses EXEC sp_executesql internally (dynamic SQL).
             // Same multi-result-set problem — loop until we find the data rows.
@@ -7592,7 +7628,7 @@ class QuotationController extends Controller
         try {
             $pdo  = DB::getPdo();
             $stmt = $pdo->prepare("EXEC sp_ShipmentMode @Filter = ?");
-            $stmt->execute([(string)($request->get('filter') ?? '')]);
+            $stmt->execute([$request->get('filter', '')]);
             return response()->json($stmt->fetchAll(\PDO::FETCH_ASSOC));
         } catch (\Exception $e) {
             return response()->json([]);
@@ -7604,7 +7640,7 @@ class QuotationController extends Controller
         try {
             $pdo  = DB::getPdo();
             $stmt = $pdo->prepare("EXEC sp_TransportMode @Filter = ?");
-            $stmt->execute([(string)($request->get('filter') ?? '')]);
+            $stmt->execute([$request->get('filter', '')]);
             return response()->json($stmt->fetchAll(\PDO::FETCH_ASSOC));
         } catch (\Exception $e) {
             return response()->json([]);
@@ -7616,7 +7652,7 @@ class QuotationController extends Controller
         try {
             $pdo  = DB::getPdo();
             $stmt = $pdo->prepare("EXEC sp_EquipmentType @Filter = ?");
-            $stmt->execute([(string)($request->get('filter') ?? '')]);
+            $stmt->execute([$request->get('filter', '')]);
             return response()->json($stmt->fetchAll(\PDO::FETCH_ASSOC));
         } catch (\Exception $e) {
             return response()->json([]);
