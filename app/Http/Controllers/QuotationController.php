@@ -7514,7 +7514,7 @@ class QuotationController extends Controller
         try {
             $pdo  = DB::connection('sqlsrv')->getPdo();
             $stmt = $pdo->prepare("EXEC sp_CountryList @Filter = ?");
-            $stmt->execute([$request->get('filter', '')]);
+            $stmt->execute([(string)($request->get('filter') ?? '')]);
 
             $rows = [];
             do {
@@ -7558,7 +7558,7 @@ class QuotationController extends Controller
         try {
             $pdo  = DB::getPdo();
             $stmt = $pdo->prepare("EXEC sp_IncoTerms @Filter = ?");
-            $stmt->execute([$request->get('filter', '')]);
+            $stmt->execute([(string)($request->get('filter') ?? '')]);
             return response()->json($stmt->fetchAll(\PDO::FETCH_ASSOC));
         } catch (\Exception $e) {
             return response()->json([]);
@@ -7570,7 +7570,7 @@ class QuotationController extends Controller
         try {
             $pdo  = DB::getPdo();
             $stmt = $pdo->prepare("EXEC sp_ServiceClass @Filter = ?");
-            $stmt->execute([$request->get('filter', '')]);
+            $stmt->execute([(string)($request->get('filter') ?? '')]);
             return response()->json($stmt->fetchAll(\PDO::FETCH_ASSOC));
         } catch (\Exception $e) {
             return response()->json([]);
@@ -7582,7 +7582,7 @@ class QuotationController extends Controller
         try {
             $pdo  = DB::connection('sqlsrv')->getPdo();
             $stmt = $pdo->prepare("EXEC sp_IndustryTypeList @Filter = ?");
-            $stmt->execute([$request->get('filter', '')]);
+            $stmt->execute([(string)($request->get('filter') ?? '')]);
 
             // sp_IndustryTypeList uses EXEC sp_executesql internally (dynamic SQL).
             // Same multi-result-set problem — loop until we find the data rows.
@@ -7628,7 +7628,7 @@ class QuotationController extends Controller
         try {
             $pdo  = DB::getPdo();
             $stmt = $pdo->prepare("EXEC sp_ShipmentMode @Filter = ?");
-            $stmt->execute([$request->get('filter', '')]);
+            $stmt->execute([(string)($request->get('filter') ?? '')]);
             return response()->json($stmt->fetchAll(\PDO::FETCH_ASSOC));
         } catch (\Exception $e) {
             return response()->json([]);
@@ -7640,7 +7640,7 @@ class QuotationController extends Controller
         try {
             $pdo  = DB::getPdo();
             $stmt = $pdo->prepare("EXEC sp_TransportMode @Filter = ?");
-            $stmt->execute([$request->get('filter', '')]);
+            $stmt->execute([(string)($request->get('filter') ?? '')]);
             return response()->json($stmt->fetchAll(\PDO::FETCH_ASSOC));
         } catch (\Exception $e) {
             return response()->json([]);
@@ -7652,7 +7652,7 @@ class QuotationController extends Controller
         try {
             $pdo  = DB::getPdo();
             $stmt = $pdo->prepare("EXEC sp_EquipmentType @Filter = ?");
-            $stmt->execute([$request->get('filter', '')]);
+            $stmt->execute([(string)($request->get('filter') ?? '')]);
             return response()->json($stmt->fetchAll(\PDO::FETCH_ASSOC));
         } catch (\Exception $e) {
             return response()->json([]);
