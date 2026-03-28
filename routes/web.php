@@ -768,6 +768,8 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
         ->name('quotation.report-data');
     Route::get('/quotation/debug-lookups', [App\Http\Controllers\QuotationController::class, 'debugLookups']);
     Route::get('/quotation/debug-countries', [App\Http\Controllers\QuotationController::class, 'debugLookupCountries']);
+    Route::get('/quotation/terms-templates', [App\Http\Controllers\QuotationController::class, 'getTermsTemplates'])
+        ->name('quotation.terms-templates');
 
     // ✅ MOVED UP — were incorrectly placed after {id} wildcards
     Route::get('/quotation/inco-terms', [App\Http\Controllers\QuotationController::class, 'getIncoTerms'])
@@ -1238,7 +1240,7 @@ Route::get('/quotation/{id}/pdf-preview', function ($id) {
 // Route::get('/debug/sp-definition', function () {
 //     try {
 //         $pdo = DB::connection('sqlsrv')->getPdo();
-        
+
 //         // Get SP definition
 //         $stmt = $pdo->prepare("SELECT OBJECT_DEFINITION(OBJECT_ID('dbo.sp_Quote_DetailsUpdate')) AS sp_definition");
 //         $stmt->execute();

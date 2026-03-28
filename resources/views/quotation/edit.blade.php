@@ -828,8 +828,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             MODALS
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             ============================================ -->
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     MODALS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1421,8 +1421,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -1865,9 +1865,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -2080,6 +2080,8 @@
                 applied: false, // true only after a successful save-terms call
                 generating: false, // true while the POST is in flight
             };
+
+            const termsDescriptionCache = {};
 
             function setGenerateBtn() {
                 const $btn = $('#generateQuoteBtn');
@@ -3000,18 +3002,30 @@
             function fetchBasedOnDefaults(prefix, basedOnCode, equipment) {
                 if (!bookingNo || !basedOnCode) return;
 
+                console.log('fetchBasedOnDefaults called:', {
+                    prefix,
+                    basedOnCode,
+                    equipment,
+                    equipmentHex: equipment ? [...equipment].map(c => c.charCodeAt(0)) : []
+                });
+
                 const $modal = prefix === 'revenue' ? $('#addRevenueModal') : $('#addCostModal');
 
                 if (basedOnCode === 'Equipment' && !equipment) {
-                    const containerTypes = $('#cargoDetailsCard #containerListBody')
-                        .find('tr[data-container-row]')
-                        .map(function() {
-                            const fromSelect = $(this).find('td:first select').val();
-                            const fromText = $(this).find('td:first').text().trim();
-                            return fromSelect || fromText;
-                        })
-                        .get()
-                        .filter(Boolean);
+                    const containerTypes = [];
+                    $('#cargoDetailsCard #containerListBody tr[data-container-row]').each(function() {
+                        // Edit mode: select element — use .val() directly (reliable)
+                        const fromSelect = $(this).find('td:first select.container-type-select').val();
+                        if (fromSelect) {
+                            containerTypes.push(fromSelect);
+                            return;
+                        }
+                        // Read-only mode: strip child elements before reading text
+                        const fromText = $(this).find('td:first').clone()
+                            .children().remove().end()
+                            .text().trim();
+                        if (fromText && fromText !== '—') containerTypes.push(fromText);
+                    });
 
                     if (containerTypes.length > 0) {
                         equipment = containerTypes[0];
@@ -3036,20 +3050,50 @@
                     success: function(response) {
                         if (!response.success) return;
 
-                        if (response.quantity > 0) {
-                            $modal.find(`input[name="${prefix}_quantity"]`).val(response.quantity);
-                        }
-
+                        // ── Equipment: read quantity directly from the cargo details table ──
+                        // sp_Quote_ChargeBasedOnDefaultDetails queries Quote_Quotation_EquipmentDetails
+                        // which may be out of sync with what's rendered on the page.
+                        // The page is the authoritative source for the current session.
                         if (basedOnCode === 'Equipment' && equipment) {
+                            // Find the container row matching the selected equipment type
+                            let pageQty = 0;
+                            $('#cargoDetailsCard #containerListBody tr[data-container-row]').each(
+                                function() {
+                                    const rowType = $(this).find('.container-type-select').val() ||
+                                        $(this).find('td:first').clone().children().remove().end()
+                                        .text().trim();
+                                    if (rowType === equipment) {
+                                        const qtyText = $(this).find('.container-qty-input')
+                                            .val() ||
+                                            $(this).find('td:eq(1)').text().trim();
+                                        pageQty = parseInt(qtyText, 10) || 0;
+                                        return false; // break
+                                    }
+                                });
+
+                            if (pageQty > 0) {
+                                $modal.find(`input[name="${prefix}_quantity"]`).val(pageQty);
+                            } else if (response.quantity > 0) {
+                                // Fallback to SP value if page row not found
+                                $modal.find(`input[name="${prefix}_quantity"]`).val(response.quantity);
+                            }
+
                             const $uomSelect = $modal.find(`select[name="${prefix}_based_on_uom"]`);
                             if ($uomSelect.find(`option[value="${equipment}"]`).length) {
                                 $uomSelect.val(equipment);
                             }
-                        } else if (response.based_on_uom_code) {
-                            const $uomSelect = $modal.find(`select[name="${prefix}_based_on_uom"]`);
-                            if ($uomSelect.find(`option[value="${response.based_on_uom_code}"]`)
-                                .length) {
-                                $uomSelect.val(response.based_on_uom_code);
+                        } else {
+                            // Non-equipment: SP is authoritative
+                            if (response.quantity > 0) {
+                                $modal.find(`input[name="${prefix}_quantity"]`).val(response.quantity);
+                            }
+
+                            if (response.based_on_uom_code) {
+                                const $uomSelect = $modal.find(`select[name="${prefix}_based_on_uom"]`);
+                                if ($uomSelect.find(`option[value="${response.based_on_uom_code}"]`)
+                                    .length) {
+                                    $uomSelect.val(response.based_on_uom_code);
+                                }
                             }
                         }
 
@@ -3092,26 +3136,41 @@
                         // Handles both read-only (text cell) and edit mode (select element).
                         const $modal = prefix === 'revenue' ? $('#addRevenueModal') : $(
                             '#addCostModal');
-                        const containerTypes = $('#cargoDetailsCard #containerListBody')
-                            .find('tr[data-container-row]')
-                            .map(function() {
-                                const fromSelect = $(this).find('td:first select').val();
-                                const fromText = $(this).find('td:first').text().trim();
-                                return fromSelect || fromText;
-                            })
-                            .get()
-                            .filter(Boolean);
+                        const containerTypes = [];
+                        $('#cargoDetailsCard #containerListBody tr[data-container-row]').each(
+                            function() {
+                                const fromSelect = $(this).find(
+                                    'td:first select.container-type-select').val();
+                                if (fromSelect) {
+                                    containerTypes.push(fromSelect);
+                                    return;
+                                }
+                                const fromText = $(this).find('td:first').clone()
+                                    .children().remove().end().text().trim();
+                                if (fromText && fromText !== '—') containerTypes.push(fromText);
+                            });
 
                         if (containerTypes.length > 0) {
                             const firstContainer = containerTypes[0];
                             const $uomSelect = $modal.find(`select[name="${prefix}_based_on_uom"]`);
 
-
-
                             // Confirm option exists before setting — no silent failures
                             if ($uomSelect.find(`option[value="${firstContainer}"]`).length) {
-                                $uomSelect.val(firstContainer);
+                                // Suppress the UOM change event during programmatic set
+                                // to prevent a second fetchBasedOnDefaults call racing
+                                // with the one below and overwriting the quantity with 0.
+                                $uomSelect.off('change.equipAutoFill')
+                                    .val(firstContainer)
+                                    .on('change.equipAutoFill', function() {
+                                        fetchBasedOnDefaults(prefix, 'Equipment', $(this)
+                                            .val());
+                                    });
                                 fetchBasedOnDefaults(prefix, basedOnCode, firstContainer);
+                            } else {
+                                console.warn('Equipment option not in UOM select:', firstContainer,
+                                    '| Available:', $uomSelect.find('option').map(function() {
+                                        return $(this).val();
+                                    }).get());
                             }
                         }
                         // No containers found — leave UOM blank, user must add cargo first
@@ -3136,10 +3195,15 @@
                     const basedOn = $modal.find(`select[name="${prefix}_based_on"]`).val();
                     const uomCode = $uomSelect.val();
 
-                    // Only Equipment needs this — other types already handled by fetchBasedOnDefaults
+                    // Only Equipment needs this — other types already handled by fetchBasedOnDefaults.
+                    // Skip if this is the programmatic set from the Based On change handler
+                    // (that path uses .equipAutoFill namespace and calls fetchBasedOnDefaults directly).
                     if (basedOn !== 'Equipment' || !uomCode) return;
 
-                    fetchBasedOnDefaults(prefix, basedOn, uomCode);
+                    // Only fire for genuine user selection — not the auto-fill .val() call
+                    if (!$uomSelect.data('suppressEquipFetch')) {
+                        fetchBasedOnDefaults(prefix, basedOn, uomCode);
+                    }
                 }
             );
 
@@ -5615,9 +5679,7 @@
                 $card.addClass('collapsed-card');
             });
 
-            // ============================================
-            // TERMS & CONDITIONS
-            // ============================================
+
             function loadTermsTemplates() {
                 const codeToUse = officeCode;
 
@@ -5627,13 +5689,10 @@
                 }
 
                 $.ajax({
-                    url: '{{ route('quotation.communication.templates') }}',
+                    url: '{{ route('quotation.terms-templates') }}',
                     type: 'GET',
                     data: {
-                        module: 'Quotation',
-                        sub_module: 'T&C',
-                        office_code: codeToUse,
-                        booking_no: bookingNo
+                        quotation_id: quotationId
                     },
                     success: function(response) {
                         const $select = $('#termsTemplateSelect');
@@ -5649,54 +5708,90 @@
                                 $('#termsAutoAppliedName').text(t.Name);
                                 $('#termsAutoAppliedBadge').show();
 
-                                $.ajax({
-                                    url: '{{ route('quotation.communication.description') }}',
-                                    type: 'GET',
-                                    data: {
-                                        module: 'Quotation',
-                                        sub_module: 'T&C',
-                                        office_code: codeToUse,
-                                        name: t.Name
-                                    },
-                                    success: function(descResponse) {
-                                        if (!descResponse.success) return;
+                                // Single template — use cached description if SP returned it,
+                                // otherwise fall back to getCommunicationDescription
+                                const singleDesc = t.Description || '';
 
-                                        const description = descResponse
-                                            .description;
-                                        $('#termsDescriptionPreview').val(
-                                            description);
-                                        $('#termsDescriptionWrapper').show();
-                                        $('#applyTermsBtn').hide();
+                                if (singleDesc) {
+                                    $('#termsDescriptionPreview').val(singleDesc);
+                                    $('#termsDescriptionWrapper').show();
+                                    $('#applyTermsBtn').hide();
 
-                                        // Already applied server-side — just unlock
-                                        if (tcAlreadyApplied) {
-                                            termsState.applied = true;
+                                    if (tcAlreadyApplied) {
+                                        termsState.applied = true;
+                                        setGenerateBtn();
+                                        return;
+                                    }
+
+                                    $.ajax({
+                                        url: '{{ route('quotation.communication.save-terms') }}',
+                                        type: 'POST',
+                                        data: {
+                                            _token: '{{ csrf_token() }}',
+                                            booking_no: bookingNo,
+                                            terms_condition: singleDesc,
+                                            template_name: t.Name
+                                        },
+                                        success: function(saveResponse) {
+                                            if (saveResponse.success) {
+                                                termsState.applied = true;
+                                                setGenerateBtn();
+                                            } else {
+                                                showNotification(
+                                                    'Auto-apply T&C failed: ' +
+                                                    (saveResponse.message ||
+                                                        'Unknown error'),
+                                                    'warning'
+                                                );
+                                                setGenerateBtn();
+                                            }
+                                        },
+                                        error: function() {
                                             setGenerateBtn();
-                                            return;
                                         }
+                                    });
 
-                                        // Auto-save the single template silently
-                                        $.ajax({
-                                            url: '{{ route('quotation.communication.save-terms') }}',
-                                            type: 'POST',
-                                            data: {
-                                                _token: '{{ csrf_token() }}',
-                                                booking_no: bookingNo,
-                                                terms_condition: description,
-                                                template_name: t.Name
-                                            },
-                                            success: function(
-                                                saveResponse) {
-                                                if (saveResponse
-                                                    .success) {
-                                                    termsState
-                                                        .applied =
-                                                        true; // ← gate opened here
-                                                    setGenerateBtn
-                                                        ();
-                                                } else {
-                                                    showNotification
-                                                        (
+                                } else {
+                                    // SP did not return description — fetch it
+                                    $.ajax({
+                                        url: '{{ route('quotation.communication.description') }}',
+                                        type: 'GET',
+                                        data: {
+                                            module: 'Quotation',
+                                            sub_module: 'T&C',
+                                            office_code: codeToUse,
+                                            name: t.Name
+                                        },
+                                        success: function(descResponse) {
+                                            if (!descResponse.success) return;
+
+                                            const description = descResponse.description;
+                                            $('#termsDescriptionPreview').val(description);
+                                            $('#termsDescriptionWrapper').show();
+                                            $('#applyTermsBtn').hide();
+
+                                            if (tcAlreadyApplied) {
+                                                termsState.applied = true;
+                                                setGenerateBtn();
+                                                return;
+                                            }
+
+                                            $.ajax({
+                                                url: '{{ route('quotation.communication.save-terms') }}',
+                                                type: 'POST',
+                                                data: {
+                                                    _token: '{{ csrf_token() }}',
+                                                    booking_no: bookingNo,
+                                                    terms_condition: description,
+                                                    template_name: t.Name
+                                                },
+                                                success: function(saveResponse) {
+                                                    if (saveResponse.success) {
+                                                        termsState.applied =
+                                                            true;
+                                                        setGenerateBtn();
+                                                    } else {
+                                                        showNotification(
                                                             'Auto-apply T&C failed: ' +
                                                             (saveResponse
                                                                 .message ||
@@ -5704,39 +5799,44 @@
                                                             ),
                                                             'warning'
                                                         );
-                                                    // termsState.applied stays false — button stays disabled
-                                                    setGenerateBtn
-                                                        ();
+                                                        setGenerateBtn();
+                                                    }
+                                                },
+                                                error: function() {
+                                                    setGenerateBtn();
                                                 }
-                                            },
-                                            error: function() {
-                                                setGenerateBtn();
-                                            }
-                                        });
-                                    },
-                                    error: function() {
-                                        showNotification(
-                                            'Failed to load T&C description',
-                                            'warning');
-                                        setGenerateBtn();
-                                    }
-                                });
+                                            });
+                                        },
+                                        error: function() {
+                                            showNotification(
+                                                'Failed to load T&C description',
+                                                'warning');
+                                            setGenerateBtn();
+                                        }
+                                    });
+                                }
 
                                 return; // skip multi-template path
                             }
 
                             // ── MULTIPLE TEMPLATES: show dropdown ────────────────────
-                            $select.append(
-                                '<option value="">-- Select Template --</option>');
+                            $select.append('<option value="">-- Select Template --</option>');
                             response.templates.forEach(function(t) {
                                 $select.append(
                                     `<option value="${t.Name}">${t.Name}</option>`
                                 );
                             });
 
-                            // AFTER
                             $('#termsDropdownWrapper').show();
                             $('#termsAutoAppliedBadge').hide();
+
+                            // Cache descriptions returned by the SP — keyed by template name
+                            response.templates.forEach(function(t) {
+                                if (t.Description) {
+                                    termsDescriptionCache[t.Name] = t.Description;
+                                }
+                            });
+
                             if (!tcAlreadyApplied) {
                                 $('#termsTemplateSelect').closest('.mt-3.pt-2')
                                     .find('label').first()
@@ -5798,7 +5898,6 @@
                                 if (matchedName) {
                                     $('#termsTemplateSelect').val(matchedName);
                                     if (tcAlreadyApplied) {
-                                        // T&C already applied — restore description and re-open gate
                                         const savedDesc =
                                             '{{ addslashes($quotation->terms_condition ?? '') }}';
                                         if (savedDesc) {
@@ -5808,11 +5907,9 @@
                                         termsState.applied = true;
                                         setGenerateBtn();
                                     } else {
-                                        // Fresh page — trigger change to fetch description and auto-save
                                         $('#termsTemplateSelect').trigger('change');
                                     }
                                 } else {
-                                    // No match — fall back to server flag only
                                     if (tcAlreadyApplied) {
                                         const savedDesc =
                                             '{{ addslashes($quotation->terms_condition ?? '') }}';
@@ -5827,7 +5924,6 @@
                                         svNameRaw, '| Process:', processRaw);
                                 }
                             } else {
-                                // No SVName — fall back to server flag only
                                 if (tcAlreadyApplied) {
                                     const savedDesc =
                                         '{{ addslashes($quotation->terms_condition ?? '') }}';
@@ -5840,11 +5936,10 @@
                                 }
                                 console.warn(
                                     'loadTermsTemplates - quotationSVName is empty, T&C auto-select skipped.'
-                                    );
+                                );
                             }
 
                             @if ($quotation->QuotationTCTemplate)
-                                // Restore previously selected template name if no SVName match found it
                                 const savedTemplateName =
                                     '{{ addslashes($quotation->QuotationTCTemplate ?? '') }}';
                                 if (savedTemplateName && !$('#termsTemplateSelect').val()) {
@@ -5852,7 +5947,8 @@
                                 }
                             @endif
 
-                        } else {
+                        } // ← closes if (response.success && response.templates.length > 0)
+                        else {
                             // Error states — surface clearly, button stays disabled
                             const msg = response.code === 'NOT_CONFIGURED' ?
                                 `⚠ T&C not configured for office: ${codeToUse}` :
@@ -5874,8 +5970,39 @@
                             `⚠ Office not found: ${codeToUse}` :
                             '-- Failed to load templates --';
                         $select.append(`<option value="" disabled>${msg}</option>`);
-                        console.warn('loadTermsTemplates error:', res?.message || xhr
-                            .status);
+                        console.warn('loadTermsTemplates error:', res?.message || xhr.status);
+                        setGenerateBtn();
+                    }
+                });
+            }
+            // HELPER — called from both the cache path and the fetch fallback path
+            function _applyTermsDescription(templateName, description) {
+                $('#termsDescriptionPreview').val(description);
+                $('#termsDescriptionWrapper').show();
+                $('#applyTermsBtn').prop('disabled', false);
+
+                $.ajax({
+                    url: '{{ route('quotation.communication.save-terms') }}',
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        booking_no: bookingNo,
+                        terms_condition: description,
+                        template_name: templateName
+                    },
+                    success: function(saveResponse) {
+                        if (saveResponse.success) {
+                            termsState.applied = true;
+                            setGenerateBtn();
+                        } else {
+                            showNotification(saveResponse.message ||
+                                'Failed to apply Terms & Conditions',
+                                'error');
+                            setGenerateBtn();
+                        }
+                    },
+                    error: function() {
+                        showNotification('Failed to apply Terms & Conditions', 'error');
                         setGenerateBtn();
                     }
                 });
@@ -5883,22 +6010,26 @@
             $('#termsTemplateSelect').on('change', function() {
                 const selectedName = $(this).val();
 
-                // Remove required star once user interacts with the dropdown
                 $('.terms-required-star').remove();
-
-                // Reset gate whenever user picks a new template
                 termsState.applied = false;
                 setGenerateBtn();
-
                 $('#termsReSelectMsg').hide();
                 $('#applyTermsBtn').prop('disabled', true);
 
                 if (!selectedName) {
                     $('#termsDescriptionWrapper').hide();
                     $('#termsDescriptionPreview').val('');
-                    return; // button already disabled via setGenerateBtn above
+                    return;
                 }
 
+                // USE CACHED DESCRIPTION — skip the getCommunicationDescription round-trip
+                // if the SP already returned it in the template list response.
+                if (termsDescriptionCache[selectedName]) {
+                    _applyTermsDescription(selectedName, termsDescriptionCache[selectedName]);
+                    return;
+                }
+
+                // FALLBACK — fetch description if not in cache (e.g. SP didn't return it)
                 $.ajax({
                     url: '{{ route('quotation.communication.description') }}',
                     type: 'GET',
@@ -5914,51 +6045,14 @@
                     },
                     success: function(response) {
                         if (!response.success) {
-                            $('#termsDescriptionPreview').val(
-                                'Failed to load description.');
-                            showNotification('Could not load T&C description',
-                                'warning');
-                            return; // button stays disabled
+                            $('#termsDescriptionPreview').val('Failed to load description.');
+                            showNotification('Could not load T&C description', 'warning');
+                            return;
                         }
-
-                        const description = response.description;
-                        $('#termsDescriptionPreview').val(description);
-                        $('#applyTermsBtn').prop('disabled', false);
-
-                        // Auto-apply on selection — no separate Apply click needed for the common case
-                        $.ajax({
-                            url: '{{ route('quotation.communication.save-terms') }}',
-                            type: 'POST',
-                            data: {
-                                _token: '{{ csrf_token() }}',
-                                booking_no: bookingNo,
-                                terms_condition: description,
-                                template_name: selectedName
-                            },
-                            success: function(saveResponse) {
-                                if (saveResponse.success) {
-                                    termsState.applied =
-                                        true; // ← gate opens here
-                                    setGenerateBtn();
-                                } else {
-                                    showNotification(saveResponse
-                                        .message ||
-                                        'Failed to apply Terms & Conditions',
-                                        'error');
-                                    setGenerateBtn(); // stays disabled
-                                }
-                            },
-                            error: function() {
-                                showNotification(
-                                    'Failed to apply Terms & Conditions',
-                                    'error');
-                                setGenerateBtn();
-                            }
-                        });
+                        _applyTermsDescription(selectedName, response.description);
                     },
                     error: function() {
-                        $('#termsDescriptionPreview').val(
-                            'Error loading description.');
+                        $('#termsDescriptionPreview').val('Error loading description.');
                         showNotification('Error loading T&C description', 'error');
                         setGenerateBtn();
                     }
