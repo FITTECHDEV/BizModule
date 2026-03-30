@@ -147,9 +147,9 @@ class QuotationController extends Controller
             $startDate  = $request->input('start_date');
             $endDate    = $request->input('end_date');
 
-            // ── Resolve allowed office codes ──────────────────────────────────
+            // ── Resolve allowed office codes ─────────────────────────────────
             $allowedOfficeCodes = $this->resolveUserOfficeCodes();
-
+            
             if ($allowedOfficeCodes->isEmpty()) {
                 return response()->json([
                     'draw'            => (int) $request->input('draw', 1),
@@ -159,9 +159,9 @@ class QuotationController extends Controller
                     'stats'           => $this->emptyStats(),
                 ]);
             }
-
+            
             $allowed = $allowedOfficeCodes->map(fn($c) => strtoupper(trim($c)))->toArray();
-
+            
             // ── Date formatting ───────────────────────────────────────────────
             $spFromDate = '';
             $spToDate   = '';
@@ -176,28 +176,34 @@ class QuotationController extends Controller
                     ]);
                 }
             }
-
-            // ── Resolve optional office dropdown filter ───────────────────────
-            $filterCode      = null;
+            
+            // ── Resolve office code to pass to SP ────────────────────────────
+            // If user selected a specific office, validate it is within their
+            // allowed codes then pass it. Otherwise pass their base office code.
             $requestedOffice = $request->input('office');
+            $spOfficeCode    = '';
+            
             if ($requestedOffice) {
                 $code = DB::table('Cust_Office')
                     ->where('Name', $requestedOffice)
                     ->where('IsActive', 1)
                     ->where('IsDeleted', 0)
                     ->value('Code');
-                if ($code) {
-                    $filterCode = strtoupper(trim($code));
+            
+                if ($code && in_array(strtoupper(trim($code)), $allowed, true)) {
+                    $spOfficeCode = strtoupper(trim($code));
                 }
             }
-
-            $scope = fn(array $rows) => $this->scopeRowsByOffice($rows, $allowed, $filterCode);
-
-            // ── Fetch the three SP result sets we need ────────────────────────
-            $allRows            = $scope($this->callQuotationListSP('Total',           $spFromDate, $spToDate));
-            $lostCancelledRows  = $scope($this->callQuotationListSP('Lost',            $spFromDate, $spToDate));
-            $failedProgressRows = $scope($this->callQuotationListSP('Failed Progress', $spFromDate, $spToDate));
-
+            
+            // Fallback to first allowed office code if nothing resolved
+            if (empty($spOfficeCode) && !empty($allowed)) {
+                $spOfficeCode = $allowed[0];
+            }
+            
+            // ── Fetch SP result sets — office filtering done by SP ────────────
+            $allRows            = $this->callQuotationListSP('Total',           $spFromDate, $spToDate, $spOfficeCode);
+            $lostCancelledRows  = $this->callQuotationListSP('Cancelled',       $spFromDate, $spToDate, $spOfficeCode);
+            $failedProgressRows = $this->callQuotationListSP('Failed Progress', $spFromDate, $spToDate, $spOfficeCode);
             // ── Load SCMINTStatus for the Total branch rows ───────────────────
             $allQuoteNos = array_column($allRows, 'QuoteNo');
             $scmLookup   = collect();
@@ -947,10 +953,12 @@ class QuotationController extends Controller
 
     private function callQuotationListSP(
         string $status,
-        string $fromDate = '',
-        string $toDate   = ''
+        string $fromDate   = '',
+        string $toDate     = '',
+        string $officeCode = ''
     ): array {
         $inputJson = json_encode([
+            'OfficeCode'         => $officeCode,
             'FromDate'           => $fromDate,
             'ToDate'             => $toDate,
             'Customer'           => '',
@@ -4014,6 +4022,10 @@ class QuotationController extends Controller
 
         try {
             $pdo  = DB::connection()->getPdo();
+            DB::table('Quote_QuotationInfo')
+                ->where('ID', $quotationId)
+                ->update(['OfficeCode' => DB::raw("RTRIM(OfficeCode)")]);
+
             $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC dbo.sp_Quote_TermsandConditionList ?");
             $stmt->execute([$quotationId]);
 
@@ -6160,8 +6172,6 @@ class QuotationController extends Controller
         }
     }
 
-
-
     /**
      * GET /quotation/create-booking/locations
      * Calls sp_LocationList with LocationType = 'Road' (always static per spec)
@@ -6315,6 +6325,23 @@ class QuotationController extends Controller
             $result = json_decode($output, true);
 
             if ($result && isset($result['Status']) && $result['Status'] === 'Success') {
+                // Patch columns the SP omits from its UPDATE
+                $decoded = json_decode($request->input('input_json'), true);
+                $patch   = [];
+
+                if (!empty($decoded['ContactPerson'])) {
+                    $patch['contact_name'] = $decoded['ContactPerson'];
+                }
+                if (!empty($decoded['Industry'])) {
+                    $patch['industryname'] = $decoded['Industry'];
+                }
+
+                if (!empty($patch)) {
+                    DB::table('Quote_QuotationInfo')
+                        ->where('ID', $decoded['QuotationID'])
+                        ->update($patch);
+                }
+
                 return response()->json([
                     'success' => true,
                     'message' => $result['Remark'] ?? 'Customer details saved successfully'
