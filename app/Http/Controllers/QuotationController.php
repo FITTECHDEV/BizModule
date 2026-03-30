@@ -39,69 +39,95 @@ class QuotationController extends Controller
     // UPDATED index()
     // Uses resolveUserOfficeCodes() instead of inline Azure_Users query
     // ============================================================
+    // public function index()
+    // {
+    //     $userOfficeCodes = $this->resolveUserOfficeCodes();
+
+    //     if ($userOfficeCodes->isEmpty()) {
+    //         return view('quotation.index', [
+    //             'offices'       => collect(),
+    //             'defaultOffice' => null,
+    //             'officeError'   => 'Your account is not mapped to any office. Please contact your administrator.',
+    //             'stats'         => $this->emptyStats(),
+    //         ]);
+    //     }
+
+    //     // Resolve BaseOfficeCodes → teamnames used in Quote_QuotationInfo
+    //     $offices = DB::table('Quote_QuotationInfo')
+    //         ->whereNotNull('teamname')
+    //         ->whereIn('teamname', $userOfficeCodes->toArray())
+    //         ->distinct()
+    //         ->orderBy('teamname')
+    //         ->pluck('teamname');
+
+    //     // Fallback: try matching through Cust_Office.TeamCode
+    //     if ($offices->isEmpty()) {
+    //         $teamCodes = DB::table('Cust_Office')
+    //             ->whereIn('Code', $userOfficeCodes->toArray())
+    //             ->where('IsActive', 1)
+    //             ->where('IsDeleted', 0)
+    //             ->pluck('TeamCode');
+
+    //         if ($teamCodes->isNotEmpty()) {
+    //             $offices = DB::table('Cust_Office')
+    //                 ->whereIn('TeamCode', $teamCodes->toArray())
+    //                 ->where('IsActive', 1)
+    //                 ->where('IsDeleted', 0)
+    //                 ->orderBy('Name')
+    //                 ->pluck('Name');
+    //         }
+    //     }
+
+    //     if ($offices->isEmpty()) {
+    //         Log::warning('Quotation index - Office codes could not be resolved to any teamname', [
+    //             'email'             => Auth::user()->Email,
+    //             'base_office_codes' => $userOfficeCodes->toArray(),
+    //         ]);
+
+    //         return view('quotation.index', [
+    //             'offices'       => collect(),
+    //             'defaultOffice' => null,
+    //             'officeError'   => 'Your office mapping could not be resolved. Please contact your administrator.',
+    //             'stats'         => $this->emptyStats(),
+    //         ]);
+    //     }
+
+    //     $defaultOffice = $offices->first();
+
+    //     Log::info('Quotation index - Resolved offices', [
+    //         'email'             => Auth::user()->Email,
+    //         'base_office_codes' => $userOfficeCodes->toArray(),
+    //         'resolved_offices'  => $offices->toArray(),
+    //         'default_office'    => $defaultOffice,
+    //     ]);
+
+    //     // No $stats passed — portal() delivers stats with the first DataTable load
+    //     $stats = $this->emptyStats();
+    //     return view('quotation.index', compact('offices', 'defaultOffice', 'stats'));
+    // }
+
+
     public function index()
     {
-        $userOfficeCodes = $this->resolveUserOfficeCodes();
+        $resolved = $this->resolveUserOfficesViaSP();
+        $offices  = $resolved['offices'];
+        $defaultOffice = $resolved['default']; // always BaseOfficeCode's name
 
-        if ($userOfficeCodes->isEmpty()) {
+        if ($offices->isEmpty() || !$defaultOffice) {
             return view('quotation.index', [
                 'offices'       => collect(),
                 'defaultOffice' => null,
-                'officeError'   => 'Your account is not mapped to any office. Please contact your administrator.',
+                'officeError'   => 'Your account is not mapped to any office in BIZ PRO. Please contact your administrator.',
                 'stats'         => $this->emptyStats(),
             ]);
         }
 
-        // Resolve BaseOfficeCodes → teamnames used in Quote_QuotationInfo
-        $offices = DB::table('Quote_QuotationInfo')
-            ->whereNotNull('teamname')
-            ->whereIn('teamname', $userOfficeCodes->toArray())
-            ->distinct()
-            ->orderBy('teamname')
-            ->pluck('teamname');
-
-        // Fallback: try matching through Cust_Office.TeamCode
-        if ($offices->isEmpty()) {
-            $teamCodes = DB::table('Cust_Office')
-                ->whereIn('Code', $userOfficeCodes->toArray())
-                ->where('IsActive', 1)
-                ->where('IsDeleted', 0)
-                ->pluck('TeamCode');
-
-            if ($teamCodes->isNotEmpty()) {
-                $offices = DB::table('Cust_Office')
-                    ->whereIn('TeamCode', $teamCodes->toArray())
-                    ->where('IsActive', 1)
-                    ->where('IsDeleted', 0)
-                    ->orderBy('Name')
-                    ->pluck('Name');
-            }
-        }
-
-        if ($offices->isEmpty()) {
-            Log::warning('Quotation index - Office codes could not be resolved to any teamname', [
-                'email'             => Auth::user()->Email,
-                'base_office_codes' => $userOfficeCodes->toArray(),
-            ]);
-
-            return view('quotation.index', [
-                'offices'       => collect(),
-                'defaultOffice' => null,
-                'officeError'   => 'Your office mapping could not be resolved. Please contact your administrator.',
-                'stats'         => $this->emptyStats(),
-            ]);
-        }
-
-        $defaultOffice = $offices->first();
-
-        Log::info('Quotation index - Resolved offices', [
-            'email'             => Auth::user()->Email,
-            'base_office_codes' => $userOfficeCodes->toArray(),
-            'resolved_offices'  => $offices->toArray(),
-            'default_office'    => $defaultOffice,
+        Log::info('Quotation index - Offices resolved via SP', [
+            'email'          => Auth::user()->Email,
+            'default_office' => $defaultOffice,
+            'all_offices'    => $offices->toArray(),
         ]);
 
-        // No $stats passed — portal() delivers stats with the first DataTable load
         $stats = $this->emptyStats();
         return view('quotation.index', compact('offices', 'defaultOffice', 'stats'));
     }
@@ -147,8 +173,8 @@ class QuotationController extends Controller
             $startDate  = $request->input('start_date');
             $endDate    = $request->input('end_date');
 
-            // ── Resolve allowed office codes ──────────────────────────────────
-            $allowedOfficeCodes = $this->resolveUserOfficeCodes();
+            // ── Resolve allowed office codes (security check) ─────────────────
+            $allowedOfficeCodes = $this->resolveAllowedOfficeCodesViaSP();
 
             if ($allowedOfficeCodes->isEmpty()) {
                 return response()->json([
@@ -159,8 +185,6 @@ class QuotationController extends Controller
                     'stats'           => $this->emptyStats(),
                 ]);
             }
-
-            $allowed = $allowedOfficeCodes->map(fn($c) => strtoupper(trim($c)))->toArray();
 
             // ── Date formatting ───────────────────────────────────────────────
             $spFromDate = '';
@@ -177,28 +201,44 @@ class QuotationController extends Controller
                 }
             }
 
-            // ── Resolve optional office dropdown filter ───────────────────────
-            $filterCode      = null;
+            // ── Resolve office code for SP ────────────────────────────────────
+            // Requested office must be within the user's allowed codes.
+            // If none selected, default to the user's base office code.
             $requestedOffice = $request->input('office');
+            $spOfficeCode    = '';
+
             if ($requestedOffice) {
                 $code = DB::table('Cust_Office')
                     ->where('Name', $requestedOffice)
                     ->where('IsActive', 1)
                     ->where('IsDeleted', 0)
                     ->value('Code');
-                if ($code) {
-                    $filterCode = strtoupper(trim($code));
+
+                if ($code && $allowedOfficeCodes->contains(strtoupper(trim($code)))) {
+                    $spOfficeCode = strtoupper(trim($code));
                 }
             }
 
-            $scope = fn(array $rows) => $this->scopeRowsByOffice($rows, $allowed, $filterCode);
+            // Fallback to base office if no valid office resolved
+            if (empty($spOfficeCode)) {
+                $resolved     = $this->resolveUserOfficesViaSP();
+                $defaultName  = $resolved['default'] ?? null;
+                if ($defaultName) {
+                    $code = DB::table('Cust_Office')
+                        ->where('Name', $defaultName)
+                        ->where('IsActive', 1)
+                        ->where('IsDeleted', 0)
+                        ->value('Code');
+                    $spOfficeCode = $code ? strtoupper(trim($code)) : '';
+                }
+            }
 
-            // ── Fetch the three SP result sets we need ────────────────────────
-            $allRows            = $scope($this->callQuotationListSP('Total',           $spFromDate, $spToDate));
-            $lostCancelledRows  = $scope($this->callQuotationListSP('Lost',            $spFromDate, $spToDate));
-            $failedProgressRows = $scope($this->callQuotationListSP('Failed Progress', $spFromDate, $spToDate));
+            // ── Fetch SP result sets — office filtering done by SP ────────────
+            $allRows            = $this->callQuotationListSP('Total',           $spFromDate, $spToDate, $spOfficeCode);
+            $lostCancelledRows  = $this->callQuotationListSP('Cancelled',       $spFromDate, $spToDate, $spOfficeCode);
+            $failedProgressRows = $this->callQuotationListSP('Failed Progress', $spFromDate, $spToDate, $spOfficeCode);
 
-            // ── Load SCMINTStatus for the Total branch rows ───────────────────
+            // ── Load SCMINTStatus for Total branch rows ───────────────────────
             $allQuoteNos = array_column($allRows, 'QuoteNo');
             $scmLookup   = collect();
             if (!empty($allQuoteNos)) {
@@ -208,7 +248,7 @@ class QuotationController extends Controller
                     ->keyBy('QuoteNo');
             }
 
-            // ── Compute stats from the same arrays used for rows ──────────────
+            // ── Compute stats ─────────────────────────────────────────────────
             $inProgress = $won = $completed = $failedInt = $failedProgress = 0;
 
             foreach ($allRows as $row) {
@@ -217,8 +257,6 @@ class QuotationController extends Controller
                 $scmStatus   = $db ? (is_string($db->SCMINTStatus) ? strtoupper(trim($db->SCMINTStatus)) : null) : null;
 
                 if ($quoteStatus === 'COMPLETED') {
-                    // Explicitly marked Completed in DB — always count as completed
-                    // regardless of SCMINTStatus
                     $completed++;
                 } elseif ($quoteStatus === 'WON' && $scmStatus === 'SUCCESS') {
                     $completed++;
@@ -246,7 +284,7 @@ class QuotationController extends Controller
                 'failed_progress' => $failedProgress,
             ];
 
-            // ── Select the row set for the active card ────────────────────────
+            // ── Select row set for active card ────────────────────────────────
             $activeRows = match ($cardFilter) {
                 'lost_canceled'   => $lostCancelledRows,
                 'failed_progress' => $failedProgressRows,
@@ -293,7 +331,7 @@ class QuotationController extends Controller
             $rowTotal = count($activeRows);
             $pageRows = array_slice($activeRows, $start, $length > 0 ? $length : $rowTotal);
 
-            // ── Fetch full DB records for the current page only ───────────────
+            // ── Fetch full DB records for current page only ───────────────────
             $pageQuoteNos = array_column($pageRows, 'QuoteNo');
             $dbRecords    = collect();
             if (!empty($pageQuoteNos)) {
@@ -315,7 +353,7 @@ class QuotationController extends Controller
                     ->keyBy('QuoteNo');
             }
 
-            // ── Format rows for DataTable ─────────────────────────────────────
+            // ── Format rows ───────────────────────────────────────────────────
             $data = array_map(function ($row) use ($dbRecords, $cardFilter) {
                 $db          = $dbRecords->get($row->QuoteNo);
                 $quoteStatus = $db->QuoteStatus ?? $row->Status ?? 'In Progress';
@@ -325,10 +363,10 @@ class QuotationController extends Controller
                     $quoteStatus === 'Completed'                                               => 'Completed',
                     $quoteStatus === 'Won' && $scmStatus === 'Success'                         => 'Completed',
                     $quoteStatus === 'Won' && !is_null($scmStatus) && $scmStatus !== 'Success' => 'Failed Int.',
-                    $quoteStatus === 'Won'                                                      => 'Won',
-                    $quoteStatus === 'Failed Progress'                                          => 'Failed Progress',
-                    in_array($quoteStatus, ['Lost', 'Cancelled', 'Cancel'])                    => 'Lost / Canceled',
-                    default                                                                     => 'In Progress',
+                    $quoteStatus === 'Won'                                                     => 'Won',
+                    $quoteStatus === 'Failed Progress'                                         => 'Failed Progress',
+                    in_array($quoteStatus, ['Lost', 'Cancelled', 'Cancel'])                   => 'Lost / Canceled',
+                    default                                                                    => 'In Progress',
                 };
 
                 $badgeClass = match ($displayStatus) {
@@ -361,7 +399,6 @@ class QuotationController extends Controller
                         : '<span class="text-muted">' . e($short) . '</span>';
                 }
 
-                // Action buttons
                 $actionHtml = '<div class="action-buttons">';
                 if ($db) {
                     $isWon       = $quoteStatus === 'Won' && is_null($scmStatus);
@@ -387,6 +424,7 @@ class QuotationController extends Controller
                     if ($cardFilter === 'failed_int' && $isFailedInt) {
                         $actionHtml .= ' <button class="btn btn-secondary btn-sm btn-retrigger"'
                             . ' data-booking="' . $db->bookingno . '"'
+                            . ' data-id="' . $db->ID . '"'
                             . ' title="Retrigger"><i class="fas fa-sync-alt"></i></button>';
                     }
                 }
@@ -413,9 +451,9 @@ class QuotationController extends Controller
 
             Log::info('portal - Response', [
                 'user'        => Auth::user()->Email,
+                'office_code' => $spOfficeCode,
                 'card_filter' => $cardFilter,
                 'row_total'   => $rowTotal,
-                'page_size'   => count($data),
                 'stats'       => $stats,
             ]);
 
@@ -466,8 +504,7 @@ class QuotationController extends Controller
         $startDate = $request->input('start_date');
         $endDate   = $request->input('end_date');
 
-        $allowedOfficeCodes = $this->resolveUserOfficeCodes();
-
+        $allowedOfficeCodes = $this->resolveAllowedOfficeCodesViaSP();
         if ($allowedOfficeCodes->isEmpty()) {
             return response()->json([
                 'total' => 0,
@@ -583,7 +620,7 @@ class QuotationController extends Controller
             $endDate    = $request->input('end_date');
 
             // ── Resolve allowed office codes ──────────────────────────────────
-            $allowedOfficeCodes = $this->resolveUserOfficeCodes();
+            $allowedOfficeCodes = $this->resolveAllowedOfficeCodesViaSP();
 
             if ($allowedOfficeCodes->isEmpty()) {
                 return response()->json([
@@ -799,6 +836,7 @@ class QuotationController extends Controller
                     if ($cardFilter === 'failed_int' && $isFailedInt) {
                         $actionHtml .= ' <button class="btn btn-secondary btn-sm btn-retrigger"'
                             . ' data-booking="' . $db->bookingno . '"'
+                            . ' data-id="' . $db->ID . '"'
                             . ' title="Retrigger"><i class="fas fa-sync-alt"></i></button>';
                     }
                 }
@@ -947,10 +985,12 @@ class QuotationController extends Controller
 
     private function callQuotationListSP(
         string $status,
-        string $fromDate = '',
-        string $toDate   = ''
+        string $fromDate   = '',
+        string $toDate     = '',
+        string $officeCode = ''
     ): array {
         $inputJson = json_encode([
+            'OfficeCode'         => $officeCode,   // ← was always ''
             'FromDate'           => $fromDate,
             'ToDate'             => $toDate,
             'Customer'           => '',
@@ -968,8 +1008,9 @@ class QuotationController extends Controller
             $stmt->execute([$inputJson]);
 
             Log::info('callQuotationListSP - executed', [
-                'status'     => $status,
-                'input_json' => $inputJson,
+                'status'      => $status,
+                'office_code' => $officeCode ?: 'ALL',
+                'input_json'  => $inputJson,
             ]);
 
             $rows = [];
@@ -1326,6 +1367,7 @@ class QuotationController extends Controller
                     if ($cardFilter === 'failed_int' && $isFailedInt) {
                         $retriggerBtn = ' <button class="btn btn-secondary btn-sm btn-retrigger"
                         data-booking="' . $row->bookingno . '"
+                        data-id="' . $row->ID . '"
                         title="Retrigger"><i class="fas fa-sync-alt"></i></button>';
                     }
 
@@ -1760,6 +1802,140 @@ class QuotationController extends Controller
                 return strtoupper($segment);
             })
             ->filter(fn($code) => preg_match('/^[A-Z]{2}$/', $code))
+            ->unique()
+            ->values();
+    }
+
+    private function resolveUserOfficesViaSP(): array
+    {
+        $authUser = Auth::user();
+
+        $azureUser = DB::table('Azure_Users')
+            ->where(function ($q) use ($authUser) {
+                $q->whereRaw('BizUserID = ?', [$authUser->ID])
+                    ->orWhereRaw('LOWER(LTRIM(RTRIM(userPrincipalName))) = ?', [strtolower(trim($authUser->Email ?? ''))])
+                    ->orWhereRaw('LOWER(LTRIM(RTRIM(mail))) = ?', [strtolower(trim($authUser->Email ?? ''))]);
+            })
+            ->whereNotNull('AzureId')
+            ->select('AzureId')
+            ->first();
+
+        $empty = ['default' => null, 'offices' => collect()];
+
+        if (!$azureUser || empty($azureUser->AzureId)) {
+            Log::warning('resolveUserOfficesViaSP - No AzureId found', [
+                'email' => $authUser->Email,
+            ]);
+            return $empty;
+        }
+
+        try {
+            $pdo  = DB::connection()->getPdo();
+            $stmt = $pdo->prepare("
+            SET NOCOUNT ON;
+            DECLARE @OutputJson VARCHAR(2000);
+            EXEC dbo.sp_Azure_BIZOfficeandModuleList ?, '', @OutputJson OUTPUT;
+            SELECT @OutputJson AS OutputJson;
+        ");
+            $stmt->execute([$azureUser->AzureId]);
+
+            $outputJson = null;
+            do {
+                try {
+                    $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+                    if (!empty($rows) && isset($rows[0]->OutputJson)) {
+                        $outputJson = $rows[0]->OutputJson;
+                        break;
+                    }
+                } catch (\PDOException $e) {
+                    continue;
+                }
+            } while ($stmt->nextRowset());
+
+            if (empty($outputJson)) {
+                Log::warning('resolveUserOfficesViaSP - SP returned no output', [
+                    'email'    => $authUser->Email,
+                    'azure_id' => $azureUser->AzureId,
+                ]);
+                return $empty;
+            }
+
+            $data = json_decode($outputJson, true);
+
+            if (json_last_error() !== JSON_ERROR_NONE || !is_array($data)) {
+                Log::warning('resolveUserOfficesViaSP - JSON decode failed', [
+                    'email'  => $authUser->Email,
+                    'output' => $outputJson,
+                ]);
+                return $empty;
+            }
+
+            if (isset($data['Status']) && $data['Status'] === 'Failed') {
+                Log::warning('resolveUserOfficesViaSP - SP guard failed', [
+                    'email'   => $authUser->Email,
+                    'remarks' => $data['Remarks'] ?? 'unknown',
+                ]);
+                return $empty;
+            }
+
+            // BasedOfficeName is the user's BaseOfficeCode resolved to its full name.
+            // This is always the default — it comes from Azure_Users.BaseOfficeCode.
+            $defaultOffice = !empty($data['BasedOfficeName'])
+                ? trim($data['BasedOfficeName'])
+                : null;
+
+            $offices = collect();
+
+            if ($defaultOffice) {
+                $offices->push($defaultOffice);
+            }
+
+            if (!empty($data['OtherOffices']) && is_array($data['OtherOffices'])) {
+                foreach ($data['OtherOffices'] as $other) {
+                    if (!empty($other['OfficeName'])) {
+                        $offices->push(trim($other['OfficeName']));
+                    }
+                }
+            }
+
+            $offices = $offices->unique()->values();
+
+            Log::info('resolveUserOfficesViaSP - Resolved', [
+                'email'          => $authUser->Email,
+                'default_office' => $defaultOffice,
+                'all_offices'    => $offices->toArray(),
+            ]);
+
+            return [
+                'default' => $defaultOffice,
+                'offices' => $offices,
+            ];
+        } catch (\Exception $e) {
+            Log::error('resolveUserOfficesViaSP - Exception', [
+                'email' => $authUser->Email,
+                'error' => $e->getMessage(),
+                'file'  => $e->getFile(),
+                'line'  => $e->getLine(),
+            ]);
+            return $empty;
+        }
+    }
+
+    private function resolveAllowedOfficeCodesViaSP(): \Illuminate\Support\Collection
+    {
+        $resolved = $this->resolveUserOfficesViaSP();
+        $officeNames = $resolved['offices'];
+
+        if ($officeNames->isEmpty()) {
+            return collect();
+        }
+
+        return DB::table('Cust_Office')
+            ->whereIn('Name', $officeNames->toArray())
+            ->where('IsActive', 1)
+            ->where('IsDeleted', 0)
+            ->pluck('Code')
+            ->map(fn($c) => strtoupper(trim($c)))
             ->unique()
             ->values();
     }
@@ -3498,7 +3674,7 @@ class QuotationController extends Controller
 
     public function getReasons(Request $request)
     {
-        $module     = $request->input('module', 'Quotation');
+        $module     = $request->input('module', 'QuoteLogger');
         $reasonType = $request->input('reason_type');
         $filter     = $request->input('filter', '');
 
@@ -3744,14 +3920,16 @@ class QuotationController extends Controller
 
     public function retrigger(Request $request)
     {
-        $bookingNo = $request->input('booking_no');
+        $bookingNo    = $request->input('booking_no');
+        $quotationId  = $request->input('quotation_id'); // UUID from data-id
 
         if (!$bookingNo) {
             return response()->json(['success' => false, 'message' => 'Booking number is required'], 400);
         }
 
         $quotation = DB::table('Quote_QuotationInfo')
-            ->where('bookingno', $bookingNo)
+            ->when($quotationId, fn($q) => $q->where('ID', $quotationId))
+            ->when(!$quotationId, fn($q) => $q->where('bookingno', $bookingNo))
             ->first(['ID', 'QuoteNo', 'SCMBookingID', 'SCMBookingXML', 'ClientCreated', 'OfficeCode']);
 
         if (!$quotation) {
@@ -3873,8 +4051,9 @@ class QuotationController extends Controller
             ];
 
             // Re-fetch after push
+            // AFTER:
             $quotation = DB::table('Quote_QuotationInfo')
-                ->where('bookingno', $bookingNo)
+                ->where('ID', $quotation->ID)
                 ->first(['ID', 'QuoteNo', 'SCMBookingID', 'SCMBookingXML', 'ClientCreated', 'OfficeCode']);
 
             Log::info('retrigger - SCMBookingID after push', [
@@ -4005,6 +4184,8 @@ class QuotationController extends Controller
         ]);
     }
 
+
+
     public function getTermsTemplates(Request $request): JsonResponse
     {
         $quotationId = trim($request->input('quotation_id', ''));
@@ -4015,6 +4196,10 @@ class QuotationController extends Controller
 
         try {
             $pdo  = DB::connection()->getPdo();
+            DB::table('Quote_QuotationInfo')
+                ->where('ID', $quotationId)
+                ->update(['OfficeCode' => DB::raw("RTRIM(OfficeCode)")]);
+
             $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC dbo.sp_Quote_TermsandConditionList ?");
             $stmt->execute([$quotationId]);
 
@@ -4111,6 +4296,7 @@ class QuotationController extends Controller
             ], 500);
         }
     }
+
 
     /**
      * Load T&C templates via sp_Quote_CommunicationDetail_List.
@@ -6625,10 +6811,10 @@ class QuotationController extends Controller
         }
 
         Log::info('processBooking - ID debug', [
-    'request_id'   => $request->id,
-    'db_id'        => $quotation->ID,
-    'json_encoded' => json_encode(['QuotationID' => $quotation->ID]),
-]);
+            'request_id'   => $request->id,
+            'db_id'        => $quotation->ID,
+            'json_encoded' => json_encode(['QuotationID' => $quotation->ID]),
+        ]);
 
         $quoteNo = $quotation->QuoteNo;
 
@@ -7225,36 +7411,36 @@ class QuotationController extends Controller
         $quoteNo   = trim($request->input('quote_no', ''));  // ← add this
 
 
-     // REPLACE WITH:
-if (!$bookingNo || !$basedOn) {
-    return response()->json(['success' => false, 'message' => 'booking_no and based_on are required'], 400);
-}
+        // REPLACE WITH:
+        if (!$bookingNo || !$basedOn) {
+            return response()->json(['success' => false, 'message' => 'booking_no and based_on are required'], 400);
+        }
 
-// Use the UUID passed directly from the frontend (quote_no = quotationId in JS).
-// Falling back to bookingno lookup is unsafe — multiple quotations can share
-// the same bookingno integer and ->first() returns an unpredictable row.
-$resolvedId = $quoteNo ?: null;
+        // Use the UUID passed directly from the frontend (quote_no = quotationId in JS).
+        // Falling back to bookingno lookup is unsafe — multiple quotations can share
+        // the same bookingno integer and ->first() returns an unpredictable row.
+        $resolvedId = $quoteNo ?: null;
 
-if (!$resolvedId) {
-    $quotation = DB::table('Quote_QuotationInfo')
-        ->where('bookingno', $bookingNo)
-        ->first(['ID']);
+        if (!$resolvedId) {
+            $quotation = DB::table('Quote_QuotationInfo')
+                ->where('bookingno', $bookingNo)
+                ->first(['ID']);
 
-    if (!$quotation || empty($quotation->ID)) {
-        Log::warning('getChargeBasedOnDefaults - QuotationID not found', ['booking_no' => $bookingNo]);
-        return response()->json(['success' => false, 'message' => 'Quotation not found for this booking'], 404);
-    }
+            if (!$quotation || empty($quotation->ID)) {
+                Log::warning('getChargeBasedOnDefaults - QuotationID not found', ['booking_no' => $bookingNo]);
+                return response()->json(['success' => false, 'message' => 'Quotation not found for this booking'], 404);
+            }
 
-    $resolvedId = $quotation->ID;
-}
+            $resolvedId = $quotation->ID;
+        }
 
-// ── Strip trailing comma from containerlist before SP reads it ──
-DB::table('Quote_QuotationInfo')
-    ->where('ID', $resolvedId)
-    ->whereRaw("RIGHT(RTRIM(containerlist), 1) = ','")
-    ->update([
-        'containerlist' => DB::raw("LEFT(RTRIM(containerlist), LEN(RTRIM(containerlist)) - 1)")
-    ]);
+        // ── Strip trailing comma from containerlist before SP reads it ──
+        DB::table('Quote_QuotationInfo')
+            ->where('ID', $resolvedId)
+            ->whereRaw("RIGHT(RTRIM(containerlist), 1) = ','")
+            ->update([
+                'containerlist' => DB::raw("LEFT(RTRIM(containerlist), LEN(RTRIM(containerlist)) - 1)")
+            ]);
 
         Log::info('getChargeBasedOnDefaults - Calling SP', [
             'booking_no' => $bookingNo,

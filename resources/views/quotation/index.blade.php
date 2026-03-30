@@ -1155,10 +1155,12 @@
             $('#quotationTable').on('click', '.btn-retrigger', function(e) {
                 e.stopPropagation();
                 var $btn = $(this);
+                // AFTER
                 var bookingNo = $btn.data('booking');
+                var quoteId = $btn.data('id'); // ← UUID
 
-                if (!bookingNo) {
-                    alert('Booking number not found');
+                if (!quoteId) {
+                    alert('Quotation ID not found');
                     return;
                 }
                 if (!confirm('Are you sure you want to retrigger booking: ' + bookingNo + '?')) return;
@@ -1170,6 +1172,7 @@
                     type: 'POST',
                     data: {
                         _token: '{{ csrf_token() }}',
+                        id: quoteId,
                         booking_no: bookingNo
                     },
                     success: function(res) {
@@ -1672,20 +1675,20 @@
                 $('#cbProgressError, #cbProgressSuccess').addClass('d-none');
                 renderBookingSteps([]);
 
-          $.ajax({
-    url: '{{ route('quotation.process-booking') }}',
-    type: 'POST',
-    data: {
-        _token: '{{ csrf_token() }}',
-        id: quotationId,           // ← UUID — used by controller to fetch the record
-        booking_no: bookingNo,     // ← kept for logging only
-        service_template: serviceTemplate,
-        bill_to_party: billToParty,
-        forwarder: forwarder,
-        include_country: $('#cb_include_country').is(':checked') ? 1 : 0,
-        place_of_receipt: placeOfReceipt,
-        place_of_delivery: placeOfDelivery
-    },
+                $.ajax({
+                    url: '{{ route('quotation.process-booking') }}',
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        id: quotationId, // ← UUID — used by controller to fetch the record
+                        booking_no: bookingNo, // ← kept for logging only
+                        service_template: serviceTemplate,
+                        bill_to_party: billToParty,
+                        forwarder: forwarder,
+                        include_country: $('#cb_include_country').is(':checked') ? 1 : 0,
+                        place_of_receipt: placeOfReceipt,
+                        place_of_delivery: placeOfDelivery
+                    },
                     success: function(res) {
                         renderBookingSteps(res.steps || []);
 
