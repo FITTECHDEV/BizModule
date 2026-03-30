@@ -2551,7 +2551,7 @@ class QuotationController extends Controller
                 'SubmittedDatetime' => now()->format('YmdHis'),
                 'SubmittedBy' => $submittedBy,
                 'Action' => 'Delete',
-                'QuotationNo' => $quotation->ID,
+                'QuotationID' => $quotation->ID,
                 'QuoteChargeID' => $chargeId,
                 'PartyCode' => $charge->PartyCode ?? '',
                 'RevenueOrCost' => $charge->IsRevenue ? 'Revenue' : 'Cost',
@@ -4002,6 +4002,113 @@ class QuotationController extends Controller
             'success' => true,
             'templates' => $templates
         ]);
+    }
+
+    public function getTermsTemplates(Request $request): JsonResponse
+    {
+        $quotationId = trim($request->input('quotation_id', ''));
+
+        if (!$quotationId) {
+            return response()->json(['success' => false, 'message' => 'quotation_id is required'], 400);
+        }
+
+        try {
+            $pdo  = DB::connection()->getPdo();
+            $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC dbo.sp_Quote_TermsandConditionList ?");
+            $stmt->execute([$quotationId]);
+
+            $templates      = [];
+            $resultSetIndex = 0;
+
+            do {
+                $resultSetIndex++;
+                try {
+                    $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+
+                    if (empty($rows)) continue;
+
+                    $firstVal = array_values((array) $rows[0])[0] ?? '';
+
+                    // SP CATCH block returns 'Failed - ...'
+                    if (is_string($firstVal) && str_starts_with(trim($firstVal), 'Failed')) {
+                        Log::warning('getTermsTemplates - SP returned failure', [
+                            'quotation_id' => $quotationId,
+                            'message'      => $firstVal,
+                        ]);
+                        return response()->json([
+                            'success' => false,
+                            'code'    => 'NOT_CONFIGURED',
+                            'message' => $firstVal,
+                        ], 404);
+                    }
+
+                    // Accept first result set that has a recognisable name column
+                    $row        = (array) $rows[0];
+                    $nameColumn = null;
+                    foreach (['TemplateName', 'Name', 'TCName', 'TermsName'] as $candidate) {
+                        if (array_key_exists($candidate, $row)) {
+                            $nameColumn = $candidate;
+                            break;
+                        }
+                    }
+
+                    if (!$nameColumn) continue;
+
+                    // Normalise to { Name, Description } shape expected by frontend
+                    $descColumn = null;
+                    foreach (['Description', 'TermsAndCondition', 'TCContent', 'Content', 'Body'] as $candidate) {
+                        if (array_key_exists($candidate, $row)) {
+                            $descColumn = $candidate;
+                            break;
+                        }
+                    }
+
+                    $templates = array_map(fn($r) => (object)[
+                        'Name'        => ((array) $r)[$nameColumn] ?? '',
+                        'Description' => $descColumn ? (((array) $r)[$descColumn] ?? '') : '',
+                    ], $rows);
+
+                    Log::info('getTermsTemplates - Templates found', [
+                        'quotation_id'   => $quotationId,
+                        'count'          => count($templates),
+                        'name_column'    => $nameColumn,
+                        'desc_column'    => $descColumn ?? 'not found',
+                        'result_set'     => $resultSetIndex,
+                    ]);
+                    break;
+                } catch (\PDOException $e) {
+                    Log::debug('getTermsTemplates - Skipping result set #' . $resultSetIndex, [
+                        'error' => $e->getMessage(),
+                    ]);
+                    continue;
+                }
+            } while ($stmt->nextRowset());
+
+            if (empty($templates)) {
+                Log::warning('getTermsTemplates - SP returned no templates', [
+                    'quotation_id'     => $quotationId,
+                    'result_sets_seen' => $resultSetIndex,
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'code'    => 'NOT_CONFIGURED',
+                    'message' => 'No T&C templates configured for this quotation.',
+                ], 404);
+            }
+
+            return response()->json(['success' => true, 'templates' => $templates]);
+        } catch (\Exception $e) {
+            Log::error('getTermsTemplates - Failed', [
+                'quotation_id' => $quotationId,
+                'error'        => $e->getMessage(),
+                'file'         => $e->getFile(),
+                'line'         => $e->getLine(),
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load T&C templates: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
@@ -5786,7 +5893,7 @@ class QuotationController extends Controller
             'SubmittedDatetime' => now()->format('YmdHis'),
             'SubmittedBy'       => $submittedBy,
             'Action'            => 'Update',
-            'QuotationNo'       => $request->booking_no,
+            'QuotationID'       => $request->booking_no,
             'ServiceTemplate'   => $request->service_template,
             'BillToParty'       => $request->bill_to_party,
             'Forwarder'         => $request->forwarder,
@@ -6774,7 +6881,7 @@ class QuotationController extends Controller
                 'SubmittedDatetime' => now()->format('YmdHis'),
                 'SubmittedBy'       => $submittedBy,
                 'Action'            => 'Update',
-                'QuotationNo'       => $quotationId,
+                'QuotationID'       => $quotationId,
                 'ServiceTemplate'   => $serviceTemplate,
                 'BillToParty'       => $billToParty,
                 'Forwarder'         => $forwarder,
@@ -6857,11 +6964,11 @@ class QuotationController extends Controller
                             stripos($trimmed, 'Failed') === 0 ||
                             stripos($trimmed, 'There is already') !== false
                         ) {
-                            Log::error('runBookingProcessMain - SP emitted error result set', [
-                                'quote_no'     => $quoteNo,
-                                'process_type' => $processType,
-                                'sp_error'     => $trimmed,
-                            ]);
+                            // Log::error('runBookingProcessMain - SP emitted error result set', [
+                            //     'quote_no'     => $quoteNo,
+                            //     'process_type' => $processType,
+                            //     'sp_error'     => $trimmed,
+                            // ]);
 
                             return [
                                 'status'      => 'Failed',
@@ -6909,11 +7016,11 @@ class QuotationController extends Controller
 
             if ($errorSet) {
                 $spError = array_values($errorSet['first_row'])[0];
-                Log::error('runBookingProcessMain - @Status=Success but error set detected', [
-                    'quote_no'     => $quoteNo,
-                    'process_type' => $processType,
-                    'sp_error'     => $spError,
-                ]);
+                // Log::error('runBookingProcessMain - @Status=Success but error set detected', [
+                //     'quote_no'     => $quoteNo,
+                //     'process_type' => $processType,
+                //     'sp_error'     => $spError,
+                // ]);
 
                 return [
                     'status'      => 'Failed',
@@ -7403,7 +7510,7 @@ class QuotationController extends Controller
 
         try {
             $query = DB::connection('sqlsrv')
-                ->table('FITSCMUAT.dbo.Cust_Resource AS CR')
+                ->table('FITSCM.dbo.Cust_Resource AS CR')
                 ->join('FITSCM.dbo.Cust_ResOfficeResFuncMap AS CRO', 'CRO.ResourceId', '=', 'CR.Id')
                 ->join('FITSCM.dbo.Sys_ResourceFunction AS RF', 'RF.Id', '=', 'CRO.ResourceFunctionId')
                 ->where('CR.IsActive',  1)
