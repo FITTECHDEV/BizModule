@@ -3360,12 +3360,12 @@ class QuotationController extends Controller
             // EXECUTE STATUS UPDATE STORED PROCEDURE
             // ============================================
 
-            $inputJson = json_encode([
+           $inputJson = json_encode([
                 'OperationType' => 'QuotationStatusUpdate',
                 'SubmittedDatetime' => now()->format('YmdHis'),
                 'SubmittedBy' => $submittedBy,
                 'Action' => 'Edit',
-                'BookingNo' => $bookingNo,
+                'QuotationID' => $quotation->ID,  
                 'Status' => $targetStatus,
                 'ReasonCode' => $reasonCode,
                 'ReasonRemark' => $reasonRemark
