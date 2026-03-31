@@ -1220,6 +1220,20 @@
                 var savedState = modal.data('saved-form-state');
 
                 // If reopening for the same quotation after a failure, restore form state
+                // Fall back to sessionStorage if jQuery data was lost (e.g. page refresh)
+                if ((!savedState || String(lastQuoteNo) !== String(quoteNo)) && quotationId) {
+                    try {
+                        var _ss = sessionStorage.getItem('cbFormState_' + quotationId);
+                        if (_ss) {
+                            savedState = JSON.parse(_ss);
+                            // Write back so the restore check below finds them
+                            modal.data('saved-form-state', savedState);
+                            lastQuoteNo = quoteNo;
+                            modal.data('last-quote-no', quoteNo);
+                        }
+                    } catch (e) {}
+                }
+
                 if (savedState && String(lastQuoteNo) === String(quoteNo)) {
                     resetCreateBookingForm();
                     setDropdownLoading('#cb_service_template');
@@ -1581,15 +1595,20 @@
             });
 
             // ── Booking step renderer ─────────────────────────────────────────────────
-            function renderBookingSteps(completedSteps) {
+            function renderBookingSteps(completedSteps, activeStep) {
                 var $list = $('#cbStepList').empty();
                 BOOKING_STEPS.forEach(function(def) {
                     var done = completedSteps.find(function(s) {
                         return s.step === def.step;
                     });
                     var iconClass, badgeClass, statusText, remarkHtml = '';
+                    var isActive = (activeStep !== undefined && def.step === activeStep);
 
-                    if (!done) {
+                    if (isActive) {
+                        iconClass = 'fas fa-spinner fa-spin text-primary';
+                        badgeClass = 'badge-primary';
+                        statusText = 'Processing...';
+                    } else if (!done) {
                         iconClass = 'fas fa-circle text-secondary';
                         badgeClass = 'badge-secondary';
                         statusText = 'Pending';
@@ -1649,7 +1668,7 @@
                 }
 
                 // Save form state so it can be restored if booking fails
-                $('#createBookingModal').data('saved-form-state', {
+                var _formState = {
                     serviceTemplate: serviceTemplate,
                     billToPartyText: $('#cb_bill_to_party').val(),
                     billToPartyCode: billToParty,
@@ -1662,7 +1681,13 @@
                     deliveryText: $('#cb_place_of_delivery').val(),
                     deliveryCode: placeOfDelivery,
                     deliveryId: $('#cb_place_of_delivery_id').val(),
-                });
+                };
+                $('#createBookingModal').data('saved-form-state', _formState);
+                // Persist to sessionStorage so state survives page refresh
+                try {
+                    sessionStorage.setItem('cbFormState_' + quotationId, JSON.stringify(_formState));
+                } catch (e) {}
+
 
                 // Disable button to prevent double submission
                 $btn.prop('disabled', true).html(
@@ -1673,7 +1698,7 @@
                 $('#submitCreateBookingBtn, #cancelCreateBookingBtn').addClass('d-none');
                 $('#cbEditLink').addClass('d-none');
                 $('#cbProgressError, #cbProgressSuccess').addClass('d-none');
-                renderBookingSteps([]);
+                renderBookingSteps([], 0);
 
                 $.ajax({
                     url: '{{ route('quotation.process-booking') }}',
@@ -1704,6 +1729,9 @@
                             $('#cbProgressSuccess').html(msg).removeClass('d-none');
                             $('#createBookingModal').removeData('saved-form-state').removeData(
                                 'last-quote-no');
+                            try {
+                                sessionStorage.removeItem('cbFormState_' + quotationId);
+                            } catch (e) {}
                             table.ajax.reload(null, false);
                         } else {
                             var failedStep = (res.steps || []).find(function(s) {
@@ -1719,9 +1747,22 @@
                         }
                     },
                     error: function(xhr) {
-                        var msg = xhr.responseJSON?.message || 'An unexpected error occurred.';
-                        $('#cbProgressError').text(msg).removeClass('d-none');
-                        if (xhr.responseJSON?.steps) renderBookingSteps(xhr.responseJSON.steps);
+                        var msg = 'An unexpected error occurred.';
+                        var json = xhr.responseJSON;
+                        if (json) {
+                            if (json.errors) {
+                                // Laravel validation (422)
+                                msg = Object.values(json.errors).flat().join('<br>');
+                            } else if (json.message) {
+                                msg = json.message;
+                            }
+                        } else if (xhr.status === 0) {
+                            msg = 'Connection lost. Please check your network and try again.';
+                        } else if (xhr.status >= 500) {
+                            msg = 'Server error (' + xhr.status + '). Please contact support.';
+                        }
+                        $('#cbProgressError').html(msg).removeClass('d-none');
+                        if (json?.steps) renderBookingSteps(json.steps);
                         $('#cbEditLink').removeClass('d-none');
                     },
                     complete: function() {
