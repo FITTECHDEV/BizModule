@@ -3365,12 +3365,11 @@ class QuotationController extends Controller
                 'SubmittedDatetime' => now()->format('YmdHis'),
                 'SubmittedBy' => $submittedBy,
                 'Action' => 'Edit',
-                'BookingNo' => $bookingNo,
+                'QuotationID' => $quotation->ID,  // ← REPLACE BookingNo with QuotationID
                 'Status' => $targetStatus,
                 'ReasonCode' => $reasonCode,
                 'ReasonRemark' => $reasonRemark
             ]);
-
             Log::info('Update Status - Executing SP', [
                 'booking_no' => $bookingNo,
                 'target_status' => $targetStatus,
@@ -3686,7 +3685,7 @@ class QuotationController extends Controller
 
     public function getReasons(Request $request)
     {
-        $module = $request->input('module', 'QuoteLogger');
+        $module = $request->input('module', 'Quotation');
         $reasonType = $request->input('reason_type');
         $filter = $request->input('filter', '');
 
