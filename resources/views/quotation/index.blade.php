@@ -853,8 +853,7 @@ $(document).ready(function() {
         processing: true,
         serverSide: true,
         ajax: {
-            url: '{{ route('
-            quotation.portal ') }}',
+            url: '{{ route('quotation.portal') }}',
             type: 'GET',
             data: function(d) {
                 d.days = $('#dateFilter').val();
@@ -1155,8 +1154,7 @@ $(document).ready(function() {
         $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
 
         $.ajax({
-            url: '{{ route('
-            quotation.retrigger ') }}',
+            url: '{{ route('quotation.retrigger') }}',
             type: 'POST',
             data: {
                 _token: '{{ csrf_token() }}',
@@ -1225,8 +1223,7 @@ $(document).ready(function() {
         if (savedState && String(lastQuoteNo) === String(quoteNo)) {
             resetCreateBookingForm();
             setDropdownLoading('#cb_service_template');
-            $.get('{{ route('
-                    quotation.booking.service - templates ') }}', {
+            $.get('{{ route('quotation.booking.service-templates') }}', {
                         quotation_id: quotationId
                     })
                 .done(function(res) {
@@ -1260,8 +1257,7 @@ $(document).ready(function() {
         modal.data('last-quote-no', quoteNo);
         resetCreateBookingForm();
         setDropdownLoading('#cb_service_template');
-        $.get('{{ route('
-                quotation.booking.service - templates ') }}', {
+        $.get('{{ route('quotation.booking.service-templates') }}', {
                     quotation_id: quotationId
                 })
             .done(function(res) {
@@ -1386,8 +1382,7 @@ $(document).ready(function() {
                         modal.data('origin-country') :
                         modal.data('destination-country');
 
-                    $.get('{{ route('
-                            quotation.booking.locations ') }}', {
+                    $.get('{{ route('quotation.booking.locations') }}', {
                                 filter: query,
                                 include_country: $('#cb_include_country').is(':checked') ? 1 : 0,
                                 country_code: $('#cb_include_country').is(':checked') ? (
@@ -1547,8 +1542,7 @@ $(document).ready(function() {
     setupPartyAutocomplete(
         'cb_bill_to_party',
         'cb_bill_to_party_code',
-        '{{ route('
-        quotation.booking.bill - to - parties ') }}',
+        '{{ route('quotation.booking.bill-to-parties') }}',
         function() {
             return $('#createBookingModal').data('team-id');
         }
@@ -1556,8 +1550,7 @@ $(document).ready(function() {
     setupPartyAutocomplete(
         'cb_forwarder',
         'cb_forwarder_code',
-        '{{ route('
-        quotation.booking.forwarders ') }}',
+        '{{ route('quotation.booking.forwarders') }}',
         function() {
             return $('#createBookingModal').data('team-id');
         }
@@ -1693,8 +1686,7 @@ $(document).ready(function() {
         renderBookingSteps([], 0);
 
         $.ajax({
-            url: '{{ route('
-            quotation.process - booking ') }}',
+            url: '{{ route('quotation.process-booking') }}',
             type: 'POST',
             data: {
                 _token: '{{ csrf_token() }}',
@@ -1860,8 +1852,7 @@ $(document).ready(function() {
         }, stepDelay * 3);
 
         $.ajax({
-            url: '{{ route('
-            crm.sync.run ') }}',
+            url: '{{ route('crm.sync.run') }}',
             type: 'POST',
             timeout: 120000,
             data: {

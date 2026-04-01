@@ -151,7 +151,7 @@ class HomeController extends Controller
 
             try {
                 $quotation_stats = $canViewQuotationCard
-                    ? \App\Http\Controllers\QuotationController::getHomeStats()
+                    ? \App\Http\Controllers\QuotationController::getHomeStats($effectiveOffice)
                     : ['total' => 0, 'in_progress' => 0, 'failed_int' => 0, 'failed_progress' => 0];
             } catch (\Exception $e) {
                 Log::error('Quotation Stats Error: ' . $e->getMessage());

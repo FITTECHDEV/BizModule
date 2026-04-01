@@ -23,7 +23,7 @@ class QuotationController extends Controller
     // Source: Cust_Office + Bill_ChargeCodeOfficeMap (dominant currency per office)
     // SA has no operational currency — defaults to KES
     // ============================================
-    const OFFICE_BASE_CURRENCY = [
+    public const OFFICE_BASE_CURRENCY = [
         'DJ' => 'DJF',
         'ET' => 'ETB',
         'KE' => 'KES',
@@ -517,7 +517,7 @@ class QuotationController extends Controller
             ]);
         }
 
-        $allowed = $allowedOfficeCodes->map(fn($c) => strtoupper(trim($c)))->toArray();
+        $allowed = $allowedOfficeCodes->map(fn ($c) => strtoupper(trim($c)))->toArray();
 
         $spFromDate = '';
         $spToDate = '';
@@ -537,12 +537,13 @@ class QuotationController extends Controller
                 ->where('Name', $requestedOffice)
                 ->where('IsActive', 1)->where('IsDeleted', 0)
                 ->value('Code');
-            if ($code)
+            if ($code) {
                 $filterCode = strtoupper(trim($code));
+            }
         }
 
         // Scope helper — handles both formatted and numeric QuoteNos
-        $scope = fn(array $rows) => $this->scopeRowsByOffice($rows, $allowed, $filterCode);
+        $scope = fn (array $rows) => $this->scopeRowsByOffice($rows, $allowed, $filterCode);
 
         // One SP call for Total (covers In Progress + Won + Completed + Failed Int.)
         $allRows = $scope($this->callQuotationListSP('Total', $spFromDate, $spToDate));
@@ -633,7 +634,7 @@ class QuotationController extends Controller
             }
 
             $allowed = $allowedOfficeCodes
-                ->map(fn($c) => strtoupper(trim($c)))
+                ->map(fn ($c) => strtoupper(trim($c)))
                 ->toArray();
 
             // ── Date range — day filters ignored, SP only supports FromDate/ToDate ──
@@ -903,7 +904,7 @@ class QuotationController extends Controller
         // used as the reliable identifier instead of teamname,
         // which stores mixed values (office names AND person names).
         $officeNames = DB::table('Cust_Office')
-            ->whereIn('Code', $officeCodes->map(fn($c) => trim($c))->toArray())
+            ->whereIn('Code', $officeCodes->map(fn ($c) => trim($c))->toArray())
             ->where('IsActive', 1)
             ->where('IsDeleted', 0)
             ->orderBy('Name')
@@ -932,9 +933,9 @@ class QuotationController extends Controller
             ];
         }
 
-        $allowed = $allowedOfficeCodes->map(fn($c) => strtoupper(trim($c)))->toArray();
+        $allowed = $allowedOfficeCodes->map(fn ($c) => strtoupper(trim($c)))->toArray();
 
-        $scope = fn(array $rows) => $this->scopeRowsByOffice($rows, $allowed);
+        $scope = fn (array $rows) => $this->scopeRowsByOffice($rows, $allowed);
 
 
         $allRows = $scope($this->callQuotationListSP('Total'));
@@ -1018,8 +1019,9 @@ class QuotationController extends Controller
             do {
                 try {
                     $fetched = $stmt->fetchAll(\PDO::FETCH_OBJ);
-                    if (empty($fetched))
+                    if (empty($fetched)) {
                         continue;
+                    }
 
                     $firstVal = array_values((array) $fetched[0])[0] ?? '';
                     if (is_string($firstVal) && str_starts_with(trim($firstVal), 'Failed')) {
@@ -1030,8 +1032,9 @@ class QuotationController extends Controller
                         break;
                     }
 
-                    if (!isset($fetched[0]->QuoteNo))
+                    if (!isset($fetched[0]->QuoteNo)) {
                         continue;
+                    }
 
                     $rows = $fetched;
                     break;
@@ -1065,7 +1068,7 @@ class QuotationController extends Controller
             ->where('IsActive', 1)
             ->where('IsDeleted', 0)
             ->pluck('TeamCode')
-            ->map(fn($c) => (string) $c)
+            ->map(fn ($c) => (string) $c)
             ->toArray();
 
         if (empty($allowedTeamCodes)) {
@@ -1276,13 +1279,13 @@ class QuotationController extends Controller
 
             // ── DataTables (unchanged below this line) ────────────────
             return DataTables::of($query)
-                ->filterColumn('OfficeName', fn($q, $k) => $q->where('teamname', 'like', "%$k%"))
-                ->filterColumn('ClientName', fn($q, $k) => $q->where('companyname', 'like', "%$k%"))
-                ->filterColumn('ClientID', fn($q, $k) => $q->where('clientid', 'like', "%$k%"))
-                ->filterColumn('SalesPerson', fn($q, $k) => $q->where('username', 'like', "%$k%"))
-                ->filterColumn('OriginCountry', fn($q, $k) => $q->where('origincountry', 'like', "%$k%"))
-                ->filterColumn('DestinationCountry', fn($q, $k) => $q->where('destinationcountry', 'like', "%$k%"))
-                ->filterColumn('BookingNo', fn($q, $k) => $q->where('bookingno', 'like', "%$k%"))
+                ->filterColumn('OfficeName', fn ($q, $k) => $q->where('teamname', 'like', "%$k%"))
+                ->filterColumn('ClientName', fn ($q, $k) => $q->where('companyname', 'like', "%$k%"))
+                ->filterColumn('ClientID', fn ($q, $k) => $q->where('clientid', 'like', "%$k%"))
+                ->filterColumn('SalesPerson', fn ($q, $k) => $q->where('username', 'like', "%$k%"))
+                ->filterColumn('OriginCountry', fn ($q, $k) => $q->where('origincountry', 'like', "%$k%"))
+                ->filterColumn('DestinationCountry', fn ($q, $k) => $q->where('destinationcountry', 'like', "%$k%"))
+                ->filterColumn('BookingNo', fn ($q, $k) => $q->where('bookingno', 'like', "%$k%"))
                 ->filterColumn('QuotationStatus', function ($query, $keyword) {
                     $kw = strtolower(trim($keyword));
                     $query->where(function ($q) use ($kw) {
@@ -1310,38 +1313,46 @@ class QuotationController extends Controller
                         }
                     });
                 })
-                ->addColumn('report_date', fn($r) => $r->CreatedOn ? date('Y-m-d H:i', strtotime($r->CreatedOn)) : '-')
-                ->addColumn('OfficeName', fn($r) => $r->teamname ?? '-')
-                ->addColumn('ClientName', fn($r) => $r->companyname ?? '-')
-                ->addColumn('ClientID', fn($r) => $r->clientid ?? '-')
-                ->addColumn('SalesPerson', fn($r) => $r->username ?? '-')
-                ->addColumn('OriginCountry', fn($r) => $r->origincountry ?? '-')
-                ->addColumn('DestinationCountry', fn($r) => $r->destinationcountry ?? '-')
-                ->addColumn('BookingNo', fn($r) => $r->bookingno ?? '-')
+                ->addColumn('report_date', fn ($r) => $r->CreatedOn ? date('Y-m-d H:i', strtotime($r->CreatedOn)) : '-')
+                ->addColumn('OfficeName', fn ($r) => $r->teamname ?? '-')
+                ->addColumn('ClientName', fn ($r) => $r->companyname ?? '-')
+                ->addColumn('ClientID', fn ($r) => $r->clientid ?? '-')
+                ->addColumn('SalesPerson', fn ($r) => $r->username ?? '-')
+                ->addColumn('OriginCountry', fn ($r) => $r->origincountry ?? '-')
+                ->addColumn('DestinationCountry', fn ($r) => $r->destinationcountry ?? '-')
+                ->addColumn('BookingNo', fn ($r) => $r->bookingno ?? '-')
                 ->addColumn('QuotationStatus', function ($row) {
                     $status = $row->QuoteStatus ?? $row->status ?? 'Proposal';
                     $scmStatus = $row->SCMINTStatus;
-                    if ($status === 'Won' && $scmStatus && $scmStatus !== 'Success')
+                    if ($status === 'Won' && $scmStatus && $scmStatus !== 'Success') {
                         return 'Failed Int.';
-                    if ($status === 'Won' && $scmStatus === 'Success')
+                    }
+                    if ($status === 'Won' && $scmStatus === 'Success') {
                         return 'Completed';
-                    if ($status === 'Won')
+                    }
+                    if ($status === 'Won') {
                         return 'Won';
-                    if ($status === 'Failed Progress')
+                    }
+                    if ($status === 'Failed Progress') {
                         return 'Failed Progress';
-                    if (in_array($status, ['Proposal', 'Pending', 'In Progress']) || is_null($status))
+                    }
+                    if (in_array($status, ['Proposal', 'Pending', 'In Progress']) || is_null($status)) {
                         return 'In Progress';
-                    if (in_array($status, ['Lost', 'Cancel']))
+                    }
+                    if (in_array($status, ['Lost', 'Cancel'])) {
                         return 'Lost / Canceled';
+                    }
                     return $status;
                 })
                 ->addColumn('remarks_error', function ($row) {
                     $raw = $row->QuoteStatusDescription ?? null;
-                    if (!$raw)
+                    if (!$raw) {
                         return '-';
+                    }
                     $decoded = json_decode('[' . $raw . ']', true);
-                    if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded))
+                    if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) {
                         return $raw;
+                    }
                     return implode(' | ', array_column($decoded, 'Remark'));
                 })
                 ->addColumn('action', function ($row) use ($cardFilter) {
@@ -1812,7 +1823,7 @@ class QuotationController extends Controller
 
                 return strtoupper($segment);
             })
-            ->filter(fn($code) => preg_match('/^[A-Z]{2}$/', $code))
+            ->filter(fn ($code) => preg_match('/^[A-Z]{2}$/', $code))
             ->unique()
             ->values();
     }
@@ -1946,7 +1957,7 @@ class QuotationController extends Controller
             ->where('IsActive', 1)
             ->where('IsDeleted', 0)
             ->pluck('Code')
-            ->map(fn($c) => strtoupper(trim($c)))
+            ->map(fn ($c) => strtoupper(trim($c)))
             ->unique()
             ->values();
     }
@@ -2009,8 +2020,9 @@ class QuotationController extends Controller
             do {
                 try {
                     $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
-                    if (empty($rows))
+                    if (empty($rows)) {
                         continue;
+                    }
 
                     $firstVal = array_values((array) $rows[0])[0] ?? '';
                     if (is_string($firstVal) && str_starts_with($firstVal, 'Failed')) {
@@ -2090,7 +2102,7 @@ class QuotationController extends Controller
                 ->first(['ID', 'teamid', 'ServiceVerticalname', 'origincountry', 'destinationcountry', 'QuoteStatus', 'status'])
                 : DB::table('Quote_QuotationInfo')
                 ->where('bookingno', $bookingNo)
-                ->when($officeCodeFromRequest, fn($q) => $q->where('OfficeCode', $officeCodeFromRequest))
+                ->when($officeCodeFromRequest, fn ($q) => $q->where('OfficeCode', $officeCodeFromRequest))
                 ->first(['ID', 'teamid', 'ServiceVerticalname', 'origincountry', 'destinationcountry', 'QuoteStatus', 'status']);
 
             $officeCode = 'Unknown';
@@ -2576,7 +2588,7 @@ class QuotationController extends Controller
 
             $quotation = DB::table('Quote_QuotationInfo')
                 ->where('bookingno', $bookingNo)
-                ->when($officeCodeFromRequest, fn($q) => $q->where('OfficeCode', $officeCodeFromRequest))
+                ->when($officeCodeFromRequest, fn ($q) => $q->where('OfficeCode', $officeCodeFromRequest))
                 ->first(['ID', 'teamid', 'ServiceVerticalname', 'origincountry', 'destinationcountry', 'QuoteStatus', 'status']);
 
             $officeCode = 'Unknown';
@@ -3702,8 +3714,9 @@ class QuotationController extends Controller
             do {
                 try {
                     $results = $stmt->fetchAll(\PDO::FETCH_OBJ);
-                    if (empty($results))
+                    if (empty($results)) {
                         continue;
+                    }
                     $firstRow = $results[0];
                     $properties = array_keys((array) $firstRow);
 
@@ -3942,8 +3955,8 @@ class QuotationController extends Controller
         }
 
         $quotation = DB::table('Quote_QuotationInfo')
-            ->when($quotationId, fn($q) => $q->where('ID', $quotationId))
-            ->when(!$quotationId, fn($q) => $q->where('bookingno', $bookingNo))
+            ->when($quotationId, fn ($q) => $q->where('ID', $quotationId))
+            ->when(!$quotationId, fn ($q) => $q->where('bookingno', $bookingNo))
             ->first(['ID', 'QuoteNo', 'SCMBookingID', 'SCMBookingXML', 'ClientCreated', 'OfficeCode']);
 
         if (!$quotation) {
@@ -4225,8 +4238,9 @@ class QuotationController extends Controller
                 try {
                     $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
 
-                    if (empty($rows))
+                    if (empty($rows)) {
                         continue;
+                    }
 
                     $firstVal = array_values((array) $rows[0])[0] ?? '';
 
@@ -4253,8 +4267,9 @@ class QuotationController extends Controller
                         }
                     }
 
-                    if (!$nameColumn)
+                    if (!$nameColumn) {
                         continue;
+                    }
 
                     // Normalise to { Name, Description } shape expected by frontend
                     $descColumn = null;
@@ -4265,7 +4280,7 @@ class QuotationController extends Controller
                         }
                     }
 
-                    $templates = array_map(fn($r) => (object) [
+                    $templates = array_map(fn ($r) => (object) [
                         'Name' => ((array) $r)[$nameColumn] ?? '',
                         'Description' => $descColumn ? (((array) $r)[$descColumn] ?? '') : '',
                     ], $rows);
@@ -4404,7 +4419,7 @@ class QuotationController extends Controller
                     }
 
                     if (isset($rows[0]->TemplateID) && isset($rows[0]->TemplateName)) {
-                        $templates = array_map(fn($row) => (object) [
+                        $templates = array_map(fn ($row) => (object) [
                             'Name' => $row->TemplateName,
                             'Description' => '',
                         ], $rows);
@@ -5354,8 +5369,9 @@ class QuotationController extends Controller
             try {
                 $fetched = $stmt->fetchAll(\PDO::FETCH_OBJ);
 
-                if (empty($fetched))
+                if (empty($fetched)) {
                     continue;
+                }
 
                 $firstVal = array_values((array) $fetched[0])[0] ?? '';
 
@@ -5379,7 +5395,7 @@ class QuotationController extends Controller
             }
         } while ($stmt->nextRowset());
 
-        return array_map(fn($row) => [
+        return array_map(fn ($row) => [
             'id' => $row->Id,
             'chargeCode' => $row->ChargeCode ?? '',
             'chargeName' => $row->ChargeDesp ?? '',
@@ -5605,8 +5621,9 @@ class QuotationController extends Controller
             do {
                 try {
                     $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
-                    if (empty($rows))
+                    if (empty($rows)) {
                         continue;
+                    }
 
                     $firstVal = array_values((array) $rows[0])[0] ?? '';
                     if (
@@ -5636,7 +5653,7 @@ class QuotationController extends Controller
 
             return response()->json([
                 'success' => true,
-                'currencies' => array_map(fn($c) => [
+                'currencies' => array_map(fn ($c) => [
                     'CurrencyID' => $c->CurrencyID,
                     'CurrencyCode' => $c->CurrencyCode,
                 ], $currencies),
@@ -5919,8 +5936,9 @@ class QuotationController extends Controller
             do {
                 try {
                     $results = $stmt->fetchAll(\PDO::FETCH_OBJ);
-                    if (empty($results))
+                    if (empty($results)) {
                         continue;
+                    }
                     $firstRow = (array) $results[0];
                     $firstVal = array_values($firstRow)[0] ?? '';
 
@@ -6604,7 +6622,7 @@ class QuotationController extends Controller
                         return ['Status' => 'Failed', 'Remark' => '[SP] Response could not be parsed'];
                     }
 
-                    $failures = array_filter($decoded, fn($r) => ($r['Status'] ?? '') === 'Failed');
+                    $failures = array_filter($decoded, fn ($r) => ($r['Status'] ?? '') === 'Failed');
 
                     if (!empty($failures)) {
                         $remarks = implode(', ', array_column($failures, 'Remark'));
@@ -6684,7 +6702,7 @@ class QuotationController extends Controller
                     }
 
                     // Check for any failure across all returned status objects
-                    $failures = array_filter($decoded, fn($r) => ($r['Status'] ?? '') === 'Failed');
+                    $failures = array_filter($decoded, fn ($r) => ($r['Status'] ?? '') === 'Failed');
 
                     if (!empty($failures)) {
                         $remarks = implode(', ', array_column($failures, 'Remark'));
@@ -7176,8 +7194,9 @@ class QuotationController extends Controller
                 $setIndex++;
                 try {
                     $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
-                    if (empty($rows))
+                    if (empty($rows)) {
                         continue;
+                    }
 
                     $cols = array_keys((array) $rows[0]);
                     $firstVal = array_values((array) $rows[0])[0] ?? '';
@@ -7297,11 +7316,13 @@ class QuotationController extends Controller
             do {
                 try {
                     $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
-                    if (empty($rows))
+                    if (empty($rows)) {
                         continue;
+                    }
                     $firstVal = array_values((array) $rows[0])[0] ?? '';
-                    if (is_string($firstVal) && str_starts_with($firstVal, 'Failed'))
+                    if (is_string($firstVal) && str_starts_with($firstVal, 'Failed')) {
                         continue;
+                    }
                     if (isset($rows[0]->Id) && isset($rows[0]->Code)) {
                         $results = $rows;
                         break;
@@ -7334,11 +7355,13 @@ class QuotationController extends Controller
             do {
                 try {
                     $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
-                    if (empty($rows))
+                    if (empty($rows)) {
                         continue;
+                    }
                     $firstVal = array_values((array) $rows[0])[0] ?? '';
-                    if (is_string($firstVal) && str_starts_with($firstVal, 'Failed'))
+                    if (is_string($firstVal) && str_starts_with($firstVal, 'Failed')) {
                         continue;
+                    }
                     if (isset($rows[0]->Id) && isset($rows[0]->Code)) {
                         $results = $rows;
                         break;
@@ -7427,11 +7450,13 @@ class QuotationController extends Controller
             do {
                 try {
                     $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
-                    if (empty($rows))
+                    if (empty($rows)) {
                         continue;
+                    }
                     $firstVal = array_values((array) $rows[0])[0] ?? '';
-                    if (is_string($firstVal) && str_starts_with($firstVal, 'Failed'))
+                    if (is_string($firstVal) && str_starts_with($firstVal, 'Failed')) {
                         continue;
+                    }
                     if (isset($rows[0]->Code)) {
                         $results = $rows;
                         break;
@@ -7517,8 +7542,9 @@ class QuotationController extends Controller
             do {
                 try {
                     $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
-                    if (empty($rows))
+                    if (empty($rows)) {
                         continue;
+                    }
 
                     $firstVal = array_values((array) $rows[0])[0] ?? '';
 
@@ -7667,8 +7693,9 @@ class QuotationController extends Controller
             foreach (explode(',', $request->containers) as $segment) {
                 $segment = trim($segment);
                 $xPos = strrpos($segment, 'X');
-                if ($xPos === false)
+                if ($xPos === false) {
                     continue;
+                }
                 $type = trim(substr($segment, 0, $xPos));
                 $qty = (int) trim(substr($segment, $xPos + 1));
                 if ($type && $qty > 0) {
@@ -8195,15 +8222,15 @@ class QuotationController extends Controller
             }
 
             $xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
-        <ArrayOfTransaction>
-            <Transaction>
-                <ID>{$request->quote_no}</ID>
-                <Status>{$request->status}</Status>
-                <CutomerRefNo>" . htmlspecialchars($request->customer_ref_no ?? '', ENT_XML1) . "</CutomerRefNo>
-                <TransactionId>" . htmlspecialchars($request->transaction_id ?? '', ENT_XML1) . "</TransactionId>
-                <Errors>{$errorsXml}</Errors>
-            </Transaction>
-        </ArrayOfTransaction>";
+<ArrayOfTransaction>
+    <Transaction>
+        <ID>{$request->quote_no}</ID>
+        <Status>{$request->status}</Status>
+        <CutomerRefNo>" . htmlspecialchars($request->customer_ref_no ?? '', ENT_XML1) . "</CutomerRefNo>
+        <TransactionId>" . htmlspecialchars($request->transaction_id ?? '', ENT_XML1) . "</TransactionId>
+        <Errors>{$errorsXml}</Errors>
+    </Transaction>
+</ArrayOfTransaction>";
 
             $pdo = DB::getPdo();
             $stmt = $pdo->prepare("EXEC dbo.sp_Quote_BookingCreateInfoUpdate @InputXML = ?");
@@ -8215,17 +8242,17 @@ class QuotationController extends Controller
                 $msg = array_values($result)[0] ?? '';
                 if (str_starts_with(trim($msg), 'Failed')) {
                     Log::error('handleBookingIntegrationResponse - SP failed', [
-                        'quote_no' => $request->quote_no,
-                        'sp_msg' => $msg,
+                    'quote_no' => $request->quote_no,
+                    'sp_msg' => $msg,
                     ]);
                     return response()->json(['success' => false, 'message' => $msg], 500);
                 }
             }
 
             Log::info('handleBookingIntegrationResponse - Success', [
-                'quote_no' => $request->quote_no,
-                'status' => $request->status,
-                'booking_no' => $request->customer_ref_no,
+            'quote_no' => $request->quote_no,
+            'status' => $request->status,
+            'booking_no' => $request->customer_ref_no,
             ]);
 
             return response()->json(['success' => true]);
@@ -8250,12 +8277,14 @@ class QuotationController extends Controller
                 try {
                     $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
 
-                    if (empty($rows))
+                    if (empty($rows)) {
                         continue;
+                    }
 
                     // Skip error rowsets from SP CATCH block
-                    if (isset($rows[0]->Err_Message))
+                    if (isset($rows[0]->Err_Message)) {
                         continue;
+                    }
 
                     // First rowset containing IncoTermCode is the one we want
                     if (isset($rows[0]->IncoTermCode)) {
@@ -8271,9 +8300,9 @@ class QuotationController extends Controller
         } catch (\Exception $e) {
             Log::error('getIncoTerms - Failed', ['error' => $e->getMessage()]);
             return response()->json([
-                'success' => false,
-                'data' => [],
-                'message' => $e->getMessage()
+            'success' => false,
+            'data' => [],
+            'message' => $e->getMessage()
             ], 500);
         }
     }
@@ -8296,13 +8325,15 @@ class QuotationController extends Controller
                 try {
                     $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
 
-                    if (empty($rows))
+                    if (empty($rows)) {
                         continue;
+                    }
 
                     // Skip SP error result sets
                     $firstVal = array_values((array) $rows[0])[0] ?? '';
-                    if (is_string($firstVal) && str_starts_with($firstVal, 'Error'))
+                    if (is_string($firstVal) && str_starts_with($firstVal, 'Error')) {
                         continue;
+                    }
 
                     if (isset($rows[0]->ClientID)) {
                         $clients = $rows;
@@ -8324,12 +8355,12 @@ class QuotationController extends Controller
 
     public function getClientDetails(Request $request)
     {
-        $customerCode = trim($request->input('customer_code', ''));  // This should be the Client Code like "KEAA"
+        $customerCode = trim($request->input('customer_code', '')); // This should be the Client Code like "KEAA"
 
         if (!$customerCode) {
             return response()->json([
-                'success' => false,
-                'message' => 'customer_code is required'
+            'success' => false,
+            'message' => 'customer_code is required'
             ], 400);
         }
 
@@ -8344,8 +8375,9 @@ class QuotationController extends Controller
             do {
                 try {
                     $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
-                    if (empty($rows))
+                    if (empty($rows)) {
                         continue;
+                    }
 
                     $firstVal = array_values((array) $rows[0])[0] ?? '';
                     if (is_string($firstVal) && str_starts_with($firstVal, 'Failed')) {
@@ -8366,30 +8398,30 @@ class QuotationController extends Controller
             }
 
             return response()->json([
-                'success' => true,
-                'client_id' => $result->Id ?? '',
-                'client_code' => $result->Code ?? '',
-                'company' => $result->Name ?? '',
-                'address1' => $result->Address1 ?? '',
-                'address2' => $result->Address2 ?? '',
-                'city' => $result->City ?? '',
-                'zip' => $result->Zip ?? '',
-                'state' => $result->State ?? '',
-                'country_id' => $result->Address_CountryId ?? '',
-                'country_code' => $result->CountryCode ?? '',
-                'country_name' => $result->CountryName ?? '',
-                'contact_person' => $result->ContactPerson ?? '',
-                'phone' => $result->PhoneNo ?? '',
-                'email' => $result->Email ?? '',
-                'industry_code' => $result->IndustryTypeCode ?? '',
-                'industry_name' => $result->IndustryType ?? '',
-                'agent_type_code' => $result->AgentTypeCode ?? '',
-                'agent_type_name' => $result->AgentType ?? '',
+            'success' => true,
+            'client_id' => $result->Id ?? '',
+            'client_code' => $result->Code ?? '',
+            'company' => $result->Name ?? '',
+            'address1' => $result->Address1 ?? '',
+            'address2' => $result->Address2 ?? '',
+            'city' => $result->City ?? '',
+            'zip' => $result->Zip ?? '',
+            'state' => $result->State ?? '',
+            'country_id' => $result->Address_CountryId ?? '',
+            'country_code' => $result->CountryCode ?? '',
+            'country_name' => $result->CountryName ?? '',
+            'contact_person' => $result->ContactPerson ?? '',
+            'phone' => $result->PhoneNo ?? '',
+            'email' => $result->Email ?? '',
+            'industry_code' => $result->IndustryTypeCode ?? '',
+            'industry_name' => $result->IndustryType ?? '',
+            'agent_type_code' => $result->AgentTypeCode ?? '',
+            'agent_type_name' => $result->AgentType ?? '',
             ]);
         } catch (\Exception $e) {
             \Log::error('getClientDetails - Failed', [
-                'customer_code' => $customerCode,
-                'error' => $e->getMessage(),
+            'customer_code' => $customerCode,
+            'error' => $e->getMessage(),
             ]);
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
@@ -8417,20 +8449,20 @@ class QuotationController extends Controller
 
             if ($allowedTeamNames->isEmpty()) {
                 return response()->json([
-                    'draw' => (int) $request->input('draw', 1),
-                    'recordsTotal' => 0,
-                    'recordsFiltered' => 0,
-                    'data' => [],
+                'draw' => (int) $request->input('draw', 1),
+                'recordsTotal' => 0,
+                'recordsFiltered' => 0,
+                'data' => [],
                 ]);
             }
 
             // ── Resolve allowed TeamCodes for office scoping ─────────────────
             $allowedTeamCodes = DB::table('Cust_Office')
-                ->whereIn('Name', $allowedTeamNames->toArray())
-                ->where('IsActive', 1)
-                ->where('IsDeleted', 0)
-                ->pluck('TeamCode')
-                ->toArray();
+            ->whereIn('Name', $allowedTeamNames->toArray())
+            ->where('IsActive', 1)
+            ->where('IsDeleted', 0)
+            ->pluck('TeamCode')
+            ->toArray();
 
             // ── Validate and sanitize inputs ─────────────────────────────────
             $fromDate = $request->input('from_date', '');
@@ -8443,13 +8475,13 @@ class QuotationController extends Controller
             // Whitelist status values the SP actually supports.
             // 'Completed' is excluded — SP has no branch for it.
             $validStatuses = [
-                'Total',
-                'In Progress',
-                'Won',
-                'Cancelled',
-                'Lost',
-                'Failed Progress',
-                'Failed Int.',
+            'Total',
+            'In Progress',
+            'Won',
+            'Cancelled',
+            'Lost',
+            'Failed Progress',
+            'Failed Int.',
             ];
 
             $status = $request->input('status', 'Total');
@@ -8465,11 +8497,11 @@ class QuotationController extends Controller
 
                     if ($to->lt($from)) {
                         return response()->json([
-                            'draw' => (int) $request->input('draw', 1),
-                            'recordsTotal' => 0,
-                            'recordsFiltered' => 0,
-                            'data' => [],
-                            'error' => 'End date must be after start date.',
+                        'draw' => (int) $request->input('draw', 1),
+                        'recordsTotal' => 0,
+                        'recordsFiltered' => 0,
+                        'data' => [],
+                        'error' => 'End date must be after start date.',
                         ], 422);
                     }
 
@@ -8482,8 +8514,8 @@ class QuotationController extends Controller
                     $toDate = '';
 
                     Log::warning('reportData - Invalid date input, cleared', [
-                        'from_date_raw' => $request->input('from_date'),
-                        'to_date_raw' => $request->input('to_date'),
+                    'from_date_raw' => $request->input('from_date'),
+                    'to_date_raw' => $request->input('to_date'),
                     ]);
                 }
             } else {
@@ -8494,21 +8526,21 @@ class QuotationController extends Controller
 
             // ── Build SP input JSON ───────────────────────────────────────────
             $inputJson = json_encode([
-                'FromDate' => $fromDate,
-                'ToDate' => $toDate,
-                'Customer' => $customer,
-                'Service' => $service,
-                'Process' => $process,
-                'OriginCountry' => '',
-                'DestinationCountry' => '',
-                'InCoTerm' => $incoTerm,
-                'Status' => $status,
+            'FromDate' => $fromDate,
+            'ToDate' => $toDate,
+            'Customer' => $customer,
+            'Service' => $service,
+            'Process' => $process,
+            'OriginCountry' => '',
+            'DestinationCountry' => '',
+            'InCoTerm' => $incoTerm,
+            'Status' => $status,
             ]);
 
             Log::info('reportData - Calling SP', [
-                'user' => Auth::user()->Email ?? 'unknown',
-                'input_json' => $inputJson,
-                'office_scope' => $allowedTeamNames->toArray(),
+            'user' => Auth::user()->Email ?? 'unknown',
+            'input_json' => $inputJson,
+            'office_scope' => $allowedTeamNames->toArray(),
             ]);
 
             // ── Execute SP ────────────────────────────────────────────────────
@@ -8537,16 +8569,16 @@ class QuotationController extends Controller
                     $firstVal = array_values((array) $fetched[0])[0] ?? '';
                     if (is_string($firstVal) && str_starts_with(trim($firstVal), 'Failed')) {
                         Log::error('reportData - SP returned failure', [
-                            'message' => $firstVal,
-                            'input_json' => $inputJson,
+                        'message' => $firstVal,
+                        'input_json' => $inputJson,
                         ]);
 
                         return response()->json([
-                            'draw' => (int) $request->input('draw', 1),
-                            'recordsTotal' => 0,
-                            'recordsFiltered' => 0,
-                            'data' => [],
-                            'error' => 'Report query failed. Please contact your administrator.',
+                        'draw' => (int) $request->input('draw', 1),
+                        'recordsTotal' => 0,
+                        'recordsFiltered' => 0,
+                        'data' => [],
+                        'error' => 'Report query failed. Please contact your administrator.',
                         ], 500);
                     }
 
@@ -8565,16 +8597,16 @@ class QuotationController extends Controller
                     // Skip unfetchable intermediate result sets — normal for
                     // SPs that use dynamic SQL or temp tables internally.
                     Log::debug('reportData - Skipping result set #' . $resultIndex, [
-                        'error' => $e->getMessage(),
+                    'error' => $e->getMessage(),
                     ]);
                     continue;
                 }
             } while ($stmt->nextRowset());
 
             Log::info('reportData - SP returned rows', [
-                'row_count' => count($rows),
-                'result_sets' => $resultIndex,
-                'status_filter' => $status,
+            'row_count' => count($rows),
+            'result_sets' => $resultIndex,
+            'status_filter' => $status,
             ]);
 
             // ── Apply office scoping in PHP ───────────────────────────────────
@@ -8605,65 +8637,65 @@ class QuotationController extends Controller
             // ── Format rows for DataTables ────────────────────────────────────
             $formatted = array_map(function ($row) {
                 return [
-                    'QuoteNo' => $row->QuoteNo ?? '-',
-                    'Date' => $row->Date ?? '-',
-                    'ClientName' => $row->CompanyName ?? '-',
-                    'SalesPerson' => $row->SalesPerson ?? '-',
-                    'Process' => $row->Process ?? '-',
-                    'Origin' => $row->OriginCountry ?? '-',
-                    'Destination' => $row->DestinationCountry ?? '-',
-                    'IncoTerm' => $row->IncoTerm ?? '-',
-                    'Status' => $row->Status ?? '-',
-                    'Remark' => $row->Remark ?? '',
+                'QuoteNo' => $row->QuoteNo ?? '-',
+                'Date' => $row->Date ?? '-',
+                'ClientName' => $row->CompanyName ?? '-',
+                'SalesPerson' => $row->SalesPerson ?? '-',
+                'Process' => $row->Process ?? '-',
+                'Origin' => $row->OriginCountry ?? '-',
+                'Destination' => $row->DestinationCountry ?? '-',
+                'IncoTerm' => $row->IncoTerm ?? '-',
+                'Status' => $row->Status ?? '-',
+                'Remark' => $row->Remark ?? '',
                 ];
             }, $rows);
 
             $total = count($formatted);
 
             return response()->json([
-                'draw' => (int) $request->input('draw', 1),
-                'recordsTotal' => $total,
-                'recordsFiltered' => $total,
-                'data' => $formatted,
+            'draw' => (int) $request->input('draw', 1),
+            'recordsTotal' => $total,
+            'recordsFiltered' => $total,
+            'data' => $formatted,
             ]);
         } catch (\Exception $e) {
             Log::error('reportData - Failed', [
-                'error' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
+            'error' => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
             ]);
 
             return response()->json([
-                'draw' => (int) $request->input('draw', 1),
-                'recordsTotal' => 0,
-                'recordsFiltered' => 0,
-                'data' => [],
-                'error' => 'An unexpected error occurred.',
+            'draw' => (int) $request->input('draw', 1),
+            'recordsTotal' => 0,
+            'recordsFiltered' => 0,
+            'data' => [],
+            'error' => 'An unexpected error occurred.',
             ], 500);
         }
     }
 
     /**
-     * Returns quotation stats for the dashboard home card.
-     * All-time scope (no date filter), scoped to the calling user's offices.
-     * Keys match the dashboard card: total, in_progress, failed_int, failed_progress.
-     */
+    * Returns quotation stats for the dashboard home card.
+    * All-time scope (no date filter), scoped to the calling user's offices.
+    * Keys match the dashboard card: total, in_progress, failed_int, failed_progress.
+    */
     public static function getHomeStats(): array
     {
         $blank = [
-            'total' => 0,
-            'in_progress' => 0,
-            'failed_int' => 0,
-            'failed_progress' => 0,
+        'total' => 0,
+        'in_progress' => 0,
+        'failed_int' => 0,
+        'failed_progress' => 0,
         ];
 
         try {
             $instance = new self();
-            $allowedOfficeCodes = $instance->resolveUserOfficeCodes();
+            $allowedOfficeCodes = $instance->resolveAllowedOfficeCodesViaSP();
 
             \Log::info('QuotationController::getHomeStats - office codes resolved', [
-                'user_email' => \Auth::user()->Email ?? 'null',
-                'allowed_office_codes' => $allowedOfficeCodes->toArray(),
+            'user_email' => \Auth::user()->Email ?? 'null',
+            'allowed_office_codes' => $allowedOfficeCodes->toArray(),
             ]);
 
             if ($allowedOfficeCodes->isEmpty()) {
@@ -8676,16 +8708,16 @@ class QuotationController extends Controller
             \Log::info('QuotationController::getHomeStats - stats returned', $stats);
 
             return [
-                'total' => $stats['total'] ?? 0,
-                'in_progress' => $stats['in_progress'] ?? 0,
-                'failed_int' => $stats['failed_int'] ?? 0,
-                'failed_progress' => $stats['failed_progress'] ?? 0,
+            'total' => $stats['total'] ?? 0,
+            'in_progress' => $stats['in_progress'] ?? 0,
+            'failed_int' => $stats['failed_int'] ?? 0,
+            'failed_progress' => $stats['failed_progress'] ?? 0,
             ];
         } catch (\Exception $e) {
             \Log::error('QuotationController::getHomeStats - Failed', [
-                'error' => $e->getMessage(),
-                'line' => $e->getLine(),
-                'file' => $e->getFile(),
+            'error' => $e->getMessage(),
+            'line' => $e->getLine(),
+            'file' => $e->getFile(),
             ]);
 
             return $blank;
@@ -8699,17 +8731,17 @@ class QuotationController extends Controller
 
         if (!$quoteNo && !$bookingNo) {
             return response()->json([
-                'success' => false,
-                'message' => 'quote_no or booking_no is required'
+            'success' => false,
+            'message' => 'quote_no or booking_no is required'
             ], 400);
         }
 
         try {
             // ── Fetch record ──────────────────────────────────────────────────────
             $quotation = DB::table('Quote_QuotationInfo')
-                ->when($quoteNo, fn($q) => $q->where('QuoteNo', $quoteNo))
-                ->when(!$quoteNo, fn($q) => $q->where('bookingno', $bookingNo))
-                ->first(['ID', 'QuoteNo', 'bookingno', 'SCMBookingXML', 'SCMBookingID']);
+            ->when($quoteNo, fn ($q) => $q->where('QuoteNo', $quoteNo))
+            ->when(!$quoteNo, fn ($q) => $q->where('bookingno', $bookingNo))
+            ->first(['ID', 'QuoteNo', 'bookingno', 'SCMBookingXML', 'SCMBookingID']);
 
             if (!$quotation) {
                 return response()->json(['success' => false, 'message' => 'Quotation not found'], 404);
@@ -8717,31 +8749,31 @@ class QuotationController extends Controller
 
             if (empty($quotation->SCMBookingXML)) {
                 return response()->json([
-                    'success' => false,
-                    'message' => 'SCMBookingXML is empty. Run the XML generation step first.'
+                'success' => false,
+                'message' => 'SCMBookingXML is empty. Run the XML generation step first.'
                 ], 422);
             }
 
             Log::info('pushBookingToSCM - Starting', [
-                'quote_no' => $quotation->QuoteNo,
-                'booking_no' => $quotation->bookingno,
-                'xml_length' => strlen($quotation->SCMBookingXML),
+            'quote_no' => $quotation->QuoteNo,
+            'booking_no' => $quotation->bookingno,
+            'xml_length' => strlen($quotation->SCMBookingXML),
             ]);
 
             // ── Step 1: Generate Token ────────────────────────────────────────────
             $tokenUrl = env('SCM_TOKEN_URL', 'https://hhtapi.freightintime.com/token');
             $authString = 'grant_type=password'
-                . '&username=' . urlencode(env('SCM_USERNAME', 'fitexpress'))
-                . '&password=' . urlencode(env('SCM_PASSWORD', 'Forwarder@8082'));
+            . '&username=' . urlencode(env('SCM_USERNAME', 'fitexpress'))
+            . '&password=' . urlencode(env('SCM_PASSWORD', 'Forwarder@8082'));
 
             $curl = curl_init();
             curl_setopt_array($curl, [
-                CURLOPT_URL => $tokenUrl,
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_TIMEOUT => 30,
-                CURLOPT_CUSTOMREQUEST => 'POST',
-                CURLOPT_POSTFIELDS => $authString,
-                CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded'],
+            CURLOPT_URL => $tokenUrl,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 30,
+            CURLOPT_CUSTOMREQUEST => 'POST',
+            CURLOPT_POSTFIELDS => $authString,
+            CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded'],
             ]);
 
             $tokenResponse = curl_exec($curl);
@@ -8750,31 +8782,31 @@ class QuotationController extends Controller
 
             if ($tokenError) {
                 Log::error('pushBookingToSCM - Token fetch failed', [
-                    'quote_no' => $quotation->QuoteNo,
-                    'error' => $tokenError,
+                'quote_no' => $quotation->QuoteNo,
+                'error' => $tokenError,
                 ]);
                 return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to generate SCM token: ' . $tokenError
+                'success' => false,
+                'message' => 'Failed to generate SCM token: ' . $tokenError
                 ], 500);
             }
 
             $tokenData = json_decode($tokenResponse);
             if (json_last_error() !== JSON_ERROR_NONE || !isset($tokenData->access_token)) {
                 Log::error('pushBookingToSCM - Token parse failed', [
-                    'quote_no' => $quotation->QuoteNo,
-                    'response' => $tokenResponse,
+                'quote_no' => $quotation->QuoteNo,
+                'response' => $tokenResponse,
                 ]);
                 return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to parse SCM token response'
+                'success' => false,
+                'message' => 'Failed to parse SCM token response'
                 ], 500);
             }
 
             $token = $tokenData->access_token;
 
             Log::info('pushBookingToSCM - Token generated successfully', [
-                'quote_no' => $quotation->QuoteNo,
+            'quote_no' => $quotation->QuoteNo,
             ]);
 
             // ── Step 2: Push XML to SCM ───────────────────────────────────────────
@@ -8783,18 +8815,18 @@ class QuotationController extends Controller
 
             $curl = curl_init();
             curl_setopt_array($curl, [
-                CURLOPT_URL => $pushUrl,
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_TIMEOUT => 60,
-                CURLOPT_CUSTOMREQUEST => 'POST',
-                CURLOPT_POSTFIELDS => $xml,
-                CURLOPT_HTTPHEADER => [
-                    'Content-Type: application/xml; charset=utf-8',
-                    'Authorization: Bearer ' . $token,
-                    'Content-Length: ' . strlen($xml),
-                    'Connection: keep-alive',
-                    'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                ],
+            CURLOPT_URL => $pushUrl,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 60,
+            CURLOPT_CUSTOMREQUEST => 'POST',
+            CURLOPT_POSTFIELDS => $xml,
+            CURLOPT_HTTPHEADER => [
+            'Content-Type: application/xml; charset=utf-8',
+            'Authorization: Bearer ' . $token,
+            'Content-Length: ' . strlen($xml),
+            'Connection: keep-alive',
+            'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            ],
             ]);
 
             $scmResponse = curl_exec($curl);
@@ -8803,18 +8835,18 @@ class QuotationController extends Controller
 
             if ($curlError) {
                 Log::error('pushBookingToSCM - Curl push failed', [
-                    'quote_no' => $quotation->QuoteNo,
-                    'error' => $curlError,
+                'quote_no' => $quotation->QuoteNo,
+                'error' => $curlError,
                 ]);
                 return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to push XML to SCM: ' . $curlError
+                'success' => false,
+                'message' => 'Failed to push XML to SCM: ' . $curlError
                 ], 500);
             }
 
             Log::info('pushBookingToSCM - SCM raw response', [
-                'quote_no' => $quotation->QuoteNo,
-                'response' => $scmResponse,
+            'quote_no' => $quotation->QuoteNo,
+            'response' => $scmResponse,
             ]);
 
             // ── Step 3: Parse SCM XML response ────────────────────────────────────
@@ -8823,12 +8855,12 @@ class QuotationController extends Controller
 
             if ($xmlObj === false) {
                 Log::error('pushBookingToSCM - Invalid SCM response XML', [
-                    'quote_no' => $quotation->QuoteNo,
-                    'response' => $scmResponse,
+                'quote_no' => $quotation->QuoteNo,
+                'response' => $scmResponse,
                 ]);
                 return response()->json([
-                    'success' => false,
-                    'message' => 'SCM returned an invalid XML response: ' . $scmResponse
+                'success' => false,
+                'message' => 'SCM returned an invalid XML response: ' . $scmResponse
                 ], 500);
             }
 
@@ -8836,8 +8868,8 @@ class QuotationController extends Controller
             $response = json_decode($json, true);
 
             Log::info('pushBookingToSCM - SCM response parsed', [
-                'quote_no' => $quotation->QuoteNo,
-                'parsed_response' => $response,
+            'quote_no' => $quotation->QuoteNo,
+            'parsed_response' => $response,
             ]);
 
             // ── Step 4: Build XML for sp_Quote_BookingCreateInfoUpdate ────────────
@@ -8857,28 +8889,28 @@ class QuotationController extends Controller
                     $description = htmlspecialchars($error['Description'] ?? '');
                     $severity = htmlspecialchars((string) ($error['Severity'] ?? '0'));
                     $errorXml .= "<Error>
-                    <Code>{$code}</Code>
-                    <Description>{$description}</Description>
-                    <Severity>{$severity}</Severity>
-                </Error>";
+        <Code>{$code}</Code>
+        <Description>{$description}</Description>
+        <Severity>{$severity}</Severity>
+    </Error>";
                 }
             }
 
             $inputXml = "
-        <ArrayOfTransaction>
-            <Transaction>
-                <ID>{$quotation->QuoteNo}</ID>
-                <Status>{$status}</Status>
-                <CutomerRefNo>{$customerRefNo}</CutomerRefNo>
-                <TransactionId>{$transactionId}</TransactionId>
-                <Errors>{$errorXml}</Errors>
-            </Transaction>
-        </ArrayOfTransaction>";
+    <ArrayOfTransaction>
+        <Transaction>
+            <ID>{$quotation->QuoteNo}</ID>
+            <Status>{$status}</Status>
+            <CutomerRefNo>{$customerRefNo}</CutomerRefNo>
+            <TransactionId>{$transactionId}</TransactionId>
+            <Errors>{$errorXml}</Errors>
+        </Transaction>
+    </ArrayOfTransaction>";
 
             Log::info('pushBookingToSCM - Passing to sp_Quote_BookingCreateInfoUpdate', [
-                'quote_no' => $quotation->QuoteNo,
-                'status' => $status,
-                'input_xml' => $inputXml,
+            'quote_no' => $quotation->QuoteNo,
+            'status' => $status,
+            'input_xml' => $inputXml,
             ]);
 
             // ── Step 5: Call sp_Quote_BookingCreateInfoUpdate ─────────────────────
@@ -8890,8 +8922,9 @@ class QuotationController extends Controller
             do {
                 try {
                     $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
-                    if (empty($rows))
+                    if (empty($rows)) {
                         continue;
+                    }
                     $firstVal = array_values((array) $rows[0])[0] ?? '';
                     if (is_string($firstVal) && str_starts_with($firstVal, 'Failed')) {
                         $spError = $firstVal;
@@ -8904,49 +8937,49 @@ class QuotationController extends Controller
 
             if ($spError) {
                 Log::error('pushBookingToSCM - SP returned error', [
-                    'quote_no' => $quotation->QuoteNo,
-                    'sp_error' => $spError,
+                'quote_no' => $quotation->QuoteNo,
+                'sp_error' => $spError,
                 ]);
                 return response()->json([
-                    'success' => false,
-                    'message' => $spError
+                'success' => false,
+                'message' => $spError
                 ], 422);
             }
 
             // ── Step 6: Verify SCMBookingID was written ───────────────────────────
             $updated = DB::table('Quote_QuotationInfo')
-                ->where('QuoteNo', $quotation->QuoteNo)
-                ->first(['SCMBookingID', 'SCMBookingNo', 'QuoteStatus']);
+            ->where('QuoteNo', $quotation->QuoteNo)
+            ->first(['SCMBookingID', 'SCMBookingNo', 'QuoteStatus']);
 
             Log::info('pushBookingToSCM - Completed', [
-                'quote_no' => $quotation->QuoteNo,
-                'scm_booking_id' => $updated->SCMBookingID ?? 'NULL',
-                'scm_booking_no' => $updated->SCMBookingNo ?? 'NULL',
-                'quote_status' => $updated->QuoteStatus ?? 'NULL',
-                'scm_status' => $status,
+            'quote_no' => $quotation->QuoteNo,
+            'scm_booking_id' => $updated->SCMBookingID ?? 'NULL',
+            'scm_booking_no' => $updated->SCMBookingNo ?? 'NULL',
+            'quote_status' => $updated->QuoteStatus ?? 'NULL',
+            'scm_status' => $status,
             ]);
 
             return response()->json([
-                'success' => $status === 'Success',
-                'message' => $status === 'Success'
-                    ? 'Booking pushed to SCM successfully'
-                    : 'SCM returned failure — check errors',
-                'scm_booking_id' => $updated->SCMBookingID ?? null,
-                'scm_booking_no' => $updated->SCMBookingNo ?? null,
-                'quote_status' => $updated->QuoteStatus ?? null,
-                'scm_status' => $status,
-                'errors' => $errors,
+            'success' => $status === 'Success',
+            'message' => $status === 'Success'
+            ? 'Booking pushed to SCM successfully'
+            : 'SCM returned failure — check errors',
+            'scm_booking_id' => $updated->SCMBookingID ?? null,
+            'scm_booking_no' => $updated->SCMBookingNo ?? null,
+            'quote_status' => $updated->QuoteStatus ?? null,
+            'scm_status' => $status,
+            'errors' => $errors,
             ]);
         } catch (\Exception $e) {
             Log::error('pushBookingToSCM - Exception', [
-                'quote_no' => $quoteNo ?? $bookingNo,
-                'error' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
+            'quote_no' => $quoteNo ?? $bookingNo,
+            'error' => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
             ]);
             return response()->json([
-                'success' => false,
-                'message' => $e->getMessage()
+            'success' => false,
+            'message' => $e->getMessage()
             ], 500);
         }
     }

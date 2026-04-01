@@ -13,21 +13,22 @@
                 <i class="fas fa-arrow-left"></i> Back to List
             </a>
 
-            <button type="button" class="btn btn-info btn-sm" id="btnCopyBooking" data-bookingno="{{ $quotation->bookingno }}">
+            <button type="button" class="btn btn-info btn-sm" id="btnCopyBooking"
+                data-bookingno="{{ $quotation->bookingno }}">
                 <i class="fas fa-copy"></i> Duplicate
             </button>
 
-            {{--
-                Edit Booking button is only shown when the quotation is genuinely
-                in-progress (Proposal, Pending, or no status set yet).
-                For Won, Lost, Cancel, or any other terminal status it is hidden.
-                This is based on the record's actual status, not which card was clicked.
-            --}}
+            {{-- New Copy button — opens the modal --}}
+            <button type="button" class="btn btn-success btn-sm" data-toggle="modal" data-target="#duplicateModal">
+                <i class="fas fa-clone"></i> Copy
+            </button>
+
             @php
                 $quoteStatus = $quotation->QuoteStatus ?? ($quotation->status ?? null);
                 $isInProgress =
                     in_array($quoteStatus, ['Proposal', 'Pending', 'In Progress', 'Failed Progress']) ||
-                is_null($quoteStatus); @endphp
+                    is_null($quoteStatus);
+            @endphp
 
             @if ($isInProgress)
                 <a href="{{ route('quotation.edit', $quotation->ID) }}" class="btn btn-warning btn-sm">
@@ -39,7 +40,6 @@
 @stop
 
 @section('content')
-
 
     {{-- ============================================================ --}}
     {{-- DUPLICATE RESULT CARD — fixed center overlay                 --}}
@@ -70,7 +70,9 @@
     @php
         $quoteStatus = $quotation->QuoteStatus ?? ($quotation->status ?? null);
         $isInProgress =
-        in_array($quoteStatus, ['Proposal', 'Pending', 'In Progress', 'Failed Progress']) || is_null($quoteStatus); @endphp
+            in_array($quoteStatus, ['Proposal', 'Pending', 'In Progress', 'Failed Progress']) ||
+            is_null($quoteStatus);
+    @endphp
 
     <div class="row">
         <!-- LEFT COLUMN -->
@@ -112,8 +114,8 @@
                         <label class="col-sm-5 col-form-label">Sales Person</label>
                         <div class="col-sm-7">
                             <input type="text" class="form-control form-control-sm" data-field="username"
-                                data-code="{{ $quotation->SalesPersonCode ?? '' }}" value="{{ $quotation->username ?? '' }}"
-                                readonly>
+                                data-code="{{ $quotation->SalesPersonCode ?? '' }}"
+                                value="{{ $quotation->username ?? '' }}" readonly>
                         </div>
                     </div>
                     <div class="form-group row mb-0">
@@ -137,8 +139,6 @@
                     </div>
                 </div>
                 <div class="card-body">
-
-                    {{-- Service — always read-only --}}
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Service</label>
                         <div class="col-sm-7">
@@ -146,8 +146,6 @@
                                 value="{{ $quotation->SVName ?? '' }}" readonly>
                         </div>
                     </div>
-
-                    {{-- Process — always read-only --}}
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Process</label>
                         <div class="col-sm-7">
@@ -155,8 +153,6 @@
                                 value="{{ $quotation->process ?? '' }}" readonly>
                         </div>
                     </div>
-
-                    {{-- Origin Country --}}
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Origin Country</label>
                         <div class="col-sm-7">
@@ -164,8 +160,6 @@
                                 value="{{ $quotation->origincountry ?? '' }}" readonly>
                         </div>
                     </div>
-
-                    {{-- Destination Country --}}
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Destination Country</label>
                         <div class="col-sm-7">
@@ -173,8 +167,6 @@
                                 value="{{ $quotation->destinationcountry ?? '' }}" readonly>
                         </div>
                     </div>
-
-                    {{-- InCO Terms --}}
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">InCO Terms</label>
                         <div class="col-sm-7">
@@ -182,8 +174,6 @@
                                 value="{{ $quotation->incoterm ?? '' }}" readonly>
                         </div>
                     </div>
-
-                    {{-- Shipment Mode --}}
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Shipment Mode</label>
                         <div class="col-sm-7">
@@ -191,8 +181,6 @@
                                 value="{{ $quotation->shipmentmode ?? '' }}" readonly>
                         </div>
                     </div>
-
-                    {{-- Transport Mode --}}
                     <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Transport Mode</label>
                         <div class="col-sm-7">
@@ -200,8 +188,6 @@
                                 value="{{ $quotation->TransportMode ?? '' }}" readonly>
                         </div>
                     </div>
-
-                    {{-- Service Class --}}
                     <div class="form-group row mb-0">
                         <label class="col-sm-5 col-form-label">Service Class</label>
                         <div class="col-sm-7">
@@ -209,7 +195,6 @@
                                 value="{{ $quotation->ServiceClass ?? '' }}" readonly>
                         </div>
                     </div>
-
                 </div>
             </div>
 
@@ -292,7 +277,6 @@
                     @if ($documents->isNotEmpty())
                         @foreach ($documents as $index => $doc)
                             @php
-                                // Extract version from filename if possible (fallback to index+1)
                                 preg_match('/_V(\d+)_/i', $doc->Name, $matches);
                                 $version = $matches[1] ?? $index + 1;
                                 $displayName = $doc->Name ?? "Quotation_{$quotation->bookingno}_V{$version}.pdf";
@@ -313,9 +297,7 @@
                             </div>
                         @endforeach
                     @else
-                        <p class="text-muted text-center mb-0">
-                            No PDF versions generated yet
-                        </p>
+                        <p class="text-muted text-center mb-0">No PDF versions generated yet</p>
                     @endif
                 </div>
             </div>
@@ -368,7 +350,6 @@
 
             <!-- Customer Details -->
             <div class="card card-primary">
-
                 <div class="card-header">
                     <h3 class="card-title">Customer Details</h3>
                     <div class="card-tools">
@@ -377,7 +358,28 @@
                         </button>
                     </div>
                 </div>
-                <div class="card-body">
+            <div class="card-body">
+                    {{-- Customer Type & Agent Type --}}
+                    <div class="row mb-3 pb-2" style="border-bottom: 1px solid #dee2e6;">
+                        <div class="col-md-6">
+                            <div class="form-group row mb-0">
+                                <label class="col-sm-4 col-form-label">Customer Type</label>
+                                <div class="col-sm-8">
+                                    <input type="text" class="form-control form-control-sm"
+                                        value="{{ $quotation->CustomerType ?? '' }}" readonly>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group row mb-0">
+                                <label class="col-sm-4 col-form-label">Agent Type</label>
+                                <div class="col-sm-8">
+                                    <input type="text" class="form-control form-control-sm"
+                                        value="{{ $quotation->AgentType ?? '' }}" readonly>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     <div class="row">
                         <div class="col-md-6">
                             <div class="form-group row">
@@ -393,7 +395,6 @@
                                     <input type="text" class="form-control form-control-sm"
                                         data-field="pri_partner_steet" value="{{ $quotation->pri_partner_steet ?? '' }}"
                                         readonly>
-
                                 </div>
                             </div>
                             <div class="form-group row">
@@ -402,7 +403,6 @@
                                     <input type="text" class="form-control form-control-sm"
                                         data-field="pri_partner_city" value="{{ $quotation->pri_partner_city ?? '' }}"
                                         readonly>
-
                                 </div>
                             </div>
                             <div class="form-group row">
@@ -411,7 +411,6 @@
                                     <input type="text" class="form-control form-control-sm"
                                         data-field="pri_partner_statename"
                                         value="{{ $quotation->pri_partner_statename ?? '' }}" readonly>
-
                                 </div>
                             </div>
                             <div class="form-group row">
@@ -420,7 +419,6 @@
                                     <input type="text" class="form-control form-control-sm"
                                         data-field="pri_partnermaster_name"
                                         value="{{ $quotation->pri_partnermaster_name ?? '' }}" readonly>
-
                                 </div>
                             </div>
                             <div class="form-group row mb-0">
@@ -429,7 +427,6 @@
                                     <input type="text" class="form-control form-control-sm"
                                         data-field="pri_partner_phone" value="{{ $quotation->pri_partner_phone ?? '' }}"
                                         readonly>
-
                                 </div>
                             </div>
                         </div>
@@ -447,7 +444,6 @@
                                     <input type="text" class="form-control form-control-sm"
                                         data-field="pri_partner_steet2"
                                         value="{{ $quotation->pri_partner_steet2 ?? '' }}" readonly>
-
                                 </div>
                             </div>
                             <div class="form-group row">
@@ -456,7 +452,6 @@
                                     <input type="text" class="form-control form-control-sm"
                                         data-field="pri_partner_zip" value="{{ $quotation->pri_partner_zip ?? '' }}"
                                         readonly>
-
                                 </div>
                             </div>
                             <div class="form-group row">
@@ -465,8 +460,6 @@
                                     <input type="text" class="form-control form-control-sm"
                                         data-field="pri_partner_countryname"
                                         value="{{ $quotation->pri_partner_countryname ?? '' }}" readonly>
-
-
                                 </div>
                             </div>
                             <div class="form-group row">
@@ -475,7 +468,6 @@
                                     <input type="text" class="form-control form-control-sm"
                                         data-field="pri_partner_email" value="{{ $quotation->pri_partner_email ?? '' }}"
                                         readonly>
-
                                 </div>
                             </div>
                             <div class="form-group row mb-0">
@@ -490,11 +482,7 @@
                 </div>
             </div>
 
-            {{--
-                REVENUE CARD
-                Show More/Less link sits in the card-header (matching edit page layout).
-                .col-extra columns are hidden by default — JS toggles them per table.
-            --}}
+            <!-- Revenue -->
             <div class="card card-success">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <div class="d-flex align-items-center">
@@ -533,10 +521,7 @@
                 </div>
             </div>
 
-            {{--
-                COST CARD
-                Same structure as Revenue — Show More/Less in header.
-            --}}
+            <!-- Cost -->
             <div class="card card-danger">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <div class="d-flex align-items-center">
@@ -632,6 +617,401 @@
         </div>
     </div>
 
+    {{-- ============================================================ --}}
+    {{-- COPY MODAL                                                    --}}
+    {{-- ============================================================ --}}
+    <div class="modal fade" id="duplicateModal" tabindex="-1" role="dialog" data-backdrop="static"
+        data-keyboard="false">
+        <div class="modal-dialog modal-xl" role="document">
+            <div class="modal-content">
+                <div class="modal-header" style="background:#4B49AC; color:white;">
+                    <h5 class="modal-title">
+                        <i class="fas fa-clone mr-2"></i> Copy Inquiry &mdash; {{ $quotation->bookingno }}
+                    </h5>
+                    <button type="button" class="close text-white" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body" style="max-height:75vh; overflow-y:auto; padding:1rem;">
+
+                    {{-- 1. INQUIRY DETAILS --}}
+                    <div class="card card-primary mb-2">
+                     <div class="card-header p-2" style="cursor:pointer; background:#4B49AC; color:white;">
+                        <a data-toggle="collapse" href="#dupInquiry" class="text-white d-block">
+                            <h6 class="mb-0"><i class="fas fa-info-circle mr-2"></i>Inquiry Details</h6>
+                        </a>
+                    </div>
+                        <div class="collapse show" id="dupInquiry">
+                            <div class="card-body py-3">
+                                <div class="form-group row mb-2">
+                                    <label class="col-sm-3 col-form-label col-form-label-sm">Sales Person</label>
+                                    <div class="col-sm-5 position-relative">
+                                        <input type="text" id="dupSalesPersonDisplay"
+                                            class="form-control form-control-sm"
+                                            placeholder="Search sales person..."
+                                            value="{{ $quotation->username ?? '' }}" autocomplete="off">
+                                        <input type="hidden" id="dupSalesPersonName"
+                                            value="{{ $quotation->username ?? '' }}">
+                                        <ul id="dupSalesPersonSuggestions"
+                                            class="dup-autocomplete-list list-unstyled mb-0"></ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- 2. SERVICE DETAILS --}}
+                    <div class="card card-primary mb-2">
+                       <div class="card-header p-2" style="cursor:pointer; background:#4B49AC; color:white;">
+                           <a data-toggle="collapse" href="#dupService" class="text-white d-block">
+                               <h6 class="mb-0">
+                                   <i class="fas fa-ship mr-2"></i>Service Details
+                                   <span class="badge badge-light ml-1">All fields required</span>
+                               </h6>
+                           </a>
+                       </div>
+                        <div class="collapse show" id="dupService">
+                            <div class="card-body py-3">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        {{-- Origin --}}
+                                        <div class="form-group row mb-2">
+                                            <label class="col-sm-4 col-form-label col-form-label-sm">
+                                                Origin <span class="text-danger">*</span>
+                                            </label>
+                                            <div class="col-sm-8 position-relative">
+                                                <input type="text" id="dupOriginDisplay"
+                                                    class="form-control form-control-sm dup-required"
+                                                    placeholder="Search country..."
+                                                    value="{{ $quotation->origincountry ?? '' }}"
+                                                    autocomplete="off">
+                                                <input type="hidden" id="dupOriginCountryId"
+                                                    value="{{ $quotation->origin_country_id ?? '' }}">
+                                                <input type="hidden" id="dupOriginCountryCode"
+                                                    value="{{ $quotation->origin_country_code ?? '' }}">
+                                                <ul id="dupOriginSuggestions"
+                                                    class="dup-autocomplete-list list-unstyled mb-0"></ul>
+                                            </div>
+                                        </div>
+                                        {{-- InCo Term --}}
+                                        <div class="form-group row mb-2">
+                                            <label class="col-sm-4 col-form-label col-form-label-sm">
+                                                InCo Term <span class="text-danger">*</span>
+                                            </label>
+                                            <div class="col-sm-8 position-relative">
+                                                <input type="text" id="dupIncoTermDisplay"
+                                                    class="form-control form-control-sm dup-required"
+                                                    placeholder="Search inco term..."
+                                                    value="{{ $quotation->incoterm ?? '' }}"
+                                                    autocomplete="off">
+                                                <input type="hidden" id="dupIncoTermCode"
+                                                    value="{{ $quotation->incoterm ?? '' }}">
+                                                <ul id="dupIncoTermSuggestions"
+                                                    class="dup-autocomplete-list list-unstyled mb-0"></ul>
+                                            </div>
+                                        </div>
+                                        {{-- Transport Mode --}}
+                                        <div class="form-group row mb-2">
+                                            <label class="col-sm-4 col-form-label col-form-label-sm">
+                                                Transport Mode <span class="text-danger">*</span>
+                                            </label>
+                                            <div class="col-sm-8 position-relative">
+                                                <input type="text" id="dupTransportModeDisplay"
+                                                    class="form-control form-control-sm dup-required"
+                                                    placeholder="Search transport mode..."
+                                                    value="{{ $quotation->TransportMode ?? '' }}"
+                                                    autocomplete="off">
+                                                <input type="hidden" id="dupTransportModeCode"
+                                                    value="{{ $quotation->TransportMode ?? '' }}">
+                                                <ul id="dupTransportModeSuggestions"
+                                                    class="dup-autocomplete-list list-unstyled mb-0"></ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        {{-- Destination --}}
+                                        <div class="form-group row mb-2">
+                                            <label class="col-sm-4 col-form-label col-form-label-sm">
+                                                Destination <span class="text-danger">*</span>
+                                            </label>
+                                            <div class="col-sm-8 position-relative">
+                                                <input type="text" id="dupDestDisplay"
+                                                    class="form-control form-control-sm dup-required"
+                                                    placeholder="Search country..."
+                                                    value="{{ $quotation->destinationcountry ?? '' }}"
+                                                    autocomplete="off">
+                                                <input type="hidden" id="dupDestCountryId"
+                                                    value="{{ $quotation->dest_country_id ?? '' }}">
+                                                <input type="hidden" id="dupDestCountryCode"
+                                                    value="{{ $quotation->destination_country_code ?? '' }}">
+                                                <ul id="dupDestSuggestions"
+                                                    class="dup-autocomplete-list list-unstyled mb-0"></ul>
+                                            </div>
+                                        </div>
+                                        {{-- Shipment Mode --}}
+                                        <div class="form-group row mb-2">
+                                            <label class="col-sm-4 col-form-label col-form-label-sm">
+                                                Shipment Mode <span class="text-danger">*</span>
+                                            </label>
+                                            <div class="col-sm-8 position-relative">
+                                                <input type="text" id="dupShipmentModeDisplay"
+                                                    class="form-control form-control-sm dup-required"
+                                                    placeholder="Search shipment mode..."
+                                                    value="{{ $quotation->shipmentmode ?? '' }}"
+                                                    autocomplete="off">
+                                                <input type="hidden" id="dupShipmentModeCode"
+                                                    value="{{ $quotation->shipmentmode ?? '' }}">
+                                                <ul id="dupShipmentModeSuggestions"
+                                                    class="dup-autocomplete-list list-unstyled mb-0"></ul>
+                                            </div>
+                                        </div>
+                                        {{-- Service Class --}}
+                                        <div class="form-group row mb-2">
+                                            <label class="col-sm-4 col-form-label col-form-label-sm">
+                                                Service Class <span class="text-danger">*</span>
+                                            </label>
+                                            <div class="col-sm-8 position-relative">
+                                                <input type="text" id="dupServiceClassDisplay"
+                                                    class="form-control form-control-sm dup-required"
+                                                    placeholder="Search service class..."
+                                                    value="{{ $quotation->ServiceClass ?? '' }}"
+                                                    autocomplete="off">
+                                                <input type="hidden" id="dupServiceClassCode"
+                                                    value="{{ $quotation->ServiceClass ?? '' }}">
+                                                <ul id="dupServiceClassSuggestions"
+                                                    class="dup-autocomplete-list list-unstyled mb-0"></ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- 3. CUSTOMER DETAILS --}}
+                    <div class="card card-primary mb-2">
+                       <div class="card-header p-2" style="cursor:pointer; background:#4B49AC; color:white;">
+                            <a data-toggle="collapse" href="#dupCustomer" class="text-white d-block">
+                                <h6 class="mb-0"><i class="fas fa-building mr-2"></i>Customer Details</h6>
+                            </a>
+                        </div>
+
+                        <div class="collapse show" id="dupCustomer">
+                            <div class="card-body py-3">
+                                <div class="row mb-2">
+                                    <div class="col-md-6">
+                                        <div class="form-group row mb-2">
+                                            <label class="col-sm-4 col-form-label col-form-label-sm">
+                                                Customer Type <span class="text-danger">*</span>
+                                            </label>
+                                            <div class="col-sm-8">
+                                                <select id="dupCustomerType"
+                                                    class="form-control form-control-sm dup-required">
+                                                    <option value="">-- Select --</option>
+                                                    <option value="Existing"
+                                                        {{ ($quotation->CustomerType ?? '') === 'Existing' ? 'selected' : '' }}>
+                                                        Existing
+                                                    </option>
+                                                    <option value="New"
+                                                        {{ ($quotation->CustomerType ?? '') === 'New' ? 'selected' : '' }}>
+                                                        New
+                                                    </option>
+                                                    <option value="New Agent"
+                                                        {{ ($quotation->CustomerType ?? '') === 'New Agent' ? 'selected' : '' }}>
+                                                        New Agent
+                                                    </option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group row mb-2">
+                                            <label class="col-sm-4 col-form-label col-form-label-sm">Agent
+                                                Type</label>
+                                            <div class="col-sm-8">
+                                                <input type="text" id="dupAgentType"
+                                                    class="form-control form-control-sm"
+                                                    value="{{ $quotation->AgentType ?? '' }}">
+                                                <input type="hidden" id="dupAgentTypeId"
+                                                    value="{{ $quotation->AgentTypeId ?? '' }}">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <hr class="my-2">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group row mb-2">
+                                            <label class="col-sm-4 col-form-label col-form-label-sm">
+                                                Company Name <span class="text-danger">*</span>
+                                            </label>
+                                            <div class="col-sm-8">
+                                                <input type="text" id="dupCompanyName"
+                                                    class="form-control form-control-sm dup-required"
+                                                    value="{{ $quotation->companyname ?? '' }}" readonly>
+                                            </div>
+                                        </div>
+                                        <div class="form-group row mb-2">
+                                            <label class="col-sm-4 col-form-label col-form-label-sm">
+                                                Address 1 <span class="text-danger">*</span>
+                                            </label>
+                                            <div class="col-sm-8">
+                                                <input type="text" id="dupAddress1"
+                                                    class="form-control form-control-sm dup-required"
+                                                    value="{{ $quotation->pri_partner_steet ?? '' }}" readonly>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group row mb-2">
+                                            <label class="col-sm-4 col-form-label col-form-label-sm">
+                                                Country <span class="text-danger">*</span>
+                                            </label>
+                                            <div class="col-sm-8 position-relative">
+                                                <input type="text" id="dupCustCountryDisplay"
+                                                    class="form-control form-control-sm dup-required"
+                                                    value="{{ $quotation->pri_partner_countryname ?? '' }}"
+                                                    autocomplete="off" readonly>
+                                                <input type="hidden" id="dupCustCountryId"
+                                                    value="{{ $quotation->pri_partner_countryid ?? '' }}">
+                                                <input type="hidden" id="dupCustCountryName"
+                                                    value="{{ $quotation->pri_partner_countryname ?? '' }}">
+                                                <ul id="dupCustCountrySuggestions"
+                                                    class="dup-autocomplete-list list-unstyled mb-0"></ul>
+                                            </div>
+                                        </div>
+                                        <div class="form-group row mb-2">
+                                            <label class="col-sm-4 col-form-label col-form-label-sm">
+                                                Industry Type <span class="text-danger">*</span>
+                                            </label>
+                                            <div class="col-sm-8 position-relative">
+                                                <input type="text" id="dupIndustryDisplay"
+                                                    class="form-control form-control-sm dup-required"
+                                                    value="{{ $quotation->industryname ?? '' }}"
+                                                    autocomplete="off" readonly>
+                                                <input type="hidden" id="dupIndustryId"
+                                                    value="{{ $quotation->industryid ?? '' }}">
+                                                <input type="hidden" id="dupIndustryName"
+                                                    value="{{ $quotation->industryname ?? '' }}">
+                                                <ul id="dupIndustrySuggestions"
+                                                    class="dup-autocomplete-list list-unstyled mb-0"></ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- 4. CARGO DETAILS --}}
+                    <div class="card card-primary mb-2">
+                   <div class="card-header p-2" style="cursor:pointer; background:#4B49AC; color:white;">
+                        <a data-toggle="collapse" href="#dupCargo" class="text-white d-block">
+                            <h6 class="mb-0"><i class="fas fa-boxes mr-2"></i>Cargo Details</h6>
+                        </a>
+                    </div>
+                        <div class="collapse show" id="dupCargo">
+                            <div class="card-body py-3">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group row mb-2">
+                                            <label class="col-sm-4 col-form-label col-form-label-sm">
+                                                Commodity <span class="text-danger">*</span>
+                                            </label>
+                                            <div class="col-sm-8">
+                                                <input type="text" id="dupCommodity"
+                                                    class="form-control form-control-sm dup-required"
+                                                    value="{{ $quotation->commodity ?? '' }}">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group row mb-2">
+                                            <label class="col-sm-4 col-form-label col-form-label-sm">
+                                                Scope of Volume <span class="text-danger">*</span>
+                                            </label>
+                                            <div class="col-sm-8">
+                                                <select id="dupScopeOfVolume"
+                                                    class="form-control form-control-sm dup-required">
+                                                    <option value="">-- Select --</option>
+                                                    <option value="Weight (in KGS)"
+                                                        {{ ($quotation->scopevolume ?? '') === 'Weight (in KGS)' ? 'selected' : '' }}>
+                                                        Weight (in KGS)
+                                                    </option>
+                                                    <option value="Volume (In CBM)"
+                                                        {{ ($quotation->scopevolume ?? '') === 'Volume (In CBM)' ? 'selected' : '' }}>
+                                                        Volume (In CBM)
+                                                    </option>
+                                                    <option value="Containerized"
+                                                        {{ ($quotation->scopevolume ?? '') === 'Containerized' ? 'selected' : '' }}>
+                                                        Containerized
+                                                    </option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {{-- Cargo Volume — hidden when Containerized --}}
+                                <div class="row" id="dupCargoVolumeRow">
+                                    <div class="col-md-6">
+                                        <div class="form-group row mb-2">
+                                            <label class="col-sm-4 col-form-label col-form-label-sm">
+                                                Cargo Volume <span class="text-danger">*</span>
+                                            </label>
+                                            <div class="col-sm-8">
+                                                <input type="number" id="dupCargoVolume"
+                                                    class="form-control form-control-sm" min="0.01"
+                                                    step="0.01" value="{{ $quotation->cargovolume ?? '' }}"
+                                                    placeholder="Numeric, non-zero">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {{-- Equipment — shown only when Containerized --}}
+                                <div id="dupEquipmentSection" style="display:none;">
+                                    <hr class="my-2">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <strong><i class="fas fa-truck-loading mr-1"></i> Equipment</strong>
+                                        <button type="button" class="btn btn-sm btn-success"
+                                            id="dupAddEquipmentBtn">
+                                            <i class="fas fa-plus mr-1"></i> Add
+                                        </button>
+                                    </div>
+                                    <table class="table table-sm table-bordered mb-0" id="dupEquipmentTable">
+                                        <thead class="thead-light">
+                                            <tr>
+                                                <th style="width:55%">Equipment Type <span
+                                                        class="text-danger">*</span></th>
+                                                <th style="width:30%">Quantity <span
+                                                        class="text-danger">*</span></th>
+                                                <th style="width:15%"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="dupEquipmentBody">
+                                            <tr id="dupEquipmentEmpty">
+                                                <td colspan="3" class="text-center text-muted py-2">Click Add
+                                                    to add equipment</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>{{-- /.modal-body --}}
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                        <i class="fas fa-times mr-1"></i> Cancel
+                    </button>
+                    <button type="button" class="btn btn-primary" id="btnConfirmDuplicate">
+                        <i class="fas fa-clone mr-1"></i> Copy
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 @stop
 
 @section('css')
@@ -682,12 +1062,10 @@
             opacity: 0.95;
         }
 
-        /* Extra columns hidden by default — JS toggles visibility per table */
         .col-extra {
             display: none;
         }
 
-        /* Show more/less link styling — matches edit page */
         .show-items-link {
             text-decoration: underline;
             font-size: 0.875rem;
@@ -715,8 +1093,6 @@
             font-size: 0.85rem;
         }
 
-        /* Card footer action buttons */
-        /* Card footer action buttons */
         .card-action-footer {
             background: #f8f9fa;
             border-top: 1px solid rgba(0, 0, 0, .125);
@@ -726,10 +1102,52 @@
             gap: 0.25rem;
         }
 
-        /* Highlight inputs when card is in edit mode */
         .card-in-edit input[data-field]:not([readonly]) {
             background-color: #fff9e6;
             border-color: #ffc107 !important;
+        }
+
+        /* ── Copy Modal: autocomplete dropdown ── */
+        .dup-autocomplete-list {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #fff;
+            border: 1px solid #ced4da;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+            max-height: 180px;
+            overflow-y: auto;
+            z-index: 9999;
+            display: none;
+        }
+
+        .dup-autocomplete-list li {
+            padding: 6px 10px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            list-style: none;
+        }
+
+        .dup-autocomplete-list li:hover {
+            background: #4B49AC;
+            color: #fff;
+        }
+
+        #dupEquipmentBody select.form-control-sm {
+            font-size: 0.85rem;
+        }
+
+        #duplicateModal .card-header a[data-toggle="collapse"]::after {
+            font-family: "Font Awesome 5 Free";
+            font-weight: 900;
+            content: "\f077"; /* chevron-up */
+            float: right;
+            transition: transform 0.2s;
+        }
+        #duplicateModal .card-header a[data-toggle="collapse"].collapsed::after {
+            transform: rotate(180deg);
         }
     </style>
 @stop
@@ -742,23 +1160,21 @@
         function getBaseCurrency() {
             return OFFICE_BASE_CURRENCY[officeCode] ?? 'KES';
         }
+
         $(document).ready(function() {
 
-            const bookingNo = '{{ $quotation->bookingno ?? '' }}';
+            const bookingNo     = '{{ $quotation->bookingno ?? '' }}';
             const QUOTE_NO_VIEW = '{{ $quotation->QuoteNo ?? '' }}';
             const SCOPE_OF_VOLUME = '{{ $quotation->scopevolume ?? '' }}';
 
             // ============================================================
-            // VIEW PAGE — Load containers (read-only table)
-            // FIX: was response.data — correct key is response.containers
+            // VIEW PAGE — Load containers (read-only)
             // ============================================================
             if (QUOTE_NO_VIEW && SCOPE_OF_VOLUME === 'Containerized') {
                 $.ajax({
                     url: '{{ route('quotation.containers') }}',
                     type: 'GET',
-                    data: {
-                        quote_no: QUOTE_NO_VIEW
-                    },
+                    data: { quote_no: QUOTE_NO_VIEW },
                     success: function(response) {
                         const tbody = $('#viewContainerTableBody');
                         tbody.empty();
@@ -786,37 +1202,31 @@
 
             // ============================================================
             // SHIPMENT DETAILS — Edit / Save / Cancel
-            // FIX: correct column names for country pre-selection
             // ============================================================
-            const savedShipmentMode = '{{ $quotation->shipmentmode ?? '' }}';
+            const savedShipmentMode  = '{{ $quotation->shipmentmode ?? '' }}';
             const savedTransportMode = '{{ $quotation->TransportMode ?? '' }}';
             const savedOriginCountry = '{{ $quotation->origincountry ?? '' }}';
-            const savedDestCountry = '{{ $quotation->destinationcountry ?? '' }}';
-            const savedIncoTerm = '{{ $quotation->incoterm ?? '' }}';
-            const savedServiceClass = '{{ $quotation->ServiceClass ?? '' }}';
+            const savedDestCountry   = '{{ $quotation->destinationcountry ?? '' }}';
+            const savedIncoTerm      = '{{ $quotation->incoterm ?? '' }}';
+            const savedServiceClass  = '{{ $quotation->ServiceClass ?? '' }}';
 
             let viewShipmentSnapshot = {};
             let viewShipmentDropdownsLoaded = false;
 
-            // FIX: replace CSS toggle approach with DOM remove/restore
-            // Browsers ignore display:none on <option> elements
             function bindCountrySearch(searchId, selectId) {
                 const $select = $('#' + selectId);
                 const allOptions = $select.find('option').clone();
-
                 $('#' + searchId).on('input', function() {
                     const term = $(this).val().toLowerCase().trim();
                     const currentVal = $select.val();
-
                     $select.empty();
                     allOptions.each(function() {
                         const optText = $(this).text().toLowerCase();
-                        const optVal = $(this).val();
+                        const optVal  = $(this).val();
                         if (optVal === '' || optText.includes(term)) {
                             $select.append($(this).clone());
                         }
                     });
-
                     if ($select.find(`option[value="${currentVal}"]`).length) {
                         $select.val(currentVal);
                     }
@@ -828,9 +1238,7 @@
                     if (typeof callback === 'function') callback();
                     return;
                 }
-
                 let remaining = 5;
-
                 function oneDone() {
                     remaining--;
                     if (remaining === 0) {
@@ -838,8 +1246,6 @@
                         if (typeof callback === 'function') callback();
                     }
                 }
-
-                // Shipment Mode
                 $.ajax({
                     url: '{{ route('quotation.shipment-modes') }}',
                     type: 'GET',
@@ -848,15 +1254,12 @@
                             .append('<option value="">-- Select --</option>');
                         (r.success ? r.data : []).forEach(function(item) {
                             $sel.append(
-                                `<option value="${item.Code}"
-                                 ${item.Code === savedShipmentMode ? 'selected' : ''}>${item.Code}</option>`
+                                `<option value="${item.Code}" ${item.Code === savedShipmentMode ? 'selected' : ''}>${item.Code}</option>`
                             );
                         });
                     },
                     complete: oneDone
                 });
-
-                // Transport Mode
                 $.ajax({
                     url: '{{ route('quotation.transport-modes') }}',
                     type: 'GET',
@@ -865,51 +1268,36 @@
                             .append('<option value="">-- Select --</option>');
                         (r.success ? r.data : []).forEach(function(item) {
                             $sel.append(
-                                `<option value="${item.Code}"
-                                 ${item.Code === savedTransportMode ? 'selected' : ''}>${item.Name}</option>`
+                                `<option value="${item.Code}" ${item.Code === savedTransportMode ? 'selected' : ''}>${item.Name}</option>`
                             );
                         });
                     },
                     complete: oneDone
                 });
-
-                // Countries
-                // FIX: use CountryName from lookupCountries response (not c.Name)
-                // FIX: pre-select against savedOriginCountry/savedDestCountry (stored names)
                 $.ajax({
                     url: '{{ route('quotation.lookup.countries') }}',
                     type: 'GET',
-                    data: {
-                        filter: ''
-                    },
+                    data: { filter: '' },
                     success: function(countries) {
                         const list = Array.isArray(countries) ? countries : [];
-
                         function fillCountrySelect(selectId, savedValue) {
                             const $sel = $('#' + selectId).empty()
                                 .append('<option value="">-- Select --</option>');
                             const normalizedSaved = (savedValue || '').trim().toLowerCase();
-
                             list.forEach(function(c) {
                                 const name = (c.CountryName || '').trim();
                                 $sel.append(
-                                    `<option value="${name}"
-                                     ${name.toLowerCase() === normalizedSaved ? 'selected' : ''}>${name}</option>`
+                                    `<option value="${name}" ${name.toLowerCase() === normalizedSaved ? 'selected' : ''}>${name}</option>`
                                 );
                             });
                         }
-
                         fillCountrySelect('viewOriginCountrySelect', savedOriginCountry);
                         fillCountrySelect('viewDestCountrySelect', savedDestCountry);
-
-                        // Bind search AFTER options are populated
                         bindCountrySearch('viewOriginCountrySearch', 'viewOriginCountrySelect');
                         bindCountrySearch('viewDestCountrySearch', 'viewDestCountrySelect');
                     },
                     complete: oneDone
                 });
-
-                // InCo Terms
                 $.ajax({
                     url: '{{ route('quotation.inco-terms') }}',
                     type: 'GET',
@@ -920,30 +1308,24 @@
                             const code = item.IncoTermCode || item.Code || '';
                             const name = item.Name || code;
                             $sel.append(
-                                `<option value="${code}"
-                                 ${code === savedIncoTerm ? 'selected' : ''}>${code} — ${name}</option>`
+                                `<option value="${code}" ${code === savedIncoTerm ? 'selected' : ''}>${code} — ${name}</option>`
                             );
                         });
                     },
                     complete: oneDone
                 });
-
-                // Service Class
                 $.ajax({
                     url: '{{ route('quotation.lookup.serviceClasses') }}',
                     type: 'GET',
-                    data: {
-                        filter: ''
-                    },
+                    data: { filter: '' },
                     success: function(classes) {
                         const $sel = $('#viewServiceClassSelect').empty()
                             .append('<option value="">-- Select --</option>');
                         (Array.isArray(classes) ? classes : []).forEach(function(item) {
-                            const code = item.Code || '';
+                            const code    = item.Code || '';
                             const display = item.Name || item.Description || code;
                             $sel.append(
-                                `<option value="${code}"
-                                 ${code === savedServiceClass ? 'selected' : ''}>${display}</option>`
+                                `<option value="${code}" ${code === savedServiceClass ? 'selected' : ''}>${display}</option>`
                             );
                         });
                     },
@@ -953,20 +1335,17 @@
 
             $('#viewShipmentEditBtn').on('click', function() {
                 viewShipmentSnapshot = {
-                    shipmentMode: $('#viewShipmentModeSelect').val() || savedShipmentMode,
+                    shipmentMode:  $('#viewShipmentModeSelect').val()  || savedShipmentMode,
                     transportMode: $('#viewTransportModeSelect').val() || savedTransportMode,
                     originCountry: $('#viewOriginCountrySelect').val() || savedOriginCountry,
-                    destCountry: $('#viewDestCountrySelect').val() || savedDestCountry,
-                    incoTerm: $('#viewIncoTermSelect').val() || savedIncoTerm,
-                    serviceClass: $('#viewServiceClassSelect').val() || savedServiceClass,
+                    destCountry:   $('#viewDestCountrySelect').val()   || savedDestCountry,
+                    incoTerm:      $('#viewIncoTermSelect').val()      || savedIncoTerm,
+                    serviceClass:  $('#viewServiceClassSelect').val()  || savedServiceClass,
                 };
-
                 loadViewShipmentDropdowns(function() {
-                    $('#viewShipmentModeDisplay, #viewTransportModeDisplay, #viewIncoTermDisplay, #viewServiceClassDisplay')
-                        .addClass('d-none');
+                    $('#viewShipmentModeDisplay, #viewTransportModeDisplay, #viewIncoTermDisplay, #viewServiceClassDisplay').addClass('d-none');
                     $('#viewOriginCountryDisplay, #viewDestCountryDisplay').addClass('d-none');
-                    $('#viewShipmentModeSelect, #viewTransportModeSelect, #viewIncoTermSelect, #viewServiceClassSelect')
-                        .removeClass('d-none').prop('disabled', false);
+                    $('#viewShipmentModeSelect, #viewTransportModeSelect, #viewIncoTermSelect, #viewServiceClassSelect').removeClass('d-none').prop('disabled', false);
                     $('#viewOriginCountryEditWrap, #viewDestCountryEditWrap').removeClass('d-none');
                     $('#viewShipmentEditBtn').hide();
                     $('#viewShipmentSaveBtn, #viewShipmentCancelBtn').show();
@@ -981,11 +1360,9 @@
                 $('#viewIncoTermSelect').val(viewShipmentSnapshot.incoTerm);
                 $('#viewServiceClassSelect').val(viewShipmentSnapshot.serviceClass);
                 $('#viewOriginCountrySearch, #viewDestCountrySearch').val('');
-                $('#viewShipmentModeSelect, #viewTransportModeSelect, #viewIncoTermSelect, #viewServiceClassSelect')
-                    .addClass('d-none').prop('disabled', true);
+                $('#viewShipmentModeSelect, #viewTransportModeSelect, #viewIncoTermSelect, #viewServiceClassSelect').addClass('d-none').prop('disabled', true);
                 $('#viewOriginCountryEditWrap, #viewDestCountryEditWrap').addClass('d-none');
-                $('#viewShipmentModeDisplay, #viewTransportModeDisplay, #viewIncoTermDisplay, #viewServiceClassDisplay')
-                    .removeClass('d-none');
+                $('#viewShipmentModeDisplay, #viewTransportModeDisplay, #viewIncoTermDisplay, #viewServiceClassDisplay').removeClass('d-none');
                 $('#viewOriginCountryDisplay, #viewDestCountryDisplay').removeClass('d-none');
                 $(this).hide();
                 $('#viewShipmentSaveBtn').hide();
@@ -993,37 +1370,19 @@
             });
 
             $('#viewShipmentSaveBtn').on('click', function() {
-                const shipmentMode = $('#viewShipmentModeSelect').val();
+                const shipmentMode  = $('#viewShipmentModeSelect').val();
                 const transportMode = $('#viewTransportModeSelect').val();
                 const originCountry = $('#viewOriginCountrySelect').val();
-                const destCountry = $('#viewDestCountrySelect').val();
-                const incoTerm = $('#viewIncoTermSelect').val();
-                const serviceClass = $('#viewServiceClassSelect').val();
+                const destCountry   = $('#viewDestCountrySelect').val();
+                const incoTerm      = $('#viewIncoTermSelect').val();
+                const serviceClass  = $('#viewServiceClassSelect').val();
 
-                if (!shipmentMode) {
-                    toastr.error('Please select a Shipment Mode.');
-                    return;
-                }
-                if (!transportMode) {
-                    toastr.error('Please select a Transport Mode.');
-                    return;
-                }
-                if (!originCountry) {
-                    toastr.error('Please select an Origin Country.');
-                    return;
-                }
-                if (!destCountry) {
-                    toastr.error('Please select a Destination Country.');
-                    return;
-                }
-                if (!incoTerm) {
-                    toastr.error('Please select an InCO Term.');
-                    return;
-                }
-                if (!serviceClass) {
-                    toastr.error('Please select a Service Class.');
-                    return;
-                }
+                if (!shipmentMode)  { toastr.error('Please select a Shipment Mode.');    return; }
+                if (!transportMode) { toastr.error('Please select a Transport Mode.');   return; }
+                if (!originCountry) { toastr.error('Please select an Origin Country.');  return; }
+                if (!destCountry)   { toastr.error('Please select a Destination Country.'); return; }
+                if (!incoTerm)      { toastr.error('Please select an InCO Term.');       return; }
+                if (!serviceClass)  { toastr.error('Please select a Service Class.');    return; }
 
                 const $btn = $(this);
                 $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Saving...');
@@ -1044,79 +1403,57 @@
                     success: function(r) {
                         if (!r.success) {
                             toastr.error(r.message || 'Shipment save failed.');
-                            $btn.prop('disabled', false).html(
-                                '<i class="fas fa-save mr-1"></i> Save');
+                            $btn.prop('disabled', false).html('<i class="fas fa-save mr-1"></i> Save');
                             return;
                         }
-
-                        // Update display inputs
                         $('#viewShipmentModeDisplay').val(shipmentMode);
-                        $('#viewTransportModeDisplay').val(
-                            $('#viewTransportModeSelect option:selected').text().trim()
-                        );
+                        $('#viewTransportModeDisplay').val($('#viewTransportModeSelect option:selected').text().trim());
                         $('#viewOriginCountryDisplay').val(originCountry);
                         $('#viewDestCountryDisplay').val(destCountry);
                         $('#viewIncoTermDisplay').val(incoTerm);
                         $('#viewServiceClassDisplay').val(serviceClass);
-
-                        // Swap back to read-only display
-                        $('#viewShipmentModeSelect, #viewTransportModeSelect, #viewIncoTermSelect, #viewServiceClassSelect')
-                            .addClass('d-none').prop('disabled', true);
-                        $('#viewOriginCountryEditWrap, #viewDestCountryEditWrap').addClass(
-                            'd-none');
-                        $('#viewShipmentModeDisplay, #viewTransportModeDisplay, #viewIncoTermDisplay, #viewServiceClassDisplay')
-                            .removeClass('d-none');
-                        $('#viewOriginCountryDisplay, #viewDestCountryDisplay').removeClass(
-                            'd-none');
+                        $('#viewShipmentModeSelect, #viewTransportModeSelect, #viewIncoTermSelect, #viewServiceClassSelect').addClass('d-none').prop('disabled', true);
+                        $('#viewOriginCountryEditWrap, #viewDestCountryEditWrap').addClass('d-none');
+                        $('#viewShipmentModeDisplay, #viewTransportModeDisplay, #viewIncoTermDisplay, #viewServiceClassDisplay').removeClass('d-none');
+                        $('#viewOriginCountryDisplay, #viewDestCountryDisplay').removeClass('d-none');
                         $('#viewOriginCountrySearch, #viewDestCountrySearch').val('');
                         $('#viewShipmentSaveBtn, #viewShipmentCancelBtn').hide();
                         $('#viewShipmentEditBtn').show();
                         toastr.success('Shipment details saved successfully.');
                     },
                     error: function(xhr) {
-                        toastr.error(xhr.responseJSON?.message ||
-                            'Unexpected error saving shipment details.');
+                        toastr.error(xhr.responseJSON?.message || 'Unexpected error saving shipment details.');
                     },
                     complete: function() {
-                        $btn.prop('disabled', false).html(
-                            '<i class="fas fa-save mr-1"></i> Save');
+                        $btn.prop('disabled', false).html('<i class="fas fa-save mr-1"></i> Save');
                     }
                 });
             });
 
             // ============================================================
-            // DUPLICATE — centered overlay card
+            // DUPLICATE — centered overlay card (existing button)
             // ============================================================
             $('#btnCopyBooking').off('click').on('click', function() {
                 const $btn = $(this);
-                $btn.prop('disabled', true).html(
-                    '<i class="fas fa-spinner fa-spin mr-1"></i> Duplicating...');
-
+                $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Duplicating...');
                 $.ajax({
                     url: '{{ route('quotation.processDuplicate', $quotation->QuoteNo) }}',
                     type: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                        'Accept': 'application/json'
-                    },
+                    headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
                     contentType: 'application/json',
                     data: JSON.stringify({}),
                     success: function(response) {
-                        $btn.prop('disabled', false).html(
-                            '<i class="fas fa-copy mr-1"></i> Duplicate');
+                        $btn.prop('disabled', false).html('<i class="fas fa-copy mr-1"></i> Duplicate');
                         if (response.success) {
-                            $('#dupResultLink').text(response.new_booking_no).attr('href',
-                                response.redirect_url);
+                            $('#dupResultLink').text(response.new_booking_no).attr('href', response.redirect_url);
                             $('#dupResultCard').slideDown(300);
                         } else {
                             toastr.error(response.message || 'Duplication failed.');
                         }
                     },
                     error: function(xhr) {
-                        $btn.prop('disabled', false).html(
-                            '<i class="fas fa-copy mr-1"></i> Duplicate');
-                        toastr.error('Error: ' + (xhr.responseJSON?.message ||
-                            'Unexpected error (HTTP ' + xhr.status + ')'));
+                        $btn.prop('disabled', false).html('<i class="fas fa-copy mr-1"></i> Duplicate');
+                        toastr.error('Error: ' + (xhr.responseJSON?.message || 'Unexpected error (HTTP ' + xhr.status + ')'));
                     }
                 });
             });
@@ -1134,12 +1471,9 @@
                 $.ajax({
                     url: '{{ route('quotation.charges') }}',
                     type: 'GET',
-                    data: {
-                        booking_no: bookingNo
-                    },
+                    data: { booking_no: bookingNo },
                     beforeSend: function() {
-                        const spinner =
-                            '<tr><td colspan="7" class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>';
+                        const spinner = '<tr><td colspan="7" class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>';
                         $('#revenueChargesViewTable, #costChargesViewTable').html(spinner);
                     },
                     success: function(response) {
@@ -1148,14 +1482,12 @@
                             renderCostChargesView(response.cost || []);
                             updateViewSummary(response.revenue || [], response.cost || []);
                         } else {
-                            const err =
-                                '<tr><td colspan="7" class="text-center text-danger">Failed to load charges</td></tr>';
+                            const err = '<tr><td colspan="7" class="text-center text-danger">Failed to load charges</td></tr>';
                             $('#revenueChargesViewTable, #costChargesViewTable').html(err);
                         }
                     },
                     error: function() {
-                        const err =
-                            '<tr><td colspan="7" class="text-center text-danger">Error loading charges</td></tr>';
+                        const err = '<tr><td colspan="7" class="text-center text-danger">Error loading charges</td></tr>';
                         $('#revenueChargesViewTable, #costChargesViewTable').html(err);
                     }
                 });
@@ -1165,8 +1497,7 @@
                 const tbody = $('#revenueChargesViewTable');
                 tbody.empty();
                 if (!charges.length) {
-                    tbody.append(
-                        '<tr><td colspan="7" class="text-center text-muted">No revenue charges found</td></tr>');
+                    tbody.append('<tr><td colspan="7" class="text-center text-muted">No revenue charges found</td></tr>');
                     $('#revenueTotalHeaderAmount').text('0.00');
                     return;
                 }
@@ -1193,8 +1524,7 @@
                 const tbody = $('#costChargesViewTable');
                 tbody.empty();
                 if (!charges.length) {
-                    tbody.append(
-                        '<tr><td colspan="7" class="text-center text-muted">No cost charges found</td></tr>');
+                    tbody.append('<tr><td colspan="7" class="text-center text-muted">No cost charges found</td></tr>');
                     $('#costTotalHeaderAmount').text('0.00');
                     return;
                 }
@@ -1219,10 +1549,10 @@
 
             function updateViewSummary(revenueCharges, costCharges) {
                 const totalRevenue = revenueCharges.reduce((s, c) => s + parseFloat(c.amtInBaseCurr || 0), 0);
-                const totalCost = costCharges.reduce((s, c) => s + parseFloat(c.amtInBaseCurr || 0), 0);
-                const margin = totalRevenue - totalCost;
-                const marginPct = totalRevenue > 0 ? (margin / totalRevenue * 100) : 0;
-                const bc = getBaseCurrency();
+                const totalCost    = costCharges.reduce((s, c) => s + parseFloat(c.amtInBaseCurr || 0), 0);
+                const margin       = totalRevenue - totalCost;
+                const marginPct    = totalRevenue > 0 ? (margin / totalRevenue * 100) : 0;
+                const bc           = getBaseCurrency();
                 $('#viewQuotedRevenue').val(bc + ' ' + totalRevenue.toFixed(2));
                 $('#viewQuotedMargin').val(bc + ' ' + margin.toFixed(2) + ' (' + marginPct.toFixed(2) + '%)');
             }
@@ -1235,10 +1565,10 @@
             $('.show-items-link').on('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                const tableId = $(this).data('table');
-                const $table = tableId === 'revenue' ?
-                    $('#revenueChargesViewTable').closest('table') :
-                    $('#costChargesViewTable').closest('table');
+                const tableId  = $(this).data('table');
+                const $table   = tableId === 'revenue'
+                    ? $('#revenueChargesViewTable').closest('table')
+                    : $('#costChargesViewTable').closest('table');
                 const isExpanded = $(this).data('expanded') || false;
                 if (isExpanded) {
                     $table.find('.col-extra').hide();
@@ -1265,8 +1595,7 @@
                 }
             });
 
-            // Collapse all on load except Revenue, Cost, Summary
-            $('.card').not('.card-success, .card-danger, .summary-card').each(function() {
+            $('.card').not('.card-success, .card-danger, .summary-card, #duplicateModal .card').each(function() {
                 $(this).find('.card-body').hide();
                 $(this).find('.card-footer').hide();
                 $(this).find('[data-card-widget="collapse"] i')
@@ -1275,15 +1604,485 @@
                 $(this).addClass('collapsed-card');
             });
 
-            // Sync footer visibility with card collapse state
             $(document).on('click', '[data-card-widget="collapse"]', function() {
+                if ($(this).closest('#duplicateModal').length) return;
                 const $card = $(this).closest('.card');
                 setTimeout(function() {
                     const isExpanded = $card.find('.card-body').is(':visible');
                     $card.find('.card-footer').toggle(isExpanded);
                 }, 0);
             });
+            // ============================================================
+            // COPY MODAL — Autocomplete helpers
+            // ============================================================
 
-        });
+            /**
+             * Generic debounced autocomplete binder.
+             * FIX: country code stored at render time via onSelect callback
+             * instead of a secondary li.on('click') that fires after the
+             * suggestion list has already been emptied.
+             *
+             * @param {string}   inputId       – visible text input id
+             * @param {string}   hiddenId      – hidden value input id
+             * @param {string}   suggestionsId – <ul> id
+             * @param {function} fetchFn       – function(term, renderCb)
+             * @param {function} labelFn       – item → display string
+             * @param {function} valueFn       – item → stored value
+             * @param {function} [onSelect]    – optional extra work after selection
+             */
+            function bindDupAutocomplete(inputId, hiddenId, suggestionsId, fetchFn, labelFn, valueFn, onSelect) {
+                let timer;
+                const $input       = $('#' + inputId);
+                const $hidden      = $('#' + hiddenId);
+                const $suggestions = $('#' + suggestionsId);
+
+                $input.on('input', function() {
+                    clearTimeout(timer);
+                    const term = $(this).val().trim();
+                    $suggestions.hide().empty();
+                    if (term.length < 1) return;
+                    timer = setTimeout(function() {
+                        fetchFn(term, function(items) {
+                            renderDupSuggestions($suggestions, items, $input, $hidden, labelFn, valueFn, onSelect);
+                        });
+                    }, 250);
+                });
+
+                // Close on outside click
+                $(document).on('click.dupAuto_' + inputId, function(e) {
+                    if (!$(e.target).closest('#' + inputId + ', #' + suggestionsId).length) {
+                        $suggestions.hide().empty();
+                    }
+                });
+            }
+
+            /**
+             * Renders suggestion <li> items.
+             * onSelect fires AFTER $input/$hidden are updated — safe to read new values.
+             */
+            function renderDupSuggestions($suggestions, items, $input, $hidden, labelFn, valueFn, onSelect) {
+                $suggestions.empty();
+                if (!items.length) {
+                    $suggestions.append('<li class="text-muted px-2 py-1">No results</li>').show();
+                    return;
+                }
+                items.forEach(function(item) {
+                    $('<li>').text(labelFn(item)).on('click', function() {
+                        $input.val(labelFn(item));
+                        $hidden.val(valueFn(item));
+                        $suggestions.hide().empty();
+                        if (typeof onSelect === 'function') onSelect(item);
+                    }).appendTo($suggestions);
+                });
+                $suggestions.show();
+            }
+
+            // ── 1. Sales Person ───────────────────────────────────────────
+            bindDupAutocomplete(
+                'dupSalesPersonDisplay', 'dupSalesPersonName', 'dupSalesPersonSuggestions',
+                function(term, cb) {
+                    $.ajax({
+                        url: '{{ route('quotation.lookup.salesPersons') }}',
+                        type: 'GET',
+                        data: { filter: term },
+                        success: function(data) {
+                            cb(Array.isArray(data) ? data : (data.data || []));
+                        },
+                        error: function() { cb([]); }
+                    });
+                },
+                function(x) { return x.Name || x.username || ''; },
+                function(x) { return x.Name || x.username || ''; }
+            );
+
+            // ── 2. Origin Country ─────────────────────────────────────────
+            // FIX: CountryCode stored via onSelect callback, not a secondary li handler
+            bindDupAutocomplete(
+                'dupOriginDisplay', 'dupOriginCountryId', 'dupOriginSuggestions',
+                function(term, cb) {
+                    $.ajax({
+                        url: '{{ route('quotation.lookup.countries') }}',
+                        type: 'GET',
+                        data: { filter: term },
+                        success: function(data) { cb(Array.isArray(data) ? data : []); },
+                        error: function() { cb([]); }
+                    });
+                },
+                function(x) { return x.CountryName || ''; },
+                function(x) { return x.CountryId || x.ID || ''; },
+                function(item) { $('#dupOriginCountryCode').val(item.CountryCode || ''); }
+            );
+
+            // ── 3. Destination Country ────────────────────────────────────
+            bindDupAutocomplete(
+                'dupDestDisplay', 'dupDestCountryId', 'dupDestSuggestions',
+                function(term, cb) {
+                    $.ajax({
+                        url: '{{ route('quotation.lookup.countries') }}',
+                        type: 'GET',
+                        data: { filter: term },
+                        success: function(data) { cb(Array.isArray(data) ? data : []); },
+                        error: function() { cb([]); }
+                    });
+                },
+                function(x) { return x.CountryName || ''; },
+                function(x) { return x.CountryId || x.ID || ''; },
+                function(item) { $('#dupDestCountryCode').val(item.CountryCode || ''); }
+            );
+
+            // ── 4. InCo Term ──────────────────────────────────────────────
+            bindDupAutocomplete(
+                'dupIncoTermDisplay', 'dupIncoTermCode', 'dupIncoTermSuggestions',
+                function(term, cb) {
+                    $.ajax({
+                        url: '{{ route('quotation.inco-terms') }}',
+                        type: 'GET',
+                        success: function(r) {
+                            const all = r.success ? r.data : [];
+                            cb(all.filter(function(x) {
+                                const code = (x.IncoTermCode || x.Code || '').toLowerCase();
+                                const name = (x.Name || '').toLowerCase();
+                                const t    = term.toLowerCase();
+                                return code.includes(t) || name.includes(t);
+                            }));
+                        },
+                        error: function() { cb([]); }
+                    });
+                },
+                function(x) { return (x.IncoTermCode || x.Code || '') + ' — ' + (x.Name || ''); },
+                function(x) { return x.IncoTermCode || x.Code || ''; }
+            );
+
+            // ── 5. Transport Mode ─────────────────────────────────────────
+            bindDupAutocomplete(
+                'dupTransportModeDisplay', 'dupTransportModeCode', 'dupTransportModeSuggestions',
+                function(term, cb) {
+                    $.ajax({
+                        url: '{{ route('quotation.transport-modes') }}',
+                        type: 'GET',
+                        success: function(r) {
+                            const all = r.success ? r.data : [];
+                            cb(all.filter(function(x) {
+                                const t = term.toLowerCase();
+                                return (x.Code || '').toLowerCase().includes(t) ||
+                                       (x.Name || '').toLowerCase().includes(t);
+                            }));
+                        },
+                        error: function() { cb([]); }
+                    });
+                },
+                function(x) { return x.Name || x.Code || ''; },
+                function(x) { return x.Code || ''; }
+            );
+
+            // ── 6. Shipment Mode ──────────────────────────────────────────
+            bindDupAutocomplete(
+                'dupShipmentModeDisplay', 'dupShipmentModeCode', 'dupShipmentModeSuggestions',
+                function(term, cb) {
+                    $.ajax({
+                        url: '{{ route('quotation.shipment-modes') }}',
+                        type: 'GET',
+                        success: function(r) {
+                            const all = r.success ? r.data : [];
+                            cb(all.filter(function(x) {
+                                return (x.Code || '').toLowerCase().includes(term.toLowerCase());
+                            }));
+                        },
+                        error: function() { cb([]); }
+                    });
+                },
+                function(x) { return x.Code || ''; },
+                function(x) { return x.Code || ''; }
+            );
+
+            // ── 7. Service Class ──────────────────────────────────────────
+            bindDupAutocomplete(
+                'dupServiceClassDisplay', 'dupServiceClassCode', 'dupServiceClassSuggestions',
+                function(term, cb) {
+                    $.ajax({
+                        url: '{{ route('quotation.lookup.serviceClasses') }}',
+                        type: 'GET',
+                        data: { filter: term },
+                        success: function(data) {
+                            const all = Array.isArray(data) ? data : [];
+                            cb(all.filter(function(x) {
+                                const t = term.toLowerCase();
+                                return (x.Code || '').toLowerCase().includes(t) ||
+                                       (x.Name || x.Description || '').toLowerCase().includes(t);
+                            }));
+                        },
+                        error: function() { cb([]); }
+                    });
+                },
+                function(x) { return x.Name || x.Description || x.Code || ''; },
+                function(x) { return x.Code || ''; }
+            );
+
+            // ── 8. Customer Type — lock / unlock customer fields ──────────
+            function dupApplyCustomerType() {
+                const type  = $('#dupCustomerType').val();
+                const isNew = (type === 'New' || type === 'New Agent');
+                $('#dupCompanyName, #dupAddress1').prop('readonly', !isNew);
+                $('#dupCustCountryDisplay, #dupIndustryDisplay').prop('readonly', !isNew);
+                if (!isNew) {
+                    // Reset back to original quotation values
+                    $('#dupCompanyName').val('{{ addslashes($quotation->companyname ?? '') }}');
+                    $('#dupAddress1').val('{{ addslashes($quotation->pri_partner_steet ?? '') }}');
+                    $('#dupCustCountryDisplay').val('{{ addslashes($quotation->pri_partner_countryname ?? '') }}');
+                    $('#dupCustCountryId').val('{{ $quotation->pri_partner_countryid ?? '' }}');
+                    $('#dupCustCountryName').val('{{ addslashes($quotation->pri_partner_countryname ?? '') }}');
+                    $('#dupIndustryDisplay').val('{{ addslashes($quotation->industryname ?? '') }}');
+                    $('#dupIndustryId').val('{{ $quotation->industryid ?? '' }}');
+                    $('#dupIndustryName').val('{{ addslashes($quotation->industryname ?? '') }}');
+                }
+            }
+            $('#dupCustomerType').on('change', dupApplyCustomerType);
+            // Apply on modal open to reflect pre-selected value
+            $('#duplicateModal').on('shown.bs.modal', function() {
+                dupApplyCustomerType();
+                dupToggleScopeFields();
+            });
+            // ── 9. Customer Country (editable only for New / New Agent) ───
+            bindDupAutocomplete(
+                'dupCustCountryDisplay', 'dupCustCountryId', 'dupCustCountrySuggestions',
+                function(term, cb) {
+                    if ($('#dupCustomerType').val() === 'Existing') { cb([]); return; }
+                    $.ajax({
+                        url: '{{ route('quotation.lookup.countries') }}',
+                        type: 'GET',
+                        data: { filter: term },
+                        success: function(data) { cb(Array.isArray(data) ? data : []); },
+                        error: function() { cb([]); }
+                    });
+                },
+                function(x) { return x.CountryName || ''; },
+                function(x) { return x.CountryId || x.ID || ''; },
+                function(item) { $('#dupCustCountryName').val(item.CountryName || ''); }
+            );
+
+            // ── 10. Industry (editable only for New / New Agent) ──────────
+            // ⚠️  CONFIRM: replace 'quotation.lookup.industries' with your actual route name
+            bindDupAutocomplete(
+                'dupIndustryDisplay', 'dupIndustryId', 'dupIndustrySuggestions',
+                function(term, cb) {
+                    if ($('#dupCustomerType').val() === 'Existing') { cb([]); return; }
+                    $.ajax({
+                        url: '{{ route('quotation.lookup.industries') }}',
+                        type: 'GET',
+                        data: { filter: term },
+                        success: function(data) {
+                            cb(Array.isArray(data) ? data : (data.data || []));
+                        },
+                        error: function() { cb([]); }
+                    });
+                },
+                function(x) { return x.IndustryName || x.Name || ''; },
+                function(x) { return x.IndustryId || x.ID || ''; },
+                function(item) { $('#dupIndustryName').val(item.IndustryName || item.Name || ''); }
+            );
+
+            // ── 11. Scope of Volume — toggle cargo volume / equipment ─────
+            function dupToggleScopeFields() {
+                const scope = $('#dupScopeOfVolume').val();
+                if (scope === 'Containerized') {
+                    $('#dupCargoVolumeRow').hide();
+                    $('#dupEquipmentSection').show();
+                    $('#dupCargoVolume').val('');
+                } else {
+                    $('#dupCargoVolumeRow').show();
+                    $('#dupEquipmentSection').hide();
+                    // Clear equipment rows but keep the empty-state row
+                    $('#dupEquipmentBody').empty().append(
+                        '<tr id="dupEquipmentEmpty"><td colspan="3" class="text-center text-muted py-2">Click Add to add equipment</td></tr>'
+                    );
+                }
+            }
+            $('#dupScopeOfVolume').on('change', dupToggleScopeFields);
+            // Run immediately to match the pre-selected value
+            dupToggleScopeFields();
+
+            // ── 12. Equipment table — Add / Remove rows ───────────────────
+            let dupEquipmentRowIndex = 0;
+            let dupEquipmentTypes    = []; // cached after first fetch
+
+            function loadDupEquipmentTypes(callback) {
+                if (dupEquipmentTypes.length) { callback(dupEquipmentTypes); return; }
+                // ⚠️  CONFIRM: replace 'quotation.lookup.equipmentTypes' with your actual route name
+                $.ajax({
+                    url: '{{ route('quotation.lookup.equipmentTypes') }}',
+                    type: 'GET',
+                    success: function(data) {
+                        dupEquipmentTypes = Array.isArray(data) ? data : (data.data || []);
+                        callback(dupEquipmentTypes);
+                    },
+                    error: function() { callback([]); }
+                });
+            }
+
+            $('#dupAddEquipmentBtn').on('click', function() {
+                loadDupEquipmentTypes(function(types) {
+                    $('#dupEquipmentEmpty').remove();
+                    const idx = dupEquipmentRowIndex++;
+                    let options = '<option value="">-- Select --</option>';
+                    types.forEach(function(t) {
+                        const val   = t.Code || t.EquipmentCode || '';
+                        const label = t.Name || t.EquipmentType || t.Code || '';
+                        options += `<option value="${val}">${label}</option>`;
+                    });
+                    $('#dupEquipmentBody').append(`
+                        <tr id="dupEquipRow_${idx}">
+                            <td>
+                                <select class="form-control form-control-sm dup-equip-type" data-row="${idx}">
+                                    ${options}
+                                </select>
+                            </td>
+                            <td>
+                                <input type="number" class="form-control form-control-sm dup-equip-qty"
+                                       min="1" step="1" placeholder="Qty" data-row="${idx}">
+                            </td>
+                            <td class="text-center">
+                                <button type="button" class="btn btn-sm btn-danger dup-remove-equip" data-row="${idx}">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>`);
+                });
+            });
+
+            $(document).on('click', '.dup-remove-equip', function() {
+                $(`#dupEquipRow_${$(this).data('row')}`).remove();
+                if ($('#dupEquipmentBody tr').length === 0) {
+                    $('#dupEquipmentBody').append(
+                        '<tr id="dupEquipmentEmpty"><td colspan="3" class="text-center text-muted py-2">Click Add to add equipment</td></tr>'
+                    );
+                }
+            });
+
+            // ── 13. Modal reset on close ──────────────────────────────────
+            $('#duplicateModal').on('hidden.bs.modal', function() {
+                $('.dup-autocomplete-list').hide().empty();
+                dupEquipmentRowIndex = 0;
+                $('#dupEquipmentBody').empty().append(
+                    '<tr id="dupEquipmentEmpty"><td colspan="3" class="text-center text-muted py-2">Click Add to add equipment</td></tr>'
+                );
+                dupToggleScopeFields();
+            });
+
+            // ── 14. Copy modal — Confirm / Submit ─────────────────────────
+            $('#btnConfirmDuplicate').on('click', function() {
+                // Validate all required fields
+                let valid = true;
+                $('.dup-required').each(function() {
+                    const val = $(this).val();
+                    if (!val || val.trim() === '') {
+                        $(this).addClass('is-invalid');
+                        valid = false;
+                    } else {
+                        $(this).removeClass('is-invalid');
+                    }
+                });
+
+                // Validate equipment rows if Containerized
+                if ($('#dupScopeOfVolume').val() === 'Containerized') {
+                    const rows = $('#dupEquipmentBody tr').not('#dupEquipmentEmpty');
+                    if (rows.length === 0) {
+                        toastr.error('Please add at least one equipment row.');
+                        valid = false;
+                    } else {
+                        rows.each(function() {
+                            const equipType = $(this).find('.dup-equip-type').val();
+                            const equipQty  = $(this).find('.dup-equip-qty').val();
+                            if (!equipType || !equipQty || parseInt(equipQty) < 1) {
+                                toastr.error('Please fill in all equipment type and quantity fields.');
+                                valid = false;
+                                return false; // break
+                            }
+                        });
+                    }
+                } else {
+                    const vol = parseFloat($('#dupCargoVolume').val());
+                    if (!vol || vol <= 0) {
+                        $('#dupCargoVolume').addClass('is-invalid');
+                        toastr.error('Cargo Volume must be a positive number.');
+                        valid = false;
+                    } else {
+                        $('#dupCargoVolume').removeClass('is-invalid');
+                    }
+                }
+
+                if (!valid) return;
+
+                // Collect equipment
+                const equipment = [];
+                $('#dupEquipmentBody tr').not('#dupEquipmentEmpty').each(function() {
+                    equipment.push({
+                        type: $(this).find('.dup-equip-type').val(),
+                        qty:  $(this).find('.dup-equip-qty').val()
+                    });
+                });
+
+                const payload = {
+                    sales_person:     $('#dupSalesPersonName').val(),
+                    origin_country:   $('#dupOriginDisplay').val(),
+                    origin_country_id: $('#dupOriginCountryId').val(),
+                    dest_country:     $('#dupDestDisplay').val(),
+                    dest_country_id:  $('#dupDestCountryId').val(),
+                    incoterm:         $('#dupIncoTermCode').val(),
+                    transport_mode:   $('#dupTransportModeCode').val(),
+                    shipment_mode:    $('#dupShipmentModeCode').val(),
+                    service_class:    $('#dupServiceClassCode').val(),
+                    customer_type:    $('#dupCustomerType').val(),
+                    agent_type:       $('#dupAgentType').val(),
+                    company_name:     $('#dupCompanyName').val(),
+                    address1:         $('#dupAddress1').val(),
+                    cust_country_id:  $('#dupCustCountryId').val(),
+                    cust_country:     $('#dupCustCountryName').val(),
+                    industry_id:      $('#dupIndustryId').val(),
+                    industry_name:    $('#dupIndustryName').val(),
+                    commodity:        $('#dupCommodity').val(),
+                    scope_of_volume:  $('#dupScopeOfVolume').val(),
+                    cargo_volume:     $('#dupCargoVolume').val(),
+                    equipment:        equipment,
+                };
+
+                const $btn = $(this);
+                $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Processing...');
+
+                // ⚠️  Replace with your actual Copy route when ready
+                // e.g. route('quotation.processCopy', $quotation->QuoteNo)
+                $.ajax({
+                    url: '{{ route('quotation.processDuplicate', $quotation->QuoteNo) }}',
+                    type: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept':       'application/json'
+                    },
+                    contentType: 'application/json',
+                    data: JSON.stringify(payload),
+                    success: function(response) {
+                        $btn.prop('disabled', false).html('<i class="fas fa-clone mr-1"></i> Copy');
+                        if (response.success) {
+                            $('#duplicateModal').modal('hide');
+                            $('#dupResultLink')
+                                .text(response.new_booking_no)
+                                .attr('href', response.redirect_url);
+                            $('#dupResultCard').slideDown(300);
+                        } else {
+                            toastr.error(response.message || 'Copy failed.');
+                        }
+                    },
+                    error: function(xhr) {
+                        $btn.prop('disabled', false).html('<i class="fas fa-clone mr-1"></i> Copy');
+                        toastr.error(xhr.responseJSON?.message || 'Unexpected error (HTTP ' + xhr.status + ')');
+                    }
+                });
+            });
+
+            // Clear is-invalid on input
+            $(document).on('input change', '.dup-required', function() {
+                if ($(this).val()) $(this).removeClass('is-invalid');
+            });
+
+        }); // end document.ready
     </script>
 @endsection
