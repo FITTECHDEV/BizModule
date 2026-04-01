@@ -162,18 +162,39 @@ class HomeController extends Controller
             // Office switcher — resolve active office from session
             // ---------------------------------------------------------------
             $activeOfficeCode = session('active_office_code');
-            $azureOfficeData  = $this->getAzureOfficeData($activeOfficeCode);
 
-            // If no office selected yet, default session to base office
-            if (!$activeOfficeCode && !empty($azureOfficeData['baseOffice'])) {
-                $activeOfficeCode = $azureOfficeData['baseOffice'];
+            // Always call with empty office first to get the full office list (base + otherOffices).
+            // The SP only returns OtherOffices when @OfficeCode is empty.
+            $baseOfficeData = $this->getAzureOfficeData(null);
+
+            $baseOffice   = $baseOfficeData['baseOffice'];
+            $otherOffices = $baseOfficeData['otherOffices'];
+            $hasAzure     = $baseOfficeData['hasAzure'];
+
+            // If no office selected yet, default to base office
+            if (!$activeOfficeCode && !empty($baseOffice)) {
+                $activeOfficeCode = $baseOffice;
                 session(['active_office_code' => $activeOfficeCode]);
             }
 
-            $activeModules    = $azureOfficeData['modules'];
-            $otherOffices     = $azureOfficeData['otherOffices'];
-            $baseOffice       = $azureOfficeData['baseOffice'];
-            $hasAzure         = $azureOfficeData['hasAzure'];
+            // Second call with active office to get the correct module list for that office
+            $activeOfficeData = $this->getAzureOfficeData($activeOfficeCode);
+            $activeModules    = $activeOfficeData['modules'];
+
+            // Office-to-card gate map — drives card visibility in the blade.
+            // Cards not listed here are visible to all (or gated by can() only).
+            // 'ALL' means show for every office including ungated users.
+            $officeGate = [
+                'tims'    => ['KE', 'UPS'],   // KRA — Kenya offices only
+                'efris'   => ['UG'],           // EFRIS — Uganda only
+                'tra_tz'  => ['AR'],           // TRA FIT Tanzania
+                'tra_adl' => ['TZ'],           // TRA ADL Tanzania
+                'rra'     => ['RW'],           // RRA — Rwanda only
+            ];
+
+            // Resolve which office we're comparing against.
+            // If the user has no Azure record, fall back to base office.
+            $effectiveOffice = $activeOfficeCode ?? $baseOffice;
 
             // canSeeAll is true ONLY when the SP returns ALL or null module
             // for the currently selected office — not a permanent bypass
@@ -218,7 +239,9 @@ class HomeController extends Controller
                     'baseOffice',
                     'hasAzure',
                     'canSeeAll',
-                    'activeOfficeCode'
+                    'activeOfficeCode',
+                    'officeGate',        // ← new
+                    'effectiveOffice'    // ← new
                 )
             );
         } catch (\Exception $e) {

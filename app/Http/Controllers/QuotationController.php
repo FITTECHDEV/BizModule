@@ -2086,12 +2086,12 @@ class QuotationController extends Controller
 
             $quotation = $quotationIdFromRequest
                 ? DB::table('Quote_QuotationInfo')
-                    ->where('ID', $quotationIdFromRequest)
-                    ->first(['ID', 'teamid', 'ServiceVerticalname', 'origincountry', 'destinationcountry', 'QuoteStatus', 'status'])
+                ->where('ID', $quotationIdFromRequest)
+                ->first(['ID', 'teamid', 'ServiceVerticalname', 'origincountry', 'destinationcountry', 'QuoteStatus', 'status'])
                 : DB::table('Quote_QuotationInfo')
-                    ->where('bookingno', $bookingNo)
-                    ->when($officeCodeFromRequest, fn($q) => $q->where('OfficeCode', $officeCodeFromRequest))
-                    ->first(['ID', 'teamid', 'ServiceVerticalname', 'origincountry', 'destinationcountry', 'QuoteStatus', 'status']);
+                ->where('bookingno', $bookingNo)
+                ->when($officeCodeFromRequest, fn($q) => $q->where('OfficeCode', $officeCodeFromRequest))
+                ->first(['ID', 'teamid', 'ServiceVerticalname', 'origincountry', 'destinationcountry', 'QuoteStatus', 'status']);
 
             $officeCode = 'Unknown';
             if ($quotation) {
@@ -6547,7 +6547,6 @@ class QuotationController extends Controller
                 'success' => false,
                 'message' => $result['Remarks'][0]['Remark'] ?? 'Failed to save customer details',
             ], 422);
-
         } catch (\Exception $e) {
             Log::error('saveCustomerDetails - Failed', [
                 'error' => $e->getMessage(),

@@ -3,1951 +3,2079 @@
 @section('title', 'Quotation Management')
 
 @section('content_header')
-    <h1>QUOTATION</h1>
+<h1>QUOTATION</h1>
 @stop
 
 @section('content')
-    <div class="container-fluid">
+<div class="container-fluid">
 
-        {{-- Statistics Cards --}}
-        <div class="row mb-3">
+    {{-- Statistics Cards --}}
+    <div class="row mb-3">
 
-            {{-- 1. In Progress --}}
-            <div class="col-6 col-md-4 col-lg mb-2">
-                <div class="small-box bg-info card-filter-trigger compact-card" data-filter="in_progress">
-                    <div class="inner">
-                        <h3 id="stat-in-progress">{{ $stats['in_progress'] }}</h3>
-                        <p>In Progress</p>
-                    </div>
-                    <div class="icon">
-                        <i class="fas fa-hourglass-half"></i>
-                    </div>
+        {{-- 1. In Progress --}}
+        <div class="col-6 col-md-4 col-lg mb-2">
+            <div class="small-box bg-info card-filter-trigger compact-card" data-filter="in_progress">
+                <div class="inner">
+                    <h3 id="stat-in-progress">{{ $stats['in_progress'] }}</h3>
+                    <p>In Progress</p>
+                </div>
+                <div class="icon">
+                    <i class="fas fa-hourglass-half"></i>
                 </div>
             </div>
+        </div>
 
-            {{-- 2. Won --}}
-            <div class="col-6 col-md-4 col-lg mb-2">
-                <div class="small-box bg-success card-filter-trigger compact-card" data-filter="won">
-                    <div class="inner">
-                        <h3 id="stat-won">{{ $stats['won'] }}</h3>
-                        <p>Won</p>
-                    </div>
-                    <div class="icon">
-                        <i class="fas fa-check-circle"></i>
-                    </div>
+        {{-- 2. Won --}}
+        <div class="col-6 col-md-4 col-lg mb-2">
+            <div class="small-box bg-success card-filter-trigger compact-card" data-filter="won">
+                <div class="inner">
+                    <h3 id="stat-won">{{ $stats['won'] }}</h3>
+                    <p>Won</p>
+                </div>
+                <div class="icon">
+                    <i class="fas fa-check-circle"></i>
                 </div>
             </div>
+        </div>
 
-            {{-- 3. Lost / Canceled --}}
-            <div class="col-6 col-md-4 col-lg mb-2">
-                <div class="small-box bg-warning card-filter-trigger compact-card" data-filter="lost_canceled">
-                    <div class="inner">
-                        <h3 id="stat-lost-canceled">{{ $stats['lost_canceled'] }}</h3>
-                        <p>Lost / Canceled</p>
-                    </div>
-                    <div class="icon">
-                        <i class="fas fa-times-circle"></i>
-                    </div>
+        {{-- 3. Lost / Canceled --}}
+        <div class="col-6 col-md-4 col-lg mb-2">
+            <div class="small-box bg-warning card-filter-trigger compact-card" data-filter="lost_canceled">
+                <div class="inner">
+                    <h3 id="stat-lost-canceled">{{ $stats['lost_canceled'] }}</h3>
+                    <p>Lost / Canceled</p>
+                </div>
+                <div class="icon">
+                    <i class="fas fa-times-circle"></i>
                 </div>
             </div>
+        </div>
 
-            {{-- 4. Failed Progress --}}
-            <div class="col-6 col-md-4 col-lg mb-2">
-                <div class="small-box bg-secondary card-filter-trigger compact-card" data-filter="failed_progress">
-                    <div class="inner">
-                        <h3 id="stat-failed-progress">{{ $stats['failed_progress'] }}</h3>
-                        <p>Failed Progress</p>
-                    </div>
-                    <div class="icon">
-                        <i class="fas fa-exclamation-circle"></i>
-                    </div>
+        {{-- 4. Failed Progress --}}
+        <div class="col-6 col-md-4 col-lg mb-2">
+            <div class="small-box bg-secondary card-filter-trigger compact-card" data-filter="failed_progress">
+                <div class="inner">
+                    <h3 id="stat-failed-progress">{{ $stats['failed_progress'] }}</h3>
+                    <p>Failed Progress</p>
+                </div>
+                <div class="icon">
+                    <i class="fas fa-exclamation-circle"></i>
                 </div>
             </div>
+        </div>
 
-            {{-- 5. Failed Int. --}}
-            <div class="col-6 col-md-4 col-lg mb-2">
-                <div class="small-box bg-danger card-filter-trigger compact-card" data-filter="failed_int">
-                    <div class="inner">
-                        <h3 id="stat-failed-int">{{ $stats['failed_int'] }}</h3>
-                        <p>Failed Int.</p>
-                    </div>
-                    <div class="icon">
-                        <i class="fas fa-exclamation-triangle"></i>
-                    </div>
+        {{-- 5. Failed Int. --}}
+        <div class="col-6 col-md-4 col-lg mb-2">
+            <div class="small-box bg-danger card-filter-trigger compact-card" data-filter="failed_int">
+                <div class="inner">
+                    <h3 id="stat-failed-int">{{ $stats['failed_int'] }}</h3>
+                    <p>Failed Int.</p>
+                </div>
+                <div class="icon">
+                    <i class="fas fa-exclamation-triangle"></i>
                 </div>
             </div>
+        </div>
 
-            {{-- 6. Completed --}}
-            <div class="col-6 col-md-4 col-lg mb-2">
-                <div class="small-box bg-teal card-filter-trigger compact-card" data-filter="completed">
-                    <div class="inner">
-                        <h3 id="stat-completed">{{ $stats['completed'] }}</h3>
-                        <p>Completed</p>
-                    </div>
-                    <div class="icon">
-                        <i class="fas fa-clipboard-check"></i>
-                    </div>
+        {{-- 6. Completed --}}
+        <div class="col-6 col-md-4 col-lg mb-2">
+            <div class="small-box bg-teal card-filter-trigger compact-card" data-filter="completed">
+                <div class="inner">
+                    <h3 id="stat-completed">{{ $stats['completed'] }}</h3>
+                    <p>Completed</p>
+                </div>
+                <div class="icon">
+                    <i class="fas fa-clipboard-check"></i>
                 </div>
             </div>
+        </div>
 
-            {{-- 7. Total --}}
-            <div class="col-6 col-md-4 col-lg mb-2">
-                <div class="small-box bg-primary card-filter-trigger compact-card" data-filter="total">
-                    <div class="inner">
-                        <h3 id="stat-total">{{ $stats['total'] }}</h3>
-                        <p>Total</p>
-                    </div>
-                    <div class="icon">
-                        <i class="fas fa-database"></i>
-                    </div>
+        {{-- 7. Total --}}
+        <div class="col-6 col-md-4 col-lg mb-2">
+            <div class="small-box bg-primary card-filter-trigger compact-card" data-filter="total">
+                <div class="inner">
+                    <h3 id="stat-total">{{ $stats['total'] }}</h3>
+                    <p>Total</p>
+                </div>
+                <div class="icon">
+                    <i class="fas fa-database"></i>
                 </div>
             </div>
+        </div>
 
-        </div>{{-- END Statistics Cards row --}}
+    </div>{{-- END Statistics Cards row --}}
 
-        {{-- Filters and Table Card --}}
-        <div class="card">
-            <div class="card-body">
+    {{-- Filters and Table Card --}}
+    <div class="card">
+        <div class="card-body">
 
-                {{-- Filters Row --}}
-                <div class="row mb-3 g-2">
+            {{-- Filters Row --}}
+            <div class="row mb-3 g-2">
 
-                    {{-- Show entries --}}
-                    <div class="col-12 col-md-auto order-1">
-                        <div id="entriesContainer"></div>
+                {{-- Show entries --}}
+                <div class="col-12 col-md-auto order-1">
+                    <div id="entriesContainer"></div>
+                </div>
+
+                {{-- Date Filter --}}
+                <div class="col-12 col-sm-6 col-md-auto order-2">
+                    <select id="dateFilter" class="form-control form-control-sm">
+                        <option value="all" selected>All Time</option>
+                        <option value="0">Today</option>
+                        <option value="1">Yesterday</option>
+                        <option value="15">Last 15 Days</option>
+                        <option value="30">Last 30 Days</option>
+                        <option value="custom">Custom Range</option>
+                    </select>
+                </div>
+
+                {{-- Office Filter --}}
+                <div class="col-12 col-sm-6 col-md-auto order-3">
+                    @if (!empty($officeError))
+                    <div class="alert alert-danger py-1 px-2 mb-1" style="font-size:0.85rem;">
+                        <i class="fas fa-exclamation-triangle"></i> {{ $officeError }}
                     </div>
-
-                    {{-- Date Filter --}}
-                    <div class="col-12 col-sm-6 col-md-auto order-2">
-                        <select id="dateFilter" class="form-control form-control-sm">
-                            <option value="all" selected>All Time</option>
-                            <option value="0">Today</option>
-                            <option value="1">Yesterday</option>
-                            <option value="15">Last 15 Days</option>
-                            <option value="30">Last 30 Days</option>
-                            <option value="custom">Custom Range</option>
-                        </select>
-                    </div>
-
-                    {{-- Office Filter --}}
-                    <div class="col-12 col-sm-6 col-md-auto order-3">
-                        @if (!empty($officeError))
-                            <div class="alert alert-danger py-1 px-2 mb-1" style="font-size:0.85rem;">
-                                <i class="fas fa-exclamation-triangle"></i> {{ $officeError }}
-                            </div>
+                    @endif
+                    <select id="officeFilter" class="form-control form-control-sm"
+                        {{ $offices->isEmpty() ? 'disabled' : '' }}>
+                        @if ($offices->count() > 1)
+                        <option value="">All Offices</option>
                         @endif
-                        <select id="officeFilter" class="form-control form-control-sm"
-                            {{ $offices->isEmpty() ? 'disabled' : '' }}>
-                            @if ($offices->count() > 1)
-                                <option value="">All Offices</option>
-                            @endif
-                            @foreach ($offices as $office)
-                                <option value="{{ $office }}" {{ $office === $defaultOffice ? 'selected' : '' }}>
-                                    {{ $office }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
+                        @foreach ($offices as $office)
+                        <option value="{{ $office }}" {{ $office === $defaultOffice ? 'selected' : '' }}>
+                            {{ $office }}
+                        </option>
+                        @endforeach
+                    </select>
+                </div>
 
-                    {{-- Custom Date Range - Start Date --}}
-                    <div class="col-12 col-sm-6 col-md-auto order-4" id="customDateRange" style="display: none;">
-                        <input type="date" id="startDate" class="form-control form-control-sm" placeholder="Start Date">
-                    </div>
+                {{-- Custom Date Range - Start Date --}}
+                <div class="col-12 col-sm-6 col-md-auto order-4" id="customDateRange" style="display: none;">
+                    <input type="date" id="startDate" class="form-control form-control-sm" placeholder="Start Date">
+                </div>
 
-                    {{-- Custom Date Range - End Date --}}
-                    <div class="col-12 col-sm-6 col-md-auto order-5" id="customDateRangeTo" style="display: none;">
-                        <div class="input-group input-group-sm">
-                            <input type="date" id="endDate" class="form-control form-control-sm"
-                                placeholder="End Date">
-                            <button class="btn btn-outline-secondary" type="button" id="clearCustomDates"
-                                title="Clear custom date range">
-                                <i class="fas fa-times"></i>
+                {{-- Custom Date Range - End Date --}}
+                <div class="col-12 col-sm-6 col-md-auto order-5" id="customDateRangeTo" style="display: none;">
+                    <div class="input-group input-group-sm">
+                        <input type="date" id="endDate" class="form-control form-control-sm" placeholder="End Date">
+                        <button class="btn btn-outline-secondary" type="button" id="clearCustomDates"
+                            title="Clear custom date range">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+
+                {{-- Clear Filters Button --}}
+                <div class="col-12 col-sm-6 col-md-auto order-6" id="clearFiltersContainer" style="display: none;">
+                    <button type="button" id="clearAllFilters" class="btn btn-outline-secondary btn-sm w-100 w-md-auto"
+                        title="Clear all filters">
+                        <i class="fas fa-redo"></i> Clear Filters
+                    </button>
+                </div>
+
+                {{-- Search --}}
+                <div class="col-12 col-md-auto order-7 ms-md-auto">
+                    <div id="searchContainer"></div>
+                </div>
+
+                {{-- CRM Sync button --}}
+                <div class="col-12 col-sm-auto col-md-auto order-8">
+                    <button type="button" class="btn btn-outline-primary btn-sm" id="btnOpenCrmSync"
+                        title="Sync records from CRM">
+                        <i class="fas fa-sync-alt mr-1"></i> CRM Sync
+                    </button>
+                </div>
+
+            </div>{{-- END filters row --}}
+
+            {{-- DataTable --}}
+            <div class="table-responsive-wrapper">
+                <table id="quotationTable" class="table table-bordered table-striped table-hover w-100 dtr-inline">
+                    <thead>
+                        <tr>
+                            <th data-priority="1">Quote No</th>
+                            <th data-priority="2">Date</th>
+                            <th data-priority="3">Client Name</th>
+                            <th data-priority="7">Sales Person</th>
+                            <th data-priority="9">Service</th>
+                            <th data-priority="10">Process</th>
+                            <th data-priority="11">Origin</th>
+                            <th data-priority="12">Destination</th>
+                            <th data-priority="8">IncoTerm</th>
+                            <th data-priority="13">Volume / Containers</th>
+                            <th data-priority="4">Status</th>
+                            <th data-priority="6">Remark</th>
+                            <th data-priority="5">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>{{-- END table-responsive-wrapper --}}
+
+        </div>{{-- END card-body --}}
+    </div>{{-- END card --}}
+
+    {{-- ═══════════════════════════════════════════════════ --}}
+    {{-- MODALS — must live OUTSIDE the card, at page level --}}
+    {{-- ═══════════════════════════════════════════════════ --}}
+
+    {{-- CREATE BOOKING MODAL --}}
+    <div class="modal fade" id="createBookingModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title" style="color: #003580; font-weight: 700;">
+                        Creation of Booking
+                    </h2>
+                    <button type="button" class="close" id="cbXBtn" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body" style="padding: 1.75rem 2rem;">
+                    <div id="createBookingForm">
+
+                        <div class="form-group mb-4">
+                            <label for="cb_service_template">
+                                Service Template <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-control" id="cb_service_template" name="service_template" required>
+                                <option value=""></option>
+                            </select>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="form-group mb-0">
+                                    <label for="cb_bill_to_party">
+                                        Bill To Party <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text" class="form-control" id="cb_bill_to_party"
+                                        placeholder="Type at least 3 characters..." autocomplete="off">
+                                    <input type="hidden" id="cb_bill_to_party_code">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-0">
+                                    <label for="cb_forwarder">
+                                        Forwarder <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text" class="form-control" id="cb_forwarder"
+                                        placeholder="Type at least 3 characters..." autocomplete="off">
+                                    <input type="hidden" id="cb_forwarder_code">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group mb-3 mt-3">
+                            <div class="form-check d-flex align-items-center">
+                                <input class="form-check-input me-2" type="checkbox" id="cb_include_country"
+                                    name="include_country">
+                                <label class="form-check-label mb-0" for="cb_include_country">
+                                    Include the Country
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-0">
+                                    <label for="cb_place_of_receipt">
+                                        Place of Receipt <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text" class="form-control" id="cb_place_of_receipt"
+                                        placeholder="Type at least 2 characters..." autocomplete="off">
+                                    <input type="hidden" id="cb_place_of_receipt_code">
+                                    <input type="hidden" id="cb_place_of_receipt_id">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-0">
+                                    <label for="cb_place_of_delivery">
+                                        Place of Delivery <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text" class="form-control" id="cb_place_of_delivery"
+                                        placeholder="Type at least 2 characters..." autocomplete="off">
+                                    <input type="hidden" id="cb_place_of_delivery_code">
+                                    <input type="hidden" id="cb_place_of_delivery_id">
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>{{-- END createBookingForm --}}
+
+                    <div id="cbProgressPanel" class="d-none mt-3">
+                        <p class="text-muted small mb-2">
+                            Processing — please do not close this window.
+                        </p>
+                        <div class="list-group" id="cbStepList"></div>
+                        <div id="cbProgressError" class="alert alert-danger mt-3 d-none"></div>
+                        <div id="cbProgressSuccess" class="alert alert-success mt-3 d-none">
+                            <i class="fas fa-check-circle mr-2"></i>
+                            All steps completed. Booking has been created in SCM.
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer d-flex justify-content-between align-items-center">
+                    <div>
+                        <a href="#" id="cbEditLink" class="btn btn-sm btn-outline-secondary d-none"
+                            title="Edit booking information">
+                            <i class="fas fa-edit mr-1"></i> Edit
+                        </a>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <a href="#" class="text-primary mr-3" id="cancelCreateBookingBtn"
+                            style="font-weight: 500; text-decoration: underline;">Cancel</a>
+                        <button type="button" class="btn btn-primary px-4" id="submitCreateBookingBtn">Create</button>
+                        <button type="button" class="btn btn-secondary px-4 d-none" id="cbCloseBtn">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>{{-- END createBookingModal --}}
+
+    {{-- CRM SYNC MODAL --}}
+    <div class="modal fade" id="crmSyncModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-sync-alt mr-2"></i> CRM → Quotation Sync
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-4">
+                            <label class="font-weight-bold">Mode</label>
+                            <div class="form-check mt-1">
+                                <input class="form-check-input" type="checkbox" id="crmDryRun">
+                                <label class="form-check-label" for="crmDryRun">
+                                    Dry Run <small class="text-muted">(preview, no writes)</small>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="font-weight-bold">
+                                Limit <small class="text-muted">(optional)</small>
+                            </label>
+                            <input type="number" id="crmLimit" class="form-control form-control-sm"
+                                placeholder="blank = all records">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="font-weight-bold">
+                                Booking No <small class="text-muted">(optional)</small>
+                            </label>
+                            <input type="text" id="crmBooking" class="form-control form-control-sm"
+                                placeholder="e.g. 7037 — blank = all">
+                        </div>
+                    </div>
+                    <div id="crmSyncProgress" class="d-none mb-3">
+                        <div class="d-flex align-items-center text-muted">
+                            <div class="spinner-border spinner-border-sm mr-2" role="status"></div>
+                            <span>Connecting to CRM and running sp_QuoteDetails()...</span>
+                        </div>
+                    </div>
+                    <div id="crmSyncResult"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="btnRunCrmSync">
+                        <i class="fas fa-play mr-1"></i> Run Sync
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>{{-- END crmSyncModal --}}
+
+    {{-- QUOTATION REPORT MODAL --}}
+    <div class="modal fade" id="quotationReportModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-xl" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-search mr-2"></i> Quotation Report
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+
+                    {{-- Filter Row --}}
+                    <div class="row g-2 mb-3">
+
+                        {{-- Hidden status input — always sends Total --}}
+                        <input type="hidden" id="rpt_status" value="Total">
+
+                        <div class="col-12 col-sm-6 col-md-2">
+                            <label class="font-weight-bold small">From Date</label>
+                            <input type="date" id="rpt_from_date" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-2">
+                            <label class="font-weight-bold small">To Date</label>
+                            <input type="date" id="rpt_to_date" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-2">
+                            <label class="font-weight-bold small">Customer</label>
+                            <input type="text" id="rpt_customer" class="form-control form-control-sm"
+                                placeholder="Company name...">
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-2">
+                            <label class="font-weight-bold small">Service</label>
+                            <input type="text" id="rpt_service" class="form-control form-control-sm"
+                                placeholder="e.g. Air Freight">
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-1">
+                            <label class="font-weight-bold small">Process</label>
+                            <select id="rpt_process" class="form-control form-control-sm">
+                                <option value="">All</option>
+                                <option value="Export">Export</option>
+                                <option value="Import">Import</option>
+                                <option value="Local">Local</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-1">
+                            <label class="font-weight-bold small">IncoTerm</label>
+                            <input type="text" id="rpt_incoterm" class="form-control form-control-sm"
+                                placeholder="e.g. FOB">
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-auto d-flex align-items-end">
+                            <button type="button" id="btnClearReport" class="btn btn-outline-secondary btn-sm">
+                                <i class="fas fa-redo mr-1"></i> Clear
                             </button>
                         </div>
+
+                    </div>{{-- END filter row --}}
+
+                    {{-- Error alert --}}
+                    <div id="rptErrorAlert" class="alert alert-danger d-none py-2 px-3 mb-2"
+                        style="font-size:0.875rem;"></div>
+
+                    {{-- Results table --}}
+                    <div class="table-responsive">
+                        <table id="reportTable" class="table table-bordered table-striped table-hover w-100"
+                            style="font-size:0.85rem;">
+                            <thead>
+                                <tr>
+                                    <th>Quote No</th>
+                                    <th>Date</th>
+                                    <th>Customer</th>
+                                    <th>Service</th>
+                                    <th>Process</th>
+                                    <th>Origin</th>
+                                    <th>Destination</th>
+                                    <th>IncoTerm</th>
+                                    <th>Status</th>
+                                    <th>Remark</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
                     </div>
 
-                    {{-- Clear Filters Button --}}
-                    <div class="col-12 col-sm-6 col-md-auto order-6" id="clearFiltersContainer" style="display: none;">
-                        <button type="button" id="clearAllFilters" class="btn btn-outline-secondary btn-sm w-100 w-md-auto"
-                            title="Clear all filters">
-                            <i class="fas fa-redo"></i> Clear Filters
-                        </button>
-                    </div>
+                    <div id="rptRowCount" class="text-muted small mt-2"></div>
 
-                    {{-- Search --}}
-                    <div class="col-12 col-md-auto order-7 ms-md-auto">
-                        <div id="searchContainer"></div>
-                    </div>
-
-                    {{-- CRM Sync button --}}
-                    <div class="col-12 col-sm-auto col-md-auto order-8">
-                        <button type="button" class="btn btn-outline-primary btn-sm" id="btnOpenCrmSync"
-                            title="Sync records from CRM">
-                            <i class="fas fa-sync-alt mr-1"></i> CRM Sync
-                        </button>
-                    </div>
-
-                </div>{{-- END filters row --}}
-
-                {{-- DataTable --}}
-                <div class="table-responsive-wrapper">
-                    <table id="quotationTable" class="table table-bordered table-striped table-hover w-100 dtr-inline">
-                        <thead>
-                            <tr>
-                                <th data-priority="1">Quote No</th>
-                                <th data-priority="2">Date</th>
-                                <th data-priority="3">Client Name</th>
-                                <th data-priority="7">Sales Person</th>
-                                <th data-priority="9">Service</th>
-                                <th data-priority="10">Process</th>
-                                <th data-priority="11">Origin</th>
-                                <th data-priority="12">Destination</th>
-                                <th data-priority="8">IncoTerm</th>
-                                <th data-priority="13">Volume / Containers</th>
-                                <th data-priority="4">Status</th>
-                                <th data-priority="6">Remark</th>
-                                <th data-priority="5">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>{{-- END table-responsive-wrapper --}}
-
-            </div>{{-- END card-body --}}
-        </div>{{-- END card --}}
-
-        {{-- ═══════════════════════════════════════════════════ --}}
-        {{-- MODALS — must live OUTSIDE the card, at page level  --}}
-        {{-- ═══════════════════════════════════════════════════ --}}
-
-        {{-- CREATE BOOKING MODAL --}}
-        <div class="modal fade" id="createBookingModal" tabindex="-1" role="dialog" aria-hidden="true">
-            <div class="modal-dialog modal-lg" role="document">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h2 class="modal-title" style="color: #003580; font-weight: 700;">
-                            Creation of Booking
-                        </h2>
-                        <button type="button" class="close" id="cbXBtn" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div>
-                    <div class="modal-body" style="padding: 1.75rem 2rem;">
-                        <div id="createBookingForm">
-
-                            <div class="form-group mb-4">
-                                <label for="cb_service_template">
-                                    Service Template <span class="text-danger">*</span>
-                                </label>
-                                <select class="form-control" id="cb_service_template" name="service_template" required>
-                                    <option value=""></option>
-                                </select>
-                            </div>
-
-                            <div class="row mb-3">
-                                <div class="col-md-6">
-                                    <div class="form-group mb-0">
-                                        <label for="cb_bill_to_party">
-                                            Bill To Party <span class="text-danger">*</span>
-                                        </label>
-                                        <input type="text" class="form-control" id="cb_bill_to_party"
-                                            placeholder="Type at least 3 characters..." autocomplete="off">
-                                        <input type="hidden" id="cb_bill_to_party_code">
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-group mb-0">
-                                        <label for="cb_forwarder">
-                                            Forwarder <span class="text-danger">*</span>
-                                        </label>
-                                        <input type="text" class="form-control" id="cb_forwarder"
-                                            placeholder="Type at least 3 characters..." autocomplete="off">
-                                        <input type="hidden" id="cb_forwarder_code">
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="form-group mb-3 mt-3">
-                                <div class="form-check d-flex align-items-center">
-                                    <input class="form-check-input me-2" type="checkbox" id="cb_include_country"
-                                        name="include_country">
-                                    <label class="form-check-label mb-0" for="cb_include_country">
-                                        Include the Country
-                                    </label>
-                                </div>
-                            </div>
-
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="form-group mb-0">
-                                        <label for="cb_place_of_receipt">
-                                            Place of Receipt <span class="text-danger">*</span>
-                                        </label>
-                                        <input type="text" class="form-control" id="cb_place_of_receipt"
-                                            placeholder="Type at least 2 characters..." autocomplete="off">
-                                        <input type="hidden" id="cb_place_of_receipt_code">
-                                        <input type="hidden" id="cb_place_of_receipt_id">
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-group mb-0">
-                                        <label for="cb_place_of_delivery">
-                                            Place of Delivery <span class="text-danger">*</span>
-                                        </label>
-                                        <input type="text" class="form-control" id="cb_place_of_delivery"
-                                            placeholder="Type at least 2 characters..." autocomplete="off">
-                                        <input type="hidden" id="cb_place_of_delivery_code">
-                                        <input type="hidden" id="cb_place_of_delivery_id">
-                                    </div>
-                                </div>
-                            </div>
-
-                        </div>{{-- END createBookingForm --}}
-
-                        <div id="cbProgressPanel" class="d-none mt-3">
-                            <p class="text-muted small mb-2">
-                                Processing — please do not close this window.
-                            </p>
-                            <div class="list-group" id="cbStepList"></div>
-                            <div id="cbProgressError" class="alert alert-danger mt-3 d-none"></div>
-                            <div id="cbProgressSuccess" class="alert alert-success mt-3 d-none">
-                                <i class="fas fa-check-circle mr-2"></i>
-                                All steps completed. Booking has been created in SCM.
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer d-flex justify-content-between align-items-center">
-                        <div>
-                            <a href="#" id="cbEditLink" class="btn btn-sm btn-outline-secondary d-none"
-                                title="Edit booking information">
-                                <i class="fas fa-edit mr-1"></i> Edit
-                            </a>
-                        </div>
-                        <div class="d-flex align-items-center">
-                            <a href="#" class="text-primary mr-3" id="cancelCreateBookingBtn"
-                                style="font-weight: 500; text-decoration: underline;">Cancel</a>
-                            <button type="button" class="btn btn-primary px-4"
-                                id="submitCreateBookingBtn">Create</button>
-                            <button type="button" class="btn btn-secondary px-4 d-none" id="cbCloseBtn">Close</button>
-                        </div>
-                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
                 </div>
             </div>
-        </div>{{-- END createBookingModal --}}
+        </div>
+    </div>{{-- END quotationReportModal --}}
 
-        {{-- CRM SYNC MODAL --}}
-        <div class="modal fade" id="crmSyncModal" tabindex="-1" role="dialog" aria-hidden="true">
-            <div class="modal-dialog modal-lg" role="document">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">
-                            <i class="fas fa-sync-alt mr-2"></i> CRM → Quotation Sync
-                        </h5>
-                        <button type="button" class="close" data-dismiss="modal">
-                            <span>&times;</span>
-                        </button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="row g-2 mb-3">
-                            <div class="col-md-4">
-                                <label class="font-weight-bold">Mode</label>
-                                <div class="form-check mt-1">
-                                    <input class="form-check-input" type="checkbox" id="crmDryRun">
-                                    <label class="form-check-label" for="crmDryRun">
-                                        Dry Run <small class="text-muted">(preview, no writes)</small>
-                                    </label>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="font-weight-bold">
-                                    Limit <small class="text-muted">(optional)</small>
-                                </label>
-                                <input type="number" id="crmLimit" class="form-control form-control-sm"
-                                    placeholder="blank = all records">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="font-weight-bold">
-                                    Booking No <small class="text-muted">(optional)</small>
-                                </label>
-                                <input type="text" id="crmBooking" class="form-control form-control-sm"
-                                    placeholder="e.g. 7037 — blank = all">
-                            </div>
-                        </div>
-                        <div id="crmSyncProgress" class="d-none mb-3">
-                            <div class="d-flex align-items-center text-muted">
-                                <div class="spinner-border spinner-border-sm mr-2" role="status"></div>
-                                <span>Connecting to CRM and running sp_QuoteDetails()...</span>
-                            </div>
-                        </div>
-                        <div id="crmSyncResult"></div>
-                        <div class="mt-4">
-                            <div class="d-flex align-items-center justify-content-between mb-2">
-                                <h6 class="mb-0 font-weight-bold">
-                                    <i class="fas fa-history mr-1 text-muted"></i>
-                                    Recent Sync History
-                                </h6>
-                                <small class="text-muted" id="crmHistoryMeta"></small>
-                            </div>
-                            <div id="crmHistoryContainer">
-                                <div class="text-muted small text-center py-2">
-                                    <i class="fas fa-spinner fa-spin mr-1"></i> Loading history...
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                        <button type="button" class="btn btn-primary" id="btnRunCrmSync">
-                            <i class="fas fa-play mr-1"></i> Run Sync
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>{{-- END crmSyncModal --}}
-
-        {{-- QUOTATION REPORT MODAL --}}
-        <div class="modal fade" id="quotationReportModal" tabindex="-1" role="dialog" aria-hidden="true">
-            <div class="modal-dialog modal-xl" role="document">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">
-                            <i class="fas fa-search mr-2"></i> Quotation Report
-                        </h5>
-                        <button type="button" class="close" data-dismiss="modal">
-                            <span>&times;</span>
-                        </button>
-                    </div>
-                    <div class="modal-body">
-
-                        {{-- Filter Row --}}
-                        <div class="row g-2 mb-3">
-
-                            {{-- Hidden status input — always sends Total --}}
-                            <input type="hidden" id="rpt_status" value="Total">
-
-                            <div class="col-12 col-sm-6 col-md-2">
-                                <label class="font-weight-bold small">From Date</label>
-                                <input type="date" id="rpt_from_date" class="form-control form-control-sm">
-                            </div>
-                            <div class="col-12 col-sm-6 col-md-2">
-                                <label class="font-weight-bold small">To Date</label>
-                                <input type="date" id="rpt_to_date" class="form-control form-control-sm">
-                            </div>
-                            <div class="col-12 col-sm-6 col-md-2">
-                                <label class="font-weight-bold small">Customer</label>
-                                <input type="text" id="rpt_customer" class="form-control form-control-sm"
-                                    placeholder="Company name...">
-                            </div>
-                            <div class="col-12 col-sm-6 col-md-2">
-                                <label class="font-weight-bold small">Service</label>
-                                <input type="text" id="rpt_service" class="form-control form-control-sm"
-                                    placeholder="e.g. Air Freight">
-                            </div>
-                            <div class="col-12 col-sm-6 col-md-1">
-                                <label class="font-weight-bold small">Process</label>
-                                <select id="rpt_process" class="form-control form-control-sm">
-                                    <option value="">All</option>
-                                    <option value="Export">Export</option>
-                                    <option value="Import">Import</option>
-                                    <option value="Local">Local</option>
-                                </select>
-                            </div>
-                            <div class="col-12 col-sm-6 col-md-1">
-                                <label class="font-weight-bold small">IncoTerm</label>
-                                <input type="text" id="rpt_incoterm" class="form-control form-control-sm"
-                                    placeholder="e.g. FOB">
-                            </div>
-                            <div class="col-12 col-sm-6 col-md-auto d-flex align-items-end">
-                                <button type="button" id="btnClearReport" class="btn btn-outline-secondary btn-sm">
-                                    <i class="fas fa-redo mr-1"></i> Clear
-                                </button>
-                            </div>
-
-                        </div>{{-- END filter row --}}
-
-                        {{-- Error alert --}}
-                        <div id="rptErrorAlert" class="alert alert-danger d-none py-2 px-3 mb-2"
-                            style="font-size:0.875rem;"></div>
-
-                        {{-- Results table --}}
-                        <div class="table-responsive">
-                            <table id="reportTable" class="table table-bordered table-striped table-hover w-100"
-                                style="font-size:0.85rem;">
-                                <thead>
-                                    <tr>
-                                        <th>Quote No</th>
-                                        <th>Date</th>
-                                        <th>Customer</th>
-                                        <th>Service</th>
-                                        <th>Process</th>
-                                        <th>Origin</th>
-                                        <th>Destination</th>
-                                        <th>IncoTerm</th>
-                                        <th>Status</th>
-                                        <th>Remark</th>
-                                    </tr>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
-                        </div>
-
-                        <div id="rptRowCount" class="text-muted small mt-2"></div>
-
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
-                    </div>
-                </div>
-            </div>
-        </div>{{-- END quotationReportModal --}}
-
-    </div>
+</div>
 @stop
 
 
 @section('css')
-    <style>
-        /* COMPACT CARD STYLING */
-        .compact-card {
-            min-height: 90px !important;
-            margin-bottom: 0.5rem;
-            cursor: pointer;
-            border-radius: 0.25rem;
-            transition: all 0.3s ease;
-        }
+<style>
+/* COMPACT CARD STYLING */
+.compact-card {
+    min-height: 90px !important;
+    margin-bottom: 0.5rem;
+    cursor: pointer;
+    border-radius: 0.25rem;
+    transition: all 0.3s ease;
+}
 
-        .compact-card .inner {
-            padding: 7px 10px !important;
-        }
+.compact-card .inner {
+    padding: 7px 10px !important;
+}
 
-        .compact-card .inner h3 {
-            font-size: 1.5rem;
-            margin-bottom: 2px;
-        }
+.compact-card .inner h3 {
+    font-size: 1.5rem;
+    margin-bottom: 2px;
+}
 
-        .compact-card .inner p {
-            font-size: 0.75rem;
-            margin-bottom: 0;
-            white-space: nowrap;
-        }
+.compact-card .inner p {
+    font-size: 0.75rem;
+    margin-bottom: 0;
+    white-space: nowrap;
+}
 
-        .compact-card .icon {
-            font-size: 38px !important;
-            top: 8px;
-            right: 8px;
-        }
+.compact-card .icon {
+    font-size: 38px !important;
+    top: 8px;
+    right: 8px;
+}
 
-        /* Non-clickable cards should not show pointer cursor */
-        .compact-card:not(.card-filter-trigger) {
-            cursor: default;
-        }
+/* Non-clickable cards should not show pointer cursor */
+.compact-card:not(.card-filter-trigger) {
+    cursor: default;
+}
 
-        /* Hover — desktop/mouse only */
-        @media (hover: hover) and (pointer: fine) {
-            .card-filter-trigger:hover {
-                transform: translateY(-3px);
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            }
-        }
+/* Hover — desktop/mouse only */
+@media (hover: hover) and (pointer: fine) {
+    .card-filter-trigger:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+}
 
-        .compact-card.card-filter-trigger:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        }
+.compact-card.card-filter-trigger:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
 
-        .card-filter-trigger.active {
-            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.5), 0 0 0 6px rgba(0, 0, 0, 0.3);
-            transform: scale(1.03);
-        }
+.card-filter-trigger.active {
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.5), 0 0 0 6px rgba(0, 0, 0, 0.3);
+    transform: scale(1.03);
+}
 
-        @media (hover: none) and (pointer: coarse) {
-            .card-filter-trigger:active {
-                opacity: 0.8;
-            }
-        }
+@media (hover: none) and (pointer: coarse) {
+    .card-filter-trigger:active {
+        opacity: 0.8;
+    }
+}
 
-        @media (max-width: 767.98px) {
-            .compact-card .icon {
-                font-size: 28px !important;
-            }
+@media (max-width: 767.98px) {
+    .compact-card .icon {
+        font-size: 28px !important;
+    }
 
-            .compact-card .inner h3 {
-                font-size: 1.2rem;
-            }
+    .compact-card .inner h3 {
+        font-size: 1.2rem;
+    }
 
-            .compact-card .inner p {
-                font-size: 0.7rem;
-            }
-        }
+    .compact-card .inner p {
+        font-size: 0.7rem;
+    }
+}
 
-        /* FORM CONTROLS */
-        .form-control-sm {
-            height: calc(1.5em + 0.5rem + 2px);
-            padding: 0.25rem 0.5rem;
-            font-size: 0.875rem;
-        }
+/* FORM CONTROLS */
+.form-control-sm {
+    height: calc(1.5em + 0.5rem + 2px);
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
 
-        /* FILTER ROW */
-        #entriesContainer .dataTables_length,
-        #searchContainer .dataTables_filter {
-            margin: 0;
-        }
+/* FILTER ROW */
+#entriesContainer .dataTables_length,
+#searchContainer .dataTables_filter {
+    margin: 0;
+}
 
-        #entriesContainer .dataTables_length label,
-        #searchContainer .dataTables_filter label {
-            margin: 0;
-            font-size: 0.875rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            width: 100%;
-        }
+#entriesContainer .dataTables_length label,
+#searchContainer .dataTables_filter label {
+    margin: 0;
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+}
 
-        #entriesContainer .dataTables_length select {
-            width: auto;
-            min-width: 60px;
-        }
+#entriesContainer .dataTables_length select {
+    width: auto;
+    min-width: 60px;
+}
 
-        #searchContainer .dataTables_filter input {
-            margin-left: 0;
-            width: 100%;
-            max-width: 200px;
-        }
+#searchContainer .dataTables_filter input {
+    margin-left: 0;
+    width: 100%;
+    max-width: 200px;
+}
 
-        /* BUTTONS */
-        .input-group-sm .btn {
-            padding: 0.25rem 0.5rem;
-            font-size: 0.875rem;
-            line-height: 1.5;
-        }
+/* BUTTONS */
+.input-group-sm .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
 
-        .input-group-sm .btn i {
-            font-size: 0.75rem;
-        }
+.input-group-sm .btn i {
+    font-size: 0.75rem;
+}
 
-        #clearCustomDates {
-            border-left: 0;
-        }
+#clearCustomDates {
+    border-left: 0;
+}
 
-        #clearCustomDates:hover {
-            background-color: #dc3545;
-            color: white;
-            border-color: #dc3545;
-        }
+#clearCustomDates:hover {
+    background-color: #dc3545;
+    color: white;
+    border-color: #dc3545;
+}
 
-        #clearAllFilters {
-            height: calc(1.5em + 0.5rem + 2px);
-            white-space: nowrap;
-        }
+#clearAllFilters {
+    height: calc(1.5em + 0.5rem + 2px);
+    white-space: nowrap;
+}
 
-        #clearAllFilters:hover {
-            background-color: #6c757d;
-            color: white;
-            border-color: #6c757d;
-        }
+#clearAllFilters:hover {
+    background-color: #6c757d;
+    color: white;
+    border-color: #6c757d;
+}
 
-        @media (max-width: 767.98px) {
-            .btn-retrigger {
-                min-width: 44px;
-                min-height: 44px;
-                padding: 0.5rem;
-                font-size: 1rem;
-            }
+@media (max-width: 767.98px) {
+    .btn-retrigger {
+        min-width: 44px;
+        min-height: 44px;
+        padding: 0.5rem;
+        font-size: 1rem;
+    }
 
-            #clearAllFilters,
-            #clearCustomDates {
-                min-height: 44px;
-            }
-        }
+    #clearAllFilters,
+    #clearCustomDates {
+        min-height: 44px;
+    }
+}
 
-        /* LAYOUT */
-        .g-2 {
-            --bs-gutter-x: 0.5rem;
-            --bs-gutter-y: 0.5rem;
-        }
+/* LAYOUT */
+.g-2 {
+    --bs-gutter-x: 0.5rem;
+    --bs-gutter-y: 0.5rem;
+}
 
-        .table-responsive-wrapper {
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-        }
+.table-responsive-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
 
-        body,
-        .container-fluid {
-            overflow-x: hidden;
-        }
+body,
+.container-fluid {
+    overflow-x: hidden;
+}
 
-        /* DATATABLE RESPONSIVE */
-        table.dataTable.dtr-inline.collapsed>tbody>tr>td.child,
-        table.dataTable.dtr-inline.collapsed>tbody>tr>th.child,
-        table.dataTable.dtr-inline.collapsed>tbody>tr>td.dataTables_empty {
-            cursor: default !important;
-        }
+/* DATATABLE RESPONSIVE */
+table.dataTable.dtr-inline.collapsed>tbody>tr>td.child,
+table.dataTable.dtr-inline.collapsed>tbody>tr>th.child,
+table.dataTable.dtr-inline.collapsed>tbody>tr>td.dataTables_empty {
+    cursor: default !important;
+}
 
-        table.dataTable.dtr-inline.collapsed>tbody>tr[role="row"]>td:first-child:before,
-        table.dataTable.dtr-inline.collapsed>tbody>tr[role="row"]>th:first-child:before {
-            top: 50%;
-            transform: translateY(-50%);
-            line-height: 1;
-        }
+table.dataTable.dtr-inline.collapsed>tbody>tr[role="row"]>td:first-child:before,
+table.dataTable.dtr-inline.collapsed>tbody>tr[role="row"]>th:first-child:before {
+    top: 50%;
+    transform: translateY(-50%);
+    line-height: 1;
+}
 
-        table.dataTable.dtr-inline.collapsed>tbody>tr.parent>td:first-child:before,
-        table.dataTable.dtr-inline.collapsed>tbody>tr.parent>th:first-child:before {
-            background-color: #28a745;
-        }
+table.dataTable.dtr-inline.collapsed>tbody>tr.parent>td:first-child:before,
+table.dataTable.dtr-inline.collapsed>tbody>tr.parent>th:first-child:before {
+    background-color: #28a745;
+}
 
-        table.dataTable>tbody>tr.child ul.dtr-details {
-            width: 100%;
-        }
+table.dataTable>tbody>tr.child ul.dtr-details {
+    width: 100%;
+}
 
-        table.dataTable>tbody>tr.child ul.dtr-details>li {
-            border-bottom: 1px solid #efefef;
-            padding: 0.5rem 0;
-        }
+table.dataTable>tbody>tr.child ul.dtr-details>li {
+    border-bottom: 1px solid #efefef;
+    padding: 0.5rem 0;
+}
 
-        table.dataTable>tbody>tr.child span.dtr-title {
-            font-weight: bold;
-            min-width: 120px;
-            display: inline-block;
-        }
+table.dataTable>tbody>tr.child span.dtr-title {
+    font-weight: bold;
+    min-width: 120px;
+    display: inline-block;
+}
 
-        .dataTables_info,
-        .dataTables_paginate {
-            padding-top: 0.75rem;
-        }
+.dataTables_info,
+.dataTables_paginate {
+    padding-top: 0.75rem;
+}
 
-        .dataTables_wrapper>.row:first-child {
-            display: none;
-        }
+.dataTables_wrapper>.row:first-child {
+    display: none;
+}
 
-        /* MOBILE / TABLET */
-        @media (max-width: 767.98px) {
-            .compact-card .icon {
-                font-size: 40px !important;
-            }
+/* MOBILE / TABLET */
+@media (max-width: 767.98px) {
+    .compact-card .icon {
+        font-size: 40px !important;
+    }
 
-            .compact-card .inner h3 {
-                font-size: 1.5rem;
-            }
+    .compact-card .inner h3 {
+        font-size: 1.5rem;
+    }
 
-            .compact-card .inner p {
-                font-size: 0.75rem;
-            }
+    .compact-card .inner p {
+        font-size: 0.75rem;
+    }
 
-            #searchContainer .dataTables_filter input {
-                max-width: 100%;
-            }
+    #searchContainer .dataTables_filter input {
+        max-width: 100%;
+    }
 
-            #searchContainer .dataTables_filter label {
-                flex-direction: column;
-                align-items: stretch;
-                gap: 0.25rem;
-            }
+    #searchContainer .dataTables_filter label {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.25rem;
+    }
 
-            #quotationTable th,
-            #quotationTable td {
-                font-size: 0.85rem;
-                padding: 0.5rem;
-            }
+    #quotationTable th,
+    #quotationTable td {
+        font-size: 0.85rem;
+        padding: 0.5rem;
+    }
 
-            #entriesContainer .dataTables_length label {
-                flex-direction: row;
-                align-items: center;
-            }
+    #entriesContainer .dataTables_length label {
+        flex-direction: row;
+        align-items: center;
+    }
 
-            #entriesContainer .dataTables_length select {
-                flex: 0 0 auto;
-            }
-        }
+    #entriesContainer .dataTables_length select {
+        flex: 0 0 auto;
+    }
+}
 
-        @media (min-width: 768px) and (max-width: 1199.98px) {
-            #searchContainer .dataTables_filter input {
-                max-width: 150px;
-            }
-        }
+@media (min-width: 768px) and (max-width: 1199.98px) {
+    #searchContainer .dataTables_filter input {
+        max-width: 150px;
+    }
+}
 
-        /* UTILITY */
-        .w-md-auto {
-            width: auto !important;
-        }
+/* UTILITY */
+.w-md-auto {
+    width: auto !important;
+}
 
-        .ms-md-auto {
-            margin-left: auto !important;
-        }
+.ms-md-auto {
+    margin-left: auto !important;
+}
 
-        @media (max-width: 767.98px) {
-            .ms-md-auto {
-                margin-left: 0 !important;
-            }
-        }
+@media (max-width: 767.98px) {
+    .ms-md-auto {
+        margin-left: 0 !important;
+    }
+}
 
-        /* ACTION BUTTONS */
-        .action-buttons {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 6px;
-            flex-wrap: nowrap;
-        }
+/* ACTION BUTTONS */
+.action-buttons {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: nowrap;
+}
 
-        .action-buttons .btn {
-            padding: 0.35rem 0.5rem;
-            min-width: 34px;
-        }
+.action-buttons .btn {
+    padding: 0.35rem 0.5rem;
+    min-width: 34px;
+}
 
-        @media (max-width: 576px) {
-            .action-buttons .btn {
-                padding: 0.4rem;
-            }
-        }
+@media (max-width: 576px) {
+    .action-buttons .btn {
+        padding: 0.4rem;
+    }
+}
 
-        /* CREATE BOOKING MODAL — LOCKED STATE */
-        #createBookingForm.cb-locked select,
-        #createBookingForm.cb-locked input[type="text"] {
-            background-color: #f8f9fa;
-            pointer-events: none;
-            opacity: 0.85;
-            border-color: #dee2e6;
-        }
-    </style>
+/* CREATE BOOKING MODAL — LOCKED STATE */
+#createBookingForm.cb-locked select,
+#createBookingForm.cb-locked input[type="text"] {
+    background-color: #f8f9fa;
+    pointer-events: none;
+    opacity: 0.85;
+    border-color: #dee2e6;
+}
+</style>
 @stop
 
 
 @section('js')
-    <script>
-        $(document).ready(function() {
+<script>
+$(document).ready(function() {
 
-            var currentCardFilter = 'in_progress';
+    var currentCardFilter = 'in_progress';
 
-            // ── Booking step definitions ──────────────────────────────────────────────
-            // Must stay in sync with processBooking() step order in QuotationController.
-            const BOOKING_STEPS = [{
-                    step: 0,
-                    label: 'Save Booking Info'
-                },
-                {
-                    step: 1,
-                    label: 'Client Creation'
-                },
-                {
-                    step: 2,
-                    label: 'Booking XML'
-                },
-                {
-                    step: '2b',
-                    label: 'SCM Push'
-                },
-                {
-                    step: 3,
-                    label: 'Charge Transfer'
-                },
-                {
-                    step: 4,
-                    label: 'Document Transfer'
-                },
-            ];
+    // ── Booking step definitions ──────────────────────────────────────────────
+    // Must stay in sync with processBooking() step order in QuotationController.
+    const BOOKING_STEPS = [{
+            step: 0,
+            label: 'Save Booking Info'
+        },
+        {
+            step: 1,
+            label: 'Client Creation'
+        },
+        {
+            step: 2,
+            label: 'Booking XML'
+        },
+        {
+            step: '2b',
+            label: 'SCM Push'
+        },
+        {
+            step: 3,
+            label: 'Charge Transfer'
+        },
+        {
+            step: 4,
+            label: 'Document Transfer'
+        },
+    ];
 
-            // Set date filter before DataTable initialises so the first request picks it up
-            $('#dateFilter').val('all');
+    // Set date filter before DataTable initialises so the first request picks it up
+    $('#dateFilter').val('all');
 
-            // ── updateCards() ────────────────────────────────────────────────────────
-            // Called by dataSrc on every table reload.
-            // Stats and rows arrive in the same response — zero mismatch risk.
-            // Replaces the old updateCardStats() + animateValue() pair entirely.
-            function updateCards(stats) {
-                if (!stats) return;
-                $('#stat-total').text(stats.total || 0);
-                $('#stat-in-progress').text(stats.in_progress || 0);
-                $('#stat-won').text(stats.won || 0);
-                $('#stat-completed').text(stats.completed || 0);
-                $('#stat-lost-canceled').text(stats.lost_canceled || 0);
-                $('#stat-failed-progress').text(stats.failed_progress || 0);
-                $('#stat-failed-int').text(stats.failed_int || 0);
+    // ── updateCards() ────────────────────────────────────────────────────────
+    // Called by dataSrc on every table reload.
+    // Stats and rows arrive in the same response — zero mismatch risk.
+    // Replaces the old updateCardStats() + animateValue() pair entirely.
+    function updateCards(stats) {
+        if (!stats) return;
+        $('#stat-total').text(stats.total || 0);
+        $('#stat-in-progress').text(stats.in_progress || 0);
+        $('#stat-won').text(stats.won || 0);
+        $('#stat-completed').text(stats.completed || 0);
+        $('#stat-lost-canceled').text(stats.lost_canceled || 0);
+        $('#stat-failed-progress').text(stats.failed_progress || 0);
+        $('#stat-failed-int').text(stats.failed_int || 0);
+    }
+
+    // ── DataTable ────────────────────────────────────────────────────────────
+    var table = $('#quotationTable').DataTable({
+        processing: true,
+        serverSide: true,
+        ajax: {
+            url: '{{ route('
+            quotation.portal ') }}',
+            type: 'GET',
+            data: function(d) {
+                d.days = $('#dateFilter').val();
+                d.start_date = $('#startDate').val();
+                d.end_date = $('#endDate').val();
+                d.office = $('#officeFilter').val();
+                d.card_filter = currentCardFilter;
+            },
+            // dataSrc fires before DataTables processes the response.
+            // We extract stats here so the cards update in the same round-trip
+            // as the table rows — no separate XHR ever needed.
+            dataSrc: function(json) {
+                updateCards(json.stats);
+                return json.data;
+            },
+            error: function(xhr, error, code) {
+                console.error('DataTables Ajax Error:', xhr, error, code);
             }
-
-            // ── DataTable ────────────────────────────────────────────────────────────
-            var table = $('#quotationTable').DataTable({
-                processing: true,
-                serverSide: true,
-                ajax: {
-                    url: '{{ route('quotation.portal') }}',
-                    type: 'GET',
-                    data: function(d) {
-                        d.days = $('#dateFilter').val();
-                        d.start_date = $('#startDate').val();
-                        d.end_date = $('#endDate').val();
-                        d.office = $('#officeFilter').val();
-                        d.card_filter = currentCardFilter;
-                    },
-                    // dataSrc fires before DataTables processes the response.
-                    // We extract stats here so the cards update in the same round-trip
-                    // as the table rows — no separate XHR ever needed.
-                    dataSrc: function(json) {
-                        updateCards(json.stats);
-                        return json.data;
-                    },
-                    error: function(xhr, error, code) {
-                        console.error('DataTables Ajax Error:', xhr, error, code);
-                    }
-                },
-                columns: [
-                    // col 0 — QuoteNo
-                    {
-                        data: 'QuoteNo',
-                        name: 'QuoteNo',
-                        responsivePriority: 1
-                    },
-                    // col 1 — Date
-                    {
-                        data: 'Date',
-                        name: 'Date',
-                        searchable: false,
-                        responsivePriority: 2
-                    },
-                    // col 2 — Client Name
-                    {
-                        data: 'CompanyName',
-                        name: 'CompanyName',
-                        responsivePriority: 3,
-                        render: function(data, type) {
-                            if (type === 'display' && data && data.length > 50)
-                                return '<span title="' + data + '">' + data.substr(0, 50) +
-                                    '...</span>';
-                            return data;
-                        }
-                    },
-                    // col 3 — Sales Person
-                    {
-                        data: 'SalesPerson',
-                        name: 'SalesPerson',
-                        responsivePriority: 7
-                    },
-                    // col 4 — Service
-                    {
-                        data: 'Service',
-                        name: 'Service',
-                        responsivePriority: 9
-                    },
-                    // col 4 — Process
-                    {
-                        data: 'Process',
-                        name: 'Process',
-                        responsivePriority: 10
-                    },
-                    // col 5 — Origin
-                    {
-                        data: 'OriginCountry',
-                        name: 'OriginCountry',
-                        responsivePriority: 11
-                    },
-                    // col 6 — Destination
-                    {
-                        data: 'DestinationCountry',
-                        name: 'DestinationCountry',
-                        responsivePriority: 12
-                    },
-                    // col 7 — IncoTerm
-                    {
-                        data: 'IncoTerm',
-                        name: 'IncoTerm',
-                        responsivePriority: 8
-                    },
-                    // col 8 — Volume / Containers (combined, display-only)
-                    {
-                        data: null,
-                        name: 'volume',
-                        orderable: false,
-                        searchable: false,
-                        responsivePriority: 13,
-                        render: function(data, type, row) {
-                            if (type !== 'display') return '';
-                            var parts = [];
-                            if (row.ScopeOfVolume && row.ScopeOfVolume !== '-')
-                                parts.push(row.ScopeOfVolume);
-                            if (row.CargoVolume && parseFloat(row.CargoVolume) > 0)
-                                parts.push(parseFloat(row.CargoVolume).toLocaleString());
-                            if (row.ContainerList && row.ContainerList !== '-')
-                                parts.push('<span class="text-muted">' + row.ContainerList +
-                                    '</span>');
-                            return parts.length ?
-                                parts.join('<br>') :
-                                '<span class="text-muted">—</span>';
-                        }
-                    },
-                    // col 9 — Status
-                    {
-                        data: 'Status',
-                        name: 'Status',
-                        responsivePriority: 4
-                    },
-                    // col 10 — Remark
-                    {
-                        data: 'Remark',
-                        name: 'Remark',
-                        orderable: false,
-                        searchable: false,
-                        responsivePriority: 6
-                    },
-                    // col 11 — Action
-                    {
-                        data: 'action',
-                        name: 'action',
-                        orderable: false,
-                        searchable: false,
-                        responsivePriority: 1,
-                        className: 'text-center action-column'
-                    }
-                ],
-                order: [
-                    [1, 'desc']
-                ],
-                pageLength: 25,
-                responsive: {
-                    details: {
-                        type: 'inline',
-                        display: $.fn.dataTable.Responsive.display.childRow,
-                        renderer: function(api, rowIdx, columns) {
-                            var data = $.map(columns, function(col) {
-                                return col.hidden ?
-                                    '<li data-dtr-index="' + col.columnIndex + '"' +
-                                    ' data-dt-row="' + col.rowIndex + '"' +
-                                    ' data-dt-column="' + col.columnIndex + '">' +
-                                    '<span class="dtr-title">' + col.title + '</span> ' +
-                                    '<span class="dtr-data">' + col.data + '</span>' +
-                                    '</li>' :
-                                    '';
-                            }).join('');
-                            return data ? $('<ul class="dtr-details"/>').append(data) : false;
-                        }
-                    },
-                    breakpoints: [{
-                            name: 'desktop',
-                            width: Infinity
-                        },
-                        {
-                            name: 'tablet-l',
-                            width: 1024
-                        },
-                        {
-                            name: 'tablet-p',
-                            width: 768
-                        },
-                        {
-                            name: 'mobile-l',
-                            width: 480
-                        },
-                        {
-                            name: 'mobile-p',
-                            width: 320
-                        }
-                    ]
-                },
-                dom: 'lfrtip',
-                language: {
-                    search: 'Search:',
-                    searchPlaceholder: 'Company, Quote No, Status...',
-                    lengthMenu: 'Show _MENU_'
-                },
-                initComplete: function() {
-                    $('.dataTables_length').appendTo('#entriesContainer');
-                    $('.dataTables_filter').appendTo('#searchContainer');
-                    adjustSearchPlaceholder();
-                    $('.card-filter-trigger[data-filter="in_progress"]').addClass('active');
+        },
+        columns: [
+            // col 0 — QuoteNo
+            {
+                data: 'QuoteNo',
+                name: 'QuoteNo',
+                responsivePriority: 1
+            },
+            // col 1 — Date
+            {
+                data: 'Date',
+                name: 'Date',
+                searchable: false,
+                responsivePriority: 2
+            },
+            // col 2 — Client Name
+            {
+                data: 'CompanyName',
+                name: 'CompanyName',
+                responsivePriority: 3,
+                render: function(data, type) {
+                    if (type === 'display' && data && data.length > 50)
+                        return '<span title="' + data + '">' + data.substr(0, 50) +
+                            '...</span>';
+                    return data;
                 }
-            });
-
-            // ── Search placeholder — responsive ──────────────────────────────────────
-            function adjustSearchPlaceholder() {
-                $('.dataTables_filter input').attr(
-                    'placeholder',
-                    $(window).width() < 768 ? 'Search...' : 'Company, Quote No, Status...'
-                );
+            },
+            // col 3 — Sales Person
+            {
+                data: 'SalesPerson',
+                name: 'SalesPerson',
+                responsivePriority: 7
+            },
+            // col 4 — Service
+            {
+                data: 'Service',
+                name: 'Service',
+                responsivePriority: 9
+            },
+            // col 4 — Process
+            {
+                data: 'Process',
+                name: 'Process',
+                responsivePriority: 10
+            },
+            // col 5 — Origin
+            {
+                data: 'OriginCountry',
+                name: 'OriginCountry',
+                responsivePriority: 11
+            },
+            // col 6 — Destination
+            {
+                data: 'DestinationCountry',
+                name: 'DestinationCountry',
+                responsivePriority: 12
+            },
+            // col 7 — IncoTerm
+            {
+                data: 'IncoTerm',
+                name: 'IncoTerm',
+                responsivePriority: 8
+            },
+            // col 8 — Volume / Containers (combined, display-only)
+            {
+                data: null,
+                name: 'volume',
+                orderable: false,
+                searchable: false,
+                responsivePriority: 13,
+                render: function(data, type, row) {
+                    if (type !== 'display') return '';
+                    var parts = [];
+                    if (row.ScopeOfVolume && row.ScopeOfVolume !== '-')
+                        parts.push(row.ScopeOfVolume);
+                    if (row.CargoVolume && parseFloat(row.CargoVolume) > 0)
+                        parts.push(parseFloat(row.CargoVolume).toLocaleString());
+                    if (row.ContainerList && row.ContainerList !== '-')
+                        parts.push('<span class="text-muted">' + row.ContainerList +
+                            '</span>');
+                    return parts.length ?
+                        parts.join('<br>') :
+                        '<span class="text-muted">—</span>';
+                }
+            },
+            // col 9 — Status
+            {
+                data: 'Status',
+                name: 'Status',
+                responsivePriority: 4
+            },
+            // col 10 — Remark
+            {
+                data: 'Remark',
+                name: 'Remark',
+                orderable: false,
+                searchable: false,
+                responsivePriority: 6
+            },
+            // col 11 — Action
+            {
+                data: 'action',
+                name: 'action',
+                orderable: false,
+                searchable: false,
+                responsivePriority: 1,
+                className: 'text-center action-column'
             }
-            $(window).on('resize', adjustSearchPlaceholder);
-
-            // ── Card click ───────────────────────────────────────────────────────────
-            var touchMoved = false;
-            $('.card-filter-trigger')
-                .on('touchstart', function() {
-                    touchMoved = false;
-                })
-                .on('touchmove', function() {
-                    touchMoved = true;
-                })
-                .on('click touchend', function(e) {
-                    if (e.type === 'touchend' && touchMoved) return;
-                    if (e.type === 'touchend') e.preventDefault();
-                    var filterType = $(this).data('filter');
-                    if (!filterType) return;
-                    $('.card-filter-trigger').removeClass('active');
-                    $(this).addClass('active');
-                    currentCardFilter = filterType;
-                    table.ajax.reload(); // stats arrive automatically via dataSrc
-                });
-
-            // ── Clear button visibility ───────────────────────────────────────────────
-            function updateClearButtonVisibility() {
-                var dateFilter = $('#dateFilter').val();
-                var officeFilter = $('#officeFilter').val();
-                var defaultOffice = '{{ $defaultOffice ?? '' }}';
-                if (dateFilter === 'custom') {
-                    $('#clearFiltersContainer').hide();
-                    return;
+        ],
+        order: [
+            [1, 'desc']
+        ],
+        pageLength: 25,
+        responsive: {
+            details: {
+                type: 'inline',
+                display: $.fn.dataTable.Responsive.display.childRow,
+                renderer: function(api, rowIdx, columns) {
+                    var data = $.map(columns, function(col) {
+                        return col.hidden ?
+                            '<li data-dtr-index="' + col.columnIndex + '"' +
+                            ' data-dt-row="' + col.rowIndex + '"' +
+                            ' data-dt-column="' + col.columnIndex + '">' +
+                            '<span class="dtr-title">' + col.title + '</span> ' +
+                            '<span class="dtr-data">' + col.data + '</span>' +
+                            '</li>' :
+                            '';
+                    }).join('');
+                    return data ? $('<ul class="dtr-details"/>').append(data) : false;
                 }
-                if (dateFilter !== 'all' || officeFilter !== defaultOffice) {
-                    $('#clearFiltersContainer').show();
+            },
+            breakpoints: [{
+                    name: 'desktop',
+                    width: Infinity
+                },
+                {
+                    name: 'tablet-l',
+                    width: 1024
+                },
+                {
+                    name: 'tablet-p',
+                    width: 768
+                },
+                {
+                    name: 'mobile-l',
+                    width: 480
+                },
+                {
+                    name: 'mobile-p',
+                    width: 320
+                }
+            ]
+        },
+        dom: 'lfrtip',
+        language: {
+            search: 'Search:',
+            searchPlaceholder: 'Company, Quote No, Status...',
+            lengthMenu: 'Show _MENU_'
+        },
+        initComplete: function() {
+            $('.dataTables_length').appendTo('#entriesContainer');
+            $('.dataTables_filter').appendTo('#searchContainer');
+            adjustSearchPlaceholder();
+            $('.card-filter-trigger[data-filter="in_progress"]').addClass('active');
+        }
+    });
+
+    // ── Search placeholder — responsive ──────────────────────────────────────
+    function adjustSearchPlaceholder() {
+        $('.dataTables_filter input').attr(
+            'placeholder',
+            $(window).width() < 768 ? 'Search...' : 'Company, Quote No, Status...'
+        );
+    }
+    $(window).on('resize', adjustSearchPlaceholder);
+
+    // ── Card click ───────────────────────────────────────────────────────────
+    var touchMoved = false;
+    $('.card-filter-trigger')
+        .on('touchstart', function() {
+            touchMoved = false;
+        })
+        .on('touchmove', function() {
+            touchMoved = true;
+        })
+        .on('click touchend', function(e) {
+            if (e.type === 'touchend' && touchMoved) return;
+            if (e.type === 'touchend') e.preventDefault();
+            var filterType = $(this).data('filter');
+            if (!filterType) return;
+            $('.card-filter-trigger').removeClass('active');
+            $(this).addClass('active');
+            currentCardFilter = filterType;
+            table.ajax.reload(); // stats arrive automatically via dataSrc
+        });
+
+    // ── Clear button visibility ───────────────────────────────────────────────
+    function updateClearButtonVisibility() {
+        var dateFilter = $('#dateFilter').val();
+        var officeFilter = $('#officeFilter').val();
+        var defaultOffice = '{{ $defaultOffice ?? '
+        ' }}';
+        if (dateFilter === 'custom') {
+            $('#clearFiltersContainer').hide();
+            return;
+        }
+        if (dateFilter !== 'all' || officeFilter !== defaultOffice) {
+            $('#clearFiltersContainer').show();
+        } else {
+            $('#clearFiltersContainer').hide();
+        }
+    }
+
+    // ── Date filter ──────────────────────────────────────────────────────────
+    $('#dateFilter').on('change', function() {
+        if ($(this).val() === 'custom') {
+            $('#customDateRange, #customDateRangeTo').show();
+            updateClearButtonVisibility();
+        } else {
+            $('#customDateRange, #customDateRangeTo').hide();
+            $('#startDate, #endDate').val('');
+            table.ajax.reload();
+            updateClearButtonVisibility();
+        }
+    });
+
+    $('#startDate, #endDate').on('change', function() {
+        if ($('#startDate').val() && $('#endDate').val()) {
+            if (new Date($('#endDate').val()) < new Date($('#startDate').val())) {
+                alert('End date must be after start date');
+                $('#endDate').val('');
+                return;
+            }
+            table.ajax.reload();
+            updateClearButtonVisibility();
+        }
+    });
+
+    $('#clearCustomDates').on('click', function() {
+        $('#startDate, #endDate').val('');
+        $('#customDateRange, #customDateRangeTo').hide();
+        $('#dateFilter').val('all');
+        table.ajax.reload();
+    });
+
+    // ── Office filter ────────────────────────────────────────────────────────
+    $('#officeFilter').on('change', function() {
+        table.ajax.reload();
+        updateClearButtonVisibility();
+    });
+
+    // ── Clear all filters ────────────────────────────────────────────────────
+    $('#clearAllFilters').on('click', function() {
+        $('#dateFilter').val('all');
+        $('#startDate, #endDate').val('');
+        $('#customDateRange, #customDateRangeTo').hide();
+        $('#officeFilter').val('{{ $defaultOffice ?? '
+            ' }}');
+        $('.card-filter-trigger').removeClass('active');
+        $('.card-filter-trigger[data-filter="in_progress"]').addClass('active');
+        currentCardFilter = 'in_progress';
+        table.ajax.reload();
+        updateClearButtonVisibility();
+    });
+
+    // ── Retrigger button ─────────────────────────────────────────────────────
+    $('#quotationTable').on('click', '.btn-retrigger', function(e) {
+        e.stopPropagation();
+        var $btn = $(this);
+        // AFTER
+        var bookingNo = $btn.data('booking');
+        var quoteId = $btn.data('id'); // ← UUID
+
+        if (!quoteId) {
+            alert('Quotation ID not found');
+            return;
+        }
+        if (!confirm('Are you sure you want to retrigger booking: ' + bookingNo + '?')) return;
+
+        $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
+
+        $.ajax({
+            url: '{{ route('
+            quotation.retrigger ') }}',
+            type: 'POST',
+            data: {
+                _token: '{{ csrf_token() }}',
+                id: quoteId,
+                booking_no: bookingNo
+            },
+            success: function(res) {
+                if (res.success) {
+                    alert('Successfully retriggered booking: ' + bookingNo);
+                    table.ajax.reload(null, false);
                 } else {
-                    $('#clearFiltersContainer').hide();
+                    alert('Failed to retrigger: ' + (res.message || 'Unknown error'));
                 }
+            },
+            error: function(xhr) {
+                alert('Error retriggering booking: ' + (xhr.responseJSON?.message ||
+                    'Server error'));
+            },
+            complete: function() {
+                $btn.prop('disabled', false).html('<i class="fas fa-sync-alt"></i>');
             }
+        });
+    });
 
-            // ── Date filter ──────────────────────────────────────────────────────────
-            $('#dateFilter').on('change', function() {
-                if ($(this).val() === 'custom') {
-                    $('#customDateRange, #customDateRangeTo').show();
-                    updateClearButtonVisibility();
-                } else {
-                    $('#customDateRange, #customDateRangeTo').hide();
-                    $('#startDate, #endDate').val('');
-                    table.ajax.reload();
-                    updateClearButtonVisibility();
+    // ── Create Booking button ─────────────────────────────────────────────────
+    $('#quotationTable').on('click', '.btn-create-booking', function(e) {
+        e.stopPropagation();
+        var $btn = $(this);
+        $('#createBookingModal')
+            .data('quotation-id', $btn.data('id'))
+            .data('booking-no', $btn.data('quoteno'))
+            .data('team-id', $btn.data('team'))
+            .data('quote-no', $btn.data('quoteno'))
+            .data('origin-country', $btn.data('origin'))
+            .data('destination-country', $btn.data('destination'))
+            .data('card-filter', currentCardFilter)
+            .modal('show');
+    });
+
+    // ── Create Booking modal — on show ───────────────────────────────────────
+    // AFTER — restore previous state if same quotation
+    $('#createBookingModal').on('show.bs.modal', function() {
+        var modal = $(this);
+        var quoteNo = modal.data('quote-no');
+        var teamId = modal.data('team-id');
+        var quotationId = modal.data('quotation-id');
+        var cardFilter = modal.data('card-filter') || 'in_progress';
+        var lastQuoteNo = modal.data('last-quote-no');
+        var savedState = modal.data('saved-form-state');
+
+        // If reopening for the same quotation after a failure, restore form state
+        // Fall back to sessionStorage if jQuery data was lost (e.g. page refresh)
+        if ((!savedState || String(lastQuoteNo) !== String(quoteNo)) && quotationId) {
+            try {
+                var _ss = sessionStorage.getItem('cbFormState_' + quotationId);
+                if (_ss) {
+                    savedState = JSON.parse(_ss);
+                    // Write back so the restore check below finds them
+                    modal.data('saved-form-state', savedState);
+                    lastQuoteNo = quoteNo;
+                    modal.data('last-quote-no', quoteNo);
                 }
-            });
+            } catch (e) {}
+        }
 
-            $('#startDate, #endDate').on('change', function() {
-                if ($('#startDate').val() && $('#endDate').val()) {
-                    if (new Date($('#endDate').val()) < new Date($('#startDate').val())) {
-                        alert('End date must be after start date');
-                        $('#endDate').val('');
-                        return;
-                    }
-                    table.ajax.reload();
-                    updateClearButtonVisibility();
-                }
-            });
-
-            $('#clearCustomDates').on('click', function() {
-                $('#startDate, #endDate').val('');
-                $('#customDateRange, #customDateRangeTo').hide();
-                $('#dateFilter').val('all');
-                table.ajax.reload();
-            });
-
-            // ── Office filter ────────────────────────────────────────────────────────
-            $('#officeFilter').on('change', function() {
-                table.ajax.reload();
-                updateClearButtonVisibility();
-            });
-
-            // ── Clear all filters ────────────────────────────────────────────────────
-            $('#clearAllFilters').on('click', function() {
-                $('#dateFilter').val('all');
-                $('#startDate, #endDate').val('');
-                $('#customDateRange, #customDateRangeTo').hide();
-                $('#officeFilter').val('{{ $defaultOffice ?? '' }}');
-                $('.card-filter-trigger').removeClass('active');
-                $('.card-filter-trigger[data-filter="in_progress"]').addClass('active');
-                currentCardFilter = 'in_progress';
-                table.ajax.reload();
-                updateClearButtonVisibility();
-            });
-
-            // ── Retrigger button ─────────────────────────────────────────────────────
-            $('#quotationTable').on('click', '.btn-retrigger', function(e) {
-                e.stopPropagation();
-                var $btn = $(this);
-                // AFTER
-                var bookingNo = $btn.data('booking');
-                var quoteId = $btn.data('id'); // ← UUID
-
-                if (!quoteId) {
-                    alert('Quotation ID not found');
-                    return;
-                }
-                if (!confirm('Are you sure you want to retrigger booking: ' + bookingNo + '?')) return;
-
-                $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
-
-                $.ajax({
-                    url: '{{ route('quotation.retrigger') }}',
-                    type: 'POST',
-                    data: {
-                        _token: '{{ csrf_token() }}',
-                        id: quoteId,
-                        booking_no: bookingNo
-                    },
-                    success: function(res) {
-                        if (res.success) {
-                            alert('Successfully retriggered booking: ' + bookingNo);
-                            table.ajax.reload(null, false);
-                        } else {
-                            alert('Failed to retrigger: ' + (res.message || 'Unknown error'));
-                        }
-                    },
-                    error: function(xhr) {
-                        alert('Error retriggering booking: ' + (xhr.responseJSON?.message ||
-                            'Server error'));
-                    },
-                    complete: function() {
-                        $btn.prop('disabled', false).html('<i class="fas fa-sync-alt"></i>');
-                    }
-                });
-            });
-
-            // ── Create Booking button ─────────────────────────────────────────────────
-            $('#quotationTable').on('click', '.btn-create-booking', function(e) {
-                e.stopPropagation();
-                var $btn = $(this);
-                $('#createBookingModal')
-                    .data('quotation-id', $btn.data('id'))
-                    .data('booking-no', $btn.data('quoteno'))
-                    .data('team-id', $btn.data('team'))
-                    .data('quote-no', $btn.data('quoteno'))
-                    .data('origin-country', $btn.data('origin'))
-                    .data('destination-country', $btn.data('destination'))
-                    .data('card-filter', currentCardFilter)
-                    .modal('show');
-            });
-
-            // ── Create Booking modal — on show ───────────────────────────────────────
-            // AFTER — restore previous state if same quotation
-            $('#createBookingModal').on('show.bs.modal', function() {
-                var modal = $(this);
-                var quoteNo = modal.data('quote-no');
-                var teamId = modal.data('team-id');
-                var quotationId = modal.data('quotation-id');
-                var cardFilter = modal.data('card-filter') || 'in_progress';
-                var lastQuoteNo = modal.data('last-quote-no');
-                var savedState = modal.data('saved-form-state');
-
-                // If reopening for the same quotation after a failure, restore form state
-                // Fall back to sessionStorage if jQuery data was lost (e.g. page refresh)
-                if ((!savedState || String(lastQuoteNo) !== String(quoteNo)) && quotationId) {
-                    try {
-                        var _ss = sessionStorage.getItem('cbFormState_' + quotationId);
-                        if (_ss) {
-                            savedState = JSON.parse(_ss);
-                            // Write back so the restore check below finds them
-                            modal.data('saved-form-state', savedState);
-                            lastQuoteNo = quoteNo;
-                            modal.data('last-quote-no', quoteNo);
-                        }
-                    } catch (e) {}
-                }
-
-                if (savedState && String(lastQuoteNo) === String(quoteNo)) {
-                    resetCreateBookingForm();
-                    setDropdownLoading('#cb_service_template');
-                    $.get('{{ route('quotation.booking.service-templates') }}', {
-                            quotation_id: quotationId
-                        })
-                        .done(function(res) {
-                            var $s = $('#cb_service_template').empty().append(
-                                '<option value=""></option>');
-                            if (res.success && res.templates && res.templates.length) {
-                                $.each(res.templates, function(i, t) {
-                                    $s.append($('<option>', {
-                                        value: t.Name,
-                                        text: t.Name
-                                    }));
-                                });
-                                $s.val(savedState.serviceTemplate);
-                            }
-                        });
-                    $('#cb_bill_to_party').val(savedState.billToPartyText);
-                    $('#cb_bill_to_party_code').val(savedState.billToPartyCode);
-                    $('#cb_forwarder').val(savedState.forwarderText);
-                    $('#cb_forwarder_code').val(savedState.forwarderCode);
-                    $('#cb_include_country').prop('checked', savedState.includeCountry);
-                    $('#cb_place_of_receipt').val(savedState.receiptText);
-                    $('#cb_place_of_receipt_code').val(savedState.receiptCode);
-                    $('#cb_place_of_receipt_id').val(savedState.receiptId);
-                    $('#cb_place_of_delivery').val(savedState.deliveryText);
-                    $('#cb_place_of_delivery_code').val(savedState.deliveryCode);
-                    $('#cb_place_of_delivery_id').val(savedState.deliveryId);
-                    return;
-                }
-
-                // Fresh open — full reset
-                modal.data('last-quote-no', quoteNo);
-                resetCreateBookingForm();
-                setDropdownLoading('#cb_service_template');
-                $.get('{{ route('quotation.booking.service-templates') }}', {
+        if (savedState && String(lastQuoteNo) === String(quoteNo)) {
+            resetCreateBookingForm();
+            setDropdownLoading('#cb_service_template');
+            $.get('{{ route('
+                    quotation.booking.service - templates ') }}', {
                         quotation_id: quotationId
                     })
-                    .done(function(res) {
-                        var $s = $('#cb_service_template').empty().append('<option value=""></option>');
-                        if (res.success && res.templates && res.templates.length) {
-                            $.each(res.templates, function(i, t) {
-                                $s.append($('<option>', {
-                                    value: t.Name,
-                                    text: t.Name
-                                }));
-                            });
-                        } else {
-                            var msg = res.code === 'NO_TEMPLATES_CONFIGURED' ?
-                                'No templates available for this office.' : (res.message ||
-                                    'No templates available for this office.');
-                            $s.append('<option value="" disabled>No templates available</option>');
-                            $('#cb_service_template').closest('.form-group').append(
-                                '<small class="text-danger cb-config-warning mt-1 d-block">' +
-                                '<i class="fas fa-exclamation-triangle mr-1"></i>' + msg +
-                                '</small>'
-                            );
-                            $('#submitCreateBookingBtn').prop('disabled', true);
-                        }
-                    })
-                    .fail(function() {
-                        $('#cb_service_template').empty().append(
-                            '<option value="" disabled>Failed to load — try again</option>');
-                    });
-            });
-
-            // ── Create Booking modal — on hide ───────────────────────────────────────
-            $('#createBookingModal').on('hidden.bs.modal', function() {
-                $('.location-suggestions').remove();
-                if ($('#cbProgressSuccess').hasClass('d-none')) {} else {
-                    $('#createBookingModal').removeData('saved-form-state').removeData('last-quote-no');
-                }
-                $('#createBookingForm').removeClass('d-none cb-locked');
-                $('#cbProgressPanel').addClass('d-none');
-                $('#submitCreateBookingBtn, #cancelCreateBookingBtn').removeClass('d-none');
-                $('#cbCloseBtn').addClass('d-none');
-                $('#cbEditLink').addClass('d-none');
-                $('#cbStepList').empty();
-                $('#cbProgressError, #cbProgressSuccess').addClass('d-none');
-                $('#cb_service_template').prop('disabled', false);
-                $('#cb_bill_to_party, #cb_forwarder').val('').prop('disabled', false);
-                $('#cb_bill_to_party_code, #cb_forwarder_code').val('');
-                $('#cb_include_country, #cb_place_of_receipt, #cb_place_of_delivery').prop('disabled',
-                    false);
-            });
-
-            $('#cbCloseBtn, #cbXBtn, #cancelCreateBookingBtn').on('click', function(e) {
-                e.preventDefault();
-                $('#createBookingModal').modal('hide');
-            });
-
-            $('#cbEditLink').on('click', function(e) {
-                e.preventDefault();
-                var savedState = $('#createBookingModal').data('saved-form-state');
-
-                // Show the form panel, hide the progress panel
-                $('#createBookingForm').removeClass('cb-locked d-none');
-                $('#cbProgressPanel').addClass('d-none');
-                $('#submitCreateBookingBtn, #cancelCreateBookingBtn').removeClass('d-none');
-                $('#cbCloseBtn').addClass('d-none');
-                $(this).addClass('d-none');
-
-                // Re-enable all fields
-                $('#cb_service_template').prop('disabled', false);
-                $('#cb_bill_to_party, #cb_forwarder').prop('disabled', false);
-                $('#cb_include_country, #cb_place_of_receipt, #cb_place_of_delivery').prop('disabled',
-                    false);
-
-                // Restore saved values if available
-                if (savedState) {
-                    $('#cb_bill_to_party').val(savedState.billToPartyText);
-                    $('#cb_bill_to_party_code').val(savedState.billToPartyCode);
-                    $('#cb_forwarder').val(savedState.forwarderText);
-                    $('#cb_forwarder_code').val(savedState.forwarderCode);
-                    $('#cb_include_country').prop('checked', savedState.includeCountry);
-                    $('#cb_place_of_receipt').val(savedState.receiptText);
-                    $('#cb_place_of_receipt_code').val(savedState.receiptCode);
-                    $('#cb_place_of_receipt_id').val(savedState.receiptId);
-                    $('#cb_place_of_delivery').val(savedState.deliveryText);
-                    $('#cb_place_of_delivery_code').val(savedState.deliveryCode);
-                    $('#cb_place_of_delivery_id').val(savedState.deliveryId);
-                }
-            });
-
-            // ── Booking form helpers ──────────────────────────────────────────────────
-            function resetCreateBookingForm() {
-                $('#cb_service_template').empty().append('<option value=""></option>').prop('disabled', false);
-                $('#cb_bill_to_party, #cb_forwarder').val('').prop('disabled', false);
-                $('#cb_bill_to_party_code, #cb_forwarder_code').val('');
-                $('#cb_include_country').prop('checked', false).prop('disabled', false);
-                $('#cb_place_of_receipt, #cb_place_of_delivery').val('').prop('disabled', false);
-                $('#cb_place_of_receipt_code, #cb_place_of_receipt_id').val('');
-                $('#cb_place_of_delivery_code, #cb_place_of_delivery_id').val('');
-                $('.location-suggestions, .party-suggestions').remove();
-                $('#createBookingForm').removeClass('cb-locked');
-                $('#cbEditLink').addClass('d-none');
-                $('#submitCreateBookingBtn').prop('disabled', false);
-                $('.cb-config-warning').remove();
-            }
-
-            function setDropdownLoading(selector) {
-                $(selector).empty().append('<option value="" disabled selected>Loading...</option>');
-            }
-
-            // ── Location autocomplete ─────────────────────────────────────────────────
-            function setupLocationAutocomplete(inputId, codeId, idHiddenId) {
-                var debounceTimer = null;
-
-                $('#' + inputId).on('input', function() {
-                        var query = $(this).val().trim();
-                        clearTimeout(debounceTimer);
-                        removeSuggestions(inputId);
-                        if (query.length < 2) return;
-
-                        debounceTimer = setTimeout(function() {
-                            var modal = $('#createBookingModal');
-                            var countryCode = (inputId === 'cb_place_of_receipt') ?
-                                modal.data('origin-country') :
-                                modal.data('destination-country');
-
-                            $.get('{{ route('quotation.booking.locations') }}', {
-                                    filter: query,
-                                    include_country: $('#cb_include_country').is(':checked') ? 1 :
-                                        0,
-                                    country_code: $('#cb_include_country').is(':checked') ? (
-                                        countryCode || '') : ''
-                                })
-                                .done(function(res) {
-                                    removeSuggestions(inputId);
-                                    if (!res.success || !res.locations || !res.locations.length)
-                                        return;
-
-                                    var $input = $('#' + inputId);
-                                    var $list = $('<ul>', {
-                                        class: 'location-suggestions list-group',
-                                        css: {
-                                            position: 'absolute',
-                                            zIndex: 9999,
-                                            width: $input.outerWidth(),
-                                            maxHeight: '200px',
-                                            overflowY: 'auto',
-                                            border: '1px solid #ced4da',
-                                            borderRadius: '0 0 4px 4px',
-                                            boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
-                                            background: '#fff',
-                                            marginTop: '-1px'
-                                        }
-                                    }).on('mousedown', function(e) {
-                                        e.preventDefault();
-                                    });
-
-                                    $.each(res.locations, function(i, loc) {
-                                        $('<li>', {
-                                                class: 'list-group-item list-group-item-action',
-                                                css: {
-                                                    cursor: 'pointer',
-                                                    padding: '0.4rem 0.75rem',
-                                                    fontSize: '0.875rem'
-                                                },
-                                                text: loc.LocationName + (loc
-                                                    .LocationType ? ' (' + loc
-                                                    .LocationType + ')' : '')
-                                            })
-                                            .on('mousedown', function(e) {
-                                                e.preventDefault();
-                                                $('#' + inputId).val(
-                                                    loc.LocationName + (loc
-                                                        .LocationType ? ' (' + loc
-                                                        .LocationType + ')' : '')
-                                                );
-                                                $('#' + codeId).val(loc.LocationCode);
-                                                $('#' + idHiddenId).val(loc.LocationID);
-                                                removeSuggestions(inputId);
-                                            })
-                                            .appendTo($list);
-                                    });
-
-                                    $input.closest('.form-group').css('position', 'relative')
-                                        .append($list);
-                                })
-                                .fail(function(xhr) {
-                                    console.error('Location search failed:', xhr);
-                                });
-                        }, 300);
-                    })
-                    .on('blur', function() {
-                        setTimeout(function() {
-                            removeSuggestions(inputId);
-                        }, 200);
-                    });
-            }
-
-            // ── Party search autocomplete (Bill To Party & Forwarder) ─────────────────
-            function setupPartyAutocomplete(inputId, codeId, fetchUrl, teamId) {
-                var debounceTimer = null;
-
-                $('#' + inputId).on('input', function() {
-                        var query = $(this).val().trim();
-                        clearTimeout(debounceTimer);
-                        removePartySuggestions(inputId);
-                        if (query.length < 3) return;
-
-                        debounceTimer = setTimeout(function() {
-                            $.get(fetchUrl, {
-                                    team_id: (typeof teamId === 'function') ? teamId() : teamId,
-                                    filter: query
-                                })
-                                .done(function(res) {
-                                    removePartySuggestions(inputId);
-                                    if (!res.success || !res.parties || !res.parties.length) return;
-
-                                    var $input = $('#' + inputId);
-                                    var $list = $('<ul>', {
-                                        class: 'party-suggestions list-group',
-                                        css: {
-                                            position: 'absolute',
-                                            zIndex: 9999,
-                                            width: $input.outerWidth(),
-                                            maxHeight: '200px',
-                                            overflowY: 'auto',
-                                            border: '1px solid #ced4da',
-                                            borderRadius: '0 0 4px 4px',
-                                            boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
-                                            background: '#fff',
-                                            marginTop: '-1px'
-                                        }
-                                    }).on('mousedown', function(e) {
-                                        e.preventDefault();
-                                    });
-
-                                    $.each(res.parties, function(i, p) {
-                                        $('<li>', {
-                                                class: 'list-group-item list-group-item-action',
-                                                css: {
-                                                    cursor: 'pointer',
-                                                    padding: '0.4rem 0.75rem',
-                                                    fontSize: '0.875rem'
-                                                },
-                                                text: p.PartyCode + ' — ' + p.PartyName
-                                            })
-                                            .on('mousedown', function(e) {
-                                                e.preventDefault();
-                                                $('#' + inputId).val(p.PartyCode +
-                                                    ' — ' + p.PartyName);
-                                                $('#' + codeId).val(p.PartyCode);
-                                                removePartySuggestions(inputId);
-                                            })
-                                            .appendTo($list);
-                                    });
-
-                                    $input.closest('.form-group').css('position', 'relative')
-                                        .append($list);
-                                })
-                                .fail(function(xhr) {
-                                    console.error('Party search failed:', xhr);
-                                });
-                        }, 300);
-                    })
-                    .on('blur', function() {
-                        setTimeout(function() {
-                            removePartySuggestions(inputId);
-                        }, 200);
-                    });
-            }
-
-            function removePartySuggestions(inputId) {
-                $('#' + inputId).closest('.form-group').find('.party-suggestions').remove();
-            }
-
-            function removeSuggestions(inputId) {
-                $('#' + inputId).closest('.form-group').find('.location-suggestions').remove();
-            }
-
-            setupLocationAutocomplete('cb_place_of_receipt', 'cb_place_of_receipt_code', 'cb_place_of_receipt_id');
-            setupLocationAutocomplete('cb_place_of_delivery', 'cb_place_of_delivery_code',
-                'cb_place_of_delivery_id');
-
-
-            setupPartyAutocomplete(
-                'cb_bill_to_party',
-                'cb_bill_to_party_code',
-                '{{ route('quotation.booking.bill-to-parties') }}',
-                function() {
-                    return $('#createBookingModal').data('team-id');
-                }
-            );
-            setupPartyAutocomplete(
-                'cb_forwarder',
-                'cb_forwarder_code',
-                '{{ route('quotation.booking.forwarders') }}',
-                function() {
-                    return $('#createBookingModal').data('team-id');
-                }
-            );
-
-            $('#cb_include_country').on('change', function() {
-                // Only clear the hidden code/id fields so a re-search is triggered on next input.
-                // Do NOT clear the visible text inputs — the user typed those and should keep them.
-                // Do NOT clear if the fields are already empty (nothing to invalidate).
-                $('#cb_place_of_receipt_code, #cb_place_of_receipt_id').val('');
-                $('#cb_place_of_delivery_code, #cb_place_of_delivery_id').val('');
-
-                // Remove any open suggestion dropdowns since the filter has changed
-                removeSuggestions('cb_place_of_receipt');
-                removeSuggestions('cb_place_of_delivery');
-
-                // If there's already text in either field, retrigger the search immediately
-                // so the dropdown reflects the new include_country state
-                var receiptVal = $('#cb_place_of_receipt').val().trim();
-                var deliveryVal = $('#cb_place_of_delivery').val().trim();
-                if (receiptVal.length >= 2) {
-                    $('#cb_place_of_receipt').trigger('input');
-                }
-                if (deliveryVal.length >= 2) {
-                    $('#cb_place_of_delivery').trigger('input');
-                }
-            });
-
-            // ── Booking step renderer ─────────────────────────────────────────────────
-            function renderBookingSteps(completedSteps, activeStep) {
-                var $list = $('#cbStepList').empty();
-                BOOKING_STEPS.forEach(function(def) {
-                    var done = completedSteps.find(function(s) {
-                        return s.step === def.step;
-                    });
-                    var iconClass, badgeClass, statusText, remarkHtml = '';
-                    var isActive = (activeStep !== undefined && def.step === activeStep);
-
-                    if (isActive) {
-                        iconClass = 'fas fa-spinner fa-spin text-primary';
-                        badgeClass = 'badge-primary';
-                        statusText = 'Processing...';
-                    } else if (!done) {
-                        iconClass = 'fas fa-circle text-secondary';
-                        badgeClass = 'badge-secondary';
-                        statusText = 'Pending';
-                    } else if (done.status === 'Success') {
-                        iconClass = 'fas fa-check-circle text-success';
-                        badgeClass = 'badge-success';
-                        statusText = 'Success';
-                        if (done.remark)
-                            remarkHtml = '<small class="text-muted d-block mt-1">' + done.remark +
-                            '</small>';
-                    } else if (done.status === 'Skipped') {
-                        iconClass = 'fas fa-minus-circle text-secondary';
-                        badgeClass = 'badge-secondary';
-                        statusText = 'Skipped';
-                    } else {
-                        iconClass = 'fas fa-times-circle text-danger';
-                        badgeClass = 'badge-danger';
-                        statusText = 'Failed';
-                        if (done.remark)
-                            remarkHtml = '<small class="text-danger d-block mt-1">' + done.remark +
-                            '</small>';
+                .done(function(res) {
+                    var $s = $('#cb_service_template').empty().append(
+                        '<option value=""></option>');
+                    if (res.success && res.templates && res.templates.length) {
+                        $.each(res.templates, function(i, t) {
+                            $s.append($('<option>', {
+                                value: t.Name,
+                                text: t.Name
+                            }));
+                        });
+                        $s.val(savedState.serviceTemplate);
                     }
-
-                    $list.append(
-                        '<div class="list-group-item py-2">' +
-                        '<div class="d-flex align-items-center justify-content-between">' +
-                        '<div><i class="' + iconClass + ' mr-2"></i>' +
-                        '<strong>Step ' + def.step + ':</strong> ' + def.label +
-                        remarkHtml + '</div>' +
-                        '<span class="badge ' + badgeClass + '">' + statusText + '</span>' +
-                        '</div></div>'
-                    );
                 });
+            $('#cb_bill_to_party').val(savedState.billToPartyText);
+            $('#cb_bill_to_party_code').val(savedState.billToPartyCode);
+            $('#cb_forwarder').val(savedState.forwarderText);
+            $('#cb_forwarder_code').val(savedState.forwarderCode);
+            $('#cb_include_country').prop('checked', savedState.includeCountry);
+            $('#cb_place_of_receipt').val(savedState.receiptText);
+            $('#cb_place_of_receipt_code').val(savedState.receiptCode);
+            $('#cb_place_of_receipt_id').val(savedState.receiptId);
+            $('#cb_place_of_delivery').val(savedState.deliveryText);
+            $('#cb_place_of_delivery_code').val(savedState.deliveryCode);
+            $('#cb_place_of_delivery_id').val(savedState.deliveryId);
+            return;
+        }
+
+        // Fresh open — full reset
+        modal.data('last-quote-no', quoteNo);
+        resetCreateBookingForm();
+        setDropdownLoading('#cb_service_template');
+        $.get('{{ route('
+                quotation.booking.service - templates ') }}', {
+                    quotation_id: quotationId
+                })
+            .done(function(res) {
+                var $s = $('#cb_service_template').empty().append('<option value=""></option>');
+                if (res.success && res.templates && res.templates.length) {
+                    $.each(res.templates, function(i, t) {
+                        $s.append($('<option>', {
+                            value: t.Name,
+                            text: t.Name
+                        }));
+                    });
+                } else {
+                    var msg = res.code === 'NO_TEMPLATES_CONFIGURED' ?
+                        'No templates available for this office.' : (res.message ||
+                            'No templates available for this office.');
+                    $s.append('<option value="" disabled>No templates available</option>');
+                    $('#cb_service_template').closest('.form-group').append(
+                        '<small class="text-danger cb-config-warning mt-1 d-block">' +
+                        '<i class="fas fa-exclamation-triangle mr-1"></i>' + msg +
+                        '</small>'
+                    );
+                    $('#submitCreateBookingBtn').prop('disabled', true);
+                }
+            })
+            .fail(function() {
+                $('#cb_service_template').empty().append(
+                    '<option value="" disabled>Failed to load — try again</option>');
+            });
+    });
+
+    // ── Create Booking modal — on hide ───────────────────────────────────────
+    $('#createBookingModal').on('hidden.bs.modal', function() {
+        $('.location-suggestions').remove();
+        if ($('#cbProgressSuccess').hasClass('d-none')) {} else {
+            $('#createBookingModal').removeData('saved-form-state').removeData('last-quote-no');
+        }
+        $('#createBookingForm').removeClass('d-none cb-locked');
+        $('#cbProgressPanel').addClass('d-none');
+        $('#submitCreateBookingBtn, #cancelCreateBookingBtn').removeClass('d-none');
+        $('#cbCloseBtn').addClass('d-none');
+        $('#cbEditLink').addClass('d-none');
+        $('#cbStepList').empty();
+        $('#cbProgressError, #cbProgressSuccess').addClass('d-none');
+        $('#cb_service_template').prop('disabled', false);
+        $('#cb_bill_to_party, #cb_forwarder').val('').prop('disabled', false);
+        $('#cb_bill_to_party_code, #cb_forwarder_code').val('');
+        $('#cb_include_country, #cb_place_of_receipt, #cb_place_of_delivery').prop('disabled',
+            false);
+    });
+
+    $('#cbCloseBtn, #cbXBtn, #cancelCreateBookingBtn').on('click', function(e) {
+        e.preventDefault();
+        $('#createBookingModal').modal('hide');
+    });
+
+    $('#cbEditLink').on('click', function(e) {
+        e.preventDefault();
+        var savedState = $('#createBookingModal').data('saved-form-state');
+
+        // Show the form panel, hide the progress panel
+        $('#createBookingForm').removeClass('cb-locked d-none');
+        $('#cbProgressPanel').addClass('d-none');
+        $('#submitCreateBookingBtn, #cancelCreateBookingBtn').removeClass('d-none');
+        $('#cbCloseBtn').addClass('d-none');
+        $(this).addClass('d-none');
+
+        // Re-enable all fields
+        $('#cb_service_template').prop('disabled', false);
+        $('#cb_bill_to_party, #cb_forwarder').prop('disabled', false);
+        $('#cb_include_country, #cb_place_of_receipt, #cb_place_of_delivery').prop('disabled',
+            false);
+
+        // Restore saved values if available
+        if (savedState) {
+            $('#cb_bill_to_party').val(savedState.billToPartyText);
+            $('#cb_bill_to_party_code').val(savedState.billToPartyCode);
+            $('#cb_forwarder').val(savedState.forwarderText);
+            $('#cb_forwarder_code').val(savedState.forwarderCode);
+            $('#cb_include_country').prop('checked', savedState.includeCountry);
+            $('#cb_place_of_receipt').val(savedState.receiptText);
+            $('#cb_place_of_receipt_code').val(savedState.receiptCode);
+            $('#cb_place_of_receipt_id').val(savedState.receiptId);
+            $('#cb_place_of_delivery').val(savedState.deliveryText);
+            $('#cb_place_of_delivery_code').val(savedState.deliveryCode);
+            $('#cb_place_of_delivery_id').val(savedState.deliveryId);
+        }
+    });
+
+    // ── Booking form helpers ──────────────────────────────────────────────────
+    function resetCreateBookingForm() {
+        $('#cb_service_template').empty().append('<option value=""></option>').prop('disabled', false);
+        $('#cb_bill_to_party, #cb_forwarder').val('').prop('disabled', false);
+        $('#cb_bill_to_party_code, #cb_forwarder_code').val('');
+        $('#cb_include_country').prop('checked', false).prop('disabled', false);
+        $('#cb_place_of_receipt, #cb_place_of_delivery').val('').prop('disabled', false);
+        $('#cb_place_of_receipt_code, #cb_place_of_receipt_id').val('');
+        $('#cb_place_of_delivery_code, #cb_place_of_delivery_id').val('');
+        $('.location-suggestions, .party-suggestions').remove();
+        $('#createBookingForm').removeClass('cb-locked');
+        $('#cbEditLink').addClass('d-none');
+        $('#submitCreateBookingBtn').prop('disabled', false);
+        $('.cb-config-warning').remove();
+    }
+
+    function setDropdownLoading(selector) {
+        $(selector).empty().append('<option value="" disabled selected>Loading...</option>');
+    }
+
+    // ── Location autocomplete ─────────────────────────────────────────────────
+    function setupLocationAutocomplete(inputId, codeId, idHiddenId) {
+        var debounceTimer = null;
+
+        $('#' + inputId).on('input', function() {
+                var query = $(this).val().trim();
+                clearTimeout(debounceTimer);
+                removeSuggestions(inputId);
+                if (query.length < 2) return;
+
+                debounceTimer = setTimeout(function() {
+                    var modal = $('#createBookingModal');
+                    var countryCode = (inputId === 'cb_place_of_receipt') ?
+                        modal.data('origin-country') :
+                        modal.data('destination-country');
+
+                    $.get('{{ route('
+                            quotation.booking.locations ') }}', {
+                                filter: query,
+                                include_country: $('#cb_include_country').is(':checked') ? 1 : 0,
+                                country_code: $('#cb_include_country').is(':checked') ? (
+                                    countryCode || '') : ''
+                            })
+                        .done(function(res) {
+                            removeSuggestions(inputId);
+                            if (!res.success || !res.locations || !res.locations.length)
+                                return;
+
+                            var $input = $('#' + inputId);
+                            var $list = $('<ul>', {
+                                class: 'location-suggestions list-group',
+                                css: {
+                                    position: 'absolute',
+                                    zIndex: 9999,
+                                    width: $input.outerWidth(),
+                                    maxHeight: '200px',
+                                    overflowY: 'auto',
+                                    border: '1px solid #ced4da',
+                                    borderRadius: '0 0 4px 4px',
+                                    boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
+                                    background: '#fff',
+                                    marginTop: '-1px'
+                                }
+                            }).on('mousedown', function(e) {
+                                e.preventDefault();
+                            });
+
+                            $.each(res.locations, function(i, loc) {
+                                $('<li>', {
+                                        class: 'list-group-item list-group-item-action',
+                                        css: {
+                                            cursor: 'pointer',
+                                            padding: '0.4rem 0.75rem',
+                                            fontSize: '0.875rem'
+                                        },
+                                        text: loc.LocationName + (loc
+                                            .LocationType ? ' (' + loc
+                                            .LocationType + ')' : '')
+                                    })
+                                    .on('mousedown', function(e) {
+                                        e.preventDefault();
+                                        $('#' + inputId).val(
+                                            loc.LocationName + (loc
+                                                .LocationType ? ' (' + loc
+                                                .LocationType + ')' : '')
+                                        );
+                                        $('#' + codeId).val(loc.LocationCode);
+                                        $('#' + idHiddenId).val(loc.LocationID);
+                                        removeSuggestions(inputId);
+                                    })
+                                    .appendTo($list);
+                            });
+
+                            $input.closest('.form-group').css('position', 'relative')
+                                .append($list);
+                        })
+                        .fail(function(xhr) {
+                            console.error('Location search failed:', xhr);
+                        });
+                }, 300);
+            })
+            .on('blur', function() {
+                setTimeout(function() {
+                    removeSuggestions(inputId);
+                }, 200);
+            });
+    }
+
+    // ── Party search autocomplete (Bill To Party & Forwarder) ─────────────────
+    function setupPartyAutocomplete(inputId, codeId, fetchUrl, teamId) {
+        var debounceTimer = null;
+
+        $('#' + inputId).on('input', function() {
+                var query = $(this).val().trim();
+                clearTimeout(debounceTimer);
+                removePartySuggestions(inputId);
+                if (query.length < 3) return;
+
+                debounceTimer = setTimeout(function() {
+                    $.get(fetchUrl, {
+                            team_id: (typeof teamId === 'function') ? teamId() : teamId,
+                            filter: query
+                        })
+                        .done(function(res) {
+                            removePartySuggestions(inputId);
+                            if (!res.success || !res.parties || !res.parties.length) return;
+
+                            var $input = $('#' + inputId);
+                            var $list = $('<ul>', {
+                                class: 'party-suggestions list-group',
+                                css: {
+                                    position: 'absolute',
+                                    zIndex: 9999,
+                                    width: $input.outerWidth(),
+                                    maxHeight: '200px',
+                                    overflowY: 'auto',
+                                    border: '1px solid #ced4da',
+                                    borderRadius: '0 0 4px 4px',
+                                    boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
+                                    background: '#fff',
+                                    marginTop: '-1px'
+                                }
+                            }).on('mousedown', function(e) {
+                                e.preventDefault();
+                            });
+
+                            $.each(res.parties, function(i, p) {
+                                $('<li>', {
+                                        class: 'list-group-item list-group-item-action',
+                                        css: {
+                                            cursor: 'pointer',
+                                            padding: '0.4rem 0.75rem',
+                                            fontSize: '0.875rem'
+                                        },
+                                        text: p.PartyCode + ' — ' + p.PartyName
+                                    })
+                                    .on('mousedown', function(e) {
+                                        e.preventDefault();
+                                        $('#' + inputId).val(p.PartyCode +
+                                            ' — ' + p.PartyName);
+                                        $('#' + codeId).val(p.PartyCode);
+                                        removePartySuggestions(inputId);
+                                    })
+                                    .appendTo($list);
+                            });
+
+                            $input.closest('.form-group').css('position', 'relative')
+                                .append($list);
+                        })
+                        .fail(function(xhr) {
+                            console.error('Party search failed:', xhr);
+                        });
+                }, 300);
+            })
+            .on('blur', function() {
+                setTimeout(function() {
+                    removePartySuggestions(inputId);
+                }, 200);
+            });
+    }
+
+    function removePartySuggestions(inputId) {
+        $('#' + inputId).closest('.form-group').find('.party-suggestions').remove();
+    }
+
+    function removeSuggestions(inputId) {
+        $('#' + inputId).closest('.form-group').find('.location-suggestions').remove();
+    }
+
+    setupLocationAutocomplete('cb_place_of_receipt', 'cb_place_of_receipt_code', 'cb_place_of_receipt_id');
+    setupLocationAutocomplete('cb_place_of_delivery', 'cb_place_of_delivery_code',
+        'cb_place_of_delivery_id');
+
+
+    setupPartyAutocomplete(
+        'cb_bill_to_party',
+        'cb_bill_to_party_code',
+        '{{ route('
+        quotation.booking.bill - to - parties ') }}',
+        function() {
+            return $('#createBookingModal').data('team-id');
+        }
+    );
+    setupPartyAutocomplete(
+        'cb_forwarder',
+        'cb_forwarder_code',
+        '{{ route('
+        quotation.booking.forwarders ') }}',
+        function() {
+            return $('#createBookingModal').data('team-id');
+        }
+    );
+
+    $('#cb_include_country').on('change', function() {
+        // Only clear the hidden code/id fields so a re-search is triggered on next input.
+        // Do NOT clear the visible text inputs — the user typed those and should keep them.
+        // Do NOT clear if the fields are already empty (nothing to invalidate).
+        $('#cb_place_of_receipt_code, #cb_place_of_receipt_id').val('');
+        $('#cb_place_of_delivery_code, #cb_place_of_delivery_id').val('');
+
+        // Remove any open suggestion dropdowns since the filter has changed
+        removeSuggestions('cb_place_of_receipt');
+        removeSuggestions('cb_place_of_delivery');
+
+        // If there's already text in either field, retrigger the search immediately
+        // so the dropdown reflects the new include_country state
+        var receiptVal = $('#cb_place_of_receipt').val().trim();
+        var deliveryVal = $('#cb_place_of_delivery').val().trim();
+        if (receiptVal.length >= 2) {
+            $('#cb_place_of_receipt').trigger('input');
+        }
+        if (deliveryVal.length >= 2) {
+            $('#cb_place_of_delivery').trigger('input');
+        }
+    });
+
+    // ── Booking step renderer ─────────────────────────────────────────────────
+    function renderBookingSteps(completedSteps, activeStep) {
+        var $list = $('#cbStepList').empty();
+        BOOKING_STEPS.forEach(function(def) {
+            var done = completedSteps.find(function(s) {
+                return s.step === def.step;
+            });
+            var iconClass, badgeClass, statusText, remarkHtml = '';
+            var isActive = (activeStep !== undefined && def.step === activeStep);
+
+            if (isActive) {
+                iconClass = 'fas fa-spinner fa-spin text-primary';
+                badgeClass = 'badge-primary';
+                statusText = 'Processing...';
+            } else if (!done) {
+                iconClass = 'fas fa-circle text-secondary';
+                badgeClass = 'badge-secondary';
+                statusText = 'Pending';
+            } else if (done.status === 'Success') {
+                iconClass = 'fas fa-check-circle text-success';
+                badgeClass = 'badge-success';
+                statusText = 'Success';
+                if (done.remark)
+                    remarkHtml = '<small class="text-muted d-block mt-1">' + done.remark +
+                    '</small>';
+            } else if (done.status === 'Skipped') {
+                iconClass = 'fas fa-minus-circle text-secondary';
+                badgeClass = 'badge-secondary';
+                statusText = 'Skipped';
+            } else {
+                iconClass = 'fas fa-times-circle text-danger';
+                badgeClass = 'badge-danger';
+                statusText = 'Failed';
+                if (done.remark)
+                    remarkHtml = '<small class="text-danger d-block mt-1">' + done.remark +
+                    '</small>';
             }
 
-            // ── Submit Create Booking ─────────────────────────────────────────────────
-            $('#submitCreateBookingBtn').on('click', function() {
-                var $btn = $(this);
-                var quotationId = $('#createBookingModal').data('quotation-id');
-                var bookingNo = $('#createBookingModal').data('booking-no');
-                var serviceTemplate = $('#cb_service_template').val();
-                var billToParty = $('#cb_bill_to_party_code').val();
-                var forwarder = $('#cb_forwarder_code').val();
-                var placeOfReceipt = $('#cb_place_of_receipt_code').val();
-                var placeOfDelivery = $('#cb_place_of_delivery_code').val();
+            $list.append(
+                '<div class="list-group-item py-2">' +
+                '<div class="d-flex align-items-center justify-content-between">' +
+                '<div><i class="' + iconClass + ' mr-2"></i>' +
+                '<strong>Step ' + def.step + ':</strong> ' + def.label +
+                remarkHtml + '</div>' +
+                '<span class="badge ' + badgeClass + '">' + statusText + '</span>' +
+                '</div></div>'
+            );
+        });
+    }
 
-                var errors = [];
-                if (!serviceTemplate) errors.push('Service Template');
-                if (!billToParty) errors.push('Bill To Party');
-                if (!forwarder) errors.push('Forwarder');
-                if (!placeOfReceipt) errors.push('Place of Receipt');
-                if (!placeOfDelivery) errors.push('Place of Delivery');
+    // ── Submit Create Booking ─────────────────────────────────────────────────
+    $('#submitCreateBookingBtn').on('click', function() {
+        var $btn = $(this);
+        var quotationId = $('#createBookingModal').data('quotation-id');
+        var bookingNo = $('#createBookingModal').data('booking-no');
+        var serviceTemplate = $('#cb_service_template').val();
+        var billToParty = $('#cb_bill_to_party_code').val();
+        var forwarder = $('#cb_forwarder_code').val();
+        var placeOfReceipt = $('#cb_place_of_receipt_code').val();
+        var placeOfDelivery = $('#cb_place_of_delivery_code').val();
 
-                if (errors.length) {
-                    alert('Please complete the following required fields:\n• ' + errors.join('\n• '));
+        var errors = [];
+        if (!serviceTemplate) errors.push('Service Template');
+        if (!billToParty) errors.push('Bill To Party');
+        if (!forwarder) errors.push('Forwarder');
+        if (!placeOfReceipt) errors.push('Place of Receipt');
+        if (!placeOfDelivery) errors.push('Place of Delivery');
+
+        if (errors.length) {
+            alert('Please complete the following required fields:\n• ' + errors.join('\n• '));
+            return;
+        }
+
+        // Save form state so it can be restored if booking fails
+        var _formState = {
+            serviceTemplate: serviceTemplate,
+            billToPartyText: $('#cb_bill_to_party').val(),
+            billToPartyCode: billToParty,
+            forwarderText: $('#cb_forwarder').val(),
+            forwarderCode: forwarder,
+            includeCountry: $('#cb_include_country').is(':checked'),
+            receiptText: $('#cb_place_of_receipt').val(),
+            receiptCode: placeOfReceipt,
+            receiptId: $('#cb_place_of_receipt_id').val(),
+            deliveryText: $('#cb_place_of_delivery').val(),
+            deliveryCode: placeOfDelivery,
+            deliveryId: $('#cb_place_of_delivery_id').val(),
+        };
+        $('#createBookingModal').data('saved-form-state', _formState);
+        // Persist to sessionStorage so state survives page refresh
+        try {
+            sessionStorage.setItem('cbFormState_' + quotationId, JSON.stringify(_formState));
+        } catch (e) {}
+
+
+        // Disable button to prevent double submission
+        $btn.prop('disabled', true).html(
+            '<i class="fas fa-spinner fa-spin mr-1"></i> Processing...');
+
+        $('#createBookingForm').addClass('d-none');
+        $('#cbProgressPanel').removeClass('d-none');
+        $('#submitCreateBookingBtn, #cancelCreateBookingBtn').addClass('d-none');
+        $('#cbEditLink').addClass('d-none');
+        $('#cbProgressError, #cbProgressSuccess').addClass('d-none');
+        renderBookingSteps([], 0);
+
+        $.ajax({
+            url: '{{ route('
+            quotation.process - booking ') }}',
+            type: 'POST',
+            data: {
+                _token: '{{ csrf_token() }}',
+                id: quotationId, // ← UUID — used by controller to fetch the record
+                booking_no: bookingNo, // ← kept for logging only
+                service_template: serviceTemplate,
+                bill_to_party: billToParty,
+                forwarder: forwarder,
+                include_country: $('#cb_include_country').is(':checked') ? 1 : 0,
+                place_of_receipt: placeOfReceipt,
+                place_of_delivery: placeOfDelivery
+            },
+            success: function(res) {
+                renderBookingSteps(res.steps || []);
+
+                if (res.success) {
+                    var msg = '<i class="fas fa-check-circle mr-2"></i>' +
+                        'All steps completed. Booking has been created in SCM.';
+                    if (res.scm_booking_no)
+                        msg += '<br><strong class="mt-2 d-block">SCM Booking No: ' + res
+                        .scm_booking_no + '</strong>';
+                    if (res.scm_booking_id)
+                        msg += '<strong>SCM Booking ID: ' + res.scm_booking_id +
+                        '</strong>';
+                    $('#cbProgressSuccess').html(msg).removeClass('d-none');
+                    $('#createBookingModal').removeData('saved-form-state').removeData(
+                        'last-quote-no');
+                    try {
+                        sessionStorage.removeItem('cbFormState_' + quotationId);
+                    } catch (e) {}
+                    table.ajax.reload(null, false);
+                } else {
+                    var failedStep = (res.steps || []).find(function(s) {
+                        return s.status === 'Failed';
+                    });
+                    $('#cbProgressError')
+                        .html('<strong>' + (res.failed_label || 'Step') +
+                            ' failed:</strong> ' +
+                            (failedStep ? failedStep.remark : 'Unknown error'))
+                        .removeClass('d-none');
+                    table.ajax.reload(null, false);
+                    $('#cbEditLink').removeClass('d-none');
+                }
+            },
+            error: function(xhr) {
+                var msg = 'An unexpected error occurred.';
+                var json = xhr.responseJSON;
+                if (json) {
+                    if (json.errors) {
+                        // Laravel validation (422)
+                        msg = Object.values(json.errors).flat().join('<br>');
+                    } else if (json.message) {
+                        msg = json.message;
+                    }
+                } else if (xhr.status === 0) {
+                    msg = 'Connection lost. Please check your network and try again.';
+                } else if (xhr.status >= 500) {
+                    msg = 'Server error (' + xhr.status + '). Please contact support.';
+                }
+                $('#cbProgressError').html(msg).removeClass('d-none');
+                if (json?.steps) renderBookingSteps(json.steps);
+                $('#cbEditLink').removeClass('d-none');
+            },
+            complete: function() {
+                $btn.prop('disabled', false).html('Create');
+                $('#cbCloseBtn').removeClass('d-none');
+            }
+        });
+    });
+
+    // ── CRM Sync modal ────────────────────────────────────────────────────────
+    $('#btnOpenCrmSync').on('click', function() {
+        $('#crmSyncResult').html('');
+        $('#crmSyncProgress').addClass('d-none');
+        $('#crmDryRun').prop('checked', false);
+        $('#crmLimit, #crmBooking').val('');
+        $('#crmSyncModal').modal('show');
+    });
+
+    $(document).on('click', '#crmSyncModal .close, #crmSyncModal .modal-footer .btn-secondary',
+        function(e) {
+            e.preventDefault();
+            $('#crmSyncModal').modal('hide');
+        }
+    );
+    $(document).on('click',
+        '#quotationReportModal .close, #quotationReportModal .modal-footer .btn-secondary',
+        function(e) {
+            e.preventDefault();
+            $('#quotationReportModal').modal('hide');
+        }
+    );
+
+    $('#btnRunCrmSync').on('click', function() {
+        var btn = $(this);
+        var dryRun = $('#crmDryRun').is(':checked') ? 1 : 0;
+        var limit = $('#crmLimit').val().trim();
+        var booking = $('#crmBooking').val().trim();
+
+        btn.prop('disabled', true);
+        $('#crmSyncResult').html('');
+
+        // ── Live progress steps ───────────────────────────────────────────────
+        $('#crmSyncProgress').removeClass('d-none').html(
+            '<div class="list-group" id="crmStepList">' +
+            '<div class="list-group-item py-2" id="crm-step-connect">' +
+            '<i class="fas fa-spinner fa-spin text-primary mr-2"></i>' +
+            '<strong>Connecting to CRM...</strong>' +
+            '</div>' +
+            '<div class="list-group-item py-2 text-muted" id="crm-step-fetch">' +
+            '<i class="fas fa-circle text-secondary mr-2"></i>' +
+            'Fetching records from CRM (last 24 hrs)' +
+            '</div>' +
+            '<div class="list-group-item py-2 text-muted" id="crm-step-sync">' +
+            '<i class="fas fa-circle text-secondary mr-2"></i>' +
+            'Syncing to local database' +
+            '</div>' +
+            '<div class="list-group-item py-2 text-muted" id="crm-step-verify">' +
+            '<i class="fas fa-circle text-secondary mr-2"></i>' +
+            'Verifying results' +
+            '</div>' +
+            '</div>'
+        );
+
+        // Simulate step progression while the request is in-flight
+        var stepDelay = 1800;
+        setTimeout(function() {
+            $('#crm-step-connect')
+                .html(
+                    '<i class="fas fa-check-circle text-success mr-2"></i><strong>Connected to CRM</strong>'
+                );
+            $('#crm-step-fetch')
+                .removeClass('text-muted')
+                .html(
+                    '<i class="fas fa-spinner fa-spin text-primary mr-2"></i><strong>Fetching records from CRM (last 24 hrs)...</strong>'
+                );
+        }, stepDelay);
+
+        setTimeout(function() {
+            $('#crm-step-fetch')
+                .html(
+                    '<i class="fas fa-check-circle text-success mr-2"></i><strong>Records fetched</strong>'
+                );
+            $('#crm-step-sync')
+                .removeClass('text-muted')
+                .html(
+                    '<i class="fas fa-spinner fa-spin text-primary mr-2"></i><strong>Syncing to local database...</strong>'
+                );
+        }, stepDelay * 2);
+
+        setTimeout(function() {
+            if ($('#crm-step-verify').hasClass('text-muted')) {
+                $('#crm-step-sync')
+                    .html(
+                        '<i class="fas fa-check-circle text-success mr-2"></i><strong>Sync complete</strong>'
+                    );
+                $('#crm-step-verify')
+                    .removeClass('text-muted')
+                    .html(
+                        '<i class="fas fa-spinner fa-spin text-primary mr-2"></i><strong>Verifying results...</strong>'
+                    );
+            }
+        }, stepDelay * 3);
+
+        $.ajax({
+            url: '{{ route('
+            crm.sync.run ') }}',
+            type: 'POST',
+            timeout: 120000,
+            data: {
+                _token: '{{ csrf_token() }}',
+                dry_run: dryRun,
+                limit: limit || null,
+                booking: booking || null
+            },
+            success: function(res) {
+                // Mark all steps done
+                $('#crmStepList .list-group-item').each(function() {
+                    if ($(this).find('.fa-spinner').length) {
+                        $(this).html(
+                            '<i class="fas fa-check-circle text-success mr-2"></i>' +
+                            '<strong>' + $(this).text().trim() + '</strong>'
+                        );
+                    }
+                });
+
+                $('#crmSyncProgress').addClass('d-none');
+
+                var s = res.summary;
+                var records = res.records || [];
+                var dryTag = res.dry_run ?
+                    ' <span class="badge badge-warning ml-1">DRY RUN</span>' :
+                    '';
+
+                // ── message-driven banner ─────────────────────────────────────
+                var html = '';
+
+                if (res.message === 'no_records') {
+                    html =
+                        '<div class="alert alert-warning mb-3 py-2">' +
+                        '<i class="fas fa-exclamation-circle mr-2"></i>' +
+                        '<strong>No records found.' + dryTag + '</strong> ' +
+                        'The CRM returned no records in the last 24 hrs for this office. ' +
+                        'If you expect records, update them in CRM first then run sync again.' +
+                        '</div>';
+                    $('#crmSyncResult').html(html);
                     return;
                 }
 
-                // Save form state so it can be restored if booking fails
-                var _formState = {
-                    serviceTemplate: serviceTemplate,
-                    billToPartyText: $('#cb_bill_to_party').val(),
-                    billToPartyCode: billToParty,
-                    forwarderText: $('#cb_forwarder').val(),
-                    forwarderCode: forwarder,
-                    includeCountry: $('#cb_include_country').is(':checked'),
-                    receiptText: $('#cb_place_of_receipt').val(),
-                    receiptCode: placeOfReceipt,
-                    receiptId: $('#cb_place_of_receipt_id').val(),
-                    deliveryText: $('#cb_place_of_delivery').val(),
-                    deliveryCode: placeOfDelivery,
-                    deliveryId: $('#cb_place_of_delivery_id').val(),
-                };
-                $('#createBookingModal').data('saved-form-state', _formState);
-                // Persist to sessionStorage so state survives page refresh
-                try {
-                    sessionStorage.setItem('cbFormState_' + quotationId, JSON.stringify(_formState));
-                } catch (e) {}
+                if (res.message === 'up_to_date') {
+                    html =
+                        '<div class="alert alert-success mb-3 py-2">' +
+                        '<i class="fas fa-check-double mr-2"></i>' +
+                        '<strong>Everything is up to date.' + dryTag + '</strong> ' +
+                        s.total +
+                        ' record(s) checked — all already match CRM, nothing to insert or update.' +
+                        '</div>' +
+                        '<div class="d-flex flex-wrap" style="gap:0.5rem;">' +
+                        '<span class="badge badge-secondary px-3 py-2" style="font-size:0.8rem;">' +
+                        '<i class="fas fa-database mr-1"></i> Checked: ' + s.total +
+                        '</span>' +
+                        '<span class="badge badge-light border px-3 py-2" style="font-size:0.8rem;">' +
+                        '<i class="fas fa-forward mr-1"></i> Skipped: ' + s.skipped +
+                        '</span>' +
+                        '</div>';
+                    $('#crmSyncResult').html(html);
+                    return;
+                }
 
+                // all_failed or changes_made — show full summary + table
+                var alertClass, icon, label;
+                if (res.message === 'all_failed') {
+                    alertClass = 'alert-danger';
+                    icon = 'times-circle';
+                    label = 'Sync failed — no changes were written';
+                } else if (res.success) {
+                    alertClass = 'alert-success';
+                    icon = 'check-circle';
+                    label = 'Sync completed successfully';
+                } else {
+                    alertClass = 'alert-warning';
+                    icon = 'exclamation-circle';
+                    label = 'Sync completed with some failures';
+                }
 
-                // Disable button to prevent double submission
-                $btn.prop('disabled', true).html(
-                    '<i class="fas fa-spinner fa-spin mr-1"></i> Processing...');
+                html +=
+                    '<div class="alert ' + alertClass + ' mb-3 py-2">' +
+                    '<i class="fas fa-' + icon + ' mr-2"></i>' +
+                    '<strong>' + label + '.' + dryTag + '</strong>' +
+                    '</div>';
 
-                $('#createBookingForm').addClass('d-none');
-                $('#cbProgressPanel').removeClass('d-none');
-                $('#submitCreateBookingBtn, #cancelCreateBookingBtn').addClass('d-none');
-                $('#cbEditLink').addClass('d-none');
-                $('#cbProgressError, #cbProgressSuccess').addClass('d-none');
-                renderBookingSteps([], 0);
+                // ── Summary badges ────────────────────────────────────────────
+                html +=
+                    '<div class="d-flex flex-wrap mb-3" style="gap:0.5rem;">' +
+                    '<span class="badge badge-secondary px-3 py-2" style="font-size:0.8rem;">' +
+                    '<i class="fas fa-database mr-1"></i> Total: ' + s.total + '</span>' +
+                    '<span class="badge badge-success px-3 py-2" style="font-size:0.8rem;">' +
+                    '<i class="fas fa-plus-circle mr-1"></i> Inserted: ' + s.inserted +
+                    '</span>' +
+                    '<span class="badge badge-info px-3 py-2" style="font-size:0.8rem;">' +
+                    '<i class="fas fa-pencil-alt mr-1"></i> Updated: ' + s.updated +
+                    '</span>' +
+                    '<span class="badge badge-light border px-3 py-2" style="font-size:0.8rem;">' +
+                    '<i class="fas fa-forward mr-1"></i> Skipped: ' + s.skipped +
+                    '</span>' +
+                    '<span class="badge ' + (s.failed > 0 ? 'badge-danger' :
+                        'badge-light border') +
+                    ' px-3 py-2" style="font-size:0.8rem;">' +
+                    '<i class="fas fa-times-circle mr-1"></i> Failed: ' + s.failed +
+                    '</span>' +
+                    '</div>';
 
-                $.ajax({
-                    url: '{{ route('quotation.process-booking') }}',
-                    type: 'POST',
-                    data: {
-                        _token: '{{ csrf_token() }}',
-                        id: quotationId, // ← UUID — used by controller to fetch the record
-                        booking_no: bookingNo, // ← kept for logging only
-                        service_template: serviceTemplate,
-                        bill_to_party: billToParty,
-                        forwarder: forwarder,
-                        include_country: $('#cb_include_country').is(':checked') ? 1 : 0,
-                        place_of_receipt: placeOfReceipt,
-                        place_of_delivery: placeOfDelivery
-                    },
-                    success: function(res) {
-                        renderBookingSteps(res.steps || []);
+                // ── Per-record table ──────────────────────────────────────────
+                // Build company lookup from verification.recent
+                var companyMap = {};
+                if (res.verification && res.verification.recent) {
+                    res.verification.recent.forEach(function(v) {
+                        companyMap[String(v.bookingno)] = v.companyname || '';
+                    });
+                }
 
-                        if (res.success) {
-                            var msg = '<i class="fas fa-check-circle mr-2"></i>' +
-                                'All steps completed. Booking has been created in SCM.';
-                            if (res.scm_booking_no)
-                                msg += '<br><strong class="mt-2 d-block">SCM Booking No: ' + res
-                                .scm_booking_no + '</strong>';
-                            if (res.scm_booking_id)
-                                msg += '<strong>SCM Booking ID: ' + res.scm_booking_id +
-                                '</strong>';
-                            $('#cbProgressSuccess').html(msg).removeClass('d-none');
-                            $('#createBookingModal').removeData('saved-form-state').removeData(
-                                'last-quote-no');
-                            try {
-                                sessionStorage.removeItem('cbFormState_' + quotationId);
-                            } catch (e) {}
-                            table.ajax.reload(null, false);
-                        } else {
-                            var failedStep = (res.steps || []).find(function(s) {
-                                return s.status === 'Failed';
-                            });
-                            $('#cbProgressError')
-                                .html('<strong>' + (res.failed_label || 'Step') +
-                                    ' failed:</strong> ' +
-                                    (failedStep ? failedStep.remark : 'Unknown error'))
-                                .removeClass('d-none');
-                            table.ajax.reload(null, false);
-                            $('#cbEditLink').removeClass('d-none');
-                        }
-                    },
-                    error: function(xhr) {
-                        var msg = 'An unexpected error occurred.';
-                        var json = xhr.responseJSON;
-                        if (json) {
-                            if (json.errors) {
-                                // Laravel validation (422)
-                                msg = Object.values(json.errors).flat().join('<br>');
-                            } else if (json.message) {
-                                msg = json.message;
-                            }
-                        } else if (xhr.status === 0) {
-                            msg = 'Connection lost. Please check your network and try again.';
-                        } else if (xhr.status >= 500) {
-                            msg = 'Server error (' + xhr.status + '). Please contact support.';
-                        }
-                        $('#cbProgressError').html(msg).removeClass('d-none');
-                        if (json?.steps) renderBookingSteps(json.steps);
-                        $('#cbEditLink').removeClass('d-none');
-                    },
-                    complete: function() {
-                        $btn.prop('disabled', false).html('Create');
-                        $('#cbCloseBtn').removeClass('d-none');
-                    }
-                });
-            });
+                function statusBadge(status) {
+                    var cfg = {
+                        inserted: {
+                            cls: 'badge-success',
+                            icon: 'plus-circle',
+                            label: 'Inserted'
+                        },
+                        updated: {
+                            cls: 'badge-info',
+                            icon: 'pencil-alt',
+                            label: 'Updated'
+                        },
+                        skipped: {
+                            cls: 'badge-secondary',
+                            icon: 'forward',
+                            label: 'Skipped'
+                        },
+                        failed: {
+                            cls: 'badge-danger',
+                            icon: 'times-circle',
+                            label: 'Failed'
+                        },
+                    };
+                    var c = cfg[status];
+                    if (!c) return '<span class="badge badge-light">' + esc(status) +
+                        '</span>';
+                    return '<span class="badge ' + c.cls + '">' +
+                        '<i class="fas fa-' + c.icon + ' mr-1"></i>' + c.label + '</span>';
+                }
 
-            // ── CRM Sync modal ────────────────────────────────────────────────────────
-            $('#btnOpenCrmSync').on('click', function() {
-                $('#crmSyncResult').html('');
+                if (records.length) {
+                    html +=
+                        '<div style="max-height:300px;overflow-y:auto;">' +
+                        '<table class="table table-sm table-bordered table-striped mb-0" style="font-size:0.8rem;">' +
+                        '<thead class="thead-light"><tr>' +
+                        '<th style="width:36px;" class="text-center">#</th>' +
+                        '<th style="width:110px;">Booking No</th>' +
+                        '<th>Company</th>' +
+                        '<th style="width:100px;" class="text-center">Status</th>' +
+                        '<th>Error</th>' +
+                        '</tr></thead><tbody>';
+
+                    records.forEach(function(r, idx) {
+                        var rowClass = r.status === 'failed' ?
+                            'class="table-danger"' : '';
+                        var company = esc(String(companyMap[String(r.bookingno)] ||
+                            '-'));
+                        var errorCell = r.error ? esc(String(r.error)) : '';
+                        html +=
+                            '<tr ' + rowClass + '>' +
+                            '<td class="text-center text-muted">' + (idx + 1) +
+                            '</td>' +
+                            '<td class="text-nowrap font-weight-bold">' + esc(
+                                String(r.bookingno || '-')) + '</td>' +
+                            '<td>' + company + '</td>' +
+                            '<td class="text-center">' + statusBadge(r.status) +
+                            '</td>' +
+                            '<td class="text-danger small">' + errorCell + '</td>' +
+                            '</tr>';
+                    });
+
+                    html += '</tbody></table></div>';
+                }
+
+                if (!res.dry_run && (s.inserted > 0 || s.updated > 0)) {
+                    table.ajax.reload(null, false);
+                }
+
+                $('#crmSyncResult').html(html);
+            },
+            error: function(xhr) {
                 $('#crmSyncProgress').addClass('d-none');
-                $('#crmDryRun').prop('checked', false);
-                $('#crmLimit, #crmBooking').val('');
-                $('#crmSyncModal').modal('show');
-                loadCrmHistory();
-            });
-
-            $(document).on('click', '#crmSyncModal .close, #crmSyncModal .modal-footer .btn-secondary',
-                function(e) {
-                    e.preventDefault();
-                    $('#crmSyncModal').modal('hide');
+                var msg = 'Request failed: ';
+                if (xhr.status === 0) {
+                    msg += 'Connection lost or request timed out.';
+                } else if (xhr.status >= 500) {
+                    msg += 'Server error (' + xhr.status + '). Check Laravel logs.';
+                } else {
+                    msg += (xhr.responseJSON?.message || xhr.statusText);
                 }
-            );
-            $(document).on('click',
-                '#quotationReportModal .close, #quotationReportModal .modal-footer .btn-secondary',
-                function(e) {
-                    e.preventDefault();
-                    $('#quotationReportModal').modal('hide');
-                }
-            );
-
-            $('#btnRunCrmSync').on('click', function() {
-                var btn = $(this);
-                var dryRun = $('#crmDryRun').is(':checked') ? 1 : 0;
-                var limit = $('#crmLimit').val().trim();
-                var booking = $('#crmBooking').val().trim();
-
-                btn.prop('disabled', true);
-                $('#crmSyncProgress').removeClass('d-none');
-                $('#crmSyncResult').html('');
-
-                $.ajax({
-                    url: '{{ route('crm.sync.run') }}',
-                    type: 'POST',
-                    data: {
-                        _token: '{{ csrf_token() }}',
-                        dry_run: dryRun,
-                        limit: limit || null,
-                        booking: booking || null
-                    },
-                    success: function(res) {
-                        var s = res.summary;
-                        var dryTag = res.dry_run ?
-                            '<span class="badge badge-warning ml-2">DRY RUN</span>' : '';
-                        var alertClass = res.success ? 'alert-success' : 'alert-danger';
-                        var icon = res.success ? 'check-circle' : 'times-circle';
-
-                        var html = '<div class="alert ' + alertClass + ' mb-3">' +
-                            '<i class="fas fa-' + icon + ' mr-2"></i>' +
-                            '<strong>Sync ' + (res.success ? 'completed' :
-                                'completed with failures') + '</strong>' +
-                            dryTag + '</div>' +
-                            '<table class="table table-sm table-bordered w-auto"><tbody>' +
-                            '<tr><th>Total CRM records</th><td>' + s.total + '</td></tr>' +
-                            '<tr class="table-success"><th>Inserted</th><td>' + s.inserted +
-                            '</td></tr>' +
-                            '<tr class="table-info"><th>Updated</th><td>' + s.updated +
-                            '</td></tr>' +
-                            '<tr><th>Skipped</th><td>' + s.skipped + '</td></tr>' +
-                            '<tr class="' + (s.failed > 0 ? 'table-danger' : '') + '">' +
-                            '<th>Failed</th><td>' + s.failed + '</td></tr>' +
-                            '</tbody></table>';
-
-                        if (res.errors && res.errors.length) {
-                            html +=
-                                '<h6 class="text-danger mt-3">Errors</h6><ul class="list-group">';
-                            res.errors.forEach(function(e) {
-                                html +=
-                                    '<li class="list-group-item list-group-item-danger">' +
-                                    '<strong>Booking #' + (e.bookingno || '-') +
-                                    '</strong>: ' + e.error +
-                                    '</li>';
-                            });
-                            html += '</ul>';
-                        }
-
-                        // Reload triggers dataSrc — cards update automatically
-                        if (!res.dry_run && (s.inserted > 0 || s.updated > 0))
-                            table.ajax.reload(null, false);
-
-                        $('#crmSyncResult').html(html);
-                        if (!res.dry_run) loadCrmHistory();
-                    },
-                    error: function(xhr) {
-                        $('#crmSyncResult').html(
-                            '<div class="alert alert-danger">Request failed: ' +
-                            (xhr.responseJSON?.message || xhr.statusText) + '</div>'
-                        );
-                    },
-                    complete: function() {
-                        btn.prop('disabled', false);
-                        $('#crmSyncProgress').addClass('d-none');
-                    }
-                });
-            });
-
-            // ── CRM Sync history ──────────────────────────────────────────────────────
-            function loadCrmHistory() {
-                $('#crmHistoryContainer').html(
-                    '<div class="text-muted small text-center py-2">' +
-                    '<i class="fas fa-spinner fa-spin mr-1"></i> Loading history...</div>'
+                $('#crmSyncResult').html(
+                    '<div class="alert alert-danger">' +
+                    '<i class="fas fa-times-circle mr-2"></i>' + msg +
+                    '</div>'
                 );
-                $('#crmHistoryMeta').text('');
-
-                $.ajax({
-                    url: '{{ route('crm.sync.history') }}',
-                    type: 'GET',
-                    success: function(res) {
-                        var history = res.history || [];
-                        if (!history.length) {
-                            $('#crmHistoryContainer').html(
-                                '<p class="text-muted small mb-0 text-center py-2">' +
-                                '<i class="fas fa-info-circle mr-1"></i> No sync runs recorded yet.</p>'
-                            );
-                            return;
-                        }
-
-                        $('#crmHistoryMeta').text('Last ' + history.length + ' run(s)');
-
-                        var rows = history.map(function(h) {
-                            var scopeTag = h.booking_no ?
-                                '<span class="badge badge-secondary ml-1">Booking #' + esc(
-                                    String(h.booking_no)) + '</span>' :
-                                (h.limit ? '<span class="badge badge-secondary ml-1">Limit ' + h
-                                    .limit + '</span>' : '');
-                            var failBadge = h.failed > 0 ?
-                                ' <span class="badge badge-danger">' + h.failed +
-                                ' failed</span>' :
-                                '';
-                            return '<tr>' +
-                                '<td class="text-nowrap">' + esc(h.run_at) + '</td>' +
-                                '<td>' + esc(h.triggered_by || '-') + '</td>' +
-                                '<td class="text-center">' + h.total + scopeTag + '</td>' +
-                                '<td class="text-center text-success font-weight-bold">' + h
-                                .inserted + '</td>' +
-                                '<td class="text-center text-info font-weight-bold">' + h
-                                .updated + '</td>' +
-                                '<td class="text-center">' + h.skipped + '</td>' +
-                                '<td class="text-center">' + h.failed + failBadge + '</td>' +
-                                '</tr>';
-                        }).join('');
-
-                        $('#crmHistoryContainer').html(
-                            '<div style="max-height:220px;overflow-y:auto;">' +
-                            '<table class="table table-sm table-bordered table-striped mb-0" style="font-size:0.8rem;">' +
-                            '<thead class="thead-light"><tr>' +
-                            '<th>Run At</th><th>By</th>' +
-                            '<th class="text-center">Total</th>' +
-                            '<th class="text-center">Ins.</th>' +
-                            '<th class="text-center">Upd.</th>' +
-                            '<th class="text-center">Skip</th>' +
-                            '<th class="text-center">Fail</th>' +
-                            '</tr></thead>' +
-                            '<tbody>' + rows + '</tbody>' +
-                            '</table></div>'
-                        );
-                    },
-                    error: function() {
-                        $('#crmHistoryContainer').html(
-                            '<p class="text-danger small mb-0">' +
-                            '<i class="fas fa-exclamation-circle mr-1"></i> Failed to load history.</p>'
-                        );
-                    }
-                });
+            },
+            complete: function() {
+                btn.prop('disabled', false);
+                $('#crmSyncProgress').addClass('d-none');
             }
+        });
+    });
 
-            function esc(str) {
-                if (!str) return '-';
-                return String(str)
-                    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-                    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-            }
+    function esc(str) {
+        if (!str) return '-';
+        return String(str)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
 
-        }); // end document.ready
-    </script>
+}); // end document.ready
+</script>
 @stop
