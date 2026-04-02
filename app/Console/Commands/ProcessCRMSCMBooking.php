@@ -66,10 +66,10 @@ class ProcessCRMSCMBooking extends Command
             $batchSize = 10; // can be configured via config
             $specificBooking = $this->option('booking');
 
-            Log::info("CRMSCM: Batch size set to {$batchSize}");
-            if ($specificBooking) {
-                Log::info("CRMSCM: Processing specific Booking ID: {$specificBooking}");
-            }
+            // Log::info("CRMSCM: Batch size set to {$batchSize}");
+            // if ($specificBooking) {
+            //     Log::info("CRMSCM: Processing specific Booking ID: {$specificBooking}");
+            // }
 
             // === FETCH RECORDS ===
             $records = $this->getRecordsToProcess($batchSize, $specificBooking);

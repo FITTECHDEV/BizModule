@@ -2086,12 +2086,12 @@ class QuotationController extends Controller
 
             $quotation = $quotationIdFromRequest
                 ? DB::table('Quote_QuotationInfo')
-                    ->where('ID', $quotationIdFromRequest)
-                    ->first(['ID', 'teamid', 'ServiceVerticalname', 'origincountry', 'destinationcountry', 'QuoteStatus', 'status'])
+                ->where('ID', $quotationIdFromRequest)
+                ->first(['ID', 'teamid', 'ServiceVerticalname', 'origincountry', 'destinationcountry', 'QuoteStatus', 'status'])
                 : DB::table('Quote_QuotationInfo')
-                    ->where('bookingno', $bookingNo)
-                    ->when($officeCodeFromRequest, fn($q) => $q->where('OfficeCode', $officeCodeFromRequest))
-                    ->first(['ID', 'teamid', 'ServiceVerticalname', 'origincountry', 'destinationcountry', 'QuoteStatus', 'status']);
+                ->where('bookingno', $bookingNo)
+                ->when($officeCodeFromRequest, fn($q) => $q->where('OfficeCode', $officeCodeFromRequest))
+                ->first(['ID', 'teamid', 'ServiceVerticalname', 'origincountry', 'destinationcountry', 'QuoteStatus', 'status']);
 
             $officeCode = 'Unknown';
             if ($quotation) {
@@ -3360,12 +3360,12 @@ class QuotationController extends Controller
             // EXECUTE STATUS UPDATE STORED PROCEDURE
             // ============================================
 
-           $inputJson = json_encode([
+            $inputJson = json_encode([
                 'OperationType' => 'QuotationStatusUpdate',
                 'SubmittedDatetime' => now()->format('YmdHis'),
                 'SubmittedBy' => $submittedBy,
                 'Action' => 'Edit',
-                'QuotationID' => $quotation->ID,  
+                'QuotationID' => $quotation->ID,
                 'Status' => $targetStatus,
                 'ReasonCode' => $reasonCode,
                 'ReasonRemark' => $reasonRemark
@@ -3871,26 +3871,6 @@ class QuotationController extends Controller
                 'modifiedOn2' => now(),
             ]);
 
-            // ── Insert version record — only columns that actually exist in Cust_DocumentDeails ──
-            // Actual schema: Id, DocumentType, ReferenceID, ReferenceNo,
-            //                SubmittedDate, VersionNo, FileName, Path, CreatedOn
-            // 'ReferenceType' does NOT exist — removed.
-            $nextVersion = DB::table('Cust_DocumentDeails')
-                ->where('ReferenceID', $quotation->ID)
-                ->where('DocumentType', 'TermsCondition')
-                ->max('VersionNo') ?? 0;
-
-            DB::table('Cust_DocumentDeails')->insert([
-                'Id' => DB::raw('NEWID()'),
-                'DocumentType' => 'TermsCondition',
-                'ReferenceID' => $quotation->ID,
-                'ReferenceNo' => (string) $bookingNo,
-                'SubmittedDate' => now(),
-                'VersionNo' => $nextVersion + 1,
-                'FileName' => $fileName,
-                'Path' => $filePath,
-                'CreatedOn' => now(),
-            ]);
 
             Log::info('saveTermsCondition - Success', [
                 'booking_no' => $bookingNo,
@@ -4193,13 +4173,13 @@ class QuotationController extends Controller
             ->select('Name', 'Description')
             ->get();
 
-        return response()->json([
+        $json = json_encode([
             'success' => true,
             'templates' => $templates
-        ]);
+        ], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+
+        return response($json, 200)->header('Content-Type', 'application/json');
     }
-
-
 
     public function getTermsTemplates(Request $request): JsonResponse
     {
@@ -4216,6 +4196,7 @@ class QuotationController extends Controller
                 ->update(['OfficeCode' => DB::raw("RTRIM(OfficeCode)")]);
 
             $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC dbo.sp_Quote_TermsandConditionList ?");
+            $stmt->setAttribute(\PDO::SQLSRV_ATTR_ENCODING, \PDO::SQLSRV_ENCODING_UTF8);
             $stmt->execute([$quotationId]);
 
             $templates = [];
@@ -4268,7 +4249,7 @@ class QuotationController extends Controller
 
                     $templates = array_map(fn($r) => (object) [
                         'Name' => ((array) $r)[$nameColumn] ?? '',
-                        'Description' => $descColumn ? (((array) $r)[$descColumn] ?? '') : '',
+                        'Description' => $descColumn ? base64_encode(((array) $r)[$descColumn] ?? '') : '',
                     ], $rows);
 
                     Log::info('getTermsTemplates - Templates found', [
@@ -4313,7 +4294,6 @@ class QuotationController extends Controller
             ], 500);
         }
     }
-
 
     /**
      * Load T&C templates via sp_Quote_CommunicationDetail_List.
@@ -6548,7 +6528,6 @@ class QuotationController extends Controller
                 'success' => false,
                 'message' => $result['Remarks'][0]['Remark'] ?? 'Failed to save customer details',
             ], 422);
-
         } catch (\Exception $e) {
             Log::error('saveCustomerDetails - Failed', [
                 'error' => $e->getMessage(),

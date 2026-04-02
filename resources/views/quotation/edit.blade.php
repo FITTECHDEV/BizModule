@@ -5940,7 +5940,7 @@
                             }
 
                             @if ($quotation->QuotationTCTemplate)
-                                const savedTemplateName =
+                                var savedTemplateName =
                                     '{{ addslashes($quotation->QuotationTCTemplate ?? '') }}';
                                 if (savedTemplateName && !$('#termsTemplateSelect').val()) {
                                     $('#termsTemplateSelect').val(savedTemplateName);

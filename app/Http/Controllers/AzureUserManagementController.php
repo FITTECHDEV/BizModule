@@ -2008,11 +2008,12 @@ FROM (
             // ====================================================================
             $modulesRaw = DB::connection('sqlsrv')
                 ->select("SELECT Id, Name, ApplicationId
-    FROM Azure_SoftwareMaster
-    WHERE IsActive = 1 AND IsDeleted = 0
-    AND Name != 'Odoo'
-    AND Name NOT LIKE '%UAT%'
-    ORDER BY Name");
+            FROM Azure_SoftwareMaster
+            WHERE IsActive = 1 AND IsDeleted = 0
+            AND Name != 'Odoo'
+            AND Name NOT LIKE '%UAT%'
+            AND Name NOT LIKE '%D365%'
+            ORDER BY Name");
 
             $modules = collect($modulesRaw)->map(function ($module) {
                 return (object) [

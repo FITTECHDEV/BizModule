@@ -3319,7 +3319,7 @@
                         .attr('readonly', true)
                         .css('pointer-events', 'none');
 
-                         $('#licenceTypeCode').val('NIL');
+                    $('#licenceTypeCode').val('NIL');
 
                     console.log('Global override: Set licence fields for overseas entity with NIL value');
                 } else {
@@ -3840,8 +3840,8 @@
                         .removeAttr('readonly')
                         .css('pointer-events', 'auto');
 
-                        // ADD THIS:
-                        $('#licenceTypeCode').val('NIL');
+                    // ADD THIS:
+                    $('#licenceTypeCode').val('NIL');
 
                     console.log(
                         'Form submit: overseas entity checked, license fields will submit with NIL'

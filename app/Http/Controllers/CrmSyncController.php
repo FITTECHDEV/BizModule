@@ -33,35 +33,48 @@ class CrmSyncController extends Controller
      */
     public function run(Request $request, CrmSyncService $sync)
     {
-        $dryRun    = (bool) $request->input('dry_run', 0);
-        $limit     = $request->input('limit') ? (int) $request->input('limit') : null;
+        $dryRun = (bool) $request->input('dry_run', 0);
+        $limit = $request->input('limit') ? (int) $request->input('limit') : null;
         $bookingNo = $request->input('booking') ?: null;
 
         $triggeredBy = Auth::user()->displayName ?? Auth::user()->Email ?? 'system';
 
         \Illuminate\Support\Facades\Log::info('CRM Sync - Triggered via web', [
-            'user'      => $triggeredBy,
-            'dry_run'   => $dryRun,
-            'limit'     => $limit,
-            'booking'   => $bookingNo,
+            'user' => $triggeredBy,
+            'dry_run' => $dryRun,
+            'limit' => $limit,
+            'booking' => $bookingNo,
         ]);
 
         $result = $sync->run($dryRun, $limit, $bookingNo, $triggeredBy);
 
-        $success = $result['failed'] === 0;
+        $total = $result['total'] ?? 0;
+        $inserted = $result['inserted'] ?? 0;
+        $updated = $result['updated'] ?? 0;
+        $skipped = $result['skipped'] ?? 0;
+        $failed = $result['failed'] ?? 0;
+
+        // Derive a semantic message — JS reacts to this, no hardcoded logic in the front-end
+        if ($total === 0) {
+            $message = 'no_records';
+        } elseif ($inserted === 0 && $updated === 0 && $failed === 0) {
+            $message = 'up_to_date';
+        } elseif ($failed > 0 && $inserted === 0 && $updated === 0) {
+            $message = 'all_failed';
+        } else {
+            $message = 'changes_made';
+        }
+
+        $success = $total > 0 && $failed === 0;
 
         return response()->json([
             'success' => $success,
             'dry_run' => $dryRun,
-            'summary' => [
-                'total'    => $result['total'],
-                'inserted' => $result['inserted'],
-                'updated'  => $result['updated'],
-                'skipped'  => $result['skipped'],
-                'failed'   => $result['failed'],
-            ],
-            'errors'       => $result['errors'],
-            'verification' => $result['verification'],
+            'message' => $message,
+            'summary' => compact('total', 'inserted', 'updated', 'skipped', 'failed'),
+            'errors' => $result['errors'] ?? [],
+            'verification' => $result['verification'] ?? null,
+            'records' => $result['records'] ?? [],
         ]);
     }
 
@@ -71,7 +84,7 @@ class CrmSyncController extends Controller
      */
     public function history(Request $request, CrmSyncService $sync)
     {
-        $limit   = min((int) $request->input('limit', 20), 50);
+        $limit = min((int) $request->input('limit', 20), 50);
         $history = $sync->getHistory($limit);
 
         return response()->json(['history' => $history]);

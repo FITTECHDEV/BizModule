@@ -2068,6 +2068,11 @@ class ClientPartyController extends Controller
 
         if (isset($d365Results['debtor'])) $payload['DebtorNo'] = $d365Results['debtor'];
         if (isset($d365Results['vendor'])) $payload['VendorNo'] = $d365Results['vendor'];
+        
+        // Ensure LicenceTypeValue is never null when passed to SP (Cust_PartyLicense.License_Code is NOT NULL)
+        $payload['LicenceTypeCode']  = !empty(trim($entity->LicenceTypeCode ?? ''))  ? $entity->LicenceTypeCode  : 'NIL';
+        $payload['LicenceTypeValue'] = !empty(trim($entity->LicenceTypeValue ?? '')) ? $entity->LicenceTypeValue : 'NIL';
+
 
         Log::info('Final SP payload prepared', ['payload' => $payload]);
 
