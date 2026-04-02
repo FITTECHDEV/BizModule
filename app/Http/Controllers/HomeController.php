@@ -256,22 +256,13 @@ class HomeController extends Controller
     private function getAzureOfficeData(?string $officeCode = null): array
     {
         try {
-            $email = Auth::user()->Email;
+            $identifier = Auth::user()->Email ?? Auth::user()->LoginID;
 
+            // REVERT TO THIS
             $azureUser = DB::table('Azure_Users')
-                ->where('userPrincipalName', $email)
+                ->where('userPrincipalName', $identifier)
                 ->whereNotNull('AzureId')
                 ->first();
-
-            if (!$azureUser) {
-                Log::info('No Azure record found for user', ['email' => $email]);
-                return [
-                    'modules'      => [],
-                    'otherOffices' => [],
-                    'baseOffice'   => null,
-                    'hasAzure'     => false,
-                ];
-            }
 
             $azureId    = $azureUser->AzureId;
             $office     = $officeCode ?? '';

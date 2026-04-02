@@ -3,33 +3,40 @@
 @section('title', 'Home-Dashboard')
 
 @section('content_top_nav_right')
-@if ($hasAzure && (count($otherOffices) > 0 || $baseOffice))
+@if ($baseOffice)
 <li class="nav-item d-flex align-items-center" style="gap: 6px; padding-right: 8px;">
     <small class="text-muted" style="white-space: nowrap;">
         <i class="fas fa-building mr-1"></i>Office:
     </small>
-    <form method="POST" action="{{ route('home.switch-office') }}" id="officeSwitcherForm" class="m-0">
-        @csrf
-        <select name="office_code" class="form-control form-control-sm" style="min-width: 160px;"
-            onchange="document.getElementById('officeSwitcherForm').submit()">
 
-            <option value="{{ $baseOffice }}"
-                {{ !$activeOfficeCode || $activeOfficeCode === $baseOffice ? 'selected' : '' }}>
-                {{ $baseOffice }} (Base)
-            </option>
+    @if (count($otherOffices) > 0)
+        <form method="POST" action="{{ route('home.switch-office') }}" id="officeSwitcherForm" class="m-0">
+            @csrf
+            <select name="office_code" class="form-control form-control-sm" style="min-width: 160px;"
+                onchange="document.getElementById('officeSwitcherForm').submit()">
 
-            @foreach ($otherOffices as $office)
-            @php
-            $code = $office['OfficeCode'] ?? ($office->OfficeCode ?? '');
-            $name = $office['OfficeName'] ?? ($office->OfficeName ?? $code);
-            @endphp
-            <option value="{{ $code }}" {{ $activeOfficeCode === $code ? 'selected' : '' }}>
-                {{ $name }}
-            </option>
-            @endforeach
+                <option value="{{ $baseOffice }}"
+                    {{ !$activeOfficeCode || $activeOfficeCode === $baseOffice ? 'selected' : '' }}>
+                    {{ $baseOffice }} (Base)
+                </option>
 
-        </select>
-    </form>
+                @foreach ($otherOffices as $office)
+                @php
+                    $code = is_array($office) ? ($office['OfficeCode'] ?? '') : ($office->OfficeCode ?? '');
+                    $name = is_array($office) ? ($office['OfficeName'] ?? $code) : ($office->OfficeName ?? $code);
+                @endphp
+                <option value="{{ trim($code) }}" {{ trim($activeOfficeCode) === trim($code) ? 'selected' : '' }}>
+                    {{ $name }}
+                </option>
+                @endforeach
+
+            </select>
+        </form>
+    @else
+        <span class="badge badge-secondary" style="font-size: 0.85rem; padding: 5px 10px;">
+            {{ $activeOfficeCode ?? $baseOffice }}
+        </span>
+    @endif
 </li>
 @endif
 @stop
@@ -38,92 +45,92 @@
 
 @section('css')
 <style>
-.service-card {
-    text-align: center;
-    box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
-    -moz-transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, .1);
-    -o-transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, .1);
-    transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, .1);
-    margin-bottom: 1rem;
-    height: 100%;
-}
-
-.service-card:hover {
-    -webkit-transform: translate(0, -8px);
-    -moz-transform: translate(0, -8px);
-    -ms-transform: translate(0, -8px);
-    -o-transform: translate(0, -8px);
-    transform: translate(0, -8px);
-    box-shadow: 0 40px 40px rgba(0, 0, 0, 0.2);
-}
-
-.service-card i {
-    font-size: 150px;
-    padding: 10% 0;
-    background-color: #f3f3f3;
-    color: #31D0D4;
-    box-shadow: 0 6px 6px rgba(0, 0, 0, 0.2);
-    position: relative;
-    z-index: 1;
-}
-
-.service-card:hover i {
-    color: #fff;
-    transition: all ease-in-out 0.5s;
-}
-
-.service-card i:after {
-    content: "";
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    transform: scaleY(0);
-    transform-origin: bottom center;
-    background: linear-gradient(to left, #8487E2, #31D0D4, #31D0D4, #8487E2);
-    z-index: -1;
-    transition: transform 0.5s;
-}
-
-.service-card:hover i::after {
-    transform: scaleY(1);
-}
-
-/* Mobile optimizations */
-@media (max-width: 575.98px) {
-    .widget-user-username {
-        font-size: 1.1rem !important;
+    .service-card {
+        text-align: center;
+        box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
+        -moz-transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, .1);
+        -o-transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, .1);
+        transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, .1);
+        margin-bottom: 1rem;
+        height: 100%;
     }
 
-    .widget-user-desc {
-        font-size: 0.85rem !important;
+    .service-card:hover {
+        -webkit-transform: translate(0, -8px);
+        -moz-transform: translate(0, -8px);
+        -ms-transform: translate(0, -8px);
+        -o-transform: translate(0, -8px);
+        transform: translate(0, -8px);
+        box-shadow: 0 40px 40px rgba(0, 0, 0, 0.2);
     }
 
-    .description-header {
-        font-size: 0.95rem !important;
+    .service-card i {
+        font-size: 150px;
+        padding: 10% 0;
+        background-color: #f3f3f3;
+        color: #31D0D4;
+        box-shadow: 0 6px 6px rgba(0, 0, 0, 0.2);
+        position: relative;
+        z-index: 1;
     }
 
-    .description-text {
-        font-size: 0.7rem !important;
+    .service-card:hover i {
+        color: #fff;
+        transition: all ease-in-out 0.5s;
     }
 
-    .widget-user-image img {
-        width: 65px !important;
-        height: 65px !important;
+    .service-card i:after {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        transform: scaleY(0);
+        transform-origin: bottom center;
+        background: linear-gradient(to left, #8487E2, #31D0D4, #31D0D4, #8487E2);
+        z-index: -1;
+        transition: transform 0.5s;
     }
-}
 
-/* Tablet optimizations */
-@media (min-width: 576px) and (max-width: 991.98px) {
-    .widget-user-username {
-        font-size: 1.3rem !important;
+    .service-card:hover i::after {
+        transform: scaleY(1);
     }
 
-    .widget-user-desc {
-        font-size: 0.95rem !important;
+    /* Mobile optimizations */
+    @media (max-width: 575.98px) {
+        .widget-user-username {
+            font-size: 1.1rem !important;
+        }
+
+        .widget-user-desc {
+            font-size: 0.85rem !important;
+        }
+
+        .description-header {
+            font-size: 0.95rem !important;
+        }
+
+        .description-text {
+            font-size: 0.7rem !important;
+        }
+
+        .widget-user-image img {
+            width: 65px !important;
+            height: 65px !important;
+        }
     }
-}
+
+    /* Tablet optimizations */
+    @media (min-width: 576px) and (max-width: 991.98px) {
+        .widget-user-username {
+            font-size: 1.3rem !important;
+        }
+
+        .widget-user-desc {
+            font-size: 0.95rem !important;
+        }
+    }
 </style>
 @stop
 
@@ -601,6 +608,6 @@
 
 @section('js')
 <script>
-// Optional: Add JavaScript for additional interactivity if needed
+    // Optional: Add JavaScript for additional interactivity if needed
 </script>
 @stop

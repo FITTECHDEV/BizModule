@@ -795,6 +795,10 @@
                                 <button type="button" class="btn btn-primary" id="openChargesModal">
                                     <i class="fas fa-plus"></i> Add Charges
                                 </button>
+
+                                <button type="button" class="btn btn-secondary ml-2" id="openCopyChargesBtn">
+                                    <i class="fas fa-copy"></i> Copy Charges
+                                </button>
                                 <a href="{{ route('quotation.index') }}" class="btn btn-link">Close</a>
 
                                 <div class="float-right d-flex align-items-center">
@@ -1413,6 +1417,407 @@
             </div>
         </div>
 
+   <div class="modal fade" id="copyChargesModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-xl cc-modal-dialog" role="document">
+        <div class="modal-content cc-modal-content">
+ 
+            {{-- ── Header ─────────────────────────────────────────── --}}
+            <div class="cc-modal-header">
+                <span class="cc-modal-title">Copy Charges</span>
+                <button type="button" class="cc-modal-close" data-dismiss="modal" aria-label="Close">
+                    &times;
+                </button>
+            </div>
+ 
+            {{-- ── Body ──────────────────────────────────────────── --}}
+            <div class="cc-modal-body">
+ 
+                {{-- ── 2-column info grid ──────────────────────────── --}}
+                <div class="cc-info-grid">
+                    {{-- LEFT COLUMN --}}
+                    <div class="cc-info-col">
+                        <div class="cc-info-row">
+                            <span class="cc-lbl">Service Type</span>
+                            <span class="cc-val" id="ccServiceType">{{ $quotation->SVName ?? '' }}</span>
+                        </div>
+                        <div class="cc-info-row">
+                            <span class="cc-lbl cc-lbl-required">*&nbsp;Job No</span>
+                            <div class="cc-input-group">
+                                <input type="text"
+                                       class="cc-input cc-input-highlight"
+                                       id="ccJobNo"
+                                       placeholder="Enter Job No…"
+                                       autocomplete="off">
+                                <button type="button" class="cc-search-icon-btn" id="ccJobNoSearchBtn">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="cc-info-row" id="ccClientRow" style="display:none;">
+                            <span class="cc-lbl">Client</span>
+                            <span class="cc-val" id="ccClient"></span>
+                        </div>
+                        <div class="cc-info-row" id="ccShipperRow" style="display:none;">
+                            <span class="cc-lbl">Shipper</span>
+                            <span class="cc-val" id="ccShipper"></span>
+                        </div>
+                        <div class="cc-info-row" id="ccPolRow" style="display:none;">
+                            <span class="cc-lbl">Port of Loading</span>
+                            <span class="cc-val" id="ccPortOfLoading"></span>
+                        </div>
+                    </div>
+ 
+                    {{-- RIGHT COLUMN --}}
+                    <div class="cc-info-col">
+                        <div class="cc-info-row">
+                            <span class="cc-lbl">Process Type</span>
+                            <span class="cc-val" id="ccProcessType">{{ $quotation->process ?? '' }}</span>
+                        </div>
+                        {{-- Spacer keeps right column aligned with left after Job No row --}}
+                        <div class="cc-info-row cc-info-row-spacer"></div>
+                        <div class="cc-info-row" id="ccConsigneeRow" style="display:none;">
+                            <span class="cc-lbl">Consignee</span>
+                            <span class="cc-val" id="ccConsignee"></span>
+                        </div>
+                        <div class="cc-info-row" id="ccPodRow" style="display:none;">
+                            <span class="cc-lbl">Port of Discharge</span>
+                            <span class="cc-val" id="ccPortOfDischarge"></span>
+                        </div>
+                    </div>
+                </div>
+                {{-- END info grid --}}
+ 
+                {{-- ── REVENUE CHARGES TABLE ───────────────────────── --}}
+                <div class="cc-section" id="ccJobDetails" style="display:none;">
+ 
+                    <div class="cc-section-header">
+                        <strong>Revenue Charges</strong>
+                        <span class="cc-section-summary" id="ccRevenueSummary">
+                            [ Total Record(s): 0 &nbsp; Total Amount: 0 KES ]
+                        </span>
+                    </div>
+ 
+                    <div class="cc-view-toggle-bar">
+                        <a href="#" class="cc-view-toggle cc-view-active"
+                           data-tbody="ccRevenueBody" data-mode="all">View: <strong>All</strong></a>
+                        <span class="cc-view-sep">|</span>
+                        <a href="#" class="cc-view-toggle"
+                           data-tbody="ccRevenueBody" data-mode="selected">Selected</a>
+                    </div>
+ 
+                    <div class="cc-table-wrap">
+                        <table class="cc-table" id="ccRevenueTable">
+                            <thead>
+                                <tr>
+                                    <th class="cc-col-chk">
+                                        <input type="checkbox" id="ccRevenueSelectAll" title="Select All">
+                                    </th>
+                                    <th class="cc-col-service">Service</th>
+                                    <th class="cc-col-activity">Activity</th>
+                                    <th class="cc-col-party">Debtor</th>
+                                    <th class="cc-col-code">Charge Code</th>
+                                    <th class="cc-col-desc">Charge Description</th>
+                                    <th class="cc-col-qty">Quantity</th>
+                                    <th class="cc-col-basedon">BasedOn</th>
+                                    <th class="cc-col-uom">UOM</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ccRevenueBody">
+                                <tr>
+                                    <td colspan="9" class="cc-empty-msg">
+                                        Enter a Job No to load charges
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+ 
+                    {{-- Revenue pagination --}}
+                    <div class="cc-pagination" data-tbody="ccRevenueBody">
+                        <div class="cc-pag-controls">
+                            <button type="button" class="cc-pag-btn cc-tbl-page-btn"
+                                    data-tbody="ccRevenueBody" data-action="first">|&lt;</button>
+                            <button type="button" class="cc-pag-btn cc-tbl-page-btn"
+                                    data-tbody="ccRevenueBody" data-action="prev">&lt;&lt;</button>
+                            <span class="cc-pag-label">Page</span>
+                            <input type="number" class="cc-pag-input cc-tbl-page-input"
+                                   data-tbody="ccRevenueBody" value="1" min="1">
+                            <span class="cc-pag-label">of
+                                <strong class="cc-tbl-total-pages" data-tbody="ccRevenueBody">1</strong>
+                            </span>
+                            <button type="button" class="cc-pag-btn cc-tbl-page-btn"
+                                    data-tbody="ccRevenueBody" data-action="next">&gt;&gt;</button>
+                            <button type="button" class="cc-pag-btn cc-tbl-page-btn"
+                                    data-tbody="ccRevenueBody" data-action="last">&gt;|</button>
+                            <select class="cc-pag-size cc-tbl-page-size" data-tbody="ccRevenueBody">
+                                <option value="10" selected>10</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                            </select>
+                        </div>
+                        <span class="cc-pag-range cc-tbl-view-range" data-tbody="ccRevenueBody">
+                            View 1 - 0 of 0
+                        </span>
+                    </div>
+ 
+                </div>{{-- /revenue section --}}
+ 
+                {{-- ── COST CHARGES TABLE ──────────────────────────── --}}
+                <div class="cc-section cc-section--cost" id="ccJobDetailsCost" style="display:none;">
+ 
+                    <div class="cc-section-header">
+                        <strong>Cost Charges</strong>
+                        <span class="cc-section-summary" id="ccCostSummary">
+                            [ Total Record(s): 0 &nbsp; Total Amount: 0 KES ]
+                        </span>
+                    </div>
+ 
+                    <div class="cc-view-toggle-bar">
+                        <a href="#" class="cc-view-toggle cc-view-active"
+                           data-tbody="ccCostBody" data-mode="all">View: <strong>All</strong></a>
+                        <span class="cc-view-sep">|</span>
+                        <a href="#" class="cc-view-toggle"
+                           data-tbody="ccCostBody" data-mode="selected">Selected</a>
+                    </div>
+ 
+                    <div class="cc-table-wrap">
+                        <table class="cc-table" id="ccCostTable">
+                            <thead>
+                                <tr>
+                                    <th class="cc-col-chk">
+                                        <input type="checkbox" id="ccCostSelectAll" title="Select All">
+                                    </th>
+                                    <th class="cc-col-service">Service</th>
+                                    <th class="cc-col-activity">Activity</th>
+                                    <th class="cc-col-party">Vendor</th>  {{-- Vendor, not Debtor --}}
+                                    <th class="cc-col-code">Charge Code</th>
+                                    <th class="cc-col-desc">Charge Description</th>
+                                    <th class="cc-col-qty">Quantity</th>
+                                    <th class="cc-col-basedon">BasedOn</th>
+                                    <th class="cc-col-uom">UOM</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ccCostBody">
+                                <tr>
+                                    <td colspan="9" class="cc-empty-msg">
+                                        Enter a Job No to load charges
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+ 
+                    {{-- Cost pagination --}}
+                    <div class="cc-pagination" data-tbody="ccCostBody">
+                        <div class="cc-pag-controls">
+                            <button type="button" class="cc-pag-btn cc-tbl-page-btn"
+                                    data-tbody="ccCostBody" data-action="first">|&lt;</button>
+                            <button type="button" class="cc-pag-btn cc-tbl-page-btn"
+                                    data-tbody="ccCostBody" data-action="prev">&lt;&lt;</button>
+                            <span class="cc-pag-label">Page</span>
+                            <input type="number" class="cc-pag-input cc-tbl-page-input"
+                                   data-tbody="ccCostBody" value="1" min="1">
+                            <span class="cc-pag-label">of
+                                <strong class="cc-tbl-total-pages" data-tbody="ccCostBody">1</strong>
+                            </span>
+                            <button type="button" class="cc-pag-btn cc-tbl-page-btn"
+                                    data-tbody="ccCostBody" data-action="next">&gt;&gt;</button>
+                            <button type="button" class="cc-pag-btn cc-tbl-page-btn"
+                                    data-tbody="ccCostBody" data-action="last">&gt;|</button>
+                            <select class="cc-pag-size cc-tbl-page-size" data-tbody="ccCostBody">
+                                <option value="10" selected>10</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                            </select>
+                        </div>
+                        <span class="cc-pag-range cc-tbl-view-range" data-tbody="ccCostBody">
+                            View 1 - 0 of 0
+                        </span>
+                    </div>
+ 
+                </div>{{-- /cost section --}}
+ 
+            </div>{{-- /cc-modal-body --}}
+ 
+            {{-- ── Footer ─────────────────────────────────────────── --}}
+            <div class="cc-modal-footer">
+                <button type="button" class="cc-btn-save" id="ccSaveBtn" disabled>
+                    Save
+                </button>
+                <span class="cc-footer-or">or</span>
+                <a href="#" class="cc-btn-cancel" id="ccCancelBtn" data-dismiss="modal">Cancel</a>
+            </div>
+ 
+        </div>{{-- /modal-content --}}
+    </div>{{-- /modal-dialog --}}
+</div>
+ 
+ 
+{{-- ============================================================
+     COPY CHARGES — JOB SEARCH MODAL
+     Sits above the main modal (z-index: 1060 > 1050)
+     ============================================================ --}}
+<div class="modal fade" id="ccSearchModal" tabindex="-1" role="dialog" aria-hidden="true"
+     style="z-index: 1060;">
+    <div class="modal-dialog cc-search-dialog" role="document">
+        <div class="modal-content cc-modal-content">
+ 
+            <div class="cc-modal-header">
+                <span class="cc-modal-title">Search</span>
+                <button type="button" class="cc-modal-close" id="ccSearchModalClose">&times;</button>
+            </div>
+ 
+            <div class="cc-modal-body">
+ 
+                {{-- Advanced search row --}}
+                <div class="cc-search-controls">
+                    <span class="cc-lbl" style="white-space:nowrap;">Advanced Search</span>
+                    <select class="cc-select" id="ccSearchField" style="width:140px;">
+                        <option value="">Select</option>
+                        <option value="job_no">Job No</option>
+                        <option value="process_type">Process Type</option>
+                    </select>
+                    <input type="text" class="cc-input" id="ccSearchValue"
+                           style="width:200px;" placeholder="">
+                    <button type="button" class="cc-btn-search-go" id="ccSearchGoBtn">Search</button>
+                    <button type="button" class="cc-btn-add-filter" id="ccAddFilterBtn">Add filter</button>
+                </div>
+ 
+                {{-- Search results table --}}
+                <div class="cc-table-wrap" style="margin-top:8px;">
+                    <table class="cc-table" id="ccSearchResultsTable">
+                        <thead>
+                            <tr>
+                                <th style="width:40px;">Select</th>
+                                <th>Process Type
+                                    <i class="fas fa-sort ml-1" style="font-size:0.65rem; color:#999;"></i>
+                                </th>
+                                <th>Job No.</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ccSearchResultsBody">
+                            <tr>
+                                <td colspan="3" class="cc-empty-msg">Click Search to find jobs</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+ 
+                {{-- Pagination --}}
+                <div class="cc-pagination" style="margin-top:6px;">
+                    <div class="cc-pag-controls">
+                        <button type="button" class="cc-pag-btn cc-page-btn" data-action="first">|&lt;</button>
+                        <button type="button" class="cc-pag-btn cc-page-btn" data-action="prev">&lt;&lt;</button>
+                        <span class="cc-pag-label">Page</span>
+                        <input type="number" id="ccPageInput" class="cc-pag-input" value="1" min="1">
+                        <span class="cc-pag-label">of <strong id="ccTotalPages">1</strong></span>
+                        <button type="button" class="cc-pag-btn cc-page-btn" data-action="next">&gt;&gt;</button>
+                        <button type="button" class="cc-pag-btn cc-page-btn" data-action="last">&gt;|</button>
+                        <select class="cc-pag-size" id="ccPageSize">
+                            <option value="10" selected>10</option>
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                        </select>
+                    </div>
+                    <span class="cc-pag-range" id="ccViewRange">View 1 - 0 of 0</span>
+                </div>
+ 
+            </div>
+ 
+            <div class="cc-modal-footer">
+                <button type="button" class="cc-btn-save" id="ccSearchOkBtn" disabled>Ok</button>
+                <span class="cc-footer-or">or</span>
+                <a href="#" class="cc-btn-cancel" id="ccSearchCancelBtn">Cancel</a>
+            </div>
+ 
+        </div>
+    </div>
+</div>
+ 
+        
+        {{-- COPY CHARGES — JOB SEARCH MODAL --}}
+        <div class="modal fade" id="ccSearchModal" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2 class="modal-title">Search</h2>
+                        <button type="button" class="close" id="ccSearchModalClose">
+                            <span>&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        {{-- Advanced Search row --}}
+                        <div class="d-flex align-items-center mb-3" style="gap:8px;">
+                            <label class="mb-0 mr-2" style="font-size:0.875rem; white-space:nowrap;">Advanced Search</label>
+                            <select class="form-control form-control-sm" id="ccSearchField" style="max-width:160px;">
+                                <option value="">Select</option>
+                                <option value="job_no">Job No</option>
+                                <option value="process_type">Process Type</option>
+                            </select>
+                            <input type="text" class="form-control form-control-sm" id="ccSearchValue"
+                                placeholder="" style="max-width:220px;">
+                            <button type="button" class="btn btn-sm ml-1" id="ccSearchGoBtn"
+                                style="background:#a8b400; color:#fff; font-weight:600; min-width:70px;">
+                                Search
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="ccAddFilterBtn">
+                                Add filter
+                            </button>
+                        </div>
+        
+                        {{-- Results table --}}
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered table-hover" id="ccSearchResultsTable">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th style="width:40px;">Select</th>
+                                        <th>Process Type <i class="fas fa-sort ml-1 text-muted" style="font-size:0.7rem;"></i></th>
+                                        <th>Job No.</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ccSearchResultsBody">
+                                    <tr>
+                                        <td colspan="3" class="text-center text-muted" style="font-size:0.8rem;">
+                                            Click Search to find jobs
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+        
+                        {{-- Pagination --}}
+                        <div class="d-flex align-items-center justify-content-between mt-2">
+                            <div class="d-flex align-items-center" style="gap:4px; font-size:0.8rem;">
+                                <button type="button" class="btn btn-sm btn-outline-secondary cc-page-btn" data-action="first" style="padding:1px 5px;">|&lt;</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary cc-page-btn" data-action="prev" style="padding:1px 5px;">&lt;&lt;</button>
+                                <span class="mx-1">Page</span>
+                                <input type="number" id="ccPageInput" class="form-control form-control-sm text-center"
+                                    value="1" min="1" style="width:46px; height:26px; font-size:0.8rem;">
+                                <span class="mx-1">of <strong id="ccTotalPages">1</strong></span>
+                                <button type="button" class="btn btn-sm btn-outline-secondary cc-page-btn" data-action="next" style="padding:1px 5px;">&gt;&gt;</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary cc-page-btn" data-action="last" style="padding:1px 5px;">&gt;|</button>
+                                <select class="form-control form-control-sm ml-2" id="ccPageSize" style="width:58px; height:26px; font-size:0.8rem;">
+                                    <option value="10" selected>10</option>
+                                    <option value="25">25</option>
+                                    <option value="50">50</option>
+                                </select>
+                            </div>
+                            <span class="text-muted" style="font-size:0.8rem;" id="ccViewRange">View 1 - 0 of 0</span>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-sm" id="ccSearchOkBtn"
+                            style="background:#a8b400; color:#fff; font-weight:600; min-width:50px;" disabled>
+                            Ok
+                        </button>
+                        <span class="text-muted mx-2" style="font-size:0.85rem;">or</span>
+                        <a href="#" class="text-primary" id="ccSearchCancelBtn"
+                            style="font-size:0.875rem; font-weight:500;">Cancel</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </form>
 @stop
 
@@ -2007,6 +2412,448 @@
             opacity: 1;
             /* override browser default which can make it too faint */
         }
+
+        /* ── Modal shell ─────────────────────────────────────────────── */
+.cc-modal-dialog {
+    max-width: 900px;   /* matches screenshot width ~860px */
+    margin: 30px auto;
+}
+.cc-search-dialog {
+    max-width: 560px;
+    margin: 40px auto;
+}
+.cc-modal-content {
+    border-radius: 0;
+    border: 1px solid #aaa;
+    box-shadow: 2px 4px 12px rgba(0,0,0,.25);
+    font-size: 12px;
+    font-family: Arial, sans-serif;
+    color: #222;
+}
+ 
+/* ── Header ──────────────────────────────────────────────────── */
+.cc-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #fff;
+    border-bottom: 1px solid #ccc;
+    padding: 7px 12px;
+}
+.cc-modal-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #222;
+}
+.cc-modal-close {
+    background: none;
+    border: 1px solid #bbb;
+    font-size: 14px;
+    line-height: 1;
+    padding: 1px 6px;
+    cursor: pointer;
+    color: #555;
+    border-radius: 2px;
+}
+.cc-modal-close:hover { background: #e0e0e0; }
+ 
+/* ── Body ────────────────────────────────────────────────────── */
+.cc-modal-body {
+    padding: 10px 14px;
+    background: #fff;
+}
+ 
+/* ── 2-column info grid ──────────────────────────────────────── */
+.cc-info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 24px;
+    margin-bottom: 10px;
+}
+.cc-info-col {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.cc-info-row {
+    display: flex;
+    align-items: center;
+    min-height: 22px;
+    gap: 4px;
+}
+/* Spacer row keeps right column vertically aligned with left's Job No row */
+.cc-info-row-spacer {
+    min-height: 26px; /* matches the input row height */
+}
+.cc-lbl {
+    min-width: 120px;   /* fixed label width → values always start at same x */
+    font-size: 12px;
+    color: #555;
+    text-align: right;
+    padding-right: 6px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.cc-lbl-required {
+    color: #c00;
+    font-weight: 600;
+}
+.cc-val {
+    font-size: 12px;
+    color: #111;
+    font-weight: 400;
+}
+ 
+/* Job No input + search button row */
+.cc-input-group {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+.cc-input {
+    height: 24px;
+    padding: 2px 5px;
+    font-size: 12px;
+    border: 1px solid #aaa;
+    border-radius: 2px;
+    outline: none;
+    color: #222;
+    background: #fff;
+}
+.cc-input:focus { border-color: #6699cc; box-shadow: none; }
+ 
+/* Highlighted Job No field — yellow border like in screenshot */
+.cc-input-highlight {
+    border-color: #d4a800;
+    background: #fffde6;
+    width: 160px;
+}
+ 
+.cc-search-icon-btn {
+    height: 24px;
+    width: 24px;
+    padding: 0;
+    border: 1px solid #aaa;
+    border-radius: 2px;
+    background: #f0f0f0;
+    cursor: pointer;
+    font-size: 11px;
+    color: #555;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.cc-search-icon-btn:hover { background: #ddd; }
+ 
+/* ── Section header (blue band) ─────────────────────────────── */
+.cc-section {
+    margin-top: 10px;
+}
+.cc-section-header {
+    display: flex;
+    align-items: center;
+    background: #d9e8f5;
+    border: 1px solid #b8d4ea;
+    border-bottom: none;
+    padding: 4px 8px;
+    font-size: 12px;
+    color: #222;
+    gap: 8px;
+}
+.cc-section-header strong {
+    font-size: 12px;
+    font-weight: 700;
+}
+.cc-section-summary {
+    font-size: 11px;
+    color: #555;
+    font-weight: 400;
+}
+ 
+/* ── View All / Selected toggle bar ─────────────────────────── */
+.cc-view-toggle-bar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border: 1px solid #b8d4ea;
+    border-bottom: none;
+    background: #fff;
+    font-size: 11px;
+}
+.cc-view-toggle {
+    color: #1a6dbf;
+    text-decoration: none;
+    font-size: 11px;
+}
+.cc-view-toggle:hover { text-decoration: underline; }
+.cc-view-sep { color: #aaa; }
+ 
+/* ── Table ───────────────────────────────────────────────────── */
+.cc-table-wrap {
+    overflow-x: auto;
+    border: 1px solid #b8d4ea;
+}
+.cc-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;   /* fixed layout — column widths are explicit */
+    font-size: 12px;
+}
+ 
+/* Column widths — match screenshot proportions exactly */
+.cc-col-chk     { width: 28px; }
+.cc-col-service { width: 75px; }
+.cc-col-activity{ width: 110px; }
+.cc-col-party   { width: 115px; }
+.cc-col-code    { width: 95px; }
+.cc-col-desc    { width: auto; }   /* takes remaining space */
+.cc-col-qty     { width: 58px; }
+.cc-col-basedon { width: 90px; }
+.cc-col-uom     { width: 45px; }
+ 
+.cc-table thead tr {
+    background: #e8edf2;
+}
+.cc-table thead th {
+    padding: 4px 5px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #333;
+    border: 1px solid #c8d4de;
+    white-space: nowrap;
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.cc-table thead th:first-child {
+    text-align: center;
+}
+.cc-table tbody td {
+    padding: 3px 4px;
+    border: 1px solid #dde3ea;
+    vertical-align: middle;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+    color: #222;
+}
+.cc-table tbody tr:hover {
+    background: #f0f5fb;
+    cursor: pointer;
+}
+.cc-table tbody td:first-child {
+    text-align: center;
+}
+ 
+/* Compact inline inputs inside table cells */
+.cc-table .cc-cell-input {
+    width: 100%;
+    height: 22px;
+    padding: 1px 4px;
+    font-size: 11px;
+    border: 1px solid #bbb;
+    border-radius: 1px;
+    background: #fff;
+    color: #222;
+    box-sizing: border-box;
+}
+.cc-table .cc-cell-select {
+    width: 100%;
+    height: 22px;
+    padding: 0 2px;
+    font-size: 11px;
+    border: 1px solid #bbb;
+    border-radius: 1px;
+    background: #fff;
+    color: #222;
+    box-sizing: border-box;
+}
+/* Inline search button beside inputs in cells */
+.cc-table .cc-cell-group {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+.cc-table .cc-cell-search-btn {
+    height: 22px;
+    width: 20px;
+    flex-shrink: 0;
+    padding: 0;
+    border: 1px solid #bbb;
+    border-radius: 1px;
+    background: #f0f0f0;
+    cursor: pointer;
+    font-size: 10px;
+    color: #666;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.cc-table .cc-cell-search-btn:hover { background: #ddd; }
+ 
+/* Empty state message in table */
+.cc-empty-msg {
+    text-align: center;
+    color: #888;
+    font-style: italic;
+    font-size: 11px;
+    padding: 8px 4px !important;
+}
+ 
+/* ── Pagination ──────────────────────────────────────────────── */
+.cc-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 6px;
+    border: 1px solid #b8d4ea;
+    border-top: 1px solid #dde3ea;
+    background: #f7f9fc;
+    font-size: 11px;
+    color: #444;
+}
+.cc-pag-controls {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+.cc-pag-btn {
+    height: 22px;
+    min-width: 22px;
+    padding: 0 4px;
+    border: 1px solid #bbb;
+    border-radius: 2px;
+    background: #f0f0f0;
+    font-size: 10px;
+    cursor: pointer;
+    color: #444;
+    line-height: 1;
+}
+.cc-pag-btn:hover { background: #ddd; }
+.cc-pag-label {
+    font-size: 11px;
+    color: #555;
+    white-space: nowrap;
+}
+.cc-pag-input {
+    width: 38px;
+    height: 22px;
+    text-align: center;
+    font-size: 11px;
+    border: 1px solid #bbb;
+    border-radius: 2px;
+    padding: 0 2px;
+}
+.cc-pag-size {
+    height: 22px;
+    font-size: 11px;
+    border: 1px solid #bbb;
+    border-radius: 2px;
+    padding: 0 2px;
+    background: #fff;
+    margin-left: 4px;
+    width: 52px;
+}
+.cc-pag-range {
+    font-size: 11px;
+    color: #666;
+    white-space: nowrap;
+}
+ 
+/* ── Footer ──────────────────────────────────────────────────── */
+.cc-modal-footer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    background: #fff;
+    border-top: 1px solid #ccc;
+}
+/* Save — olive/yellow-green to match system palette */
+.cc-btn-save {
+    height: 26px;
+    padding: 0 16px;
+    font-size: 12px;
+    font-weight: 600;
+    background: #a8b400;
+    color: #fff;
+    border: 1px solid #8a9400;
+    border-radius: 2px;
+    cursor: pointer;
+}
+.cc-btn-save:hover:not(:disabled) { background: #8a9400; }
+.cc-btn-save:disabled {
+    background: #c8cc80;
+    border-color: #b0b870;
+    cursor: not-allowed;
+    color: #eee;
+}
+.cc-footer-or {
+    font-size: 12px;
+    color: #777;
+}
+.cc-btn-cancel {
+    font-size: 12px;
+    color: #1a6dbf;
+    text-decoration: none;
+    font-weight: 500;
+}
+.cc-btn-cancel:hover { text-decoration: underline; color: #0d4d9c; }
+ 
+/* ── Search modal controls ───────────────────────────────────── */
+.cc-search-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+.cc-select {
+    height: 24px;
+    font-size: 12px;
+    border: 1px solid #aaa;
+    border-radius: 2px;
+    padding: 0 4px;
+    background: #fff;
+    color: #222;
+}
+.cc-btn-search-go {
+    height: 24px;
+    padding: 0 12px;
+    font-size: 12px;
+    font-weight: 700;
+    background: #a8b400;
+    color: #fff;
+    border: 1px solid #8a9400;
+    border-radius: 2px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.cc-btn-search-go:hover { background: #8a9400; }
+.cc-btn-add-filter {
+    height: 24px;
+    padding: 0 10px;
+    font-size: 12px;
+    background: #f0f0f0;
+    color: #444;
+    border: 1px solid #bbb;
+    border-radius: 2px;
+    cursor: pointer;
+}
+.cc-btn-add-filter:hover { background: #ddd; }
+ 
+/* Search results table radio column */
+#ccSearchResultsTable td:first-child,
+#ccSearchResultsTable th:first-child {
+    text-align: center;
+    width: 40px;
+}
+ 
+/* ── Backdrop fix: search modal needs its own backdrop layer ─── */
+#ccSearchModal.modal.show ~ .modal-backdrop {
+    z-index: 1055;
+}
     </style>
 @stop
 
@@ -6891,5 +7738,403 @@
                 });
             }, 3000);
         }
+
+ // ============================================
+// COPY CHARGES — UI ONLY (no backend wiring)
+// ============================================
+(function () {
+
+    // ── State ────────────────────────────────
+    let ccSearchResults  = [];
+    let ccCurrentPage    = 1;
+    let ccPageSize       = 10;
+    let ccSelectedJobRow = null;
+
+    // Per-table pagination state keyed by tbodyId
+    const ccTableState = {
+        ccRevenueBody: { rows: [], page: 1, pageSize: 10 },
+        ccCostBody:    { rows: [], page: 1, pageSize: 10 },
+    };
+
+    // basedOn options (mock — replace with real API values)
+    const CC_BASED_ON_OPTIONS = ['Shipment', 'BL', 'Container', 'CBM', 'Weight'];
+
+    // ── Open Copy Charges modal ───────────────
+    $('#openCopyChargesBtn').on('click', function () {
+        resetCopyChargesModal();
+        $('#copyChargesModal').modal('show');
+    });
+
+    // ── Open Search modal from Job No search icon ─
+    $('#ccJobNoSearchBtn').on('click', function () {
+        ccSelectedJobRow = null;
+        $('#ccSearchOkBtn').prop('disabled', true);
+        resetSearchModal();
+        $('#ccSearchModal').css('z-index', 1060).modal('show');
+    });
+
+    // ── Search modal — Search button ──────────
+    $('#ccSearchGoBtn').on('click', function () {
+        ccCurrentPage = 1;
+        runMockSearch();
+    });
+
+    $('#ccSearchValue').on('keypress', function (e) {
+        if (e.which === 13) $('#ccSearchGoBtn').trigger('click');
+    });
+
+    // ── Search modal pagination ───────────────
+    $(document).on('click', '.cc-page-btn', function () {
+        const action     = $(this).data('action');
+        const totalPages = Math.max(1, Math.ceil(ccSearchResults.length / ccPageSize));
+        if (action === 'first') ccCurrentPage = 1;
+        else if (action === 'prev') ccCurrentPage = Math.max(1, ccCurrentPage - 1);
+        else if (action === 'next') ccCurrentPage = Math.min(totalPages, ccCurrentPage + 1);
+        else if (action === 'last') ccCurrentPage = totalPages;
+        renderSearchPage();
+    });
+
+    $('#ccPageInput').on('change', function () {
+        const totalPages = Math.max(1, Math.ceil(ccSearchResults.length / ccPageSize));
+        ccCurrentPage = Math.min(totalPages, Math.max(1, parseInt($(this).val()) || 1));
+        renderSearchPage();
+    });
+
+    $('#ccPageSize').on('change', function () {
+        ccPageSize    = parseInt($(this).val()) || 10;
+        ccCurrentPage = 1;
+        renderSearchPage();
+    });
+
+    // ── Per-table pagination ──────────────────
+    $(document).on('click', '.cc-tbl-page-btn', function () {
+        const tbodyId = $(this).data('tbody');
+        const action  = $(this).data('action');
+        const s       = ccTableState[tbodyId];
+        if (!s) return;
+        const totalPages = Math.max(1, Math.ceil(s.rows.length / s.pageSize));
+        if (action === 'first') s.page = 1;
+        else if (action === 'prev') s.page = Math.max(1, s.page - 1);
+        else if (action === 'next') s.page = Math.min(totalPages, s.page + 1);
+        else if (action === 'last') s.page = totalPages;
+        renderTablePage(tbodyId);
+    });
+
+    $(document).on('change', '.cc-tbl-page-input', function () {
+        const tbodyId = $(this).data('tbody');
+        const s = ccTableState[tbodyId];
+        if (!s) return;
+        const totalPages = Math.max(1, Math.ceil(s.rows.length / s.pageSize));
+        s.page = Math.min(totalPages, Math.max(1, parseInt($(this).val()) || 1));
+        renderTablePage(tbodyId);
+    });
+
+    $(document).on('change', '.cc-tbl-page-size', function () {
+        const tbodyId = $(this).data('tbody');
+        const s = ccTableState[tbodyId];
+        if (!s) return;
+        s.pageSize = parseInt($(this).val()) || 10;
+        s.page = 1;
+        renderTablePage(tbodyId);
+    });
+
+    // ── View All / Selected toggles ───────────
+    // Updated: now uses data-tbody (not data-table)
+    $(document).on('click', '.cc-view-toggle', function (e) {
+        e.preventDefault();
+        const tbodyId = $(this).data('tbody');
+        const mode    = $(this).data('mode');
+        const $tbody  = $('#' + tbodyId);
+
+        if (mode === 'selected') {
+            $tbody.find('tr').each(function () {
+                $(this).toggle($(this).find('input[type="checkbox"]').is(':checked'));
+            });
+        } else {
+            $tbody.find('tr').show();
+        }
+    });
+
+    // ── Select All checkboxes ─────────────────
+    $('#ccRevenueSelectAll').on('change', function () {
+        $('#ccRevenueBody input[type="checkbox"]').prop('checked', $(this).is(':checked'));
+        updateSaveBtn();
+    });
+
+    $('#ccCostSelectAll').on('change', function () {
+        $('#ccCostBody input[type="checkbox"]').prop('checked', $(this).is(':checked'));
+        updateSaveBtn();
+    });
+
+    $(document).on('change', '#ccRevenueBody input[type="checkbox"], #ccCostBody input[type="checkbox"]',
+        function () { updateSaveBtn(); }
+    );
+
+    // ── Row selection in search results ──────
+    $(document).on('change', '.cc-search-radio', function () {
+        const idx = parseInt($(this).val(), 10);
+        ccSelectedJobRow = ccSearchResults[idx] || null;
+        $('#ccSearchOkBtn').prop('disabled', !ccSelectedJobRow);
+    });
+
+    // ── Search modal Ok ───────────────────────
+    $('#ccSearchOkBtn').on('click', function () {
+        if (!ccSelectedJobRow) return;
+        $('#ccJobNo').val(ccSelectedJobRow.jobNo);
+        $('#ccSearchModal').modal('hide');
+        loadJobDetails(ccSelectedJobRow);
+    });
+
+    // ── Search modal Cancel / close ───────────
+    $('#ccSearchCancelBtn, #ccSearchModalClose').on('click', function (e) {
+        e.preventDefault();
+        $('#ccSearchModal').modal('hide');
+    });
+
+    // ── Copy Charges modal close ──────────────
+    $('#copyChargesModal').on('hidden.bs.modal', resetCopyChargesModal);
+    $('#ccCancelBtn').on('click', function (e) {
+        e.preventDefault();
+        $('#copyChargesModal').modal('hide');
+    });
+
+    // ── Helpers ───────────────────────────────
+
+    function resetCopyChargesModal() {
+        $('#ccJobNo').val('');
+        $('#ccJobDetails').hide();
+
+        const emptyMsg = '<tr><td colspan="9" class="text-center text-muted" style="font-size:0.8rem;">Enter a Job No to load charges</td></tr>';
+        $('#ccRevenueBody, #ccCostBody').html(emptyMsg);
+        $('#ccRevenueSummary').text('[ Total Record(s): 0 Total Amount: 0 KES ]');
+        $('#ccCostSummary').text('[ Total Record(s): 0 Total Amount: 0 KES ]');
+        $('#ccRevenueSelectAll, #ccCostSelectAll').prop('checked', false);
+        $('#ccSaveBtn').prop('disabled', true);
+
+        ccTableState.ccRevenueBody = { rows: [], page: 1, pageSize: 10 };
+        ccTableState.ccCostBody    = { rows: [], page: 1, pageSize: 10 };
+        updateTablePagination('ccRevenueBody');
+        updateTablePagination('ccCostBody');
+        ccSelectedJobRow = null;
+    }
+
+    function resetSearchModal() {
+        $('#ccSearchField').val('');
+        $('#ccSearchValue').val('');
+        ccSearchResults = [];
+        ccCurrentPage   = 1;
+        ccPageSize      = parseInt($('#ccPageSize').val()) || 10;
+        renderSearchPage();
+    }
+
+    function runMockSearch() {
+        const mockProcessTypes = ['Air - Import', 'Air - Export', 'Sea - Import', 'Sea - Export'];
+        const mockRows = [];
+        for (let i = 1; i <= 87; i++) {
+            const year = i % 3 === 0 ? '24' : '23';
+            mockRows.push({
+                processType: mockProcessTypes[i % mockProcessTypes.length],
+                jobNo: `FE-AI-${year}-${15058 + i}`
+            });
+        }
+
+        const filterVal   = $('#ccSearchValue').val().trim().toLowerCase();
+        const filterField = $('#ccSearchField').val();
+
+        ccSearchResults = filterVal
+            ? mockRows.filter(r => {
+                if (filterField === 'job_no')       return r.jobNo.toLowerCase().includes(filterVal);
+                if (filterField === 'process_type') return r.processType.toLowerCase().includes(filterVal);
+                return r.jobNo.toLowerCase().includes(filterVal) ||
+                       r.processType.toLowerCase().includes(filterVal);
+            })
+            : mockRows;
+
+        ccCurrentPage = 1;
+        renderSearchPage();
+    }
+
+    function renderSearchPage() {
+        const $tbody     = $('#ccSearchResultsBody');
+        const total      = ccSearchResults.length;
+        const totalPages = Math.max(1, Math.ceil(total / ccPageSize));
+        ccCurrentPage    = Math.min(ccCurrentPage, totalPages);
+
+        const start = (ccCurrentPage - 1) * ccPageSize;
+        const end   = Math.min(start + ccPageSize, total);
+        const page  = ccSearchResults.slice(start, end);
+
+        $('#ccPageInput').val(ccCurrentPage);
+        $('#ccTotalPages').text(totalPages);
+        $('#ccViewRange').text(
+            total === 0 ? 'View 0 - 0 of 0' : `View ${start + 1} - ${end} of ${total}`
+        );
+
+        $tbody.empty();
+
+        if (!page.length) {
+            $tbody.html('<tr><td colspan="3" class="text-center text-muted" style="font-size:0.8rem;">No results found</td></tr>');
+            return;
+        }
+
+        page.forEach(function (row, i) {
+            const globalIdx = start + i;
+            $tbody.append(`
+                <tr style="cursor:pointer;">
+                    <td class="text-center">
+                        <input type="radio" name="ccJobSearchRadio" class="cc-search-radio" value="${globalIdx}">
+                    </td>
+                    <td style="font-size:0.8rem;">${row.processType}</td>
+                    <td style="font-size:0.8rem;">${row.jobNo}</td>
+                </tr>
+            `);
+        });
+
+        $tbody.find('tr').on('click', function () {
+            $(this).find('input[type="radio"]').prop('checked', true).trigger('change');
+        });
+    }
+
+    function loadJobDetails(jobRow) {
+        $('#ccClient').text('General Client');
+        $('#ccShipper').text('General - ' + jobRow.jobNo);
+        $('#ccConsignee').text('General - ASIMCO GLOBAL');
+        $('#ccPortOfLoading').text('AEDXB04 - Dubai');
+        $('#ccPortOfDischarge').text('KENBO04 - Nairobi');
+        $('#ccJobDetails').show();
+        $('#ccJobDetailsCost').show();
+
+        const revRows = [
+            { service: 'Air-Import', activity: '', debtor: '', code: 'AC', description: 'Import Courier Handling Ch', qty: 1, basedOn: 'Shipment', uom: '' }
+        ];
+        ccTableState.ccRevenueBody.rows    = revRows;
+        ccTableState.ccRevenueBody.page    = 1;
+        ccTableState.ccRevenueBody.pageSize = 10;
+        renderTablePage('ccRevenueBody');
+        $('#ccRevenueSummary').text(`[ Total Record(s): ${revRows.length} Total Amount: 0 KES ]`);
+
+        const costRows = [
+            { service: 'Air-Import', activity: '', vendor: 'AFRICAN CARG', code: 'AC', description: 'Import Courier Handling Ch', qty: 1, basedOn: 'Shipment', uom: '' }
+        ];
+        ccTableState.ccCostBody.rows    = costRows;
+        ccTableState.ccCostBody.page    = 1;
+        ccTableState.ccCostBody.pageSize = 10;
+        renderTablePage('ccCostBody');
+        $('#ccCostSummary').text(`[ Total Record(s): ${costRows.length} Total Amount: 0 KES ]`);
+
+        updateSaveBtn();
+    }
+
+    // Build one charge row with inline editable inputs matching the screenshot
+    function buildChargeRow(r, i, type) {
+        const basedOnOptions = CC_BASED_ON_OPTIONS.map(opt =>
+            `<option value="${opt}" ${opt === r.basedOn ? 'selected' : ''}>${opt}</option>`
+        ).join('');
+
+        const partyVal = type === 'revenue' ? (r.debtor || '') : (r.vendor || '');
+
+        return `
+            <tr data-cc-row="${i}">
+                <td class="text-center">
+                    <input type="checkbox" class="cc-charge-check" data-type="${type}" data-index="${i}">
+                </td>
+                <td style="font-size:0.8rem;">${r.service || ''}</td>
+                <td>
+                    <div class="input-group" style="flex-wrap:nowrap; width:120px;">
+                        <input type="text" class="form-control form-control-sm" value="${r.activity || ''}"
+                            style="font-size:0.75rem; height:24px; min-width:0;">
+                        <div class="input-group-append">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" style="padding:0 5px; height:24px; line-height:1;">
+                                <i class="fas fa-search" style="font-size:0.65rem;"></i>
+                            </button>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <div class="input-group" style="flex-wrap:nowrap; width:130px;">
+                        <input type="text" class="form-control form-control-sm" value="${partyVal}"
+                            style="font-size:0.75rem; height:24px; min-width:0;">
+                        <div class="input-group-append">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" style="padding:0 5px; height:24px; line-height:1;">
+                                <i class="fas fa-search" style="font-size:0.65rem;"></i>
+                            </button>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <div class="input-group" style="flex-wrap:nowrap; width:100px;">
+                        <input type="text" class="form-control form-control-sm" value="${r.code || ''}"
+                            style="font-size:0.75rem; height:24px; min-width:0;">
+                        <div class="input-group-append">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" style="padding:0 5px; height:24px; line-height:1;">
+                                <i class="fas fa-search" style="font-size:0.65rem;"></i>
+                            </button>
+                        </div>
+                    </div>
+                </td>
+                <td style="font-size:0.8rem; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
+                    title="${r.description || ''}">${r.description || ''}</td>
+                <td class="text-center">
+                    <input type="number" class="form-control form-control-sm text-center" value="${r.qty || 1}"
+                        min="1" style="width:55px; height:24px; font-size:0.75rem; display:inline-block;">
+                </td>
+                <td>
+                    <select class="form-control form-control-sm" style="height:24px; font-size:0.75rem; width:90px; padding:0 4px;">
+                        ${basedOnOptions}
+                    </select>
+                </td>
+                <td style="font-size:0.8rem;">${r.uom || ''}</td>
+            </tr>
+        `;
+    }
+
+    function renderTablePage(tbodyId) {
+        const s          = ccTableState[tbodyId];
+        const $tbody     = $('#' + tbodyId);
+        const type       = tbodyId === 'ccRevenueBody' ? 'revenue' : 'cost';
+        const total      = s.rows.length;
+        const totalPages = Math.max(1, Math.ceil(total / s.pageSize));
+        s.page           = Math.min(s.page, totalPages);
+
+        const start = (s.page - 1) * s.pageSize;
+        const end   = Math.min(start + s.pageSize, total);
+        const page  = s.rows.slice(start, end);
+
+        $tbody.empty();
+
+        if (!page.length) {
+            const msg = total === 0
+                ? 'Enter a Job No to load charges'
+                : 'No charges on this page';
+            $tbody.html(`<tr><td colspan="9" class="text-center text-muted" style="font-size:0.8rem;">${msg}</td></tr>`);
+        } else {
+            page.forEach(function (r, i) {
+                $tbody.append(buildChargeRow(r, start + i, type));
+            });
+        }
+
+        updateTablePagination(tbodyId);
+    }
+
+    function updateTablePagination(tbodyId) {
+        const s          = ccTableState[tbodyId];
+        const total      = s.rows.length;
+        const totalPages = Math.max(1, Math.ceil(total / s.pageSize));
+        const start      = (s.page - 1) * s.pageSize;
+        const end        = Math.min(start + s.pageSize, total);
+
+        $(`.cc-tbl-page-input[data-tbody="${tbodyId}"]`).val(s.page);
+        $(`.cc-tbl-total-pages[data-tbody="${tbodyId}"]`).text(totalPages);
+        $(`.cc-tbl-view-range[data-tbody="${tbodyId}"]`).text(
+            total === 0 ? 'View 0 - 0 of 0' : `View ${start + 1} - ${end} of ${total}`
+        );
+    }
+
+    function updateSaveBtn() {
+        const anyChecked = $('#ccRevenueBody .cc-charge-check:checked, #ccCostBody .cc-charge-check:checked').length > 0;
+        $('#ccSaveBtn').prop('disabled', !anyChecked);
+    }
+
+})();
     </script>
 @stop
