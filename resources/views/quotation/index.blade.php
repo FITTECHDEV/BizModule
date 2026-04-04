@@ -196,7 +196,6 @@
                             <th data-priority="1">Quote No</th>
                             <th data-priority="2">Date</th>
                             <th data-priority="3">Client Name</th>
-                            <th data-priority="7">Sales Person</th>
                             <th data-priority="9">Service</th>
                             <th data-priority="10">Process</th>
                             <th data-priority="11">Origin</th>
@@ -205,6 +204,7 @@
                             <th data-priority="13">Volume / Containers</th>
                             <th data-priority="4">Status</th>
                             <th data-priority="6">Remark</th>
+                            <th data-priority="7">Sales Person</th>
                             <th data-priority="5">Action</th>
                         </tr>
                     </thead>
@@ -899,13 +899,7 @@ $(document).ready(function() {
                     return data;
                 }
             },
-            // col 3 — Sales Person
-            {
-                data: 'SalesPerson',
-                name: 'SalesPerson',
-                responsivePriority: 7
-            },
-            // col 4 — Service
+            // col 3 — Service
             {
                 data: 'Service',
                 name: 'Service',
@@ -971,7 +965,13 @@ $(document).ready(function() {
                 searchable: false,
                 responsivePriority: 6
             },
-            // col 11 — Action
+            // col 11 — Sales Person
+            {
+                data: 'SalesPerson',
+                name: 'SalesPerson',
+                responsivePriority: 7
+            },
+            // col 12 — Action
             {
                 data: 'action',
                 name: 'action',

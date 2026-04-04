@@ -35,221 +35,219 @@ class HomeController extends Controller
      *
      * @return \Illuminate\Contracts\Support\Renderable
      */
-    public function index()
-    {
+   public function index()
+{
+    try {
+        $tickets = new Ticket();
+        $ticketStatistics = $tickets->ticketStatistics();
+
+        $entities = new ClientParty();
+        $entityStatistics = $entities->entityStats();
+
+        $tims_stats = new KRABillingHeader();
+        $tims_stats = $tims_stats->timsStats();
+
         try {
-            $tickets = new Ticket();
-            $ticketStatistics = $tickets->ticketStatistics();
-
-            $entities = new ClientParty();
-            $entityStatistics = $entities->entityStats();
-
-            $tims_stats = new KRABillingHeader();
-            $tims_stats = $tims_stats->timsStats();
-
-            try {
-                $azureStats = Cache::remember('azure_user_stats', 300, function () {
-                    return [
-                        'active'   => \App\Models\AzureUser::where('Status', 'active')->count(),
-                        'pending'  => \App\Models\AzureUser::where('Status', 'pending')->count(),
-                        'inactive' => \App\Models\AzureUser::where('Status', 'inactive')->count(),
-                        'total'    => \App\Models\AzureUser::count(),
-                    ];
-                });
-            } catch (\Exception $e) {
-                Log::error('Azure Stats Error: ' . $e->getMessage());
-                $azureStats = ['active' => 0, 'pending' => 0, 'inactive' => 0, 'total' => 0];
-            }
-
-            $role = Auth::user()->Role;
-
-            try {
-                $efris_stats = DB::select('SET NOCOUNT ON; EXEC EFRIS_InvoiceStatus');
-            } catch (\Exception $e) {
-                Log::error('EFRIS Stats Error: ' . $e->getMessage());
-                $efris_stats = [];
-            }
-
-            try {
-                $traStatsTZ  = TRABillingHeader::getStatsByOfficeCode(['AR']);
-                $traStatsADL = TRABillingHeader::getStatsByOfficeCode(['TZ']);
-            } catch (\Exception $e) {
-                Log::error('TRA Stats Error: ' . $e->getMessage());
-                $traStatsTZ  = [];
-                $traStatsADL = [];
-            }
-
-            try {
-                $rra_stats = new RRABillingHeader();
-                $rra_stats = $rra_stats->rraStats();
-            } catch (\Exception $e) {
-                Log::error('RRA Stats Error: ' . $e->getMessage());
-                $rra_stats = [];
-            }
-
-            try {
-                $loginTrackerStats = $this->getLoginTrackerStats();
-            } catch (\Exception $e) {
-                Log::error('Login Tracker Stats Error: ' . $e->getMessage());
-                $loginTrackerStats = [
-                    'total_users'       => 0,
-                    'active_this_month' => 0,
-                    'active_last_month' => 0,
-                    'inactive_users'    => 0,
+            $azureStats = Cache::remember('azure_user_stats', 300, function () {
+                return [
+                    'active'   => \App\Models\AzureUser::where('Status', 'active')->count(),
+                    'pending'  => \App\Models\AzureUser::where('Status', 'pending')->count(),
+                    'inactive' => \App\Models\AzureUser::where('Status', 'inactive')->count(),
+                    'total'    => \App\Models\AzureUser::count(),
                 ];
-            }
+            });
+        } catch (\Exception $e) {
+            Log::error('Azure Stats Error: ' . $e->getMessage());
+            $azureStats = ['active' => 0, 'pending' => 0, 'inactive' => 0, 'total' => 0];
+        }
 
-            try {
-                $tracker_stats = $this->getTrackerStats();
-            } catch (\Exception $e) {
-                Log::error('Tracker Stats Error: ' . $e->getMessage());
-                $tracker_stats = (object)[
-                    'created'  => 0,
-                    'transit'  => 0,
-                    'complete' => 0,
-                    'total'    => 0,
-                ];
-            }
+        $role = Auth::user()->Role;
 
-            $active_this_month = $loginTrackerStats['active_this_month'];
-            $active_last_month = $loginTrackerStats['active_last_month'];
-            $inactive_users    = $loginTrackerStats['inactive_users'];
-            $total_users       = $loginTrackerStats['total_users'];
+        try {
+            $efris_stats = DB::select('SET NOCOUNT ON; EXEC EFRIS_InvoiceStatus');
+        } catch (\Exception $e) {
+            Log::error('EFRIS Stats Error: ' . $e->getMessage());
+            $efris_stats = [];
+        }
 
-            $shipment_reports_stats = ShipmentReportController::getHomeStats();
+        try {
+            $traStatsTZ  = TRABillingHeader::getStatsByOfficeCode(['AR']);
+            $traStatsADL = TRABillingHeader::getStatsByOfficeCode(['TZ']);
+        } catch (\Exception $e) {
+            Log::error('TRA Stats Error: ' . $e->getMessage());
+            $traStatsTZ  = [];
+            $traStatsADL = [];
+        }
 
-            $scm_profit_stats_obj = DB::table('CRM_SCMprofit_integration')
-                ->whereNotNull('clientid')
-                ->whereRaw("CAST(createdon as date) = CAST(GETDATE() as date)")
-                ->selectRaw("
+        try {
+            $rra_stats = new RRABillingHeader();
+            $rra_stats = $rra_stats->rraStats();
+        } catch (\Exception $e) {
+            Log::error('RRA Stats Error: ' . $e->getMessage());
+            $rra_stats = [];
+        }
+
+        try {
+            $loginTrackerStats = $this->getLoginTrackerStats();
+        } catch (\Exception $e) {
+            Log::error('Login Tracker Stats Error: ' . $e->getMessage());
+            $loginTrackerStats = [
+                'total_users'       => 0,
+                'active_this_month' => 0,
+                'active_last_month' => 0,
+                'inactive_users'    => 0,
+            ];
+        }
+
+        try {
+            $tracker_stats = $this->getTrackerStats();
+        } catch (\Exception $e) {
+            Log::error('Tracker Stats Error: ' . $e->getMessage());
+            $tracker_stats = (object)[
+                'created'  => 0,
+                'transit'  => 0,
+                'complete' => 0,
+                'total'    => 0,
+            ];
+        }
+
+        $active_this_month = $loginTrackerStats['active_this_month'];
+        $active_last_month = $loginTrackerStats['active_last_month'];
+        $inactive_users    = $loginTrackerStats['inactive_users'];
+        $total_users       = $loginTrackerStats['total_users'];
+
+        $shipment_reports_stats = ShipmentReportController::getHomeStats();
+
+        $scm_profit_stats_obj = DB::table('CRM_SCMprofit_integration')
+            ->whereNotNull('clientid')
+            ->whereRaw("CAST(createdon as date) = CAST(GETDATE() as date)")
+            ->selectRaw("
                 COUNT(*) as total,
                 SUM(CASE WHEN LEN(ISNULL(SCMINTStatus,'')) <= 0 THEN 1 ELSE 0 END) as pending,
                 SUM(CASE WHEN CHARINDEX('success', LOWER(SCMINTStatus), 1) > 0 THEN 1 ELSE 0 END) as success,
                 SUM(CASE WHEN LEN(ISNULL(SCMINTStatus,'')) > 0 AND CHARINDEX('success', LOWER(SCMINTStatus), 1) = 0 THEN 1 ELSE 0 END) as failed
             ")
-                ->first();
+            ->first();
 
-            $scm_profit_stats = [
-                'total'   => $scm_profit_stats_obj->total   ?? 0,
-                'pending' => $scm_profit_stats_obj->pending  ?? 0,
-                'success' => $scm_profit_stats_obj->success  ?? 0,
-                'failed'  => $scm_profit_stats_obj->failed   ?? 0,
-            ];
+        $scm_profit_stats = [
+            'total'   => $scm_profit_stats_obj->total   ?? 0,
+            'pending' => $scm_profit_stats_obj->pending  ?? 0,
+            'success' => $scm_profit_stats_obj->success  ?? 0,
+            'failed'  => $scm_profit_stats_obj->failed   ?? 0,
+        ];
 
-            try {
-                $ra_metrics = \App\Http\Controllers\RAIntegrationController::getCardMetrics();
-            } catch (\Exception $e) {
-                Log::error('RA Integration Stats Error: ' . $e->getMessage());
-                $ra_metrics = [
-                    'ra_pending_d365'  => 0,
-                    'ra_total_failed'  => 0,
-                    'ra_success_today' => 0,
-                ];
-            }
-
-            $canViewQuotationCard = \Illuminate\Support\Facades\Gate::allows('view-quotation');
-
-            try {
-                $quotation_stats = $canViewQuotationCard
-                    ? \App\Http\Controllers\QuotationController::getHomeStats($effectiveOffice)
-                    : ['total' => 0, 'in_progress' => 0, 'failed_int' => 0, 'failed_progress' => 0];
-            } catch (\Exception $e) {
-                Log::error('Quotation Stats Error: ' . $e->getMessage());
-                $quotation_stats = ['total' => 0, 'in_progress' => 0, 'failed_int' => 0, 'failed_progress' => 0];
-            }
-
-            // ---------------------------------------------------------------
-            // Office switcher — resolve active office from session
-            // ---------------------------------------------------------------
-            $activeOfficeCode = session('active_office_code');
-
-            // Always call with empty office first to get the full office list (base + otherOffices).
-            // The SP only returns OtherOffices when @OfficeCode is empty.
-            $baseOfficeData = $this->getAzureOfficeData(null);
-
-            $baseOffice   = $baseOfficeData['baseOffice'];
-            $otherOffices = $baseOfficeData['otherOffices'];
-            $hasAzure     = $baseOfficeData['hasAzure'];
-
-            // If no office selected yet, default to base office
-            if (!$activeOfficeCode && !empty($baseOffice)) {
-                $activeOfficeCode = $baseOffice;
-                session(['active_office_code' => $activeOfficeCode]);
-            }
-
-            // Second call with active office to get the correct module list for that office
-            $activeOfficeData = $this->getAzureOfficeData($activeOfficeCode);
-            $activeModules    = $activeOfficeData['modules'];
-
-            // Office-to-card gate map — drives card visibility in the blade.
-            // Cards not listed here are visible to all (or gated by can() only).
-            // 'ALL' means show for every office including ungated users.
-            $officeGate = [
-                'tims'    => ['KE', 'UPS'],   // KRA — Kenya offices only
-                'efris'   => ['UG'],           // EFRIS — Uganda only
-                'tra_tz'  => ['AR'],           // TRA FIT Tanzania
-                'tra_adl' => ['TZ'],           // TRA ADL Tanzania
-                'rra'     => ['RW'],           // RRA — Rwanda only
-            ];
-
-            // Resolve which office we're comparing against.
-            // If the user has no Azure record, fall back to base office.
-            $effectiveOffice = $activeOfficeCode ?? $baseOffice;
-
-            // canSeeAll is true ONLY when the SP returns ALL or null module
-            // for the currently selected office — not a permanent bypass
-            $canSeeAll = $hasAzure && (
-                in_array('ALL', $activeModules) ||
-                in_array(null, $activeModules)
-            );
-
-            Log::info('Office Switcher State', [
-                'user'              => Auth::user()->Email,
-                'activeOfficeCode'  => $activeOfficeCode,
-                'baseOffice'        => $baseOffice,
-                'activeModules'     => $activeModules,
-                'canSeeAll'         => $canSeeAll,
-                'otherOffices'      => $otherOffices,
-            ]);
-            // ---------------------------------------------------------------
-
-            return view(
-                'dashboard.ticket',
-                compact(
-                    'ticketStatistics',
-                    'entityStatistics',
-                    'tims_stats',
-                    'efris_stats',
-                    'traStatsTZ',
-                    'traStatsADL',
-                    'rra_stats',
-                    'active_this_month',
-                    'active_last_month',
-                    'inactive_users',
-                    'total_users',
-                    'tracker_stats',
-                    'azureStats',
-                    'shipment_reports_stats',
-                    'scm_profit_stats',
-                    'ra_metrics',
-                    'canViewQuotationCard',
-                    'quotation_stats',
-                    'activeModules',
-                    'otherOffices',
-                    'baseOffice',
-                    'hasAzure',
-                    'canSeeAll',
-                    'activeOfficeCode',
-                    'officeGate',        // ← new
-                    'effectiveOffice'    // ← new
-                )
-            );
+        try {
+            $ra_metrics = \App\Http\Controllers\RAIntegrationController::getCardMetrics();
         } catch (\Exception $e) {
-            Log::error('Home Controller Error: ' . $e->getMessage());
-            return 'Controller Error: ' . $e->getMessage();
+            Log::error('RA Integration Stats Error: ' . $e->getMessage());
+            $ra_metrics = [
+                'ra_pending_d365'  => 0,
+                'ra_total_failed'  => 0,
+                'ra_success_today' => 0,
+            ];
         }
-    }
 
+        // ---------------------------------------------------------------
+        // Office switcher — resolve active office from session
+        // ---------------------------------------------------------------
+        $activeOfficeCode = session('active_office_code');
+
+        // Always call with empty office first to get the full office list (base + otherOffices).
+        // The SP only returns OtherOffices when @OfficeCode is empty.
+        $baseOfficeData = $this->getAzureOfficeData(null);
+
+        $baseOffice   = $baseOfficeData['baseOffice'];
+        $otherOffices = $baseOfficeData['otherOffices'];
+        $hasAzure     = $baseOfficeData['hasAzure'];
+
+        // If no office selected yet, default to base office
+        if (!$activeOfficeCode && !empty($baseOffice)) {
+            $activeOfficeCode = $baseOffice;
+            session(['active_office_code' => $activeOfficeCode]);
+        }
+
+        // Second call with active office to get the correct module list for that office
+        $activeOfficeData = $this->getAzureOfficeData($activeOfficeCode);
+        $activeModules    = $activeOfficeData['modules'];
+
+        // Office-to-card gate map — drives card visibility in the blade.
+        // Cards not listed here are visible to all (or gated by can() only).
+        // 'ALL' means show for every office including ungated users.
+        $officeGate = [
+            'tims'    => ['KE', 'UPS'],   // KRA — Kenya offices only
+            'efris'   => ['UG'],           // EFRIS — Uganda only
+            'tra_tz'  => ['AR'],           // TRA FIT Tanzania
+            'tra_adl' => ['TZ'],           // TRA ADL Tanzania
+            'rra'     => ['RW'],           // RRA — Rwanda only
+        ];
+
+        // Resolve which office we're comparing against.
+        // If the user has no Azure record, fall back to base office.
+        $effectiveOffice = $activeOfficeCode ?? $baseOffice;
+
+        // canSeeAll is true ONLY when the SP returns ALL or null module
+        // for the currently selected office — not a permanent bypass
+        $canSeeAll = $hasAzure && (
+            in_array('ALL', $activeModules) ||
+            in_array(null, $activeModules)
+        );
+
+        Log::info('Office Switcher State', [
+            'user'             => Auth::user()->Email,
+            'activeOfficeCode' => $activeOfficeCode,
+            'baseOffice'       => $baseOffice,
+            'activeModules'    => $activeModules,
+            'canSeeAll'        => $canSeeAll,
+            'otherOffices'     => $otherOffices,
+        ]);
+        // ---------------------------------------------------------------
+
+        // $effectiveOffice is now defined — safe to use below
+        $canViewQuotationCard = \Illuminate\Support\Facades\Gate::allows('view-quotation');
+
+        try {
+            $quotation_stats = \App\Http\Controllers\QuotationController::getHomeStats($effectiveOffice);
+        } catch (\Exception $e) {
+            Log::error('Quotation Stats Error: ' . $e->getMessage());
+            $quotation_stats = ['total' => 0, 'in_progress' => 0, 'failed_int' => 0, 'failed_progress' => 0];
+        }
+
+        return view(
+            'dashboard.ticket',
+            compact(
+                'ticketStatistics',
+                'entityStatistics',
+                'tims_stats',
+                'efris_stats',
+                'traStatsTZ',
+                'traStatsADL',
+                'rra_stats',
+                'active_this_month',
+                'active_last_month',
+                'inactive_users',
+                'total_users',
+                'tracker_stats',
+                'azureStats',
+                'shipment_reports_stats',
+                'scm_profit_stats',
+                'ra_metrics',
+                'canViewQuotationCard',
+                'quotation_stats',
+                'activeModules',
+                'otherOffices',
+                'baseOffice',
+                'hasAzure',
+                'canSeeAll',
+                'activeOfficeCode',
+                'officeGate',
+                'effectiveOffice'
+            )
+        );
+    } catch (\Exception $e) {
+        Log::error('Home Controller Error: ' . $e->getMessage());
+        return 'Controller Error: ' . $e->getMessage();
+    }
+}
     // ---------------------------------------------------------------
     // Office data from SP
     // ---------------------------------------------------------------

@@ -848,46 +848,41 @@ class QuotationController extends Controller
         return $officeNames;
     }
 
-    private function getStatsForIndex(\Illuminate\Support\Collection $allowedOfficeCodes): array
+   private function getStatsForIndex(\Illuminate\Support\Collection $allowedOfficeCodes): array
     {
         if ($allowedOfficeCodes->isEmpty()) {
             return [
-                'total' => 0,
-                'in_progress' => 0,
-                'won' => 0,
-                'completed' => 0,
+                'total'         => 0,
+                'in_progress'   => 0,
+                'won'           => 0,
+                'completed'     => 0,
                 'lost_canceled' => 0,
-                'failed_int' => 0,
-                'failed_progress' => 0,
+                'failed_int'    => 0,
+                'failed_progress'=> 0,
             ];
         }
-
-        $allowed = $allowedOfficeCodes->map(fn($c) => strtoupper(trim($c)))->toArray();
-
-        $scope = fn(array $rows) => $this->scopeRowsByOffice($rows, $allowed);
-
-
-        $allRows = $scope($this->callQuotationListSP('Total'));
-        $lostCancelledRows = $scope($this->callQuotationListSP('Lost'));
-        $failedProgressRows = $scope($this->callQuotationListSP('Failed Progress'));
-
-        $quoteNos = array_column($allRows, 'QuoteNo');
+    
+        $allRows            = $this->callSPForAllOffices('Total',           $allowedOfficeCodes);
+        $lostCancelledRows  = $this->callSPForAllOffices('Lost',            $allowedOfficeCodes);
+        $failedProgressRows = $this->callSPForAllOffices('Failed Progress', $allowedOfficeCodes);
+    
+        $quoteNos  = array_column($allRows, 'QuoteNo');
         $scmLookup = collect();
+    
         if (!empty($quoteNos)) {
             $scmLookup = DB::table('Quote_QuotationInfo')
                 ->whereIn('QuoteNo', $quoteNos)
                 ->get(['QuoteNo', 'QuoteStatus', 'SCMINTStatus'])
                 ->keyBy('QuoteNo');
         }
-
+    
         $inProgress = $won = $completed = $failedInt = 0;
-
+    
         foreach ($allRows as $row) {
-            $db = $scmLookup->get($row->QuoteNo);
-            $quoteStatus = $db->QuoteStatus ?? $row->Status ?? '';
-            $scmStatus = $db->SCMINTStatus ?? null;
-
-            // REPLACE with:
+            $db          = $scmLookup->get($row->QuoteNo);
+            $quoteStatus = $db->QuoteStatus  ?? $row->Status ?? '';
+            $scmStatus   = $db->SCMINTStatus ?? null;
+    
             if ($quoteStatus === 'Won' && $scmStatus === 'Success') {
                 $completed++;
             } elseif ($quoteStatus === 'Won' && !is_null($scmStatus) && $scmStatus !== 'Success') {
@@ -898,21 +893,22 @@ class QuotationController extends Controller
                 $inProgress++;
             }
         }
-
-        $lostCanceled = count($lostCancelledRows);
-        $failedProgress = count($failedProgressRows);
-        $total = $inProgress + $won + $completed + $failedInt + $failedProgress + $lostCanceled;
-
+    
+        $lostCanceled  = count($lostCancelledRows);
+        $failedProgress= count($failedProgressRows);
+        $total         = $inProgress + $won + $completed + $failedInt + $failedProgress + $lostCanceled;
+    
         return [
-            'total' => $total,
-            'in_progress' => $inProgress,
-            'won' => $won,
-            'completed' => $completed,
-            'lost_canceled' => $lostCanceled,
-            'failed_int' => $failedInt,
-            'failed_progress' => $failedProgress,
+            'total'          => $total,
+            'in_progress'    => $inProgress,
+            'won'            => $won,
+            'completed'      => $completed,
+            'lost_canceled'  => $lostCanceled,
+            'failed_int'     => $failedInt,
+            'failed_progress'=> $failedProgress,
         ];
     }
+
 
     private function callQuotationListSP(
         string $status,
@@ -6331,8 +6327,6 @@ class QuotationController extends Controller
         }
     }
 
-
-
     /**
      * GET /quotation/create-booking/locations
      * Calls sp_LocationList with LocationType = 'Road' (always static per spec)
@@ -6445,85 +6439,94 @@ class QuotationController extends Controller
 
 
     public function saveCustomerDetails(Request $request)
-    {
-        try {
-            $inputJson = $request->input('input_json');
-
-            if (!$inputJson) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'input_json is required'
-                ], 400);
-            }
-
-            // Log what we're sending
-            \Log::info('saveCustomerDetails - Sending JSON', ['json' => $inputJson]);
-
-            $pdo = DB::connection('sqlsrv')->getPdo();
-            $stmt = $pdo->prepare("SET NOCOUNT ON; DECLARE @OutputRemarkJson NVARCHAR(2000); EXEC dbo.sp_Quote_CustomerUpdate ?, @OutputRemarkJson OUTPUT; SELECT @OutputRemarkJson AS OutputRemarkJson");
-            $stmt->execute([$inputJson]);
-
-            $output = null;
-            do {
-                try {
-                    $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
-                    if (!empty($rows) && isset($rows[0]->OutputRemarkJson)) {
-                        $output = $rows[0]->OutputRemarkJson;
-                        break;
-                    }
-                } catch (\PDOException $e) {
-                    continue;
-                }
-            } while ($stmt->nextRowset());
-
-            if (!$output) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No response from stored procedure'
-                ], 500);
-            }
-
-            $result = json_decode($output, true);
-
-            if ($result && isset($result['Status']) && $result['Status'] === 'Success') {
-                // Patch columns the SP omits from its UPDATE
-                $decoded = json_decode($request->input('input_json'), true);
-                $patch = [];
-
-                if (!empty($decoded['Industry'])) {
-                    $patch['industryname'] = $decoded['Industry'];
-                }
-
-                if (!empty($patch)) {
-                    DB::table('Quote_QuotationInfo')
-                        ->where('ID', $decoded['QuotationID'])
-                        ->update($patch);
-                }
-
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Customer details saved successfully',
-                ]);
-            }
-
-            return response()->json([
-                'success' => false,
-                'message' => $result['Remarks'][0]['Remark'] ?? 'Failed to save customer details',
-            ], 422);
-        } catch (\Exception $e) {
-            Log::error('saveCustomerDetails - Failed', [
-                'error' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-            ], 500);
-        }
-    }
-
+      {
+          try {
+              $inputJson = $request->input('input_json');
+      
+              if (!$inputJson) {
+                  return response()->json([
+                      'success' => false,
+                      'message' => 'input_json is required'
+                  ], 400);
+              }
+      
+              // Log what we're sending
+              \Log::info('saveCustomerDetails - Sending JSON', ['json' => $inputJson]);
+      
+              $pdo = DB::connection('sqlsrv')->getPdo();
+              $stmt = $pdo->prepare("SET NOCOUNT ON; DECLARE @OutputRemarkJson NVARCHAR(2000); EXEC dbo.sp_Quote_CustomerUpdate ?, @OutputRemarkJson OUTPUT; SELECT @OutputRemarkJson AS OutputRemarkJson");
+              $stmt->execute([$inputJson]);
+      
+              $output = null;
+              do {
+                  try {
+                      $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+                      if (!empty($rows) && isset($rows[0]->OutputRemarkJson)) {
+                          $output = $rows[0]->OutputRemarkJson;
+                          break;
+                      }
+                  } catch (\PDOException $e) {
+                      continue;
+                  }
+              } while ($stmt->nextRowset());
+      
+              if (!$output) {
+                  return response()->json([
+                      'success' => false,
+                      'message' => 'No response from stored procedure'
+                  ], 500);
+              }
+      
+              $result = json_decode($output, true);
+      
+              if ($result && isset($result['Status']) && $result['Status'] === 'Success') {
+                  // Patch columns the SP omits from its UPDATE
+                  $decoded = json_decode($request->input('input_json'), true);
+                  $patch = [];
+      
+                  if (!empty($decoded['Industry'])) {
+                      $patch['industryname'] = $decoded['Industry'];
+                  }
+      
+                  // SP does not write these back to Quote_QuotationInfo
+                  if (!empty($decoded['CustomerType'])) {
+                      $patch['CustomerType'] = $decoded['CustomerType'];
+                  }
+      
+                  if (isset($decoded['AgentType'])) {
+                      $patch['AgentType'] = $decoded['AgentType'];
+                  }
+      
+                  if (!empty($patch)) {
+                      DB::table('Quote_QuotationInfo')
+                          ->where('ID', $decoded['QuotationID'])
+                          ->update($patch);
+                  }
+      
+                  return response()->json([
+                      'success' => true,
+                      'message' => 'Customer details saved successfully',
+                  ]);
+              }
+      
+              return response()->json([
+                  'success' => false,
+                  'message' => $result['Remarks'][0]['Remark'] ?? 'Failed to save customer details',
+              ], 422);
+          } catch (\Exception $e) {
+              Log::error('saveCustomerDetails - Failed', [
+                  'error' => $e->getMessage(),
+                  'file' => $e->getFile(),
+                  'line' => $e->getLine(),
+              ]);
+      
+              return response()->json([
+                  'success' => false,
+                  'message' => $e->getMessage(),
+              ], 500);
+          }
+      }
+  
     /**
      * Shared PDO helper for sp_Quote_DetailsUpdate.
      * Uses nextRowset() to skip intermediate result sets produced by
@@ -8621,50 +8624,74 @@ class QuotationController extends Controller
     /**
      * Returns quotation stats for the dashboard home card.
      * All-time scope (no date filter), scoped to the calling user's offices.
-     * Keys match the dashboard card: total, in_progress, failed_int, failed_progress.
+     * Keys match the dashboard card: total, in_progress, failed_int, failed_progress.view
      */
-    public static function getHomeStats(): array
+    public static function getHomeStats(?string $officeCode = null): array
     {
         $blank = [
-            'total' => 0,
-            'in_progress' => 0,
-            'failed_int' => 0,
-            'failed_progress' => 0,
+            'total'          => 0,
+            'in_progress'    => 0,
+            'failed_int'     => 0,
+            'failed_progress'=> 0,
         ];
-
+    
         try {
             $instance = new self();
-            $allowedOfficeCodes = $instance->resolveAllowedOfficeCodesViaSP();
-
+    
+            $allowedOfficeCodes = $officeCode
+                ? collect([strtoupper(trim($officeCode))])
+                : $instance->resolveAllowedOfficeCodesViaSP();
+    
             \Log::info('QuotationController::getHomeStats - office codes resolved', [
-                'user_email' => \Auth::user()->Email ?? 'null',
-                'allowed_office_codes' => $allowedOfficeCodes->toArray(),
+                'user_email'          => \Auth::user()->Email ?? 'null',
+                'allowed_office_codes'=> $allowedOfficeCodes->toArray(),
             ]);
-
+    
             if ($allowedOfficeCodes->isEmpty()) {
                 \Log::warning('QuotationController::getHomeStats - no office codes, returning zeros');
                 return $blank;
             }
-
+    
             $stats = $instance->getStatsForIndex($allowedOfficeCodes);
-
+    
             \Log::info('QuotationController::getHomeStats - stats returned', $stats);
-
+    
             return [
-                'total' => $stats['total'] ?? 0,
-                'in_progress' => $stats['in_progress'] ?? 0,
-                'failed_int' => $stats['failed_int'] ?? 0,
-                'failed_progress' => $stats['failed_progress'] ?? 0,
+                'total'          => $stats['total']          ?? 0,
+                'in_progress'    => $stats['in_progress']    ?? 0,
+                'failed_int'     => $stats['failed_int']     ?? 0,
+                'failed_progress'=> $stats['failed_progress']?? 0,
             ];
         } catch (\Exception $e) {
             \Log::error('QuotationController::getHomeStats - Failed', [
                 'error' => $e->getMessage(),
-                'line' => $e->getLine(),
-                'file' => $e->getFile(),
+                'line'  => $e->getLine(),
+                'file'  => $e->getFile(),
             ]);
-
+    
             return $blank;
         }
+    }
+
+
+    private function callSPForAllOffices(string $status, \Illuminate\Support\Collection $officeCodes): array
+    {
+        $merged = [];
+        $seen   = [];
+    
+        foreach ($officeCodes as $code) {
+            $rows = $this->callQuotationListSP($status, '', '', $code);
+            foreach ($rows as $row) {
+                $key = $row->QuoteNo ?? null;
+                if ($key === null || isset($seen[$key])) {
+                    continue;
+                }
+                $seen[$key] = true;
+                $merged[]   = $row;
+            }
+        }
+    
+        return $merged;
     }
 
     public function pushBookingToSCM(Request $request): JsonResponse
