@@ -6879,6 +6879,7 @@ class QuotationController extends Controller
                 'success' => false,
                 'failed_step' => 0,
                 'failed_label' => 'Save Booking Info',
+                'message' => $step0Result['remark'] ?: 'Failed to save booking info.',
                 'steps' => $steps,
             ]);
         }
@@ -6932,6 +6933,7 @@ class QuotationController extends Controller
                     'success' => false,
                     'failed_step' => $stepNo,
                     'failed_label' => $stepDef['label'],
+                    'message' => $result['remark'] ?: 'Step failed with no details returned.',
                     'steps' => $steps,
                 ]);
             }
@@ -7050,6 +7052,7 @@ class QuotationController extends Controller
             DB::table('Quote_QuotationInfo')
                 ->where('ID', $quotationId)
                 ->update([
+                    'QuoteStatus' => 'Won',        
                     'SCMINTStatus' => 'Failed',
                     'QuoteStatusDescription' => $description,
                     'LastModifiedBy' => $submittedBy,
@@ -7102,29 +7105,31 @@ class QuotationController extends Controller
                 'PlaceOfDelivery' => $placeOfDelivery,
             ]);
 
-            // Log::info('runBookingInfoUpdate - Input', [
-            //     'quote_no'   => $quoteNo,
-            //     'input_json' => $inputJson,
-            // ]);
+            Log::info('runBookingInfoUpdate - Input', [
+                'quotation_id' => $quotationId,   // was $quoteNo — not in scope here
+                'input_json'   => $inputJson,
+            ]);
+
 
             $output = $this->executeDetailsUpdateSP($inputJson);
 
-            // Log::info('runBookingInfoUpdate - Output', [
-            //     'quote_no' => $quoteNo,
-            //     'output'   => $output,
-            // ]);
+            Log::info('runBookingInfoUpdate - Output', [
+                'quotation_id' => $quotationId,
+                'output'       => $output,
+            ]);
+
 
             return [
                 'status' => $output['Status'] ?? 'Failed',
                 'remark' => $output['Remark'] ?? '[SP] No remark returned',
             ];
         } catch (\Exception $e) {
-            // Log::error('runBookingInfoUpdate - Exception', [
-            //     'quote_no' => $quoteNo,
-            //     'error'    => $e->getMessage(),
-            //     'file'     => $e->getFile(),
-            //     'line'     => $e->getLine(),
-            // ]);
+            Log::error('runBookingInfoUpdate - Exception', [
+                'quotation_id' => $quotationId,
+                'error'        => $e->getMessage(),
+                'file'         => $e->getFile(),
+                'line'         => $e->getLine(),
+            ]);
             return ['status' => 'Failed', 'remark' => $e->getMessage()];
         }
     }
@@ -7177,11 +7182,11 @@ class QuotationController extends Controller
                             stripos($trimmed, 'Failed') === 0 ||
                             stripos($trimmed, 'There is already') !== false
                         ) {
-                            // Log::error('runBookingProcessMain - SP emitted error result set', [
-                            //     'quote_no'     => $quoteNo,
-                            //     'process_type' => $processType,
-                            //     'sp_error'     => $trimmed,
-                            // ]);
+                            Log::error('runBookingProcessMain - SP emitted error result set', [
+                                'quotation_id' => $quotationId,   // was $quoteNo — not in scope here
+                                'process_type' => $processType,
+                                'sp_error'     => $trimmed,
+                            ]);
 
                             return [
                                 'status' => 'Failed',
@@ -7229,11 +7234,11 @@ class QuotationController extends Controller
 
             if ($errorSet) {
                 $spError = array_values($errorSet['first_row'])[0];
-                // Log::error('runBookingProcessMain - @Status=Success but error set detected', [
-                //     'quote_no'     => $quoteNo,
-                //     'process_type' => $processType,
-                //     'sp_error'     => $spError,
-                // ]);
+                Log::error('runBookingProcessMain - @Status=Success but error set detected', [
+                    'quotation_id' => $quotationId,
+                    'process_type' => $processType,
+                    'sp_error'     => $spError,
+                ]);
 
                 return [
                     'status' => 'Failed',
@@ -7244,7 +7249,9 @@ class QuotationController extends Controller
 
             return [
                 'status' => $result->Status ?? 'Failed',
-                'remark' => $result->Remark ?? '',
+                'remark' => (isset($result->Remark) && $result->Remark !== '')
+                    ? $result->Remark
+                    : '[SP] No remark returned',
                 'result_sets' => $setsLogged,
             ];
         } catch (\PDOException $e) {
