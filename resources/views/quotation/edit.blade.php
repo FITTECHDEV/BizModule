@@ -1672,10 +1672,12 @@
                 {{-- Advanced search row --}}
                 <div class="cc-search-controls">
                     <span class="cc-lbl" style="white-space:nowrap;">Advanced Search</span>
-                    <select class="cc-select" id="ccSearchField" style="width:140px;">
+                   <select class="cc-select" id="ccSearchField" style="width:140px;">
                         <option value="">Select</option>
-                        <option value="job_no">Job No</option>
-                        <option value="process_type">Process Type</option>
+                        <option value="quote_no">Quote No</option>
+                        <option value="customer">Customer</option>
+                        <option value="origin">Origin Country</option>
+                        <option value="destination">Destination Country</option>
                     </select>
                     <input type="text" class="cc-input" id="ccSearchValue"
                            style="width:200px;" placeholder="">
@@ -1751,8 +1753,10 @@
                             <label class="mb-0 mr-2" style="font-size:0.875rem; white-space:nowrap;">Advanced Search</label>
                             <select class="form-control form-control-sm" id="ccSearchField" style="max-width:160px;">
                                 <option value="">Select</option>
-                                <option value="job_no">Job No</option>
-                                <option value="process_type">Process Type</option>
+                                <option value="quote_no">Quote No</option>
+                                <option value="customer">Customer</option>
+                                <option value="origin">Origin Country</option>
+                                <option value="destination">Destination Country</option>
                             </select>
                             <input type="text" class="form-control form-control-sm" id="ccSearchValue"
                                 placeholder="" style="max-width:220px;">
@@ -7739,402 +7743,444 @@
             }, 3000);
         }
 
- // ============================================
-// COPY CHARGES — UI ONLY (no backend wiring)
-// ============================================
-(function () {
-
-    // ── State ────────────────────────────────
-    let ccSearchResults  = [];
-    let ccCurrentPage    = 1;
-    let ccPageSize       = 10;
-    let ccSelectedJobRow = null;
-
-    // Per-table pagination state keyed by tbodyId
-    const ccTableState = {
-        ccRevenueBody: { rows: [], page: 1, pageSize: 10 },
-        ccCostBody:    { rows: [], page: 1, pageSize: 10 },
-    };
-
-    // basedOn options (mock — replace with real API values)
-    const CC_BASED_ON_OPTIONS = ['Shipment', 'BL', 'Container', 'CBM', 'Weight'];
-
-    // ── Open Copy Charges modal ───────────────
-    $('#openCopyChargesBtn').on('click', function () {
-        resetCopyChargesModal();
-        $('#copyChargesModal').modal('show');
-    });
-
-    // ── Open Search modal from Job No search icon ─
-    $('#ccJobNoSearchBtn').on('click', function () {
-        ccSelectedJobRow = null;
-        $('#ccSearchOkBtn').prop('disabled', true);
-        resetSearchModal();
-        $('#ccSearchModal').css('z-index', 1060).modal('show');
-    });
-
-    // ── Search modal — Search button ──────────
-    $('#ccSearchGoBtn').on('click', function () {
-        ccCurrentPage = 1;
-        runMockSearch();
-    });
-
-    $('#ccSearchValue').on('keypress', function (e) {
-        if (e.which === 13) $('#ccSearchGoBtn').trigger('click');
-    });
-
-    // ── Search modal pagination ───────────────
-    $(document).on('click', '.cc-page-btn', function () {
-        const action     = $(this).data('action');
-        const totalPages = Math.max(1, Math.ceil(ccSearchResults.length / ccPageSize));
-        if (action === 'first') ccCurrentPage = 1;
-        else if (action === 'prev') ccCurrentPage = Math.max(1, ccCurrentPage - 1);
-        else if (action === 'next') ccCurrentPage = Math.min(totalPages, ccCurrentPage + 1);
-        else if (action === 'last') ccCurrentPage = totalPages;
-        renderSearchPage();
-    });
-
-    $('#ccPageInput').on('change', function () {
-        const totalPages = Math.max(1, Math.ceil(ccSearchResults.length / ccPageSize));
-        ccCurrentPage = Math.min(totalPages, Math.max(1, parseInt($(this).val()) || 1));
-        renderSearchPage();
-    });
-
-    $('#ccPageSize').on('change', function () {
-        ccPageSize    = parseInt($(this).val()) || 10;
-        ccCurrentPage = 1;
-        renderSearchPage();
-    });
-
-    // ── Per-table pagination ──────────────────
-    $(document).on('click', '.cc-tbl-page-btn', function () {
-        const tbodyId = $(this).data('tbody');
-        const action  = $(this).data('action');
-        const s       = ccTableState[tbodyId];
-        if (!s) return;
-        const totalPages = Math.max(1, Math.ceil(s.rows.length / s.pageSize));
-        if (action === 'first') s.page = 1;
-        else if (action === 'prev') s.page = Math.max(1, s.page - 1);
-        else if (action === 'next') s.page = Math.min(totalPages, s.page + 1);
-        else if (action === 'last') s.page = totalPages;
-        renderTablePage(tbodyId);
-    });
-
-    $(document).on('change', '.cc-tbl-page-input', function () {
-        const tbodyId = $(this).data('tbody');
-        const s = ccTableState[tbodyId];
-        if (!s) return;
-        const totalPages = Math.max(1, Math.ceil(s.rows.length / s.pageSize));
-        s.page = Math.min(totalPages, Math.max(1, parseInt($(this).val()) || 1));
-        renderTablePage(tbodyId);
-    });
-
-    $(document).on('change', '.cc-tbl-page-size', function () {
-        const tbodyId = $(this).data('tbody');
-        const s = ccTableState[tbodyId];
-        if (!s) return;
-        s.pageSize = parseInt($(this).val()) || 10;
-        s.page = 1;
-        renderTablePage(tbodyId);
-    });
-
-    // ── View All / Selected toggles ───────────
-    // Updated: now uses data-tbody (not data-table)
-    $(document).on('click', '.cc-view-toggle', function (e) {
-        e.preventDefault();
-        const tbodyId = $(this).data('tbody');
-        const mode    = $(this).data('mode');
-        const $tbody  = $('#' + tbodyId);
-
-        if (mode === 'selected') {
-            $tbody.find('tr').each(function () {
-                $(this).toggle($(this).find('input[type="checkbox"]').is(':checked'));
-            });
-        } else {
-            $tbody.find('tr').show();
-        }
-    });
-
-    // ── Select All checkboxes ─────────────────
-    $('#ccRevenueSelectAll').on('change', function () {
-        $('#ccRevenueBody input[type="checkbox"]').prop('checked', $(this).is(':checked'));
-        updateSaveBtn();
-    });
-
-    $('#ccCostSelectAll').on('change', function () {
-        $('#ccCostBody input[type="checkbox"]').prop('checked', $(this).is(':checked'));
-        updateSaveBtn();
-    });
-
-    $(document).on('change', '#ccRevenueBody input[type="checkbox"], #ccCostBody input[type="checkbox"]',
-        function () { updateSaveBtn(); }
-    );
-
-    // ── Row selection in search results ──────
-    $(document).on('change', '.cc-search-radio', function () {
-        const idx = parseInt($(this).val(), 10);
-        ccSelectedJobRow = ccSearchResults[idx] || null;
-        $('#ccSearchOkBtn').prop('disabled', !ccSelectedJobRow);
-    });
-
-    // ── Search modal Ok ───────────────────────
-    $('#ccSearchOkBtn').on('click', function () {
-        if (!ccSelectedJobRow) return;
-        $('#ccJobNo').val(ccSelectedJobRow.jobNo);
-        $('#ccSearchModal').modal('hide');
-        loadJobDetails(ccSelectedJobRow);
-    });
-
-    // ── Search modal Cancel / close ───────────
-    $('#ccSearchCancelBtn, #ccSearchModalClose').on('click', function (e) {
-        e.preventDefault();
-        $('#ccSearchModal').modal('hide');
-    });
-
-    // ── Copy Charges modal close ──────────────
-    $('#copyChargesModal').on('hidden.bs.modal', resetCopyChargesModal);
-    $('#ccCancelBtn').on('click', function (e) {
-        e.preventDefault();
-        $('#copyChargesModal').modal('hide');
-    });
-
-    // ── Helpers ───────────────────────────────
-
-    function resetCopyChargesModal() {
-        $('#ccJobNo').val('');
-        $('#ccJobDetails').hide();
-
-        const emptyMsg = '<tr><td colspan="9" class="text-center text-muted" style="font-size:0.8rem;">Enter a Job No to load charges</td></tr>';
-        $('#ccRevenueBody, #ccCostBody').html(emptyMsg);
-        $('#ccRevenueSummary').text('[ Total Record(s): 0 Total Amount: 0 KES ]');
-        $('#ccCostSummary').text('[ Total Record(s): 0 Total Amount: 0 KES ]');
-        $('#ccRevenueSelectAll, #ccCostSelectAll').prop('checked', false);
-        $('#ccSaveBtn').prop('disabled', true);
-
-        ccTableState.ccRevenueBody = { rows: [], page: 1, pageSize: 10 };
-        ccTableState.ccCostBody    = { rows: [], page: 1, pageSize: 10 };
-        updateTablePagination('ccRevenueBody');
-        updateTablePagination('ccCostBody');
-        ccSelectedJobRow = null;
-    }
-
-    function resetSearchModal() {
-        $('#ccSearchField').val('');
-        $('#ccSearchValue').val('');
-        ccSearchResults = [];
-        ccCurrentPage   = 1;
-        ccPageSize      = parseInt($('#ccPageSize').val()) || 10;
-        renderSearchPage();
-    }
-
-    function runMockSearch() {
-        const mockProcessTypes = ['Air - Import', 'Air - Export', 'Sea - Import', 'Sea - Export'];
-        const mockRows = [];
-        for (let i = 1; i <= 87; i++) {
-            const year = i % 3 === 0 ? '24' : '23';
-            mockRows.push({
-                processType: mockProcessTypes[i % mockProcessTypes.length],
-                jobNo: `FE-AI-${year}-${15058 + i}`
+    // ============================================
+    // COPY CHARGES
+    // ============================================
+    (function () {
+    
+        const CC_SEARCH_URL  = '{{ route("quotation.copy-charges.search") }}';
+        const CC_CHARGES_URL = '{{ route("quotation.copy-charges.charges") }}';
+        const CC_SAVE_URL    = '{{ route("quotation.charge.save") }}';
+    
+        let ccSearchResults  = [];
+        let ccCurrentPage    = 1;
+        let ccPageSize       = 10;
+        let ccSelectedJobRow = null;
+    
+        const ccTableState = {
+            ccRevenueBody: { rows: [], page: 1, pageSize: 10 },
+            ccCostBody:    { rows: [], page: 1, pageSize: 10 },
+        };
+    
+        // ── Open modal ────────────────────────────────────────────────────────────
+        $('#openCopyChargesBtn').on('click', function () {
+            resetCopyChargesModal();
+            $('#copyChargesModal').modal('show');
+        });
+    
+        // ── Open job search ───────────────────────────────────────────────────────
+        $('#ccJobNoSearchBtn').on('click', function () {
+            ccSelectedJobRow = null;
+            $('#ccSearchOkBtn').prop('disabled', true);
+            resetSearchModal();
+            $('#ccSearchModal').css('z-index', 1060).modal('show');
+        });
+    
+        // ── Search ────────────────────────────────────────────────────────────────
+        $('#ccSearchGoBtn').on('click', function () {
+            ccCurrentPage = 1;
+            runSearch();
+        });
+    
+        $('#ccSearchValue').on('keypress', function (e) {
+            if (e.which === 13) $('#ccSearchGoBtn').trigger('click');
+        });
+    
+        function runSearch() {
+            const filterField = $('#ccSearchField').val();
+            const filterValue = $('#ccSearchValue').val().trim();
+    
+            $.ajax({
+                url: CC_SEARCH_URL,
+                type: 'GET',
+                data: { office_code: officeCode, filter_field: filterField, filter_value: filterValue },
+                beforeSend: function () {
+                    $('#ccSearchResultsBody').html(
+                        '<tr><td colspan="5" class="cc-empty-msg"><i class="fas fa-spinner fa-spin"></i> Searching...</td></tr>'
+                    );
+                },
+                success: function (response) {
+                    ccSearchResults = response.success ? (response.data || []) : [];
+                    ccCurrentPage   = 1;
+                    renderSearchPage();
+                },
+                error: function () {
+                    ccSearchResults = [];
+                    renderSearchPage();
+                    showNotification('Search failed', 'error');
+                }
             });
         }
-
-        const filterVal   = $('#ccSearchValue').val().trim().toLowerCase();
-        const filterField = $('#ccSearchField').val();
-
-        ccSearchResults = filterVal
-            ? mockRows.filter(r => {
-                if (filterField === 'job_no')       return r.jobNo.toLowerCase().includes(filterVal);
-                if (filterField === 'process_type') return r.processType.toLowerCase().includes(filterVal);
-                return r.jobNo.toLowerCase().includes(filterVal) ||
-                       r.processType.toLowerCase().includes(filterVal);
-            })
-            : mockRows;
-
-        ccCurrentPage = 1;
-        renderSearchPage();
-    }
-
-    function renderSearchPage() {
-        const $tbody     = $('#ccSearchResultsBody');
-        const total      = ccSearchResults.length;
-        const totalPages = Math.max(1, Math.ceil(total / ccPageSize));
-        ccCurrentPage    = Math.min(ccCurrentPage, totalPages);
-
-        const start = (ccCurrentPage - 1) * ccPageSize;
-        const end   = Math.min(start + ccPageSize, total);
-        const page  = ccSearchResults.slice(start, end);
-
-        $('#ccPageInput').val(ccCurrentPage);
-        $('#ccTotalPages').text(totalPages);
-        $('#ccViewRange').text(
-            total === 0 ? 'View 0 - 0 of 0' : `View ${start + 1} - ${end} of ${total}`
+    
+        // ── Search pagination ─────────────────────────────────────────────────────
+        $(document).on('click', '.cc-page-btn', function () {
+            const action     = $(this).data('action');
+            const totalPages = Math.max(1, Math.ceil(ccSearchResults.length / ccPageSize));
+            if (action === 'first') ccCurrentPage = 1;
+            else if (action === 'prev')  ccCurrentPage = Math.max(1, ccCurrentPage - 1);
+            else if (action === 'next')  ccCurrentPage = Math.min(totalPages, ccCurrentPage + 1);
+            else if (action === 'last')  ccCurrentPage = totalPages;
+            renderSearchPage();
+        });
+    
+        $('#ccPageInput').on('change', function () {
+            const totalPages = Math.max(1, Math.ceil(ccSearchResults.length / ccPageSize));
+            ccCurrentPage = Math.min(totalPages, Math.max(1, parseInt($(this).val()) || 1));
+            renderSearchPage();
+        });
+    
+        $('#ccPageSize').on('change', function () {
+            ccPageSize    = parseInt($(this).val()) || 10;
+            ccCurrentPage = 1;
+            renderSearchPage();
+        });
+    
+        function renderSearchPage() {
+            const $tbody     = $('#ccSearchResultsBody');
+            const total      = ccSearchResults.length;
+            const totalPages = Math.max(1, Math.ceil(total / ccPageSize));
+            ccCurrentPage    = Math.min(ccCurrentPage, totalPages);
+            const start      = (ccCurrentPage - 1) * ccPageSize;
+            const end        = Math.min(start + ccPageSize, total);
+            const page       = ccSearchResults.slice(start, end);
+    
+            $('#ccPageInput').val(ccCurrentPage);
+            $('#ccTotalPages').text(totalPages);
+            $('#ccViewRange').text(total === 0 ? 'View 0 - 0 of 0' : `View ${start + 1} - ${end} of ${total}`);
+    
+            $tbody.empty();
+    
+            if (!page.length) {
+                $tbody.html('<tr><td colspan="5" class="cc-empty-msg">No results found</td></tr>');
+                return;
+            }
+    
+            page.forEach(function (row, i) {
+                const globalIdx = start + i;
+                $tbody.append(`
+                    <tr style="cursor:pointer;" data-idx="${globalIdx}">
+                        <td class="text-center">
+                            <input type="radio" name="ccJobSearchRadio" class="cc-search-radio" value="${globalIdx}">
+                        </td>
+                        <td style="font-size:0.8rem;">${row.QuoteNo}</td>
+                        <td style="font-size:0.8rem;">${row.CompanyName}</td>
+                        <td style="font-size:0.8rem;">${row.Origin}</td>
+                        <td style="font-size:0.8rem;">${row.Destination}</td>
+                    </tr>
+                `);
+            });
+    
+            $tbody.find('tr').on('click', function () {
+                $(this).find('input[type="radio"]').prop('checked', true).trigger('change');
+            });
+        }
+    
+        // ── Row selection ─────────────────────────────────────────────────────────
+        $(document).on('change', '.cc-search-radio', function () {
+            const idx        = parseInt($(this).val(), 10);
+            ccSelectedJobRow = ccSearchResults[idx] || null;
+            $('#ccSearchOkBtn').prop('disabled', !ccSelectedJobRow);
+        });
+    
+        // ── Search Ok ─────────────────────────────────────────────────────────────
+        $('#ccSearchOkBtn').on('click', function () {
+            if (!ccSelectedJobRow) return;
+            $('#ccJobNo').val(ccSelectedJobRow.QuoteNo);
+            $('#ccSearchModal').modal('hide');
+            loadJobCharges(ccSelectedJobRow);
+        });
+    
+        // ── Search cancel / close ─────────────────────────────────────────────────
+        $('#ccSearchCancelBtn, #ccSearchModalClose').on('click', function (e) {
+            e.preventDefault();
+            $('#ccSearchModal').modal('hide');
+        });
+    
+        // ── Load charges for selected quote ───────────────────────────────────────
+        function loadJobCharges(jobRow) {
+            if (!jobRow.id) {
+                showNotification('Quotation ID not found for this quote', 'error');
+                return;
+            }
+    
+            $('#ccJobDetails, #ccJobDetailsCost').hide();
+            const emptyMsg = '<tr><td colspan="6" class="cc-empty-msg"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>';
+            $('#ccRevenueBody, #ccCostBody').html(emptyMsg);
+    
+            $.ajax({
+                url: CC_CHARGES_URL,
+                type: 'GET',
+                data: { quotation_id: jobRow.id },
+                success: function (response) {
+                    if (!response.success) {
+                        showNotification(response.message || 'Failed to load charges', 'error');
+                        return;
+                    }
+    
+                    var info = response.job_info || {};
+                    $('#ccClient').text(info.client || '');
+                    $('#ccShipper').text(info.shipper || '');
+                    $('#ccConsignee').text(info.consignee || '');
+                    $('#ccPortOfLoading').text(info.port_of_loading || '');
+                    $('#ccPortOfDischarge').text(info.port_of_discharge || '');
+                    $('#ccClientRow').toggle(!!info.client);
+                    $('#ccShipperRow').toggle(!!info.shipper);
+                    $('#ccConsigneeRow').toggle(!!info.consignee);
+                    $('#ccPolRow').toggle(!!info.port_of_loading);
+                    $('#ccPodRow').toggle(!!info.port_of_discharge);
+    
+                    ccTableState.ccRevenueBody.rows     = response.revenue || [];
+                    ccTableState.ccRevenueBody.page     = 1;
+                    ccTableState.ccRevenueBody.pageSize = 10;
+    
+                    ccTableState.ccCostBody.rows     = response.cost || [];
+                    ccTableState.ccCostBody.page     = 1;
+                    ccTableState.ccCostBody.pageSize = 10;
+    
+                    const rev  = response.revenue.length;
+                    const cost = response.cost.length;
+                    $('#ccRevenueSummary').text(`[ Total Record(s): ${rev} ]`);
+                    $('#ccCostSummary').text(`[ Total Record(s): ${cost} ]`);
+    
+                    renderTablePage('ccRevenueBody');
+                    renderTablePage('ccCostBody');
+    
+                    $('#ccJobDetails').show();
+                    $('#ccJobDetailsCost').show();
+                    updateSaveBtn();
+                },
+                error: function () {
+                    showNotification('Failed to load charges', 'error');
+                }
+            });
+        }
+    
+        // ── Per-table pagination ──────────────────────────────────────────────────
+        $(document).on('click', '.cc-tbl-page-btn', function () {
+            const tbodyId    = $(this).data('tbody');
+            const action     = $(this).data('action');
+            const s          = ccTableState[tbodyId];
+            if (!s) return;
+            const totalPages = Math.max(1, Math.ceil(s.rows.length / s.pageSize));
+            if (action === 'first') s.page = 1;
+            else if (action === 'prev') s.page = Math.max(1, s.page - 1);
+            else if (action === 'next') s.page = Math.min(totalPages, s.page + 1);
+            else if (action === 'last') s.page = totalPages;
+            renderTablePage(tbodyId);
+        });
+    
+        $(document).on('change', '.cc-tbl-page-input', function () {
+            const tbodyId    = $(this).data('tbody');
+            const s          = ccTableState[tbodyId];
+            if (!s) return;
+            const totalPages = Math.max(1, Math.ceil(s.rows.length / s.pageSize));
+            s.page = Math.min(totalPages, Math.max(1, parseInt($(this).val()) || 1));
+            renderTablePage(tbodyId);
+        });
+    
+        $(document).on('change', '.cc-tbl-page-size', function () {
+            const tbodyId = $(this).data('tbody');
+            const s       = ccTableState[tbodyId];
+            if (!s) return;
+            s.pageSize = parseInt($(this).val()) || 10;
+            s.page     = 1;
+            renderTablePage(tbodyId);
+        });
+    
+        // ── View All / Selected toggles ───────────────────────────────────────────
+        $(document).on('click', '.cc-view-toggle', function (e) {
+            e.preventDefault();
+            const tbodyId = $(this).data('tbody');
+            const mode    = $(this).data('mode');
+            const $tbody  = $('#' + tbodyId);
+    
+            if (mode === 'selected') {
+                $tbody.find('tr').each(function () {
+                    $(this).toggle($(this).find('input[type="checkbox"]').is(':checked'));
+                });
+            } else {
+                $tbody.find('tr').show();
+            }
+        });
+    
+        // ── Select all ────────────────────────────────────────────────────────────
+        $('#ccRevenueSelectAll').on('change', function () {
+            $('#ccRevenueBody input[type="checkbox"]').prop('checked', $(this).is(':checked'));
+            updateSaveBtn();
+        });
+        $('#ccCostSelectAll').on('change', function () {
+            $('#ccCostBody input[type="checkbox"]').prop('checked', $(this).is(':checked'));
+            updateSaveBtn();
+        });
+        $(document).on('change', '#ccRevenueBody input[type="checkbox"], #ccCostBody input[type="checkbox"]',
+            function () { updateSaveBtn(); }
         );
-
-        $tbody.empty();
-
-        if (!page.length) {
-            $tbody.html('<tr><td colspan="3" class="text-center text-muted" style="font-size:0.8rem;">No results found</td></tr>');
-            return;
-        }
-
-        page.forEach(function (row, i) {
-            const globalIdx = start + i;
-            $tbody.append(`
-                <tr style="cursor:pointer;">
+    
+        // ── Build charge row (6 columns) ─────────────────────────────────────────
+        function buildChargeRow(r, i, type) {
+            return `
+                <tr data-cc-row="${i}">
                     <td class="text-center">
-                        <input type="radio" name="ccJobSearchRadio" class="cc-search-radio" value="${globalIdx}">
+                        <input type="checkbox" class="cc-charge-check" data-type="${type}" data-index="${i}">
                     </td>
-                    <td style="font-size:0.8rem;">${row.processType}</td>
-                    <td style="font-size:0.8rem;">${row.jobNo}</td>
+                    <td style="font-size:0.8rem;">${r.chargeCode || ''}</td>
+                    <td style="font-size:0.8rem; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
+                        title="${r.chargeDesp || ''}">${r.chargeDesp || ''}</td>
+                    <td class="text-center" style="font-size:0.8rem;">${r.quantity || 0}</td>
+                    <td style="font-size:0.8rem;">${r.basedOn || ''}</td>
+                    <td style="font-size:0.8rem;">${r.uomCode || ''}</td>
                 </tr>
-            `);
-        });
-
-        $tbody.find('tr').on('click', function () {
-            $(this).find('input[type="radio"]').prop('checked', true).trigger('change');
-        });
-    }
-
-    function loadJobDetails(jobRow) {
-        $('#ccClient').text('General Client');
-        $('#ccShipper').text('General - ' + jobRow.jobNo);
-        $('#ccConsignee').text('General - ASIMCO GLOBAL');
-        $('#ccPortOfLoading').text('AEDXB04 - Dubai');
-        $('#ccPortOfDischarge').text('KENBO04 - Nairobi');
-        $('#ccJobDetails').show();
-        $('#ccJobDetailsCost').show();
-
-        const revRows = [
-            { service: 'Air-Import', activity: '', debtor: '', code: 'AC', description: 'Import Courier Handling Ch', qty: 1, basedOn: 'Shipment', uom: '' }
-        ];
-        ccTableState.ccRevenueBody.rows    = revRows;
-        ccTableState.ccRevenueBody.page    = 1;
-        ccTableState.ccRevenueBody.pageSize = 10;
-        renderTablePage('ccRevenueBody');
-        $('#ccRevenueSummary').text(`[ Total Record(s): ${revRows.length} Total Amount: 0 KES ]`);
-
-        const costRows = [
-            { service: 'Air-Import', activity: '', vendor: 'AFRICAN CARG', code: 'AC', description: 'Import Courier Handling Ch', qty: 1, basedOn: 'Shipment', uom: '' }
-        ];
-        ccTableState.ccCostBody.rows    = costRows;
-        ccTableState.ccCostBody.page    = 1;
-        ccTableState.ccCostBody.pageSize = 10;
-        renderTablePage('ccCostBody');
-        $('#ccCostSummary').text(`[ Total Record(s): ${costRows.length} Total Amount: 0 KES ]`);
-
-        updateSaveBtn();
-    }
-
-    // Build one charge row with inline editable inputs matching the screenshot
-    function buildChargeRow(r, i, type) {
-        const basedOnOptions = CC_BASED_ON_OPTIONS.map(opt =>
-            `<option value="${opt}" ${opt === r.basedOn ? 'selected' : ''}>${opt}</option>`
-        ).join('');
-
-        const partyVal = type === 'revenue' ? (r.debtor || '') : (r.vendor || '');
-
-        return `
-            <tr data-cc-row="${i}">
-                <td class="text-center">
-                    <input type="checkbox" class="cc-charge-check" data-type="${type}" data-index="${i}">
-                </td>
-                <td style="font-size:0.8rem;">${r.service || ''}</td>
-                <td>
-                    <div class="input-group" style="flex-wrap:nowrap; width:120px;">
-                        <input type="text" class="form-control form-control-sm" value="${r.activity || ''}"
-                            style="font-size:0.75rem; height:24px; min-width:0;">
-                        <div class="input-group-append">
-                            <button type="button" class="btn btn-sm btn-outline-secondary" style="padding:0 5px; height:24px; line-height:1;">
-                                <i class="fas fa-search" style="font-size:0.65rem;"></i>
-                            </button>
-                        </div>
-                    </div>
-                </td>
-                <td>
-                    <div class="input-group" style="flex-wrap:nowrap; width:130px;">
-                        <input type="text" class="form-control form-control-sm" value="${partyVal}"
-                            style="font-size:0.75rem; height:24px; min-width:0;">
-                        <div class="input-group-append">
-                            <button type="button" class="btn btn-sm btn-outline-secondary" style="padding:0 5px; height:24px; line-height:1;">
-                                <i class="fas fa-search" style="font-size:0.65rem;"></i>
-                            </button>
-                        </div>
-                    </div>
-                </td>
-                <td>
-                    <div class="input-group" style="flex-wrap:nowrap; width:100px;">
-                        <input type="text" class="form-control form-control-sm" value="${r.code || ''}"
-                            style="font-size:0.75rem; height:24px; min-width:0;">
-                        <div class="input-group-append">
-                            <button type="button" class="btn btn-sm btn-outline-secondary" style="padding:0 5px; height:24px; line-height:1;">
-                                <i class="fas fa-search" style="font-size:0.65rem;"></i>
-                            </button>
-                        </div>
-                    </div>
-                </td>
-                <td style="font-size:0.8rem; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
-                    title="${r.description || ''}">${r.description || ''}</td>
-                <td class="text-center">
-                    <input type="number" class="form-control form-control-sm text-center" value="${r.qty || 1}"
-                        min="1" style="width:55px; height:24px; font-size:0.75rem; display:inline-block;">
-                </td>
-                <td>
-                    <select class="form-control form-control-sm" style="height:24px; font-size:0.75rem; width:90px; padding:0 4px;">
-                        ${basedOnOptions}
-                    </select>
-                </td>
-                <td style="font-size:0.8rem;">${r.uom || ''}</td>
-            </tr>
-        `;
-    }
-
-    function renderTablePage(tbodyId) {
-        const s          = ccTableState[tbodyId];
-        const $tbody     = $('#' + tbodyId);
-        const type       = tbodyId === 'ccRevenueBody' ? 'revenue' : 'cost';
-        const total      = s.rows.length;
-        const totalPages = Math.max(1, Math.ceil(total / s.pageSize));
-        s.page           = Math.min(s.page, totalPages);
-
-        const start = (s.page - 1) * s.pageSize;
-        const end   = Math.min(start + s.pageSize, total);
-        const page  = s.rows.slice(start, end);
-
-        $tbody.empty();
-
-        if (!page.length) {
-            const msg = total === 0
-                ? 'Enter a Job No to load charges'
-                : 'No charges on this page';
-            $tbody.html(`<tr><td colspan="9" class="text-center text-muted" style="font-size:0.8rem;">${msg}</td></tr>`);
-        } else {
-            page.forEach(function (r, i) {
-                $tbody.append(buildChargeRow(r, start + i, type));
-            });
+            `;
         }
-
-        updateTablePagination(tbodyId);
-    }
-
-    function updateTablePagination(tbodyId) {
-        const s          = ccTableState[tbodyId];
-        const total      = s.rows.length;
-        const totalPages = Math.max(1, Math.ceil(total / s.pageSize));
-        const start      = (s.page - 1) * s.pageSize;
-        const end        = Math.min(start + s.pageSize, total);
-
-        $(`.cc-tbl-page-input[data-tbody="${tbodyId}"]`).val(s.page);
-        $(`.cc-tbl-total-pages[data-tbody="${tbodyId}"]`).text(totalPages);
-        $(`.cc-tbl-view-range[data-tbody="${tbodyId}"]`).text(
-            total === 0 ? 'View 0 - 0 of 0' : `View ${start + 1} - ${end} of ${total}`
-        );
-    }
-
-    function updateSaveBtn() {
-        const anyChecked = $('#ccRevenueBody .cc-charge-check:checked, #ccCostBody .cc-charge-check:checked').length > 0;
-        $('#ccSaveBtn').prop('disabled', !anyChecked);
-    }
-
-})();
+    
+        function renderTablePage(tbodyId) {
+            const s          = ccTableState[tbodyId];
+            const $tbody     = $('#' + tbodyId);
+            const type       = tbodyId === 'ccRevenueBody' ? 'revenue' : 'cost';
+            const total      = s.rows.length;
+            const totalPages = Math.max(1, Math.ceil(total / s.pageSize));
+            s.page           = Math.min(s.page, totalPages);
+            const start      = (s.page - 1) * s.pageSize;
+            const end        = Math.min(start + s.pageSize, total);
+            const page       = s.rows.slice(start, end);
+    
+            $tbody.empty();
+    
+            if (!page.length) {
+                const msg = total === 0 ? 'No charges on this quote' : 'No charges on this page';
+                $tbody.html(`<tr><td colspan="6" class="cc-empty-msg">${msg}</td></tr>`);
+            } else {
+                page.forEach(function (r, i) {
+                    $tbody.append(buildChargeRow(r, start + i, type));
+                });
+            }
+    
+            updateTablePagination(tbodyId);
+        }
+    
+        function updateTablePagination(tbodyId) {
+            const s          = ccTableState[tbodyId];
+            const total      = s.rows.length;
+            const totalPages = Math.max(1, Math.ceil(total / s.pageSize));
+            const start      = (s.page - 1) * s.pageSize;
+            const end        = Math.min(start + s.pageSize, total);
+    
+            $(`.cc-tbl-page-input[data-tbody="${tbodyId}"]`).val(s.page);
+            $(`.cc-tbl-total-pages[data-tbody="${tbodyId}"]`).text(totalPages);
+            $(`.cc-tbl-view-range[data-tbody="${tbodyId}"]`).text(
+                total === 0 ? 'View 0 - 0 of 0' : `View ${start + 1} - ${end} of ${total}`
+            );
+        }
+    
+        function updateSaveBtn() {
+            const any = $('#ccRevenueBody .cc-charge-check:checked, #ccCostBody .cc-charge-check:checked').length > 0;
+            $('#ccSaveBtn').prop('disabled', !any);
+        }
+    
+        // ── Save selected charges → reload page ───────────────────────────────────
+        $('#ccSaveBtn').on('click', function () {
+            const charges = [];
+    
+            $('#ccRevenueBody .cc-charge-check:checked').each(function () {
+                const row = ccTableState.ccRevenueBody.rows[$(this).data('index')];
+                if (row) charges.push(row);
+            });
+            $('#ccCostBody .cc-charge-check:checked').each(function () {
+                const row = ccTableState.ccCostBody.rows[$(this).data('index')];
+                if (row) charges.push(row);
+            });
+    
+            if (!charges.length) return;
+    
+            const $btn = $(this).prop('disabled', true).text('Saving...');
+            let chain  = Promise.resolve();
+            let failed = false;
+    
+            charges.forEach(function (charge) {
+                chain = chain.then(function () {
+                    if (failed) return;
+                    return $.ajax({
+                        url: CC_SAVE_URL,
+                        type: 'POST',
+                        data: {
+                            _token:          '{{ csrf_token() }}',
+                            action:          'Add',
+                            quotation_id:    quotationId,
+                            booking_no:      bookingNo,
+                            office_code:     officeCode,
+                            revenue_or_cost: charge.isRevenue ? 'Revenue' : 'Cost',
+                            charge_code:     charge.chargeCode,
+                            quantity:        charge.quantity,
+                            rate:            charge.rate,
+                            amt_in_chg_curr: charge.amount,
+                            amt_in_base_curr:charge.baseAmount,
+                            exchange_rate:   charge.exchangeRate,
+                            chg_curr:        charge.currency,
+                            based_on_code:   charge.basedOnCode,
+                            based_on_uom:    charge.uomCode,
+                            charge_remark:   '',
+                            to_be_added:     0,
+                            increase_by:     0,
+                            increase_type:   'Percentage',
+                            source_type:     'manual',
+                            quote_charge_id: '',
+                            party_code:      '',
+                        }
+                    }).fail(function (xhr) {
+                        failed = true;
+                        showNotification(
+                            (xhr.responseJSON?.message || 'Failed to copy') + ': ' + charge.chargeCode,
+                            'error'
+                        );
+                    });
+                });
+            });
+    
+            chain.then(function () {
+                if (!failed) {
+                    $('#copyChargesModal').modal('hide');
+                    window.location.reload();
+                }
+            }).always(function () {
+                $btn.prop('disabled', false).text('Save');
+            });
+        });
+    
+        // ── Copy Charges modal close ──────────────────────────────────────────────
+        $('#copyChargesModal').on('hidden.bs.modal', resetCopyChargesModal);
+        $('#ccCancelBtn').on('click', function (e) {
+            e.preventDefault();
+            $('#copyChargesModal').modal('hide');
+        });
+    
+        // ── Helpers ───────────────────────────────────────────────────────────────
+        function resetCopyChargesModal() {
+            $('#ccJobNo').val('');
+            $('#ccJobDetails, #ccJobDetailsCost').hide();
+            $('#ccClientRow, #ccShipperRow, #ccConsigneeRow, #ccPolRow, #ccPodRow').hide();
+            $('#ccClient, #ccShipper, #ccConsignee, #ccPortOfLoading, #ccPortOfDischarge').text('');
+            const empty = '<tr><td colspan="6" class="cc-empty-msg">Enter a Job No to load charges</td></tr>';
+            $('#ccRevenueBody, #ccCostBody').html(empty);
+            $('#ccRevenueSummary').text('[ Total Record(s): 0 ]');
+            $('#ccCostSummary').text('[ Total Record(s): 0 ]');
+            $('#ccRevenueSelectAll, #ccCostSelectAll').prop('checked', false);
+            $('#ccSaveBtn').prop('disabled', true);
+            ccTableState.ccRevenueBody = { rows: [], page: 1, pageSize: 10 };
+            ccTableState.ccCostBody    = { rows: [], page: 1, pageSize: 10 };
+            updateTablePagination('ccRevenueBody');
+            updateTablePagination('ccCostBody');
+            ccSelectedJobRow = null;
+        }
+    
+        function resetSearchModal() {
+            $('#ccSearchField').val('');
+            $('#ccSearchValue').val('');
+            ccSearchResults = [];
+            ccCurrentPage   = 1;
+            ccPageSize      = parseInt($('#ccPageSize').val()) || 10;
+            renderSearchPage();
+        }
+    
+    })();
     </script>
 @stop
