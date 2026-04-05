@@ -848,7 +848,7 @@ class QuotationController extends Controller
         return $officeNames;
     }
 
-   private function getStatsForIndex(\Illuminate\Support\Collection $allowedOfficeCodes): array
+    private function getStatsForIndex(\Illuminate\Support\Collection $allowedOfficeCodes): array
     {
         if ($allowedOfficeCodes->isEmpty()) {
             return [
@@ -858,31 +858,31 @@ class QuotationController extends Controller
                 'completed'     => 0,
                 'lost_canceled' => 0,
                 'failed_int'    => 0,
-                'failed_progress'=> 0,
+                'failed_progress' => 0,
             ];
         }
-    
+
         $allRows            = $this->callSPForAllOffices('Total',           $allowedOfficeCodes);
         $lostCancelledRows  = $this->callSPForAllOffices('Lost',            $allowedOfficeCodes);
         $failedProgressRows = $this->callSPForAllOffices('Failed Progress', $allowedOfficeCodes);
-    
+
         $quoteNos  = array_column($allRows, 'QuoteNo');
         $scmLookup = collect();
-    
+
         if (!empty($quoteNos)) {
             $scmLookup = DB::table('Quote_QuotationInfo')
                 ->whereIn('QuoteNo', $quoteNos)
                 ->get(['QuoteNo', 'QuoteStatus', 'SCMINTStatus'])
                 ->keyBy('QuoteNo');
         }
-    
+
         $inProgress = $won = $completed = $failedInt = 0;
-    
+
         foreach ($allRows as $row) {
             $db          = $scmLookup->get($row->QuoteNo);
             $quoteStatus = $db->QuoteStatus  ?? $row->Status ?? '';
             $scmStatus   = $db->SCMINTStatus ?? null;
-    
+
             if ($quoteStatus === 'Won' && $scmStatus === 'Success') {
                 $completed++;
             } elseif ($quoteStatus === 'Won' && !is_null($scmStatus) && $scmStatus !== 'Success') {
@@ -893,11 +893,11 @@ class QuotationController extends Controller
                 $inProgress++;
             }
         }
-    
+
         $lostCanceled  = count($lostCancelledRows);
-        $failedProgress= count($failedProgressRows);
+        $failedProgress = count($failedProgressRows);
         $total         = $inProgress + $won + $completed + $failedInt + $failedProgress + $lostCanceled;
-    
+
         return [
             'total'          => $total,
             'in_progress'    => $inProgress,
@@ -905,7 +905,7 @@ class QuotationController extends Controller
             'completed'      => $completed,
             'lost_canceled'  => $lostCanceled,
             'failed_int'     => $failedInt,
-            'failed_progress'=> $failedProgress,
+            'failed_progress' => $failedProgress,
         ];
     }
 
@@ -5146,8 +5146,11 @@ class QuotationController extends Controller
 
     private function fetchChargeListFromSP(\PDO $pdo, string $quotationId, int $isRevenue): array
     {
-        $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC dbo.sp_Quote_Quotation_ChargeList ?, ?, NULL");
-        $stmt->execute([$quotationId, $isRevenue]);
+        $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC dbo.sp_Quote_Quotation_ChargeList ?, ?, ?");
+        $stmt->bindValue(1, $quotationId, \PDO::PARAM_STR);
+        $stmt->bindValue(2, $isRevenue,   \PDO::PARAM_INT);
+        $stmt->bindValue(3, null,         \PDO::PARAM_NULL);
+        $stmt->execute();
 
         $rows = [];
 
@@ -5255,27 +5258,13 @@ class QuotationController extends Controller
             $revenueRows = $this->fetchCopyChargeRows($pdo, $quotationId, 1);
             $costRows    = $this->fetchCopyChargeRows($pdo, $quotationId, 0);
 
-            // Resolve BasedOn codes from local table using BasedOnId from SP
-            $allIds = array_unique(array_filter(array_merge(
-                array_column($revenueRows, 'BasedOnId'),
-                array_column($costRows,    'BasedOnId')
-            )));
-
-            $codeLookup = [];
-            if (!empty($allIds)) {
-                DB::table('Cust_ChargecodeBasedOn')
-                    ->whereIn('Id', $allIds)
-                    ->where('IsActive', 1)
-                    ->get(['Id', 'Code'])
-                    ->each(fn($r) => $codeLookup[$r->Id] = $r->Code);
-            }
-
             $map = fn($row, $isRevenue) => [
                 'id'           => $row['Id'],
                 'chargeCode'   => $row['ChargeCode']        ?? '',
                 'chargeDesp'   => $row['ChargeDesp']        ?? '',
                 'basedOn'      => $row['BasedOn']            ?? '',
-                'basedOnCode'  => $codeLookup[$row['BasedOnId']] ?? '',
+                'basedOnCode'  => '',  
+                'basedOn'      => $row['BasedOn'] ?? '',
                 'basedOnAndUOM' => $row['BasedOnAndUOM']     ?? '',
                 'uomCode'      => $row['UOMCode']            ?? '',
                 'quantity'     => (float) ($row['Quantity']          ?? 0),
@@ -5299,30 +5288,30 @@ class QuotationController extends Controller
                     'd.PortOfDischarge as port_of_discharge',
                 ])
                 ->first();
-            
-                $jobInfo = DB::table('Quote_QuotationInfo')
-                    ->where('ID', $quotationId)
-                    ->select([
-                        'companyname',
-                        'origincountry',
-                        'destinationcountry',
-                        'pri_partnermaster_name',
-                        'SCMJobNo',
-                    ])
-                    ->first();
-                
-                return response()->json([
-                    'success'  => true,
-                    'revenue'  => array_map(fn($r) => $map($r, true),  $revenueRows),
-                    'cost'     => array_map(fn($r) => $map($r, false), $costRows),
-                    'job_info' => $jobInfo ? [
-                        'client'           => $jobInfo->companyname          ?? '',
-                        'shipper'          => $jobInfo->pri_partnermaster_name ?? '',
-                        'consignee'        => '',
-                        'port_of_loading'  => $jobInfo->origincountry         ?? '',
-                        'port_of_discharge'=> $jobInfo->destinationcountry    ?? '',
-                    ] : [],
-                ]);
+
+            $jobInfo = DB::table('Quote_QuotationInfo')
+                ->where('ID', $quotationId)
+                ->select([
+                    'companyname',
+                    'origincountry',
+                    'destinationcountry',
+                    'pri_partnermaster_name',
+                    'SCMJobNo',
+                ])
+                ->first();
+
+            return response()->json([
+                'success'  => true,
+                'revenue'  => array_map(fn($r) => $map($r, true),  $revenueRows),
+                'cost'     => array_map(fn($r) => $map($r, false), $costRows),
+                'job_info' => $jobInfo ? [
+                    'client'           => $jobInfo->companyname          ?? '',
+                    'shipper'          => $jobInfo->pri_partnermaster_name ?? '',
+                    'consignee'        => '',
+                    'port_of_loading'  => $jobInfo->origincountry         ?? '',
+                    'port_of_discharge' => $jobInfo->destinationcountry    ?? '',
+                ] : [],
+            ]);
         } catch (\Exception $e) {
             Log::error('getCopyCharges failed', ['quotation_id' => $quotationId, 'error' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
@@ -6439,94 +6428,94 @@ class QuotationController extends Controller
 
 
     public function saveCustomerDetails(Request $request)
-      {
-          try {
-              $inputJson = $request->input('input_json');
-      
-              if (!$inputJson) {
-                  return response()->json([
-                      'success' => false,
-                      'message' => 'input_json is required'
-                  ], 400);
-              }
-      
-              // Log what we're sending
-              \Log::info('saveCustomerDetails - Sending JSON', ['json' => $inputJson]);
-      
-              $pdo = DB::connection('sqlsrv')->getPdo();
-              $stmt = $pdo->prepare("SET NOCOUNT ON; DECLARE @OutputRemarkJson NVARCHAR(2000); EXEC dbo.sp_Quote_CustomerUpdate ?, @OutputRemarkJson OUTPUT; SELECT @OutputRemarkJson AS OutputRemarkJson");
-              $stmt->execute([$inputJson]);
-      
-              $output = null;
-              do {
-                  try {
-                      $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
-                      if (!empty($rows) && isset($rows[0]->OutputRemarkJson)) {
-                          $output = $rows[0]->OutputRemarkJson;
-                          break;
-                      }
-                  } catch (\PDOException $e) {
-                      continue;
-                  }
-              } while ($stmt->nextRowset());
-      
-              if (!$output) {
-                  return response()->json([
-                      'success' => false,
-                      'message' => 'No response from stored procedure'
-                  ], 500);
-              }
-      
-              $result = json_decode($output, true);
-      
-              if ($result && isset($result['Status']) && $result['Status'] === 'Success') {
-                  // Patch columns the SP omits from its UPDATE
-                  $decoded = json_decode($request->input('input_json'), true);
-                  $patch = [];
-      
-                  if (!empty($decoded['Industry'])) {
-                      $patch['industryname'] = $decoded['Industry'];
-                  }
-      
-                  // SP does not write these back to Quote_QuotationInfo
-                  if (!empty($decoded['CustomerType'])) {
-                      $patch['CustomerType'] = $decoded['CustomerType'];
-                  }
-      
-                  if (isset($decoded['AgentType'])) {
-                      $patch['AgentType'] = $decoded['AgentType'];
-                  }
-      
-                  if (!empty($patch)) {
-                      DB::table('Quote_QuotationInfo')
-                          ->where('ID', $decoded['QuotationID'])
-                          ->update($patch);
-                  }
-      
-                  return response()->json([
-                      'success' => true,
-                      'message' => 'Customer details saved successfully',
-                  ]);
-              }
-      
-              return response()->json([
-                  'success' => false,
-                  'message' => $result['Remarks'][0]['Remark'] ?? 'Failed to save customer details',
-              ], 422);
-          } catch (\Exception $e) {
-              Log::error('saveCustomerDetails - Failed', [
-                  'error' => $e->getMessage(),
-                  'file' => $e->getFile(),
-                  'line' => $e->getLine(),
-              ]);
-      
-              return response()->json([
-                  'success' => false,
-                  'message' => $e->getMessage(),
-              ], 500);
-          }
-      }
-  
+    {
+        try {
+            $inputJson = $request->input('input_json');
+
+            if (!$inputJson) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'input_json is required'
+                ], 400);
+            }
+
+            // Log what we're sending
+            \Log::info('saveCustomerDetails - Sending JSON', ['json' => $inputJson]);
+
+            $pdo = DB::connection('sqlsrv')->getPdo();
+            $stmt = $pdo->prepare("SET NOCOUNT ON; DECLARE @OutputRemarkJson NVARCHAR(2000); EXEC dbo.sp_Quote_CustomerUpdate ?, @OutputRemarkJson OUTPUT; SELECT @OutputRemarkJson AS OutputRemarkJson");
+            $stmt->execute([$inputJson]);
+
+            $output = null;
+            do {
+                try {
+                    $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+                    if (!empty($rows) && isset($rows[0]->OutputRemarkJson)) {
+                        $output = $rows[0]->OutputRemarkJson;
+                        break;
+                    }
+                } catch (\PDOException $e) {
+                    continue;
+                }
+            } while ($stmt->nextRowset());
+
+            if (!$output) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No response from stored procedure'
+                ], 500);
+            }
+
+            $result = json_decode($output, true);
+
+            if ($result && isset($result['Status']) && $result['Status'] === 'Success') {
+                // Patch columns the SP omits from its UPDATE
+                $decoded = json_decode($request->input('input_json'), true);
+                $patch = [];
+
+                if (!empty($decoded['Industry'])) {
+                    $patch['industryname'] = $decoded['Industry'];
+                }
+
+                // SP does not write these back to Quote_QuotationInfo
+                if (!empty($decoded['CustomerType'])) {
+                    $patch['CustomerType'] = $decoded['CustomerType'];
+                }
+
+                if (isset($decoded['AgentType'])) {
+                    $patch['AgentType'] = $decoded['AgentType'];
+                }
+
+                if (!empty($patch)) {
+                    DB::table('Quote_QuotationInfo')
+                        ->where('ID', $decoded['QuotationID'])
+                        ->update($patch);
+                }
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Customer details saved successfully',
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => $result['Remarks'][0]['Remark'] ?? 'Failed to save customer details',
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('saveCustomerDetails - Failed', [
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
     /**
      * Shared PDO helper for sp_Quote_DetailsUpdate.
      * Uses nextRowset() to skip intermediate result sets produced by
@@ -8632,35 +8621,35 @@ class QuotationController extends Controller
             'total'          => 0,
             'in_progress'    => 0,
             'failed_int'     => 0,
-            'failed_progress'=> 0,
+            'failed_progress' => 0,
         ];
-    
+
         try {
             $instance = new self();
-    
+
             $allowedOfficeCodes = $officeCode
                 ? collect([strtoupper(trim($officeCode))])
                 : $instance->resolveAllowedOfficeCodesViaSP();
-    
+
             \Log::info('QuotationController::getHomeStats - office codes resolved', [
                 'user_email'          => \Auth::user()->Email ?? 'null',
-                'allowed_office_codes'=> $allowedOfficeCodes->toArray(),
+                'allowed_office_codes' => $allowedOfficeCodes->toArray(),
             ]);
-    
+
             if ($allowedOfficeCodes->isEmpty()) {
                 \Log::warning('QuotationController::getHomeStats - no office codes, returning zeros');
                 return $blank;
             }
-    
+
             $stats = $instance->getStatsForIndex($allowedOfficeCodes);
-    
+
             \Log::info('QuotationController::getHomeStats - stats returned', $stats);
-    
+
             return [
                 'total'          => $stats['total']          ?? 0,
                 'in_progress'    => $stats['in_progress']    ?? 0,
                 'failed_int'     => $stats['failed_int']     ?? 0,
-                'failed_progress'=> $stats['failed_progress']?? 0,
+                'failed_progress' => $stats['failed_progress'] ?? 0,
             ];
         } catch (\Exception $e) {
             \Log::error('QuotationController::getHomeStats - Failed', [
@@ -8668,7 +8657,7 @@ class QuotationController extends Controller
                 'line'  => $e->getLine(),
                 'file'  => $e->getFile(),
             ]);
-    
+
             return $blank;
         }
     }
@@ -8678,7 +8667,7 @@ class QuotationController extends Controller
     {
         $merged = [];
         $seen   = [];
-    
+
         foreach ($officeCodes as $code) {
             $rows = $this->callQuotationListSP($status, '', '', $code);
             foreach ($rows as $row) {
@@ -8690,7 +8679,7 @@ class QuotationController extends Controller
                 $merged[]   = $row;
             }
         }
-    
+
         return $merged;
     }
 
@@ -8863,10 +8852,10 @@ class QuotationController extends Controller
                         <Description>{$description}</Description>
                         <Severity>{$severity}</Severity>
                     </Error>";
-                                }
-                            }
-                
-                            $inputXml = "
+                }
+            }
+
+            $inputXml = "
                     <ArrayOfTransaction>
                         <Transaction>
                             <ID>{$quotation->QuoteNo}</ID>
