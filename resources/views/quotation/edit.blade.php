@@ -89,8 +89,8 @@
                             </div>
                         </div>
                         @if (!$isBookingCreated)
-                            <div class="form-group row mb-0">
-                                <div class="col-sm-7 offset-sm-5">
+                           <div class="row mt-3 pt-2" style="border-top: 1px solid #dee2e6;">
+                                <div class="col-md-12 text-right">
                                     <button type="button" class="btn btn-warning btn-sm" id="editInquiryBtn">
                                         <i class="fas fa-edit mr-1"></i> Edit
                                     </button>
