@@ -1719,33 +1719,42 @@ $(document).ready(function() {
                     } catch (e) {}
                     table.ajax.reload(null, false);
                 } else {
-                    var failedStep = (res.steps || []).find(function(s) {
-                        return s.status === 'Failed';
-                    });
-                    $('#cbProgressError')
-                        .html('<strong>' + (res.failed_label || 'Step') +
-                            ' failed:</strong> ' +
-                            (failedStep ? failedStep.remark : 'Unknown error'))
-                        .removeClass('d-none');
-                    table.ajax.reload(null, false);
-                    $('#cbEditLink').removeClass('d-none');
-                }
-            },
-            error: function(xhr) {
-                var msg = 'An unexpected error occurred.';
-                var json = xhr.responseJSON;
-                if (json) {
-                    if (json.errors) {
-                        // Laravel validation (422)
-                        msg = Object.values(json.errors).flat().join('<br>');
-                    } else if (json.message) {
-                        msg = json.message;
+         var errorDetail = (failedStep && failedStep.remark)
+    ? failedStep.remark
+    : (res.message || 'No further details were returned from the server. Please check the logs or contact support.');
+
+    $('#cbProgressError')
+        .html('<strong>' + (res.failed_label || 'A step') +
+            ' failed:</strong> ' + errorDetail)
+        .removeClass('d-none');
+                        table.ajax.reload(null, false);
+                        $('#cbEditLink').removeClass('d-none');
                     }
-                } else if (xhr.status === 0) {
-                    msg = 'Connection lost. Please check your network and try again.';
-                } else if (xhr.status >= 500) {
-                    msg = 'Server error (' + xhr.status + '). Please contact support.';
-                }
+                },
+    error: function(xhr) {
+        var msg;
+        var json = xhr.responseJSON;
+        if (xhr.status === 0) {
+            msg = 'Connection lost. Please check your network and try again.';
+        } else if (xhr.status === 422 && json && json.errors) {
+            msg = '<strong>Validation error:</strong><br>' +
+                  Object.values(json.errors).flat().join('<br>');
+        } else if (xhr.status === 422 && json && json.message) {
+            msg = '<strong>Validation error:</strong> ' + json.message;
+        } else if (xhr.status === 403) {
+            msg = 'You do not have permission to perform this action.';
+        } else if (xhr.status === 404) {
+            msg = 'The requested quotation could not be found. It may have been deleted.';
+        } else if (xhr.status >= 500) {
+            msg = (json && json.message)
+                ? '<strong>Server error:</strong> ' + json.message
+                : 'A server error occurred (' + xhr.status + '). Please contact support.';
+        } else {
+            msg = (json && json.message)
+                ? json.message
+                : 'An unexpected error occurred (HTTP ' + xhr.status + '). Please try again or contact support.';
+        }
+    $('#cbProgressError').html(msg).removeClass('d-none');
                 $('#cbProgressError').html(msg).removeClass('d-none');
                 if (json?.steps) renderBookingSteps(json.steps);
                 $('#cbEditLink').removeClass('d-none');
