@@ -11,6 +11,7 @@ use App\Models\Ticket;
 use App\Models\Office;
 use App\Models\User;
 use App\Models\AzureUser;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -132,19 +133,48 @@ class HomeController extends Controller
                 'failed'  => $scm_profit_stats_obj->failed  ?? 0,
             ];
 
-            // ✅ Single source of truth — delegates to Gate::define('view-quotation')
-            // in AuthServiceProvider, which handles case normalization, IsActive,
-            // IsDelete, BizUserID fallback, and 5-minute caching.
-            $canViewQuotationCard = \Illuminate\Support\Facades\Gate::allows('view-quotation');
+         // ── Office switcher — resolve active office from session ──────────────
+$activeOfficeCode = session('active_office_code');
 
-            try {
-                $quotation_stats = $canViewQuotationCard
-                    ? \App\Http\Controllers\QuotationController::getHomeStats()
-                    : ['total' => 0, 'in_progress' => 0, 'failed_int' => 0, 'failed_progress' => 0];
-            } catch (\Exception $e) {
-                \Log::error('Quotation Stats Error: ' . $e->getMessage());
-                $quotation_stats = ['total' => 0, 'in_progress' => 0, 'failed_int' => 0, 'failed_progress' => 0];
-            }
+$baseOfficeData = $this->getAzureOfficeData(null);
+$baseOffice     = $baseOfficeData['baseOffice'];
+$otherOffices   = $baseOfficeData['otherOffices'];
+$hasAzure       = $baseOfficeData['hasAzure'];
+
+if (!$activeOfficeCode && !empty($baseOffice)) {
+    $activeOfficeCode = $baseOffice;
+    session(['active_office_code' => $activeOfficeCode]);
+}
+
+$activeOfficeData = $this->getAzureOfficeData($activeOfficeCode);
+$activeModules    = $activeOfficeData['modules'];
+
+$officeGate = [
+    'tims'    => ['KE', 'UPS'],
+    'efris'   => ['UG'],
+    'tra_tz'  => ['AR'],
+    'tra_adl' => ['TZ'],
+    'rra'     => ['RW'],
+];
+
+$effectiveOffice = $activeOfficeCode ?? $baseOffice;
+
+$canSeeAll = $hasAzure && (
+    in_array('ALL', $activeModules) ||
+    in_array(null, $activeModules)
+);
+// ─────────────────────────────────────────────────────────────────────
+
+$canViewQuotationCard = \Illuminate\Support\Facades\Gate::allows('view-quotation');
+
+try {
+    $quotation_stats = $canViewQuotationCard
+        ? \App\Http\Controllers\QuotationController::getHomeStats($effectiveOffice)
+        : ['total' => 0, 'in_progress' => 0, 'failed_int' => 0, 'failed_progress' => 0];
+} catch (\Exception $e) {
+    \Log::error('Quotation Stats Error: ' . $e->getMessage());
+    $quotation_stats = ['total' => 0, 'in_progress' => 0, 'failed_int' => 0, 'failed_progress' => 0];
+}
 
             return view(
                 'dashboard.ticket',
@@ -320,6 +350,79 @@ class HomeController extends Controller
             ];
         }
     }
+
+    private function getAzureOfficeData(?string $officeCode = null): array
+{
+    try {
+        $identifier = Auth::user()->Email ?? Auth::user()->LoginID;
+
+        $azureUser = DB::table('Azure_Users')
+            ->where('userPrincipalName', $identifier)
+            ->whereNotNull('AzureId')
+            ->first();
+
+        $azureId    = $azureUser->AzureId;
+        $office     = $officeCode ?? '';
+        $outputJson = null;
+
+        $pdo  = DB::connection()->getPdo();
+        $stmt = $pdo->prepare("
+            DECLARE @OutputJson NVARCHAR(MAX);
+            EXEC sp_Azure_BIZOfficeandModuleList
+                @AzureID     = ?,
+                @OfficeCode  = ?,
+                @OutputJson  = @OutputJson OUTPUT;
+            SELECT @OutputJson AS OutputJson;
+        ");
+        $stmt->bindParam(1, $azureId, \PDO::PARAM_STR);
+        $stmt->bindParam(2, $office,  \PDO::PARAM_STR);
+        $stmt->execute();
+
+        $outputJson = null;
+        do {
+            $row = $stmt->fetch(\PDO::FETCH_OBJ);
+            if ($row && isset($row->OutputJson)) {
+                $outputJson = $row->OutputJson;
+                break;
+            }
+        } while ($stmt->nextRowset());
+
+        if (empty($outputJson)) {
+            return [
+                'modules'      => [],
+                'otherOffices' => [],
+                'baseOffice'   => $azureUser->BaseOfficeCode,
+                'hasAzure'     => true,
+            ];
+        }
+
+        $data = json_decode($outputJson, true);
+
+        if (isset($data['Status']) && $data['Status'] === 'Failed') {
+            return [
+                'modules'      => [],
+                'otherOffices' => [],
+                'baseOffice'   => $azureUser->BaseOfficeCode,
+                'hasAzure'     => true,
+            ];
+        }
+
+        return [
+            'modules'      => collect($data['Module'] ?? [])->pluck('ModuleName')->toArray(),
+            'otherOffices' => $data['OtherOffices'] ?? [],
+            'baseOffice'   => $data['Basedoffice'] ?? $azureUser->BaseOfficeCode,
+            'hasAzure'     => true,
+        ];
+    } catch (\Exception $e) {
+        Log::error('getAzureOfficeData failed: ' . $e->getMessage());
+        return [
+            'modules'      => [],
+            'otherOffices' => [],
+            'baseOffice'   => null,
+            'hasAzure'     => false,
+        ];
+    }
+}
 
     public function archive()
     {
