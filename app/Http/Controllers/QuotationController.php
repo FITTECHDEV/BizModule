@@ -38,29 +38,48 @@ class QuotationController extends Controller
 
     public function index()
     {
-        $resolved = $this->resolveUserOfficesViaSP();
-        $offices = $resolved['offices'];
+        $resolved      = $this->resolveUserOfficesViaSP();
+        $offices       = $resolved['offices'];
         $defaultOffice = $resolved['default']; // always BaseOfficeCode's name
 
         if ($offices->isEmpty() || !$defaultOffice) {
             return view('quotation.index', [
-                'offices' => collect(),
-                'defaultOffice' => null,
-                'officeError' => 'Your account is not mapped to any office in BIZ PRO. Please contact your administrator.',
-                'stats' => $this->emptyStats(),
+                'offices'          => collect(),
+                'defaultOffice'    => null,
+                'activeOfficeName' => null,
+                'officeError'      => 'Your account is not mapped to any office in BIZ PRO. Please contact your administrator.',
+                'stats'            => $this->emptyStats(),
             ]);
         }
 
+        // Resolve session office code → office name for pre-selection
+        $sessionCode      = session('active_office_code');
+        $activeOfficeName = $defaultOffice; // fallback to base
+
+        if ($sessionCode && $offices->isNotEmpty()) {
+            $match = $offices->firstWhere('code', strtoupper(trim($sessionCode)));
+            if ($match) {
+                $activeOfficeName = $match['name'];
+            }
+        }
+
         Log::info('Quotation index - Offices resolved via SP', [
-            'email' => Auth::user()->Email,
-            'default_office' => $defaultOffice,
-            'all_offices' => $offices->toArray(),
+            'email'            => Auth::user()->Email,
+            'default_office'   => $defaultOffice,
+            'active_office'    => $activeOfficeName,
+            'session_code'     => $sessionCode,
+            'all_offices'      => $offices->toArray(),
         ]);
 
         $stats = $this->emptyStats();
-        return view('quotation.index', compact('offices', 'defaultOffice', 'stats'));
-    }
 
+        return view('quotation.index', compact(
+            'offices',
+            'defaultOffice',
+            'activeOfficeName',
+            'stats'
+        ));
+    }
 
     /**
      * portal()
@@ -348,13 +367,6 @@ class QuotationController extends Controller
                             . ' data-origin="' . e($row->OriginCountry ?? '') . '"'
                             . ' data-destination="' . e($row->DestinationCountry ?? '') . '"'
                             . ' title="Create Booking"><i class="fas fa-plus-circle"></i></button>';
-                    }
-
-                    if ($cardFilter === 'failed_int' && $isFailedInt) {
-                        $actionHtml .= ' <button class="btn btn-secondary btn-sm btn-retrigger"'
-                            . ' data-booking="' . $db->bookingno . '"'
-                            . ' data-id="' . $db->ID . '"'
-                            . ' title="Retrigger"><i class="fas fa-sync-alt"></i></button>';
                     }
                 }
                 $actionHtml .= '</div>';
@@ -762,13 +774,6 @@ class QuotationController extends Controller
                             . ' data-origin="' . e($row->OriginCountry ?? '') . '"'
                             . ' data-destination="' . e($row->DestinationCountry ?? '') . '"'
                             . ' title="Create Booking"><i class="fas fa-plus-circle"></i></button>';
-                    }
-
-                    if ($cardFilter === 'failed_int' && $isFailedInt) {
-                        $actionHtml .= ' <button class="btn btn-secondary btn-sm btn-retrigger"'
-                            . ' data-booking="' . $db->bookingno . '"'
-                            . ' data-id="' . $db->ID . '"'
-                            . ' title="Retrigger"><i class="fas fa-sync-alt"></i></button>';
                     }
                 }
                 $actionHtml .= '</div>';
@@ -1308,17 +1313,7 @@ class QuotationController extends Controller
                             data-quoteno="' . $row->QuoteNo . '"
                             title="Create Booking"><i class="fas fa-plus-circle"></i></button>';
                     }
-
-                    // Retrigger button — only for Failed Int. rows
-                    $retriggerBtn = '';
-                    if ($cardFilter === 'failed_int' && $isFailedInt) {
-                        $retriggerBtn = ' <button class="btn btn-secondary btn-sm btn-retrigger"
-                        data-booking="' . $row->bookingno . '"
-                        data-id="' . $row->ID . '"
-                        title="Retrigger"><i class="fas fa-sync-alt"></i></button>';
-                    }
-
-                    return $viewBtn . $editBtn . $createBookingBtn . $retriggerBtn;
+                    return $viewBtn . $editBtn . $createBookingBtn;
                 })
                 ->rawColumns(['action', 'remarks_error'])
                 ->make(true);
@@ -1620,15 +1615,14 @@ class QuotationController extends Controller
     {
         $authUser = Auth::user();
 
-        $azureUser = DB::table('Azure_Users')
-            ->where(function ($q) use ($authUser) {
-                $q->whereRaw('BizUserID = ?', [$authUser->ID])
-                    ->orWhereRaw('LOWER(LTRIM(RTRIM(userPrincipalName))) = ?', [strtolower(trim($authUser->Email ?? ''))])
-                    ->orWhereRaw('LOWER(LTRIM(RTRIM(mail))) = ?', [strtolower(trim($authUser->Email ?? ''))]);
-            })
-            ->whereNotNull('AzureId')
-            ->select('AzureId')
-            ->first();
+       $azureUser = DB::table('Azure_Users')
+        ->where(function ($q) use ($authUser) {
+            $q->whereRaw('BizUserID = ?', [$authUser->ID])
+                ->orWhereRaw('LOWER(LTRIM(RTRIM(userPrincipalName))) = ?', [strtolower(trim($authUser->Email ?? ''))]);
+        })
+        ->whereNotNull('AzureId')
+        ->select('AzureId')
+        ->first();
 
         $empty = ['default' => null, 'offices' => collect()];
 
@@ -1696,19 +1690,27 @@ class QuotationController extends Controller
 
             $offices = collect();
 
+            $baseCode = $data['Basedoffice'] ?? null;
+
             if ($defaultOffice) {
-                $offices->push($defaultOffice);
+                $offices->push([
+                    'code' => $baseCode,
+                    'name' => $defaultOffice,
+                ]);
             }
 
             if (!empty($data['OtherOffices']) && is_array($data['OtherOffices'])) {
                 foreach ($data['OtherOffices'] as $other) {
                     if (!empty($other['OfficeName'])) {
-                        $offices->push(trim($other['OfficeName']));
+                        $offices->push([
+                            'code' => isset($other['OfficeCode']) ? trim($other['OfficeCode']) : null,
+                            'name' => trim($other['OfficeName']),
+                        ]);
                     }
                 }
             }
 
-            $offices = $offices->unique()->values();
+            $offices = $offices->unique('name')->values();
 
             Log::info('resolveUserOfficesViaSP - Resolved', [
                 'email' => $authUser->Email,
@@ -1734,14 +1736,16 @@ class QuotationController extends Controller
     private function resolveAllowedOfficeCodesViaSP(): \Illuminate\Support\Collection
     {
         $resolved = $this->resolveUserOfficesViaSP();
-        $officeNames = $resolved['offices'];
+        $offices  = $resolved['offices'];
 
-        if ($officeNames->isEmpty()) {
+        if ($offices->isEmpty()) {
             return collect();
         }
 
+        $names = $offices->pluck('name')->filter()->values()->toArray();
+
         return DB::table('Cust_Office')
-            ->whereIn('Name', $officeNames->toArray())
+            ->whereIn('Name', $names)
             ->where('IsActive', 1)
             ->where('IsDeleted', 0)
             ->pluck('Code')
@@ -3671,27 +3675,6 @@ class QuotationController extends Controller
                 'modifiedOn2' => now(),
             ]);
 
-            // ── Insert version record — only columns that actually exist in Cust_DocumentDeails ──
-            // Actual schema: Id, DocumentType, ReferenceID, ReferenceNo,
-            //                SubmittedDate, VersionNo, FileName, Path, CreatedOn
-            // 'ReferenceType' does NOT exist — removed.
-            $nextVersion = DB::table('Cust_DocumentDeails')
-                ->where('ReferenceID', $quotation->ID)
-                ->where('DocumentType', 'TermsCondition')
-                ->max('VersionNo') ?? 0;
-
-            DB::table('Cust_DocumentDeails')->insert([
-                'Id' => DB::raw('NEWID()'),
-                'DocumentType' => 'TermsCondition',
-                'ReferenceID' => $quotation->ID,
-                'ReferenceNo' => (string) $bookingNo,
-                'SubmittedDate' => now(),
-                'VersionNo' => $nextVersion + 1,
-                'FileName' => $fileName,
-                'Path' => $filePath,
-                'CreatedOn' => now(),
-            ]);
-
             Log::info('saveTermsCondition - Success', [
                 'booking_no' => $bookingNo,
                 'template' => $templateName,
@@ -3993,11 +3976,14 @@ class QuotationController extends Controller
             ->select('Name', 'Description')
             ->get();
 
-        return response()->json([
+        $json = json_encode([
             'success' => true,
             'templates' => $templates
-        ]);
+        ], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+
+        return response($json, 200)->header('Content-Type', 'application/json');
     }
+
 
     public function getTermsTemplates(Request $request): JsonResponse
     {
@@ -5259,35 +5245,21 @@ class QuotationController extends Controller
             $costRows    = $this->fetchCopyChargeRows($pdo, $quotationId, 0);
 
             $map = fn($row, $isRevenue) => [
-                'id'           => $row['Id'],
-                'chargeCode'   => $row['ChargeCode']        ?? '',
-                'chargeDesp'   => $row['ChargeDesp']        ?? '',
-                'basedOn'      => $row['BasedOn']            ?? '',
-                'basedOnCode'  => '',  
-                'basedOn'      => $row['BasedOn'] ?? '',
-                'basedOnAndUOM' => $row['BasedOnAndUOM']     ?? '',
-                'uomCode'      => $row['UOMCode']            ?? '',
-                'quantity'     => (float) ($row['Quantity']          ?? 0),
-                'rate'         => (float) ($row['EstChargeRate']     ?? 0),
-                'currency'     => $row['EstChargeCurrCode']  ?? '',
-                'currencyId'   => $row['EstChargeCurrencyId'] ?? '',
-                'amount'       => (float) ($row['EstChargeAmount']   ?? 0),
-                'baseAmount'   => (float) ($row['EstBaseAmount']     ?? 0),
-                'exchangeRate' => (float) ($row['BaseExchRate']      ?? 1),
-                'isRevenue'    => $isRevenue,
+                'id'            => $row['Id'],
+                'chargeCode'    => $row['ChargeCode']           ?? '',
+                'chargeDesp'    => $row['ChargeDesp']           ?? '',
+                'basedOnCode'   => $row['BasedOn']              ?? '',
+                'basedOnAndUOM' => $row['BasedOnAndUOM']        ?? '',
+                'uomCode'       => $row['UOMCode']              ?? '',
+                'quantity'      => (float) ($row['Quantity']    ?? 0),
+                'rate'          => (float) ($row['EstChargeRate']    ?? 0),
+                'currency'      => $row['EstChargeCurrCode']    ?? '',
+                'currencyId'    => $row['EstChargeCurrencyId']  ?? '',
+                'amount'        => (float) ($row['EstChargeAmount']  ?? 0),
+                'baseAmount'    => (float) ($row['EstBaseAmount']    ?? 0),
+                'exchangeRate'  => (float) ($row['BaseExchRate']     ?? 1),
+                'isRevenue'     => $isRevenue,
             ];
-
-            $jobInfo = DB::table('Quote_QuotationInfo as q')
-                ->leftJoin('Quote_QuotationDetails as d', 'q.ID', '=', 'd.QuotationID')
-                ->where('q.ID', $quotationId)
-                ->select([
-                    'q.CompanyName   as client',
-                    'd.ShipperName   as shipper',
-                    'd.ConsigneeName as consignee',
-                    'd.PortOfLoading as port_of_loading',
-                    'd.PortOfDischarge as port_of_discharge',
-                ])
-                ->first();
 
             $jobInfo = DB::table('Quote_QuotationInfo')
                 ->where('ID', $quotationId)
@@ -6853,6 +6825,7 @@ class QuotationController extends Controller
                 'success' => false,
                 'failed_step' => 0,
                 'failed_label' => 'Save Booking Info',
+                'message' => $step0Result['remark'] ?: 'Failed to save booking info.',
                 'steps' => $steps,
             ]);
         }
@@ -6906,6 +6879,7 @@ class QuotationController extends Controller
                     'success' => false,
                     'failed_step' => $stepNo,
                     'failed_label' => $stepDef['label'],
+                    'message' => $result['remark'] ?: 'Step failed with no details returned.',
                     'steps' => $steps,
                 ]);
             }
@@ -7022,6 +6996,7 @@ class QuotationController extends Controller
             DB::table('Quote_QuotationInfo')
                 ->where('ID', $quotationId)
                 ->update([
+                    'QuoteStatus' => 'Won',
                     'SCMINTStatus' => 'Failed',
                     'QuoteStatusDescription' => $description,
                     'LastModifiedBy' => $submittedBy,
@@ -7074,29 +7049,31 @@ class QuotationController extends Controller
                 'PlaceOfDelivery' => $placeOfDelivery,
             ]);
 
-            // Log::info('runBookingInfoUpdate - Input', [
-            //     'quote_no'   => $quoteNo,
-            //     'input_json' => $inputJson,
-            // ]);
+            Log::info('runBookingInfoUpdate - Input', [
+                'quotation_id' => $quotationId,   // was $quoteNo — not in scope here
+                'input_json'   => $inputJson,
+            ]);
+
 
             $output = $this->executeDetailsUpdateSP($inputJson);
 
-            // Log::info('runBookingInfoUpdate - Output', [
-            //     'quote_no' => $quoteNo,
-            //     'output'   => $output,
-            // ]);
+            Log::info('runBookingInfoUpdate - Output', [
+                'quotation_id' => $quotationId,
+                'output'       => $output,
+            ]);
+
 
             return [
                 'status' => $output['Status'] ?? 'Failed',
                 'remark' => $output['Remark'] ?? '[SP] No remark returned',
             ];
         } catch (\Exception $e) {
-            // Log::error('runBookingInfoUpdate - Exception', [
-            //     'quote_no' => $quoteNo,
-            //     'error'    => $e->getMessage(),
-            //     'file'     => $e->getFile(),
-            //     'line'     => $e->getLine(),
-            // ]);
+            Log::error('runBookingInfoUpdate - Exception', [
+                'quotation_id' => $quotationId,
+                'error'        => $e->getMessage(),
+                'file'         => $e->getFile(),
+                'line'         => $e->getLine(),
+            ]);
             return ['status' => 'Failed', 'remark' => $e->getMessage()];
         }
     }
@@ -7150,11 +7127,11 @@ class QuotationController extends Controller
                             stripos($trimmed, 'Failed') === 0 ||
                             stripos($trimmed, 'There is already') !== false
                         ) {
-                            // Log::error('runBookingProcessMain - SP emitted error result set', [
-                            //     'quote_no'     => $quoteNo,
-                            //     'process_type' => $processType,
-                            //     'sp_error'     => $trimmed,
-                            // ]);
+                            Log::error('runBookingProcessMain - SP emitted error result set', [
+                                'quotation_id' => $quotationId,   // was $quoteNo — not in scope here
+                                'process_type' => $processType,
+                                'sp_error'     => $trimmed,
+                            ]);
 
                             return [
                                 'status' => 'Failed',
@@ -7202,11 +7179,11 @@ class QuotationController extends Controller
 
             if ($errorSet) {
                 $spError = array_values($errorSet['first_row'])[0];
-                // Log::error('runBookingProcessMain - @Status=Success but error set detected', [
-                //     'quote_no'     => $quoteNo,
-                //     'process_type' => $processType,
-                //     'sp_error'     => $spError,
-                // ]);
+                Log::error('runBookingProcessMain - @Status=Success but error set detected', [
+                    'quotation_id' => $quotationId,
+                    'process_type' => $processType,
+                    'sp_error'     => $spError,
+                ]);
 
                 return [
                     'status' => 'Failed',
@@ -7217,7 +7194,9 @@ class QuotationController extends Controller
 
             return [
                 'status' => $result->Status ?? 'Failed',
-                'remark' => $result->Remark ?? '',
+                'remark' => (isset($result->Remark) && $result->Remark !== '')
+                    ? $result->Remark
+                    : '[SP] No remark returned',
                 'result_sets' => $setsLogged,
             ];
         } catch (\PDOException $e) {

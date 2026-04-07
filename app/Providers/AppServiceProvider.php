@@ -4,8 +4,10 @@ namespace App\Providers;
 
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
-// use ConsoleTVs\Charts\Registrar as Charts;
+use Illuminate\Support\Facades\View;
+use App\Http\View\Composers\OfficeSwitcherComposer;
 use URL;
+
 class AppServiceProvider extends ServiceProvider
 {
     /**
@@ -23,26 +25,14 @@ class AppServiceProvider extends ServiceProvider
      *
      * @return void
      */
-    public function boot() //Charts $charts
+    public function boot()
     {
-        // $charts->register([
-        //     \App\Charts\TicketByCountryChart::class,
-        //     \App\Charts\OverallTicketStatus::class,
-        //     \App\Charts\MonthWiseTicketsRaised::class,
-        //     \App\Charts\TicketStatusForEachCountry::class,
-        //     \App\Charts\CountryBasedSolutionReport::class,
-        //     \App\Charts\PriorityWiseReport::class,
-        //     \App\Charts\DayWiseTicketsRaised::class,
-        //     \App\Charts\SolutionWiseTicketsRaised::class,
-        // ]);
-
         \URL::forceRootUrl(\Config::get('app.url'));
-        // And this if you wanna handle https URL scheme
-        // It's not usefull for http://www.example.com, it's just to make it more independant from the constant value
+
         if (\Str::contains(\Config::get('app.url'), 'https://')) {
             URL::forceScheme('https');
-            //use \URL:forceSchema('https') if you use laravel < 5.4
         }
-        //
+
+        View::composer('adminlte::partials.navbar.navbar', OfficeSwitcherComposer::class);
     }
 }

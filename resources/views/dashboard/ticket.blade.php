@@ -2,45 +2,6 @@
 
 @section('title', 'Home-Dashboard')
 
-@section('content_top_nav_right')
-@if ($baseOffice)
-<li class="nav-item d-flex align-items-center" style="gap: 6px; padding-right: 8px;">
-    <small class="text-muted" style="white-space: nowrap;">
-        <i class="fas fa-building mr-1"></i>Office:
-    </small>
-
-    @if (count($otherOffices) > 0)
-        <form method="POST" action="{{ route('home.switch-office') }}" id="officeSwitcherForm" class="m-0">
-            @csrf
-            <select name="office_code" class="form-control form-control-sm" style="min-width: 160px;"
-                onchange="document.getElementById('officeSwitcherForm').submit()">
-
-                <option value="{{ $baseOffice }}"
-                    {{ !$activeOfficeCode || $activeOfficeCode === $baseOffice ? 'selected' : '' }}>
-                    {{ $baseOffice }} (Base)
-                </option>
-
-                @foreach ($otherOffices as $office)
-                @php
-                    $code = is_array($office) ? ($office['OfficeCode'] ?? '') : ($office->OfficeCode ?? '');
-                    $name = is_array($office) ? ($office['OfficeName'] ?? $code) : ($office->OfficeName ?? $code);
-                @endphp
-                <option value="{{ trim($code) }}" {{ trim($activeOfficeCode) === trim($code) ? 'selected' : '' }}>
-                    {{ $name }}
-                </option>
-                @endforeach
-
-            </select>
-        </form>
-    @else
-        <span class="badge badge-secondary" style="font-size: 0.85rem; padding: 5px 10px;">
-            {{ $activeOfficeCode ?? $baseOffice }}
-        </span>
-    @endif
-</li>
-@endif
-@stop
-
 @section('plugins.Datatables', true)
 
 @section('css')

@@ -2,9 +2,8 @@
 
 @section('title', 'Quotation Management')
 
-@section('content_header')
-<h1>QUOTATION</h1>
-@stop
+
+
 
 @section('content')
 <div class="container-fluid">
@@ -142,9 +141,10 @@
                         <option value="">All Offices</option>
                         @endif
                         @foreach ($offices as $office)
-                        <option value="{{ $office }}" {{ $office === $defaultOffice ? 'selected' : '' }}>
-                            {{ $office }}
-                        </option>
+                            <option value="{{ $office['name'] }}"
+                                {{ ($activeOfficeName ?? $defaultOffice) === $office['name'] ? 'selected' : '' }}>
+                                {{ $office['name'] }}
+                            </option>
                         @endforeach
                     </select>
                 </div>
@@ -1072,8 +1072,7 @@ $(document).ready(function() {
     function updateClearButtonVisibility() {
         var dateFilter = $('#dateFilter').val();
         var officeFilter = $('#officeFilter').val();
-        var defaultOffice = '{{ $defaultOffice ?? '
-        ' }}';
+        var defaultOffice = '{{ $activeOfficeName ?? $defaultOffice ?? '' }}';
         if (dateFilter === 'custom') {
             $('#clearFiltersContainer').hide();
             return;
@@ -1128,55 +1127,12 @@ $(document).ready(function() {
         $('#dateFilter').val('all');
         $('#startDate, #endDate').val('');
         $('#customDateRange, #customDateRangeTo').hide();
-        $('#officeFilter').val('{{ $defaultOffice ?? '
-            ' }}');
+        $('#officeFilter').val('{{ $activeOfficeName ?? $defaultOffice ?? '' }}');
         $('.card-filter-trigger').removeClass('active');
         $('.card-filter-trigger[data-filter="in_progress"]').addClass('active');
         currentCardFilter = 'in_progress';
         table.ajax.reload();
         updateClearButtonVisibility();
-    });
-
-    // ── Retrigger button ─────────────────────────────────────────────────────
-    $('#quotationTable').on('click', '.btn-retrigger', function(e) {
-        e.stopPropagation();
-        var $btn = $(this);
-        // AFTER
-        var bookingNo = $btn.data('booking');
-        var quoteId = $btn.data('id'); // ← UUID
-
-        if (!quoteId) {
-            alert('Quotation ID not found');
-            return;
-        }
-        if (!confirm('Are you sure you want to retrigger booking: ' + bookingNo + '?')) return;
-
-        $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
-
-        $.ajax({
-            url: '{{ route('quotation.retrigger') }}',
-            type: 'POST',
-            data: {
-                _token: '{{ csrf_token() }}',
-                id: quoteId,
-                booking_no: bookingNo
-            },
-            success: function(res) {
-                if (res.success) {
-                    alert('Successfully retriggered booking: ' + bookingNo);
-                    table.ajax.reload(null, false);
-                } else {
-                    alert('Failed to retrigger: ' + (res.message || 'Unknown error'));
-                }
-            },
-            error: function(xhr) {
-                alert('Error retriggering booking: ' + (xhr.responseJSON?.message ||
-                    'Server error'));
-            },
-            complete: function() {
-                $btn.prop('disabled', false).html('<i class="fas fa-sync-alt"></i>');
-            }
-        });
     });
 
     // ── Create Booking button ─────────────────────────────────────────────────

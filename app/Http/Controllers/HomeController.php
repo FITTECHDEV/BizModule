@@ -262,6 +262,17 @@ class HomeController extends Controller
                 ->whereNotNull('AzureId')
                 ->first();
 
+                if (!$azureUser) {
+                    Log::warning('Azure user not found for identifier', ['identifier' => $identifier]);
+                    return [
+                        'modules'      => [],
+                        'otherOffices' => [],
+                        'baseOffice'   => null,
+                        'hasAzure'     => false,
+                    ];
+                }
+
+
             $azureId    = $azureUser->AzureId;
             $office     = $officeCode ?? '';
             $outputJson = null;
