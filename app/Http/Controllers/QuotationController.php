@@ -349,13 +349,6 @@ class QuotationController extends Controller
                             . ' data-destination="' . e($row->DestinationCountry ?? '') . '"'
                             . ' title="Create Booking"><i class="fas fa-plus-circle"></i></button>';
                     }
-
-                    if ($cardFilter === 'failed_int' && $isFailedInt) {
-                        $actionHtml .= ' <button class="btn btn-secondary btn-sm btn-retrigger"'
-                            . ' data-booking="' . $db->bookingno . '"'
-                            . ' data-id="' . $db->ID . '"'
-                            . ' title="Retrigger"><i class="fas fa-sync-alt"></i></button>';
-                    }
                 }
                 $actionHtml .= '</div>';
 
@@ -762,13 +755,6 @@ class QuotationController extends Controller
                             . ' data-origin="' . e($row->OriginCountry ?? '') . '"'
                             . ' data-destination="' . e($row->DestinationCountry ?? '') . '"'
                             . ' title="Create Booking"><i class="fas fa-plus-circle"></i></button>';
-                    }
-
-                    if ($cardFilter === 'failed_int' && $isFailedInt) {
-                        $actionHtml .= ' <button class="btn btn-secondary btn-sm btn-retrigger"'
-                            . ' data-booking="' . $db->bookingno . '"'
-                            . ' data-id="' . $db->ID . '"'
-                            . ' title="Retrigger"><i class="fas fa-sync-alt"></i></button>';
                     }
                 }
                 $actionHtml .= '</div>';
@@ -1308,17 +1294,7 @@ class QuotationController extends Controller
                             data-quoteno="' . $row->QuoteNo . '"
                             title="Create Booking"><i class="fas fa-plus-circle"></i></button>';
                     }
-
-                    // Retrigger button — only for Failed Int. rows
-                    $retriggerBtn = '';
-                    if ($cardFilter === 'failed_int' && $isFailedInt) {
-                        $retriggerBtn = ' <button class="btn btn-secondary btn-sm btn-retrigger"
-                        data-booking="' . $row->bookingno . '"
-                        data-id="' . $row->ID . '"
-                        title="Retrigger"><i class="fas fa-sync-alt"></i></button>';
-                    }
-
-                    return $viewBtn . $editBtn . $createBookingBtn . $retriggerBtn;
+                    return $viewBtn . $editBtn . $createBookingBtn;
                 })
                 ->rawColumns(['action', 'remarks_error'])
                 ->make(true);
@@ -1348,7 +1324,6 @@ class QuotationController extends Controller
      *   • The full edit-page form sends all fields  → behaviour identical to before.
      *   • Per-card saves send only that card's fields → only those columns change.
      *
-     * Nothing else in the method was touched (try/catch, logging, response shape).
      * ─────────────────────────────────────────────────────────────────────────────
      */
 
@@ -4242,7 +4217,7 @@ class QuotationController extends Controller
         }
     }
 
-    public function getCommunicationDescription(Request $request)
+     public function getCommunicationDescription(Request $request)
     {
         $module = $request->input('module', 'Quotation');
         $subModule = $request->input('sub_module');

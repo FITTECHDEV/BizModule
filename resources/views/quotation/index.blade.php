@@ -1137,48 +1137,6 @@ $(document).ready(function() {
         updateClearButtonVisibility();
     });
 
-    // ── Retrigger button ─────────────────────────────────────────────────────
-    $('#quotationTable').on('click', '.btn-retrigger', function(e) {
-        e.stopPropagation();
-        var $btn = $(this);
-        // AFTER
-        var bookingNo = $btn.data('booking');
-        var quoteId = $btn.data('id'); // ← UUID
-
-        if (!quoteId) {
-            alert('Quotation ID not found');
-            return;
-        }
-        if (!confirm('Are you sure you want to retrigger booking: ' + bookingNo + '?')) return;
-
-        $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
-
-        $.ajax({
-            url: '{{ route('quotation.retrigger') }}',
-            type: 'POST',
-            data: {
-                _token: '{{ csrf_token() }}',
-                id: quoteId,
-                booking_no: bookingNo
-            },
-            success: function(res) {
-                if (res.success) {
-                    alert('Successfully retriggered booking: ' + bookingNo);
-                    table.ajax.reload(null, false);
-                } else {
-                    alert('Failed to retrigger: ' + (res.message || 'Unknown error'));
-                }
-            },
-            error: function(xhr) {
-                alert('Error retriggering booking: ' + (xhr.responseJSON?.message ||
-                    'Server error'));
-            },
-            complete: function() {
-                $btn.prop('disabled', false).html('<i class="fas fa-sync-alt"></i>');
-            }
-        });
-    });
-
     // ── Create Booking button ─────────────────────────────────────────────────
     $('#quotationTable').on('click', '.btn-create-booking', function(e) {
         e.stopPropagation();
