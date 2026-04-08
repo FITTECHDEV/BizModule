@@ -1131,7 +1131,12 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
         ->name('quotation.portal');
     Route::get('/quotation/portal-debug', [App\Http\Controllers\QuotationController::class, 'portalDebug'])
         ->name('quotation.portal.debug');
-
+    Route::get('/quotation/copy-charges/search', [App\Http\Controllers\QuotationController::class, 'getCopyChargesSearch'])
+        ->name('quotation.copy-charges.search');
+    Route::get('/quotation/copy-charges/charges', [App\Http\Controllers\QuotationController::class, 'getCopyCharges'])
+        ->name('quotation.copy-charges.charges');
+    Route::post('/quotation/process-won', [App\Http\Controllers\QuotationController::class, 'processWon'])
+        ->name('quotation.process-won');
 
 
     // ============================================
@@ -1172,7 +1177,6 @@ Route::post(
     [App\Http\Controllers\QuotationController::class, 'handleBookingIntegrationResponse']
 )
     ->name('quotation.bookingIntegrationResponse');
-
 
 
 // ============================================================================
