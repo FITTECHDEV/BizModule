@@ -871,7 +871,8 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
         ->name('quotation.copy-charges.search');
     Route::get('/quotation/copy-charges/charges', [App\Http\Controllers\QuotationController::class, 'getCopyCharges'])
         ->name('quotation.copy-charges.charges');
-
+    Route::post('/quotation/process-won', [App\Http\Controllers\QuotationController::class, 'processWon'])
+        ->name('quotation.process-won');
 
 
     // ============================================

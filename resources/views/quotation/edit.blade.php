@@ -1316,6 +1316,37 @@
             </div>
         </div>
 
+        {{-- WON PROCESS MODAL --}}
+        <div class="modal fade" id="wonProcessModal" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="fas fa-trophy mr-2 text-success"></i> Marking as Won
+                        </h5>
+                        <button type="button" class="close" data-dismiss="modal">
+                            <span>&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-muted small mb-3">
+                            Processing — please do not close this window.
+                        </p>
+                        <div class="list-group" id="wonStepList"></div>
+                        <div id="wonProgressError" class="alert alert-danger mt-3 d-none"></div>
+                        <div id="wonProgressSuccess" class="alert alert-success mt-3 d-none">
+                            <i class="fas fa-check-circle mr-2"></i>
+                            Quotation has been marked as Won successfully.
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary d-none"
+                            id="wonProcessCloseBtn" data-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         {{-- CREATE BOOKING MODAL --}}
         <div class="modal fade" id="createBookingModal" tabindex="-1" role="dialog" aria-hidden="true">
             <div class="modal-dialog modal-lg" role="document">
@@ -2962,6 +2993,9 @@
             $('input[data-field="companyname"]').closest('.form-group').find('.col-sm-8')
                 .append('<input type="hidden" id="selectedClientId" value="">')
                 .append('<input type="hidden" id="selectedClientCode" value="">');
+                $('#selectedClientCode').val('{{ $quotation->pri_id ?? '' }}');
+                $('#selectedClientId').val('{{ $quotation->ClientIDINSCM ?? '' }}');
+
 
 
             // ============================================
@@ -4940,12 +4974,25 @@
 
             $('#confirmWonBtn').on('click', function() {
                 const remark = $('#wonRemarkInput').val().trim();
-                updateStatus('Won', '', remark, bookingNo);
+                runWonProcess(bookingNo, remark);
             });
 
             $('#wonModal').on('hidden.bs.modal', function() {
                 $('#wonRemarkInput').val('');
             });
+
+            $('#wonProcessModal').on('click', '.close, #wonProcessCloseBtn', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    $('#wonProcessModal').modal('hide');
+});
+
+// Prevent closing mid-process via backdrop click or ESC
+$('#wonProcessModal').on('hide.bs.modal', function () {
+    if ($('#wonProcessCloseBtn').hasClass('d-none')) {
+        return false; // block close while processing
+    }
+});
 
             $('#wonModal .close, #wonModal button[data-dismiss="modal"]').on('click', function(e) {
                 e.preventDefault();
@@ -7682,6 +7729,97 @@
                                 e.stopPropagation();
                                 return true;
                             });
+                    }
+                });
+            }
+
+                        // ── Won process — 2-step modal (Client Creation → Mark as Won) ─────────────
+            function runWonProcess(bookingNo, reasonRemark) {
+            
+                const WON_STEPS = [
+                    { step: 1, label: 'Client Creation' },
+                    { step: 2, label: 'Mark as Won' },
+                ];
+            
+                function renderWonSteps(completedSteps, activeStep) {
+                    var $list = $('#wonStepList').empty();
+                    WON_STEPS.forEach(function(def) {
+                        var done = completedSteps.find(function(s) { return s.step === def.step; });
+                        var iconClass, badgeClass, statusText, remarkHtml = '';
+                        var isActive = (activeStep !== undefined && def.step === activeStep);
+            
+                        if (isActive) {
+                            iconClass  = 'fas fa-spinner fa-spin text-primary';
+                            badgeClass = 'badge-primary';
+                            statusText = 'Processing...';
+                        } else if (!done) {
+                            iconClass  = 'fas fa-circle text-secondary';
+                            badgeClass = 'badge-secondary';
+                            statusText = 'Pending';
+                        } else if (done.status === 'Success') {
+                            iconClass  = 'fas fa-check-circle text-success';
+                            badgeClass = 'badge-success';
+                            statusText = 'Success';
+                            if (done.remark)
+                                remarkHtml = '<small class="text-muted d-block mt-1">' + done.remark + '</small>';
+                        } else {
+                            iconClass  = 'fas fa-times-circle text-danger';
+                            badgeClass = 'badge-danger';
+                            statusText = 'Failed';
+                            if (done.remark)
+                                remarkHtml = '<small class="text-danger d-block mt-1">' + done.remark + '</small>';
+                        }
+            
+                        $list.append(
+                            '<div class="list-group-item py-2">'
+                            + '<div class="d-flex align-items-center justify-content-between">'
+                            + '<div><i class="' + iconClass + ' mr-2"></i>'
+                            + '<strong>Step ' + def.step + ':</strong> ' + def.label
+                            + remarkHtml + '</div>'
+                            + '<span class="badge ' + badgeClass + '">' + statusText + '</span>'
+                            + '</div></div>'
+                        );
+                    });
+                }
+            
+                $('#wonModal').modal('hide');
+                $('#wonProgressError, #wonProgressSuccess').addClass('d-none');
+                $('#wonProcessCloseBtn').addClass('d-none');
+                renderWonSteps([], 1);
+                $('#wonProcessModal').modal('show');
+            
+                $.ajax({
+                    url:  '{{ route("quotation.process-won") }}',
+                    type: 'POST',
+                    data: {
+                        _token:        '{{ csrf_token() }}',
+                        booking_no:    bookingNo,
+                        quotation_id:  quotationId,   
+                        reason_remark: reasonRemark || '',
+                    },
+                    success: function(res) {
+                        renderWonSteps(res.steps || []);
+                        if (res.success) {
+                            $('#wonProgressSuccess').removeClass('d-none');
+                            $('#wonProcessCloseBtn').removeClass('d-none');
+                            setTimeout(function() {
+                                window.location.href = '{{ route("quotation.index") }}';
+                            }, 1500);
+                    } else {
+                     var failedStep = (res.steps || []).find(function(s) { return s.status === 'Failed'; });
+var detailMsg  = (failedStep && failedStep.remark) ? failedStep.remark : (res.message || 'Unknown error');
+$('#wonProgressError')
+    .html('<strong>' + (res.failed_label || 'Step') + ' failed:</strong> ' + detailMsg)
+    .removeClass('d-none');
+                        $('#wonProcessCloseBtn').removeClass('d-none');
+                    }
+                    },
+                    error: function(xhr) {
+                        var msg = (xhr.responseJSON && xhr.responseJSON.message)
+                            ? xhr.responseJSON.message
+                            : 'An unexpected error occurred.';
+                        $('#wonProgressError').html(msg).removeClass('d-none');
+                        $('#wonProcessCloseBtn').removeClass('d-none');
                     }
                 });
             }

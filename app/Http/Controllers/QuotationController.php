@@ -304,16 +304,16 @@ class QuotationController extends Controller
             // ── Format rows ───────────────────────────────────────────────────
             $data = array_map(function ($row) use ($dbRecords, $cardFilter) {
                 $db = $dbRecords->get($row->QuoteNo);
-                $quoteStatus = $db->QuoteStatus ?? $row->Status ?? 'In Progress';
-                $scmStatus = $db->SCMINTStatus ?? null;
+                $quoteStatus = trim($db->QuoteStatus ?? $row->Status ?? '');
+                $scmStatus   = $db->SCMINTStatus ?? null;
 
                 $displayStatus = match (true) {
-                    $quoteStatus === 'Completed' => 'Completed',
-                    $quoteStatus === 'Won' && $scmStatus === 'Success' => 'Completed',
-                    $quoteStatus === 'Won' && !is_null($scmStatus) && $scmStatus !== 'Success' => 'Failed Int.',
-                    $quoteStatus === 'Won' => 'Won',
-                    $quoteStatus === 'Failed Progress' => 'Failed Progress',
-                    in_array($quoteStatus, ['Lost', 'Cancelled', 'Cancel']) => 'Lost / Canceled',
+                    strtolower($quoteStatus) === 'completed' => 'Completed',
+                    strtolower($quoteStatus) === 'won' && strtolower((string)$scmStatus) === 'success' => 'Completed',
+                    strtolower($quoteStatus) === 'won' && !is_null($scmStatus) && strtolower((string)$scmStatus) !== 'success' => 'Failed Int.',
+                    strtolower($quoteStatus) === 'won' => 'Won',
+                    strtolower($quoteStatus) === 'failed progress' => 'Failed Progress',
+                    in_array(strtolower($quoteStatus), ['lost', 'cancelled', 'cancel']) => 'Lost / Canceled',
                     default => 'In Progress',
                 };
 
@@ -1615,14 +1615,14 @@ class QuotationController extends Controller
     {
         $authUser = Auth::user();
 
-       $azureUser = DB::table('Azure_Users')
-        ->where(function ($q) use ($authUser) {
-            $q->whereRaw('BizUserID = ?', [$authUser->ID])
-                ->orWhereRaw('LOWER(LTRIM(RTRIM(userPrincipalName))) = ?', [strtolower(trim($authUser->Email ?? ''))]);
-        })
-        ->whereNotNull('AzureId')
-        ->select('AzureId')
-        ->first();
+        $azureUser = DB::table('Azure_Users')
+            ->where(function ($q) use ($authUser) {
+                $q->whereRaw('BizUserID = ?', [$authUser->ID])
+                    ->orWhereRaw('LOWER(LTRIM(RTRIM(userPrincipalName))) = ?', [strtolower(trim($authUser->Email ?? ''))]);
+            })
+            ->whereNotNull('AzureId')
+            ->select('AzureId')
+            ->first();
 
         $empty = ['default' => null, 'offices' => collect()];
 
@@ -2971,130 +2971,124 @@ class QuotationController extends Controller
             // HANDLE "WON" STATUS SEPARATELY (NOT IN SP)
             // ============================================
 
-            if ($targetStatus === 'Won') {
-                Log::info('Update Status - Handling Won status directly', [
-                    'booking_no' => $bookingNo,
-                    'current_status' => $currentStatus,
-                    'user' => $submittedBy,
-                    'office_code' => $officeCode
-                ]);
+            // if ($targetStatus === 'Won') {
+            //     Log::info('Update Status - Handling Won status directly', [
+            //         'booking_no' => $bookingNo,
+            //         'current_status' => $currentStatus,
+            //         'user' => $submittedBy,
+            //         'office_code' => $officeCode
+            //     ]);
 
-                DB::beginTransaction();
+            //     DB::beginTransaction();
 
-                try {
-                    // Update quotation status
-                    $updatedRows = DB::table('Quote_QuotationInfo')
-                        ->where('bookingno', $bookingNo)
-                        ->update([
-                            'QuoteStatus' => 'Won',
-                            'status' => 'Won',
-                            'SCMINTStatus' => null,
-                            'ReasonRemark' => $reasonRemark ?: null,
-                            'LastModifiedBy' => $submittedBy,
-                            'updatedon' => now()
-                        ]);
-                    if ($updatedRows === 0) {
-                        DB::rollBack();
-                        Log::error('Update Status - Won update affected no rows', [
-                            'booking_no' => $bookingNo,
-                            'quotation_id' => $quotation->ID,
-                            'user' => $submittedBy
-                        ]);
+            //     try {
+            //         // Update quotation status
+            //         $updatedRows = DB::table('Quote_QuotationInfo')
+            //             ->where('bookingno', $bookingNo)
+            //             ->update([
+            //                 'QuoteStatus' => 'Won',
+            //                 'status' => 'Won',
+            //                 'SCMINTStatus' => null,
+            //                 'ReasonRemark' => $reasonRemark ?: null,
+            //                 'LastModifiedBy' => $submittedBy,
+            //                 'updatedon' => now()
+            //             ]);
+            //         if ($updatedRows === 0) {
+            //             DB::rollBack();
+            //             Log::error('Update Status - Won update affected no rows', [
+            //                 'booking_no' => $bookingNo,
+            //                 'quotation_id' => $quotation->ID,
+            //                 'user' => $submittedBy
+            //             ]);
 
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'Failed to update status: No records were updated'
-                        ], 500);
-                    }
+            //             return response()->json([
+            //                 'success' => false,
+            //                 'message' => 'Failed to update status: No records were updated'
+            //             ], 500);
+            //         }
 
-                    // Insert history record
+            //         // Insert history record
 
-                    DB::table('Cust_EntityHistory')->insert([
-                        'ID' => DB::raw('NEWID()'),
-                        'CustEntityID' => $quotation->ID,
-                        'RequestNo' => (string) $bookingNo,
-                        'Comment' => $reasonRemark ?: 'Status updated to Won',
-                        'Type' => 'Quotation Status Update',
-                        'PreviousValue' => $currentStatus,
-                        'NewValue' => 'Won',
-                        'CreatedBy' => $submittedBy,
-                        'CreatedOn' => now(),
-                        'LastModifiedBy' => $submittedBy,
-                        'LastModifiedOn' => now(),
-                        'IsActive' => 1,
-                        'IsDeleted' => 0
-                    ]);
+            //         DB::table('Cust_EntityHistory')->insert([
+            //             'ID' => DB::raw('NEWID()'),
+            //             'CustEntityID' => $quotation->ID,
+            //             'RequestNo' => (string) $bookingNo,
+            //             'Comment' => $reasonRemark ?: 'Status updated to Won',
+            //             'Type' => 'Quotation Status Update',
+            //             'PreviousValue' => $currentStatus,
+            //             'NewValue' => 'Won',
+            //             'CreatedBy' => $submittedBy,
+            //             'CreatedOn' => now(),
+            //             'LastModifiedBy' => $submittedBy,
+            //             'LastModifiedOn' => now(),
+            //             'IsActive' => 1,
+            //             'IsDeleted' => 0
+            //         ]);
 
-                    DB::commit();
+            //         DB::commit();
 
-                    Log::info('Update Status - Won status set successfully', [
-                        'booking_no' => $bookingNo,
-                        'quotation_id' => $quotation->ID,
-                        'previous_status' => $currentStatus,
-                        'new_status' => 'Won',
-                        'rows_updated' => $updatedRows,
-                        'user' => $submittedBy,
-                        'office_code' => $officeCode,
-                        'company' => $quotation->companyname ?? 'N/A'
-                    ]);
+            //         Log::info('Update Status - Won status set successfully', [
+            //             'booking_no' => $bookingNo,
+            //             'quotation_id' => $quotation->ID,
+            //             'previous_status' => $currentStatus,
+            //             'new_status' => 'Won',
+            //             'rows_updated' => $updatedRows,
+            //             'user' => $submittedBy,
+            //             'office_code' => $officeCode,
+            //             'company' => $quotation->companyname ?? 'N/A'
+            //         ]);
 
-                    return response()->json([
-                        'success' => true,
-                        'message' => 'Quotation marked as WON successfully'
-                    ]);
-                } catch (\Illuminate\Database\QueryException $e) {
+            //         return response()->json([
+            //             'success' => true,
+            //             'message' => 'Quotation marked as WON successfully'
+            //         ]);
+            //     } catch (\Illuminate\Database\QueryException $e) {
 
-                    DB::rollBack();
+            //         DB::rollBack();
 
-                    Log::error('Update Status - Won query exception', [
-                        'booking_no' => $bookingNo,
-                        'quotation_id' => $quotation->ID,
-                        'error_message' => $e->getMessage(),
-                        'error_code' => $e->getCode(),
-                        'sql' => $e->getSql() ?? 'N/A',
-                        'bindings' => $e->getBindings() ?? [],
-                        'file' => $e->getFile(),
-                        'line' => $e->getLine(),
-                        'office_code' => $officeCode
-                    ]);
+            //         Log::error('Update Status - Won query exception', [
+            //             'booking_no' => $bookingNo,
+            //             'quotation_id' => $quotation->ID,
+            //             'error_message' => $e->getMessage(),
+            //             'error_code' => $e->getCode(),
+            //             'sql' => $e->getSql() ?? 'N/A',
+            //             'bindings' => $e->getBindings() ?? [],
+            //             'file' => $e->getFile(),
+            //             'line' => $e->getLine(),
+            //             'office_code' => $officeCode
+            //         ]);
 
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Database error while updating status to Won',
-                        'error_details' => config('app.debug') ? $e->getMessage() : null
-                    ], 500);
-                } catch (\Exception $e) {
+            //         return response()->json([
+            //             'success' => false,
+            //             'message' => 'Database error while updating status to Won',
+            //             'error_details' => config('app.debug') ? $e->getMessage() : null
+            //         ], 500);
+            //     } catch (\Exception $e) {
 
-                    DB::rollBack();
+            //         DB::rollBack();
 
-                    Log::error('Update Status - Won general exception', [
-                        'booking_no' => $bookingNo,
-                        'quotation_id' => $quotation->ID,
-                        'error_message' => $e->getMessage(),
-                        'file' => $e->getFile(),
-                        'line' => $e->getLine(),
-                        'office_code' => $officeCode
-                    ]);
+            //         Log::error('Update Status - Won general exception', [
+            //             'booking_no' => $bookingNo,
+            //             'quotation_id' => $quotation->ID,
+            //             'error_message' => $e->getMessage(),
+            //             'file' => $e->getFile(),
+            //             'line' => $e->getLine(),
+            //             'office_code' => $officeCode
+            //         ]);
 
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Failed to update status to Won: ' . $e->getMessage()
-                    ], 500);
-                }
-            }
+            //         return response()->json([
+            //             'success' => false,
+            //             'message' => 'Failed to update status to Won: ' . $e->getMessage()
+            //         ], 500);
+            //     }
+            // }
 
             // ============================================
             // HANDLE "LOST" AND "CANCEL" VIA STORED PROCEDURE
             // ============================================
 
             // Validate reason code is provided for Lost/Cancel
-            if (empty($reasonCode)) {
-                Log::warning('Update Status - Reason code missing for Lost/Cancel', [
-                    'booking_no' => $bookingNo,
-                    'target_status' => $targetStatus,
-                    'user' => $submittedBy
-                ]);
-
+            if (empty($reasonCode) && $targetStatus !== 'Won') {
                 return response()->json([
                     'success' => false,
                     'message' => 'Reason code is required for ' . $targetStatus . ' status'
@@ -3104,14 +3098,14 @@ class QuotationController extends Controller
             // Handle status transition requirements
             $needsPendingFirst = false;
 
-            if ($targetStatus === 'Lost' && $currentStatus !== 'Pending') {
+            if ($targetStatus === 'Lost' && $currentStatus !== 'In Progress') {
                 $needsPendingFirst = true;
                 Log::info('Update Status - Lost requires Pending first', [
                     'booking_no' => $bookingNo,
                     'current_status' => $currentStatus,
                     'office_code' => $officeCode
                 ]);
-            } elseif ($targetStatus === 'Cancel' && !in_array($currentStatus, ['Pending', 'Won'])) {
+            } elseif ($targetStatus === 'Cancel' && !in_array($currentStatus, ['In Progress', 'WON'])) {
 
                 $needsPendingFirst = true;
 
@@ -3129,8 +3123,8 @@ class QuotationController extends Controller
                     $pendingRows = DB::table('Quote_QuotationInfo')
                         ->where('bookingno', $bookingNo)
                         ->update([
-                            'QuoteStatus' => 'Pending',
-                            'status' => 'Pending',
+                            'QuoteStatus' => 'In Progress',
+                            'status'      => 'In Progress',
                             'LastModifiedBy' => $submittedBy,
                             'updatedon' => now()
                         ]);
@@ -3170,7 +3164,7 @@ class QuotationController extends Controller
                 'SubmittedBy' => $submittedBy,
                 'Action' => 'Edit',
                 'QuotationID' => $quotation->ID,  // ← REPLACE BookingNo with QuotationID
-                'Status' => $targetStatus,
+                'Status' => strtoupper($targetStatus) === 'WON' ? 'WON' : $targetStatus,
                 'ReasonCode' => $reasonCode,
                 'ReasonRemark' => $reasonRemark
             ]);
@@ -3484,6 +3478,196 @@ class QuotationController extends Controller
                 'success' => false,
                 'message' => 'Failed to update status: ' . $e->getMessage()
             ], 500);
+        }
+    }
+
+    public function processWon(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $request->validate([
+            'quotation_id'  => 'required|string',
+            'reason_remark' => 'nullable|string',
+        ]);
+
+        $quotationId = $request->input('quotation_id');
+        $reasonRemark = $request->input('reason_remark', '');
+        $submittedBy  = Auth::user()->displayName ?? Auth::user()->Email ?? 'system';
+
+        $quotation = DB::table('Quote_QuotationInfo')
+            ->where('ID', $quotationId)
+            ->first(['ID', 'QuoteNo', 'QuoteStatus', 'status', 'companyname', 'teamid']);
+
+        if (!$quotation) {
+            return response()->json(['success' => false, 'message' => 'Quotation not found'], 404);
+        }
+
+        $steps = [];
+
+        // ── Step 1: Client Creation ───────────────────────────────────────────────
+        $clientResult = $this->runBookingProcessMain($quotation->ID, 'Client');
+
+        $steps[] = [
+            'step'   => 1,
+            'label'  => 'Client Creation',
+            'status' => $clientResult['status'],
+            'remark' => $clientResult['remark'],
+        ];
+
+        Log::info('processWon - Step 1 Client Creation', [
+            'quotation_id' => $quotationId,
+            'status'     => $clientResult['status'],
+            'remark'     => $clientResult['remark'],
+        ]);
+
+        if ($clientResult['status'] !== 'Success') {
+            // markAsFailed sets QuoteStatus=Won, SCMINTStatus=Failed → shows as Failed Int.
+            $this->markAsFailed($quotation->ID, 'Client Creation', $clientResult['remark'], $submittedBy);
+
+            return response()->json([
+                'success'      => false,
+                'failed_step'  => 1,
+                'failed_label' => 'Client Creation',
+                'message'      => $clientResult['remark'] ?: 'Client creation failed.',
+                'steps'        => $steps,
+            ]);
+        }
+
+        // ── Step 2: Mark as Won via SP ────────────────────────────────────────────
+        try {
+            $inputJson = json_encode([
+                'OperationType'    => 'QuotationStatusUpdate',
+                'SubmittedDatetime' => now()->format('YmdHis'),
+                'SubmittedBy'      => $submittedBy,
+                'Action'           => 'Edit',
+                'QuotationID'      => $quotation->ID,
+                'Status'           => 'WON',
+                'ReasonCode'       => '',
+                'ReasonRemark'     => $reasonRemark,
+            ]);
+
+            $pdo  = DB::connection()->getPdo();
+            $stmt = $pdo->prepare("
+                SET NOCOUNT ON;
+                DECLARE @OutputJson VARCHAR(2000);
+                EXEC sp_Quote_Quotaiton_StatusUpdate ?, @OutputJson OUTPUT;
+                SELECT @OutputJson AS OutputJson
+            ");
+
+            $stmt->execute([$inputJson]);
+
+            // Drain all result sets to reach the final SELECT
+            $spResult = null;
+            do {
+                try {
+                    $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+                    if (!empty($rows) && array_key_exists('OutputJson', $rows[0])) {
+                        $spResult = $rows[0]['OutputJson'];
+                    }
+                } catch (\Exception $fetchEx) {
+                    // some result sets are not fetchable (e.g. NOCOUNT metadata) — skip
+                }
+            } while ($stmt->nextRowset());
+
+            Log::info('processWon - Step 2 raw SP result', [
+                'quotation_id' => $quotationId,
+                'raw_result' => $spResult,
+            ]);
+
+            if ($spResult === null) {
+                // SP returned no output — surface the SQL error if any
+                $errorInfo = $stmt->errorInfo();
+                $sqlMsg = !empty($errorInfo[2]) ? $errorInfo[2] : null;
+                $errorInfo = $stmt->errorInfo();
+                $sqlMsg = !empty($errorInfo[2]) ? $errorInfo[2] : null;
+                throw new \RuntimeException(
+                    $sqlMsg ?: 'Status update failed. Please ensure the quotation has at least 1 revenue charge, a valid client, and all mandatory fields are filled.'
+                );
+            }
+
+            $normalized = $spResult;
+            if (str_starts_with(trim($spResult), '{')) {
+                $normalized = '[' . $spResult . ']';
+            }
+            $output = json_decode($normalized, true);
+
+            // Collect all non-success remarks, excluding the status-update confirmation
+            $errors = [];
+            if (is_array($output)) {
+                foreach ($output as $item) {
+                    if (($item['Status'] ?? '') === 'Failed' && isset($item['Remark'])) {
+                        // Exclude the "Status updated to WON" line — it's not an error
+                        if (stripos($item['Remark'], 'has been updated to') === false) {
+                            $errors[] = $item['Remark'];
+                        }
+                    }
+                }
+            }
+
+            $overallSuccess = empty($errors) && is_array($output) && count($output) > 0;
+
+            if (!$overallSuccess) {
+                $errorMessage = !empty($errors)
+                    ? implode(' | ', $errors)
+                    : 'Failed to mark as Won';
+
+                $steps[] = [
+                    'step'   => 2,
+                    'label'  => 'Mark as Won',
+                    'status' => 'Failed',
+                    'remark' => $errorMessage,
+                ];
+
+                return response()->json([
+                    'success'      => false,
+                    'failed_step'  => 2,
+                    'failed_label' => 'Mark as Won',
+                    'message'      => $errorMessage,
+                    'steps'        => $steps,
+                ]);
+            }
+
+            // Success path
+            $successRemark = '';
+            if (is_array($output)) {
+                foreach ($output as $item) {
+                    if (stripos($item['Remark'] ?? '', 'has been updated to') !== false) {
+                        $successRemark = $item['Remark'];
+                        break;
+                    }
+                }
+            }
+
+            $steps[] = [
+                'step'   => 2,
+                'label'  => 'Mark as Won',
+                'status' => 'Success',
+                'remark' => $successRemark ?: 'Quotation marked as Won successfully.',
+            ];
+
+            return response()->json([
+                'success' => true,
+                'message' => $successRemark ?: 'Quotation marked as Won successfully.',
+                'steps'   => $steps,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('processWon - Step 2 failed', [
+                'quotation_id' => $quotationId,
+                'error'      => $e->getMessage(),
+            ]);
+
+            $steps[] = [
+                'step'   => 2,
+                'label'  => 'Mark as Won',
+                'status' => 'Failed',
+                'remark' => $e->getMessage(),  // ← already correct
+            ];
+
+            return response()->json([
+                'success'      => false,
+                'failed_step'  => 2,
+                'failed_label' => 'Mark as Won',
+                'message'      => $e->getMessage(),  // ← change from hardcoded string to $e->getMessage()
+                'steps'        => $steps,
+            ]);
         }
     }
 
@@ -6413,6 +6597,18 @@ class QuotationController extends Controller
 
             // Log what we're sending
             \Log::info('saveCustomerDetails - Sending JSON', ['json' => $inputJson]);
+            $jsonLength = strlen($inputJson);
+            \Log::info('saveCustomerDetails - JSON Length', ['length' => $jsonLength]);
+            
+            if ($jsonLength > 2000) {
+                \Log::warning('saveCustomerDetails - JSON exceeds SP VARCHAR(2000) limit', [
+                    'length' => $jsonLength
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unable to save customer details. The data is too large for the current system limit. Please contact support. (Payload: ' . $jsonLength . ' chars / 2000 limit)',
+                ], 422);
+            }
 
             $pdo = DB::connection('sqlsrv')->getPdo();
             $stmt = $pdo->prepare("SET NOCOUNT ON; DECLARE @OutputRemarkJson NVARCHAR(2000); EXEC dbo.sp_Quote_CustomerUpdate ?, @OutputRemarkJson OUTPUT; SELECT @OutputRemarkJson AS OutputRemarkJson");
@@ -6832,8 +7028,7 @@ class QuotationController extends Controller
 
         // ── Steps 1–4: sp_Quote_BookingProcessMain ────────────────────────────────
         $processSteps = [
-            1 => ['type' => 'Client', 'label' => 'Client Creation'],
-            2 => ['type' => 'XML', 'label' => 'Booking XML'],
+            2 => ['type' => 'XML',    'label' => 'Booking XML'],
             3 => ['type' => 'Charge', 'label' => 'Charge Transfer'],
             4 => ['type' => 'Document', 'label' => 'Document Transfer'],
         ];

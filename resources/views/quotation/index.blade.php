@@ -804,30 +804,12 @@ $(document).ready(function() {
 
     // ── Booking step definitions ──────────────────────────────────────────────
     // Must stay in sync with processBooking() step order in QuotationController.
-    const BOOKING_STEPS = [{
-            step: 0,
-            label: 'Save Booking Info'
-        },
-        {
-            step: 1,
-            label: 'Client Creation'
-        },
-        {
-            step: 2,
-            label: 'Booking XML'
-        },
-        {
-            step: '2b',
-            label: 'SCM Push'
-        },
-        {
-            step: 3,
-            label: 'Charge Transfer'
-        },
-        {
-            step: 4,
-            label: 'Document Transfer'
-        },
+   const BOOKING_STEPS = [
+        { step: 0,   label: 'Save Booking Info' },
+        { step: 2,   label: 'Booking XML' },
+        { step: '2b',label: 'SCM Push' },
+        { step: 3,   label: 'Charge Transfer' },
+        { step: 4,   label: 'Document Transfer' },
     ];
 
     // Set date filter before DataTable initialises so the first request picks it up
@@ -1536,54 +1518,110 @@ $(document).ready(function() {
     });
 
     // ── Booking step renderer ─────────────────────────────────────────────────
-    function renderBookingSteps(completedSteps, activeStep) {
+      function renderBookingSteps(completedSteps, activeStep) {
         var $list = $('#cbStepList').empty();
+        var quotationId = $('#createBookingModal').data('quotation-id');
+        var bookingNo   = $('#createBookingModal').data('booking-no');
+    
         BOOKING_STEPS.forEach(function(def) {
-            var done = completedSteps.find(function(s) {
-                return s.step === def.step;
-            });
-            var iconClass, badgeClass, statusText, remarkHtml = '';
+            var done = completedSteps.find(function(s) { return s.step === def.step; });
+            var iconClass, badgeClass, statusText, remarkHtml = '', retriggerBtn = '';
             var isActive = (activeStep !== undefined && def.step === activeStep);
-
+    
             if (isActive) {
-                iconClass = 'fas fa-spinner fa-spin text-primary';
+                iconClass  = 'fas fa-spinner fa-spin text-primary';
                 badgeClass = 'badge-primary';
                 statusText = 'Processing...';
             } else if (!done) {
-                iconClass = 'fas fa-circle text-secondary';
+                iconClass  = 'fas fa-circle text-secondary';
                 badgeClass = 'badge-secondary';
                 statusText = 'Pending';
             } else if (done.status === 'Success') {
-                iconClass = 'fas fa-check-circle text-success';
+                iconClass  = 'fas fa-check-circle text-success';
                 badgeClass = 'badge-success';
                 statusText = 'Success';
                 if (done.remark)
-                    remarkHtml = '<small class="text-muted d-block mt-1">' + done.remark +
-                    '</small>';
+                    remarkHtml = '<small class="text-muted d-block mt-1">' + done.remark + '</small>';
             } else if (done.status === 'Skipped') {
-                iconClass = 'fas fa-minus-circle text-secondary';
+                iconClass  = 'fas fa-minus-circle text-secondary';
                 badgeClass = 'badge-secondary';
                 statusText = 'Skipped';
             } else {
-                iconClass = 'fas fa-times-circle text-danger';
+                // Failed
+                iconClass  = 'fas fa-times-circle text-danger';
                 badgeClass = 'badge-danger';
                 statusText = 'Failed';
                 if (done.remark)
-                    remarkHtml = '<small class="text-danger d-block mt-1">' + done.remark +
-                    '</small>';
+                    remarkHtml = '<small class="text-danger d-block mt-1">' + done.remark + '</small>';
+    
+                // Only show retrigger on steps that the retrigger endpoint handles (2, 3, 4)
+                if ([2, 3, 4].indexOf(def.step) !== -1) {
+                    retriggerBtn =
+                        '<button class="btn btn-xs btn-outline-warning btn-retrigger ml-2"'
+                        + ' data-quotation-id="' + quotationId + '"'
+                        + ' data-booking-no="' + bookingNo + '"'
+                        + ' data-step="' + def.step + '"'
+                        + ' title="Retrigger this step">'
+                        + '<i class="fas fa-redo-alt mr-1"></i>Retry'
+                        + '</button>';
+                }
             }
-
+    
             $list.append(
-                '<div class="list-group-item py-2">' +
-                '<div class="d-flex align-items-center justify-content-between">' +
-                '<div><i class="' + iconClass + ' mr-2"></i>' +
-                '<strong>Step ' + def.step + ':</strong> ' + def.label +
-                remarkHtml + '</div>' +
-                '<span class="badge ' + badgeClass + '">' + statusText + '</span>' +
-                '</div></div>'
+                '<div class="list-group-item py-2">'
+                + '<div class="d-flex align-items-center justify-content-between">'
+                + '<div><i class="' + iconClass + ' mr-2"></i>'
+                + '<strong>Step ' + def.step + ':</strong> ' + def.label
+                + remarkHtml + '</div>'
+                + '<div class="d-flex align-items-center gap-2">'
+                + '<span class="badge ' + badgeClass + '">' + statusText + '</span>'
+                + retriggerBtn
+                + '</div>'
+                + '</div></div>'
             );
         });
     }
+
+    // ── Retrigger failed booking step ─────────────────────────────────────────
+    $('#cbStepList').on('click', '.btn-retrigger', function() {
+        var $btn         = $(this);
+        var quotationId  = $btn.data('quotation-id');
+        var bookingNo    = $btn.data('booking-no');
+    
+        $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i>Retrying...');
+    
+        $.ajax({
+            url:  '{{ route('quotation.retrigger') }}',
+            type: 'POST',
+            data: {
+                _token:       '{{ csrf_token() }}',
+                quotation_id: quotationId,
+                booking_no:   bookingNo,
+            },
+            success: function(res) {
+                renderBookingSteps(res.steps || []);
+                if (res.success) {
+                    $('#cbProgressError').addClass('d-none');
+                    $('#cbProgressSuccess').removeClass('d-none');
+                    $('#cbEditLink').addClass('d-none');
+                    table.ajax.reload(null, false);
+                } else {
+                    var failedStep = (res.steps || []).find(function(s) {
+                        return s.status === 'Failed';
+                    });
+                    $('#cbProgressError')
+                        .html('<strong>' + (res.failed_label || 'Step') + ' failed:</strong> '
+                            + (failedStep ? failedStep.remark : 'Unknown error'))
+                        .removeClass('d-none');
+                }
+            },
+            error: function(xhr) {
+                var msg = xhr.responseJSON?.message || 'Retrigger failed. Please try again.';
+                $('#cbProgressError').html(msg).removeClass('d-none');
+                $btn.prop('disabled', false).html('<i class="fas fa-redo-alt mr-1"></i>Retry');
+            }
+        });
+    });
 
     // ── Submit Create Booking ─────────────────────────────────────────────────
     $('#submitCreateBookingBtn').on('click', function() {
