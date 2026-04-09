@@ -166,6 +166,8 @@
                             <div class="col-sm-7">
                                 <input type="text" class="form-control form-control-sm" id="incoTermDisplay"
                                     value="{{ $quotation->incoterm ?? '' }}" readonly>
+                                            <input type="hidden" id="incoTermCode" value="{{ $quotation->incoterm ?? '' }}">
+
                                 <select class="form-control form-control-sm d-none" id="incoTermSelect" disabled>
                                     <option value="">-- Select --</option>
                                 </select>
@@ -3109,15 +3111,18 @@
                     },
                     success: function(data) {
                         const list = Array.isArray(data) ? data : [];
-                        const $sel = $('#serviceClassSelect').empty()
-                            .append('<option value="">-- Select --</option>');
-                        list.forEach(function(item) {
-                            const code = (item.Code || item.ServiceClass || '').trim();
-                            const name = (item.Name || item.Description || code).trim();
-                            $sel.append(
-                                `<option value="${code}" ${code === savedCode ? 'selected' : ''}>${name}</option>`
-                            );
-                        });
+            
+const $sel = $('#serviceClassSelect').empty()
+    .append('<option value="">-- Select --</option>');
+list.forEach(function(item) {
+    const code = (item.Code || item.ServiceClass || '').trim();
+    const name = (item.Name || item.Description || code).trim();
+    $sel.append(`<option value="${code}">${name}</option>`);
+});
+// Pre-select after options are rendered — savedCode is from PHP at definition time,
+// but we also check the current display value in case it was updated mid-session
+const currentCode = $('#serviceClassDisplay').val() || savedCode;
+if (currentCode) $sel.val(currentCode);
                         serviceClassesLoaded = true;
                     },
                     complete: function() {
@@ -3164,52 +3169,124 @@
             }
 
             $('#editShipmentDetailsBtn').on('click', function() {
-                originalShipmentMode = $('#shipmentModeSelect').val();
-                originalTransportMode = $('#transportModeSelect').val();
-                originalIncoTerm = $('#incoTermDisplay').val();
-                originalOriginCountry = $('#originCountrySelect').val(); // code
-                originalOriginCountryName = $('#originCountryDisplay').val(); // name
-                originalDestCountry = $('#destCountrySelect').val(); // code
-                originalDestCountryName = $('#destCountryDisplay').val(); // name
+    originalShipmentMode = $('#shipmentModeSelect').val();
+    originalTransportMode = $('#transportModeSelect').val();
+
+    // Sync IncoTerm display → select before snapshotting
+// AFTER
+const $incoSel = $('#incoTermSelect');
+const currentInco = $('#incoTermDisplay').val();
+if (incoTermsLoaded && currentInco) {
+    // Options are available — always sync select to the current display value
+    $incoSel.val(currentInco);
+}
+// First edit (incoTermsLoaded = false): AJAX pre-selection handles it
+originalIncoTerm = currentInco;
+
+    // Sync origin country display → select before snapshotting
+    const $origSel = $('#originCountrySelect');
+    if (!$origSel.val()) {
+        const displayedOrigin = $('#originCountryDisplay').val();
+        $origSel.find('option').each(function () {
+            if ($(this).data('name') === displayedOrigin || $(this).text().trim() === displayedOrigin) {
+                $origSel.val($(this).val());
+                return false;
+            }
+        });
+    }
+    originalOriginCountry = $origSel.val() || '';
+    originalOriginCountryName = $('#originCountryDisplay').val();
+
+    // Sync destination country display → select before snapshotting
+    const $destSel = $('#destCountrySelect');
+    if (!$destSel.val()) {
+        const displayedDest = $('#destCountryDisplay').val();
+        $destSel.find('option').each(function () {
+            if ($(this).data('name') === displayedDest || $(this).text().trim() === displayedDest) {
+                $destSel.val($(this).val());
+                return false;
+            }
+        });
+    }
+    originalDestCountry = $destSel.val() || '';
+    originalDestCountryName = $('#destCountryDisplay').val();
                 $('#shipmentModeSelect, #transportModeSelect').prop('disabled', false);
 
-                if (!incoTermsLoaded) {
-                    const savedIncoTerm = '{{ $quotation->incoterm ?? '' }}';
-                    $.ajax({
-                        url: '{{ route('quotation.inco-terms') }}',
-                        type: 'GET',
-                        success: function(r) {
-                            const $sel = $('#incoTermSelect').empty().append(
-                                '<option value="">-- Select --</option>');
-                            (r.success ? r.data : []).forEach(function(item) {
-                                const code = item.IncoTermCode || '';
-                                $sel.append(
-                                    `<option value="${code}" ${code === savedIncoTerm ? 'selected' : ''}>${code} — ${item.Name}</option>`
-                                );
-                            });
-                            incoTermsLoaded = true;
-                        }
-                    });
+
+if (!incoTermsLoaded) {
+    const savedIncoTerm = $('#incoTermCode').val();
+    $.ajax({
+        url: '{{ route('quotation.inco-terms') }}',
+        type: 'GET',
+        success: function(r) {
+            const $sel = $('#incoTermSelect').empty().append(
+                '<option value="">-- Select --</option>');
+            (r.success ? r.data : []).forEach(function(item) {
+                const code = item.IncoTermCode || '';
+                $sel.append(`<option value="${code}">${code} — ${item.Name}</option>`);
+            });
+   incoTermsLoaded = true;
+console.log('IncoTerm savedIncoTerm:', savedIncoTerm);
+console.log('IncoTerm options available:', $sel.find('option').map(function() { return $(this).val(); }).get());
+if (savedIncoTerm) {
+    $sel.val(savedIncoTerm);
+    console.log('IncoTerm after .val():', $sel.val());
+    if (!$sel.val()) {
+        // Fallback: match option whose value or text starts with savedIncoTerm
+        $sel.find('option').each(function () {
+            if ($(this).val().indexOf(savedIncoTerm) === 0 ||
+                savedIncoTerm.indexOf($(this).val()) === 0) {
+                $sel.val($(this).val());
+                return false;
+            }
+        });
+    }
+}
+originalIncoTerm = $sel.val() || savedIncoTerm;
+
+$('#incoTermDisplay').addClass('d-none');
+$sel.removeClass('d-none').prop('disabled', false);
+        }
+    });
+} else {
+    const savedIncoTerm = $('#incoTermCode').val() || $('#incoTermDisplay').val();
+    if (savedIncoTerm) {
+        $('#incoTermSelect').val(savedIncoTerm);
+        if (!$('#incoTermSelect').val()) {
+            $('#incoTermSelect option').each(function () {
+                if ($(this).val().indexOf(savedIncoTerm) === 0 ||
+                    savedIncoTerm.indexOf($(this).val()) === 0) {
+                    $('#incoTermSelect').val($(this).val());
+                    return false;
                 }
+            });
+        }
+    }
+    originalIncoTerm = $('#incoTermSelect').val() || savedIncoTerm;
 
-                $('#incoTermDisplay').addClass('d-none');
-                $('#incoTermSelect').removeClass('d-none').prop('disabled', false);
+    $('#incoTermDisplay').addClass('d-none');
+    $('#incoTermSelect').removeClass('d-none').prop('disabled', false);
+}
+      
+// Snapshot display values before any async loads mutate the DOM
+originalServiceClass = $('#serviceClassCode').val() || $('#serviceClassDisplay').val();
+originalServiceClassDisplay = $('#serviceClassDisplay').val();
 
-                originalServiceClass = $('#serviceClassSelect').val();
-                originalServiceClassDisplay = $('#serviceClassDisplay').val();
+loadShipmentCountries(function() {
+    $('#originCountryDisplay').hide();
+    $('#originCountryEditWrap').show();
+    $('#destCountryDisplay').hide();
+    $('#destCountryEditWrap').show();
+});
 
-                loadShipmentCountries(function() {
-                    $('#originCountryDisplay').hide();
-                    $('#originCountryEditWrap').show();
-                    $('#destCountryDisplay').hide();
-                    $('#destCountryEditWrap').show();
-                });
-
-                loadServiceClasses(function() {
-                    $('#serviceClassDisplay').addClass('d-none');
-                    $('#serviceClassSelect').removeClass('d-none').prop('disabled', false);
-                });
-
+loadServiceClasses(function() {
+    // Pre-select using the snapshotted value — options are now rendered
+    if (originalServiceClass) {
+        $('#serviceClassSelect').val(originalServiceClass);
+    }
+    $('#serviceClassDisplay').addClass('d-none');
+    $('#serviceClassSelect').removeClass('d-none').prop('disabled', false);
+});
 
                 $(this).hide();
                 $('#saveShipmentDetailsBtn, #cancelShipmentDetailsBtn').show();
@@ -3287,9 +3364,10 @@
                             $('#shipmentModeSelect, #transportModeSelect').prop('disabled',
                                 true);
 
-                            $('#incoTermSelect').addClass('d-none').prop('disabled', true);
-                            $('#incoTermDisplay').removeClass('d-none').val(incoTerm);
-                            originalIncoTerm = incoTerm;
+$('#incoTermSelect').val(incoTerm).addClass('d-none').prop('disabled', true);
+$('#incoTermDisplay').removeClass('d-none').val(incoTerm);
+$('#incoTermCode').val(incoTerm);
+originalIncoTerm = incoTerm;
 
                             $('#originCountryEditWrap').hide();
                             $('#originCountryDisplay').val(
@@ -3301,13 +3379,10 @@
                             ).show();
 
 
-                            $('#serviceClassSelect').addClass('d-none').prop('disabled', true);
-                            $('#serviceClassDisplay').val(
-                                $('#serviceClassSelect option:selected').text()
-                            ).removeClass('d-none');
-                            originalServiceClass = serviceClass;
-                            originalServiceClassDisplay = $(
-                                '#serviceClassSelect option:selected').text();
+$('#serviceClassSelect').val(serviceClass).addClass('d-none').prop('disabled', true);
+$('#serviceClassDisplay').val(serviceClass).removeClass('d-none');  // code, same as page load
+originalServiceClass = serviceClass;
+originalServiceClassDisplay = serviceClass;
 
                             $('#saveShipmentDetailsBtn, #cancelShipmentDetailsBtn').hide();
                             $('#editShipmentDetailsBtn').show();
@@ -6104,7 +6179,12 @@ $('#wonProcessModal').on('hide.bs.modal', function () {
 
                         // Pre-select if we have saved industry
                         if (savedCustomerIndustry) {
-                            $sel.val(savedCustomerIndustry);
+                            $sel.find('option').each(function () {
+                                if ($(this).data('name') === savedCustomerIndustry || $(this).text().trim() === savedCustomerIndustry) {
+                                    $(this).prop('selected', true);
+                                    return false;
+                                }
+                            });
                         }
                     },
                     complete: oneDone
@@ -6116,13 +6196,38 @@ $('#wonProcessModal').on('hide.bs.modal', function () {
                 originalAgentType = $('#agentTypeSelect').val();
 
                 // Capture with stable, explicit keys — never overwritten until next Edit click
+                  // Sync display → select before snapshotting, so Cancel has accurate values
+                // to restore even if the selects were repopulated by a previous save cycle.
+                const $cSel = $('#customerCountrySelect');
+                const $iSel = $('#customerIndustrySelect');
+                
+                // If select has no match for the current display text, find it by text
+                if (!$cSel.val()) {
+                    const displayedCountry = $('#customerCountryDisplay').val();
+                    $cSel.find('option').each(function () {
+                        if ($(this).text().trim() === displayedCountry) {
+                            $cSel.val($(this).val());
+                            return false;
+                        }
+                    });
+                }
+                if (!$iSel.val()) {
+                    const displayedIndustry = $('#customerIndustryDisplay').val();
+                    $iSel.find('option').each(function () {
+                        if ($(this).text().trim() === displayedIndustry || $(this).data('name') === displayedIndustry) {
+                            $iSel.val($(this).val());
+                            return false;
+                        }
+                    });
+                }
+                
                 originalCustomerSnapshot = {
                     companyName: $('input[data-field="companyname"]').val(),
                     address1: $('input[data-field="pri_partner_steet"]').val(),
                     countryDisplay: $('#customerCountryDisplay').val(),
-                    countrySelect: $('#customerCountrySelect').val(),
+                    countrySelect: $cSel.val() || '',
                     industryDisplay: $('#customerIndustryDisplay').val(),
-                    industrySelect: $('#customerIndustrySelect').val(),
+                    industrySelect: $iSel.val() || '',
                 };
 
                 // Capture remaining fields by position — same selector, same eq() order as Cancel
@@ -6374,7 +6479,7 @@ $('#wonProcessModal').on('hide.bs.modal', function () {
                     SubmittedBy: "{{ Auth::user()->username ?? 'system' }}",
                     Action: "Update",
                     QuotationID: quotationId,
-                    ClientCode: $('#selectedClientCode').val() || '',
+                    ClientCode: $('#selectedClientCode').val() || '{{ $quotation->pri_id ?? '' }}',
                     Company: companyName,
                     Address1: address1,
                     Address2: $('#customerAddress2Input').val()?.trim() || '',
@@ -7325,40 +7430,12 @@ $('#wonProcessModal').on('hide.bs.modal', function () {
                     },
                     success: function(response) {
                         if (response.success) {
-                            showNotification('Cargo details saved successfully',
-                                'success');
-
-                            originalCargoVolume = cargoVolume;
-                            originalContainers = [];
-                            $('#containerListBody tr[data-container-row]').each(
-                                function() {
-                                    originalContainers.push({
-                                        type: $(this).find(
-                                                '.container-type-select'
-                                            )
-                                            .val(),
-                                        qty: parseInt($(this).find(
-                                                '.container-qty-input'
-                                            )
-                                            .val(),
-                                            10) || 0
-                                    });
-                                });
-
-                            $('#cargoVolumeInput').prop('readonly', true).css(
-                                'background-color', '');
-                            $('#commodityInput').prop('readonly', true).css(
-                                'background-color',
-                                '');
-                            renderContainerRows(originalContainers, false);
-                            $('#addContainerRowBtn').addClass('d-none');
-                            $('#saveCargoDetailsBtn, #cancelCargoDetailsBtn')
-                                .addClass(
-                                    'd-none');
-                            $('#editCargoDetailsBtn').removeClass('d-none');
+                            showNotification('Cargo details saved successfully', 'success');
+                            setTimeout(function() {
+                                window.location.reload();
+                            }, 1000);
                         } else {
-                            showNotification(response.message || 'Failed to save',
-                                'error');
+                            showNotification(response.message || 'Failed to save', 'error');
                         }
                     },
                     error: function(xhr) {
@@ -7762,13 +7839,12 @@ $('#wonProcessModal').on('hide.bs.modal', function () {
                             statusText = 'Success';
                             if (done.remark)
                                 remarkHtml = '<small class="text-muted d-block mt-1">' + done.remark + '</small>';
-                        } else {
-                            iconClass  = 'fas fa-times-circle text-danger';
-                            badgeClass = 'badge-danger';
-                            statusText = 'Failed';
-                            if (done.remark)
-                                remarkHtml = '<small class="text-danger d-block mt-1">' + done.remark + '</small>';
-                        }
+} else {
+    iconClass  = 'fas fa-times-circle text-danger';
+    badgeClass = 'badge-danger';
+    statusText = 'Failed';
+    // remark shown once in the error alert below — not duplicated here
+}
             
                         $list.append(
                             '<div class="list-group-item py-2">'
@@ -7806,10 +7882,13 @@ $('#wonProcessModal').on('hide.bs.modal', function () {
                                 window.location.href = '{{ route("quotation.index") }}';
                             }, 1500);
                     } else {
-                     var failedStep = (res.steps || []).find(function(s) { return s.status === 'Failed'; });
-var detailMsg  = (failedStep && failedStep.remark) ? failedStep.remark : (res.message || 'Unknown error');
+// AFTER
+var failedStep  = (res.steps || []).find(function(s) { return s.status === 'Failed'; });
+var rawMsg      = (failedStep && failedStep.remark) ? failedStep.remark : (res.message || 'Unknown error');
+var errorLines  = rawMsg.split('|').map(function(s) { return s.trim(); }).filter(Boolean);
+var bulletHtml  = '<ul class="mb-0 pl-3">' + errorLines.map(function(l) { return '<li>' + l + '</li>'; }).join('') + '</ul>';
 $('#wonProgressError')
-    .html('<strong>' + (res.failed_label || 'Step') + ' failed:</strong> ' + detailMsg)
+    .html('<strong>' + (res.failed_label || 'Step') + ' failed:</strong>' + bulletHtml)
     .removeClass('d-none');
                         $('#wonProcessCloseBtn').removeClass('d-none');
                     }

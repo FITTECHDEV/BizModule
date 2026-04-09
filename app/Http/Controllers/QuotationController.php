@@ -359,14 +359,15 @@ class QuotationController extends Controller
                     }
 
                     if (($cardFilter === 'won' && $isWon) || ($cardFilter === 'failed_int' && $isFailedInt)) {
-                        $actionHtml .= ' <button class="btn btn-success btn-sm btn-create-booking"'
-                            . ' data-id="' . $db->ID . '"'
-                            . ' data-booking="' . $db->bookingno . '"'
-                            . ' data-team="' . $db->teamid . '"'
-                            . ' data-quoteno="' . $db->QuoteNo . '"'
-                            . ' data-origin="' . e($row->OriginCountry ?? '') . '"'
-                            . ' data-destination="' . e($row->DestinationCountry ?? '') . '"'
-                            . ' title="Create Booking"><i class="fas fa-plus-circle"></i></button>';
+                $actionHtml .= ' <button class="btn btn-success btn-sm btn-create-booking"'
+    . ' data-id="' . $db->ID . '"'
+    . ' data-booking="' . $db->bookingno . '"'
+    . ' data-team="' . $db->teamid . '"'
+    . ' data-quoteno="' . $db->QuoteNo . '"'
+    . ' data-origin="' . e($row->OriginCountry ?? '') . '"'
+    . ' data-destination="' . e($row->DestinationCountry ?? '') . '"'
+    . ' data-status="' . e($scmStatus ?? '') . '"'
+    . ' title="Create Booking"><i class="fas fa-plus-circle"></i></button>';
                     }
                 }
                 $actionHtml .= '</div>';
@@ -1306,12 +1307,15 @@ class QuotationController extends Controller
                         ($cardFilter === 'won' && $isWon) ||
                         ($cardFilter === 'failed_int' && $isFailedInt)
                     ) {
-                        $createBookingBtn = ' <button class="btn btn-success btn-sm btn-create-booking"
-                            data-id="' . $row->ID . '"
-                            data-booking="' . $row->bookingno . '"
-                            data-team="' . $row->teamid . '"
-                            data-quoteno="' . $row->QuoteNo . '"
-                            title="Create Booking"><i class="fas fa-plus-circle"></i></button>';
+                     $createBookingBtn = ' <button class="btn btn-success btn-sm btn-create-booking"
+    data-id="' . $row->ID . '"
+    data-booking="' . $row->bookingno . '"
+    data-team="' . $row->teamid . '"
+    data-quoteno="' . $row->QuoteNo . '"
+    data-origin=""
+    data-destination=""
+    data-status="' . e($scmStatus ?? '') . '"
+    title="Create Booking"><i class="fas fa-plus-circle"></i></button>';
                     }
                     return $viewBtn . $editBtn . $createBookingBtn;
                 })
@@ -4145,7 +4149,7 @@ class QuotationController extends Controller
         ]);
     }
 
-    public function getCommunicationTemplates(Request $request)
+   public function getCommunicationTemplates(Request $request)
     {
         $module = $request->input('module');
         $subModule = $request->input('sub_module');
@@ -4169,120 +4173,195 @@ class QuotationController extends Controller
     }
 
 
-    public function getTermsTemplates(Request $request): JsonResponse
-    {
-        $quotationId = trim($request->input('quotation_id', ''));
+public function getTermsTemplates(Request $request): JsonResponse
+{
+    $quotationId = trim($request->input('quotation_id', ''));
 
-        if (!$quotationId) {
-            return response()->json(['success' => false, 'message' => 'quotation_id is required'], 400);
+    if (!$quotationId) {
+        return response()->json(['success' => false, 'message' => 'quotation_id is required'], 400);
+    }
+
+    try {
+        // Step 1: Run Eloquent UPDATE first
+        DB::table('Quote_QuotationInfo')
+            ->where('ID', $quotationId)
+            ->update(['OfficeCode' => DB::raw("RTRIM(OfficeCode)")]);
+
+        // Step 2: Force a fresh connection — the Eloquent UPDATE leaves the
+        // shared PDO handle in a dirty state on pdo_sqlsrv. Disconnecting
+        // forces Laravel to open a clean connection on the next getPdo() call.
+        DB::disconnect();
+        DB::reconnect();
+
+        $pdo = DB::connection()->getPdo();
+
+        // pdo_sqlsrv on IIS can return null on the first getPdo() after disconnect().
+        // Retry once before giving up.
+        if (!$pdo instanceof \PDO) {
+            Log::warning('getTermsTemplates - getPdo() returned null, retrying reconnect', [
+                'quotation_id' => $quotationId,
+            ]);
+            DB::disconnect();
+            DB::reconnect();
+            $pdo = DB::connection()->getPdo();
         }
 
-        try {
-            $pdo = DB::connection()->getPdo();
-            DB::table('Quote_QuotationInfo')
-                ->where('ID', $quotationId)
-                ->update(['OfficeCode' => DB::raw("RTRIM(OfficeCode)")]);
-
-            $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC dbo.sp_Quote_TermsandConditionList ?");
-            $stmt->execute([$quotationId]);
-
-            $templates = [];
-            $resultSetIndex = 0;
-
-            do {
-                $resultSetIndex++;
-                try {
-                    $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
-
-                    if (empty($rows)) {
-                        continue;
-                    }
-
-                    $firstVal = array_values((array) $rows[0])[0] ?? '';
-
-                    // SP CATCH block returns 'Failed - ...'
-                    if (is_string($firstVal) && str_starts_with(trim($firstVal), 'Failed')) {
-                        Log::warning('getTermsTemplates - SP returned failure', [
-                            'quotation_id' => $quotationId,
-                            'message' => $firstVal,
-                        ]);
-                        return response()->json([
-                            'success' => false,
-                            'code' => 'NOT_CONFIGURED',
-                            'message' => $firstVal,
-                        ], 404);
-                    }
-
-                    // Accept first result set that has a recognisable name column
-                    $row = (array) $rows[0];
-                    $nameColumn = null;
-                    foreach (['TemplateName', 'Name', 'TCName', 'TermsName'] as $candidate) {
-                        if (array_key_exists($candidate, $row)) {
-                            $nameColumn = $candidate;
-                            break;
-                        }
-                    }
-
-                    if (!$nameColumn) {
-                        continue;
-                    }
-
-                    // Normalise to { Name, Description } shape expected by frontend
-                    $descColumn = null;
-                    foreach (['Description', 'TermsAndCondition', 'TCContent', 'Content', 'Body'] as $candidate) {
-                        if (array_key_exists($candidate, $row)) {
-                            $descColumn = $candidate;
-                            break;
-                        }
-                    }
-
-                    $templates = array_map(fn($r) => (object) [
-                        'Name' => ((array) $r)[$nameColumn] ?? '',
-                        'Description' => $descColumn ? (((array) $r)[$descColumn] ?? '') : '',
-                    ], $rows);
-
-                    Log::info('getTermsTemplates - Templates found', [
-                        'quotation_id' => $quotationId,
-                        'count' => count($templates),
-                        'name_column' => $nameColumn,
-                        'desc_column' => $descColumn ?? 'not found',
-                        'result_set' => $resultSetIndex,
-                    ]);
-                    break;
-                } catch (\PDOException $e) {
-                    Log::debug('getTermsTemplates - Skipping result set #' . $resultSetIndex, [
-                        'error' => $e->getMessage(),
-                    ]);
-                    continue;
-                }
-            } while ($stmt->nextRowset());
-
-            if (empty($templates)) {
-                Log::warning('getTermsTemplates - SP returned no templates', [
-                    'quotation_id' => $quotationId,
-                    'result_sets_seen' => $resultSetIndex,
-                ]);
-                return response()->json([
-                    'success' => false,
-                    'code' => 'NOT_CONFIGURED',
-                    'message' => 'No T&C templates configured for this quotation.',
-                ], 404);
-            }
-
-            return response()->json(['success' => true, 'templates' => $templates]);
-        } catch (\Exception $e) {
-            Log::error('getTermsTemplates - Failed', [
+        if (!$pdo instanceof \PDO) {
+            Log::error('getTermsTemplates - getPdo() returned null after retry', [
                 'quotation_id' => $quotationId,
-                'error' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
             ]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to load T&C templates: ' . $e->getMessage(),
+                'message' => 'Database connection unavailable. Please try again.',
             ], 500);
         }
+
+        // Step 3: Raw PDO with SET NOCOUNT ON + columnCount() guard.
+        $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC dbo.sp_Quote_TermsandConditionList ?");
+        $stmt->execute([$quotationId]);
+
+        $rows           = [];
+        $resultSetIndex = 0;
+
+        do {
+            $resultSetIndex++;
+
+            if ($stmt->columnCount() === 0) {
+                Log::debug('getTermsTemplates - Skipping no-column result set #' . $resultSetIndex);
+                continue;
+            }
+
+            try {
+                if ($stmt->columnCount() === 0) {
+                    Log::debug('getTermsTemplates - columnCount() race, skipping set #' . $resultSetIndex);
+                    continue;
+                }
+
+                $fetched = $stmt->fetchAll(\PDO::FETCH_OBJ);
+
+                if (empty($fetched)) {
+                    continue;
+                }
+
+                $firstVal = array_values((array) $fetched[0])[0] ?? '';
+
+                if (is_string($firstVal) && str_starts_with(trim($firstVal), 'Failed')) {
+                    Log::warning('getTermsTemplates - SP returned failure', [
+                        'quotation_id' => $quotationId,
+                        'message'      => $firstVal,
+                    ]);
+                    return response()->json([
+                        'success' => false,
+                        'code'    => 'NOT_CONFIGURED',
+                        'message' => $firstVal,
+                    ], 404);
+                }
+
+                $row        = (array) $fetched[0];
+                $nameColumn = null;
+
+                foreach (['TemplateName', 'Name', 'TCName', 'TermsName'] as $candidate) {
+                    if (array_key_exists($candidate, $row)) {
+                        $nameColumn = $candidate;
+                        break;
+                    }
+                }
+
+                if (!$nameColumn) {
+                    Log::debug('getTermsTemplates - No name column in result set #' . $resultSetIndex, [
+                        'columns' => array_keys($row),
+                    ]);
+                    continue;
+                }
+
+                $descColumn = null;
+                foreach (['Description', 'TermsAndCondition', 'TCContent', 'Content', 'Body'] as $candidate) {
+                    if (array_key_exists($candidate, $row)) {
+                        $descColumn = $candidate;
+                        break;
+                    }
+                }
+
+                $rows = $fetched;
+
+                Log::info('getTermsTemplates - Templates found', [
+                    'quotation_id' => $quotationId,
+                    'count'        => count($rows),
+                    'name_column'  => $nameColumn,
+                    'desc_column'  => $descColumn ?? 'not found',
+                    'result_set'   => $resultSetIndex,
+                ]);
+                break;
+
+            } catch (\PDOException $e) {
+                Log::debug('getTermsTemplates - Skipping result set #' . $resultSetIndex, [
+                    'error' => $e->getMessage(),
+                ]);
+                if (str_contains($e->getMessage(), 'no fields') || str_contains($e->getMessage(), 'no field')) {
+                    break;
+                }
+                continue;
+            }
+
+        } while ((function () use ($stmt) {
+            try {
+                return $stmt->nextRowset();
+            } catch (\PDOException $e) {
+                Log::debug('getTermsTemplates - nextRowset() threw: ' . $e->getMessage());
+                return false;
+            }
+        })());
+
+        if (empty($rows)) {
+            Log::warning('getTermsTemplates - SP returned no usable templates', [
+                'quotation_id'     => $quotationId,
+                'result_sets_seen' => $resultSetIndex,
+            ]);
+            return response()->json([
+                'success' => false,
+                'code'    => 'NOT_CONFIGURED',
+                'message' => 'No T&C templates configured for this quotation.',
+            ], 404);
+        }
+
+        $row        = (array) $rows[0];
+        $nameColumn = null;
+        foreach (['TemplateName', 'Name', 'TCName', 'TermsName'] as $candidate) {
+            if (array_key_exists($candidate, $row)) {
+                $nameColumn = $candidate;
+                break;
+            }
+        }
+
+        $descColumn = null;
+        foreach (['Description', 'TermsAndCondition', 'TCContent', 'Content', 'Body'] as $candidate) {
+            if (array_key_exists($candidate, $row)) {
+                $descColumn = $candidate;
+                break;
+            }
+        }
+
+        $templates = array_map(fn($r) => (object) [
+            'Name'        => ((array) $r)[$nameColumn] ?? '',
+            'Description' => $descColumn ? base64_encode((string)(((array) $r)[$descColumn] ?? '')) : '',
+        ], $rows);
+
+        return response()->json(['success' => true, 'templates' => $templates]);
+
+    } catch (\Exception $e) {
+        Log::error('getTermsTemplates - Failed', [
+            'quotation_id' => $quotationId,
+            'error'        => $e->getMessage(),
+            'file'         => $e->getFile(),
+            'line'         => $e->getLine(),
+        ]);
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to load T&C templates: ' . $e->getMessage(),
+        ], 500);
     }
+}
+
 
 
     /**
@@ -7098,13 +7177,21 @@ class QuotationController extends Controller
                     'result' => $pushResponse,
                 ]);
 
-                if (!($pushResponse['success'] ?? false)) {
+           if (!($pushResponse['success'] ?? false)) {
                     $this->markAsFailed(
                         $request->id,
                         'SCM Push',
                         $pushResponse['message'] ?? 'Failed to push XML to SCM',
                         $submittedBy
                     );
+
+                    // ← Add step 2b as Failed BEFORE returning
+                    $steps[] = [
+                        'step'   => '2b',
+                        'label'  => 'SCM Push',
+                        'status' => 'Failed',
+                        'remark' => $pushResponse['message'] ?? 'Failed to push XML to SCM',
+                    ];
 
                     foreach ($processSteps as $remainingNo => $remainingDef) {
                         if ($remainingNo > $stepNo) {
