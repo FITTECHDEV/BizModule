@@ -359,15 +359,15 @@ class QuotationController extends Controller
                     }
 
                     if (($cardFilter === 'won' && $isWon) || ($cardFilter === 'failed_int' && $isFailedInt)) {
-                $actionHtml .= ' <button class="btn btn-success btn-sm btn-create-booking"'
-    . ' data-id="' . $db->ID . '"'
-    . ' data-booking="' . $db->bookingno . '"'
-    . ' data-team="' . $db->teamid . '"'
-    . ' data-quoteno="' . $db->QuoteNo . '"'
-    . ' data-origin="' . e($row->OriginCountry ?? '') . '"'
-    . ' data-destination="' . e($row->DestinationCountry ?? '') . '"'
-    . ' data-status="' . e($scmStatus ?? '') . '"'
-    . ' title="Create Booking"><i class="fas fa-plus-circle"></i></button>';
+                    $actionHtml .= ' <button class="btn btn-success btn-sm btn-create-booking"'
+                        . ' data-id="' . $db->ID . '"'
+                        . ' data-booking="' . $db->bookingno . '"'
+                        . ' data-team="' . $db->teamid . '"'
+                        . ' data-quoteno="' . $db->QuoteNo . '"'
+                        . ' data-origin="' . e($row->OriginCountry ?? '') . '"'
+                        . ' data-destination="' . e($row->DestinationCountry ?? '') . '"'
+                        . ' data-status="' . e($scmStatus ?? '') . '"'
+                        . ' title="Create Booking"><i class="fas fa-plus-circle"></i></button>';
                     }
                 }
                 $actionHtml .= '</div>';
@@ -1308,14 +1308,14 @@ class QuotationController extends Controller
                         ($cardFilter === 'failed_int' && $isFailedInt)
                     ) {
                      $createBookingBtn = ' <button class="btn btn-success btn-sm btn-create-booking"
-    data-id="' . $row->ID . '"
-    data-booking="' . $row->bookingno . '"
-    data-team="' . $row->teamid . '"
-    data-quoteno="' . $row->QuoteNo . '"
-    data-origin=""
-    data-destination=""
-    data-status="' . e($scmStatus ?? '') . '"
-    title="Create Booking"><i class="fas fa-plus-circle"></i></button>';
+                        data-id="' . $row->ID . '"
+                        data-booking="' . $row->bookingno . '"
+                        data-team="' . $row->teamid . '"
+                        data-quoteno="' . $row->QuoteNo . '"
+                        data-origin=""
+                        data-destination=""
+                        data-status="' . e($scmStatus ?? '') . '"
+                        title="Create Booking"><i class="fas fa-plus-circle"></i></button>';
                     }
                     return $viewBtn . $editBtn . $createBookingBtn;
                 })
@@ -3903,115 +3903,187 @@ class QuotationController extends Controller
     // CHANGE SCOPE: Only the two assignment+read pairs inside retrigger().
     // No other logic touched.
     // ============================================================
-
+    
     public function retrigger(Request $request)
     {
         $bookingNo = $request->input('booking_no');
-        $quotationId = $request->input('quotation_id'); // UUID from data-id
-
+        $quotationId = $request->input('quotation_id');
+    
         if (!$bookingNo) {
             return response()->json(['success' => false, 'message' => 'Booking number is required'], 400);
         }
-
+    
         $quotation = DB::table('Quote_QuotationInfo')
             ->when($quotationId, fn($q) => $q->where('ID', $quotationId))
             ->when(!$quotationId, fn($q) => $q->where('bookingno', $bookingNo))
             ->first(['ID', 'QuoteNo', 'SCMBookingID', 'SCMBookingXML', 'ClientCreated', 'OfficeCode']);
-
+    
         if (!$quotation) {
             return response()->json(['success' => false, 'message' => 'Quotation not found'], 404);
         }
-
+    
         if (empty($quotation->QuoteNo)) {
             return response()->json(['success' => false, 'message' => 'QuoteNo is not set. Cannot retrigger.'], 422);
         }
-
+    
         $submittedBy = Auth::user()->displayName ?? Auth::user()->Email ?? 'system';
         $quoteNo = $quotation->QuoteNo;
         $steps = [];
-
+    
         Log::info('retrigger - Starting', [
-            'booking_no' => $bookingNo,
-            'quote_no' => $quoteNo,
+            'booking_no'     => $bookingNo,
+            'quote_no'       => $quoteNo,
             'scm_booking_id' => $quotation->SCMBookingID ?? 'NULL',
-            'xml_present' => !empty($quotation->SCMBookingXML)
+            'xml_present'    => !empty($quotation->SCMBookingXML)
                 ? 'YES (' . strlen($quotation->SCMBookingXML) . ' chars)'
                 : 'NO',
             'client_created' => $quotation->ClientCreated ?? 'NULL',
-            'office_code' => $quotation->OfficeCode ?? 'NULL',
-            'user' => $submittedBy,
+            'office_code'    => $quotation->OfficeCode ?? 'NULL',
+            'user'           => $submittedBy,
         ]);
+    
+    // ── Step 2: Re-run if SCMBookingID is not set or not found in SCM ─────────
+$forceStep2 = (bool) $request->input('force_step2', false);
 
-        // ── Step 2: Re-run if SCMBookingID is not set ─────────────────────────────
-        if (empty($quotation->SCMBookingID)) {
+$scmBookingExists = false;
+if (!empty($quotation->SCMBookingID)) {
+    try {
+        $scmBookingExists = DB::table('FITSCM.dbo.Bkg_BookingInfo')
+            ->where('Id', $quotation->SCMBookingID)
+            ->exists();
+    } catch (\Exception $e) {
+        Log::error('retrigger - SCM existence check failed', [
+            'booking_no'     => $bookingNo,
+            'scm_booking_id' => $quotation->SCMBookingID,
+            'error'          => $e->getMessage(),
+        ]);
+        $scmBookingExists = false;
+    }
+}
 
-            Log::warning('retrigger - SCMBookingID is NULL, re-running Step 2', [
-                'booking_no' => $bookingNo,
-                'quote_no' => $quoteNo,
+// Only honour force_step2 if the booking is genuinely orphaned in SCM.
+// If the booking EXISTS in SCM, ignore the flag — too dangerous to overwrite.
+if ($forceStep2 && $scmBookingExists) {
+    Log::warning('retrigger - force_step2 requested but SCM booking EXISTS — ignoring force flag', [
+        'booking_no'     => $bookingNo,
+        'scm_booking_id' => $quotation->SCMBookingID,
+    ]);
+    $forceStep2 = false;
+}
+
+Log::info('retrigger - SCM existence check', [
+    'booking_no'      => $bookingNo,
+    'scm_booking_id'  => $quotation->SCMBookingID ?? 'NULL',
+    'scm_book_exists' => $scmBookingExists,
+    'force_step2'     => $forceStep2,
+]);
+
+if (empty($quotation->SCMBookingID) || !$scmBookingExists || $forceStep2) {
+
+    // Force step 2: clear the orphaned SCMBookingID so the push
+    // creates a fresh booking instead of trying to update a ghost record.
+    if ($forceStep2 && !empty($quotation->SCMBookingID)) {
+        DB::table('Quote_QuotationInfo')
+            ->where('ID', $quotation->ID)
+            ->update([
+                'SCMBookingID' => null,
+                'SCMJobID'     => null,
+                'SCMBookingNo' => null,
+                'SCMJobNo'     => null,
             ]);
 
-            // FIX 1: was "$step2 = $this->runBookingProcessMain($quotation->ID, $stepDef['type'])"
-            // $stepDef is not in scope here. The correct process type for this branch is 'XML'.
-            // Also renamed to $result to be consistent with the read below.
-            $result = $this->runBookingProcessMain($quotation->ID, 'XML');
+        $quotation = DB::table('Quote_QuotationInfo')
+            ->where('ID', $quotation->ID)
+            ->first(['ID', 'QuoteNo', 'SCMBookingID', 'SCMBookingXML', 'ClientCreated', 'OfficeCode']);
 
+        Log::info('retrigger - force_step2: cleared orphaned SCMBookingID', [
+            'booking_no' => $bookingNo,
+            'quote_no'   => $quoteNo,
+        ]);
+
+    } elseif (!empty($quotation->SCMBookingID) && !$scmBookingExists) {
+        // Original path: SCMBookingID set but not found in SCM — clear it
+        DB::table('Quote_QuotationInfo')
+            ->where('ID', $quotation->ID)
+            ->update([
+                'SCMBookingID' => null,
+                'SCMJobID'     => null,
+                'SCMBookingNo' => null,
+                'SCMJobNo'     => null,
+            ]);
+
+        $quotation = DB::table('Quote_QuotationInfo')
+            ->where('ID', $quotation->ID)
+            ->first(['ID', 'QuoteNo', 'SCMBookingID', 'SCMBookingXML', 'ClientCreated', 'OfficeCode']);
+    }
+    
+            Log::warning('retrigger - SCMBookingID missing or not found in SCM, re-running Step 2', [
+                'booking_no'     => $bookingNo,
+                'quote_no'       => $quoteNo,
+                'scm_booking_id' => $quotation->SCMBookingID ?? 'NULL',
+            ]);
+    
+            $result = $this->runBookingProcessMain($quotation->ID, 'XML');
+    
             $steps[] = [
-                'step' => 2,
-                'label' => 'Booking XML',
+                'step'   => 2,
+                'label'  => 'Booking XML',
                 'status' => $result['status'],
                 'remark' => $result['remark'],
             ];
-
+    
             Log::info('retrigger - Step 2 result', [
-                'booking_no' => $bookingNo,
-                'quote_no' => $quoteNo,
-                'sp_called' => 'sp_Quote_BookingProcessMain',
-                'sp_params' => ['QuotationNo' => $quoteNo, 'ProcessType' => 'XML'],
-                'sp_status' => $result['status'],
-                'sp_remark' => $result['remark'],
-                'sql_error' => $result['sql_error'] ?? null,
-                'sql_state' => $result['sql_state'] ?? null,
+                'booking_no'  => $bookingNo,
+                'quote_no'    => $quoteNo,
+                'sp_called'   => 'sp_Quote_BookingProcessMain',
+                'sp_params'   => ['QuotationNo' => $quoteNo, 'ProcessType' => 'XML'],
+                'sp_status'   => $result['status'],
+                'sp_remark'   => $result['remark'],
+                'sql_error'   => $result['sql_error'] ?? null,
+                'sql_state'   => $result['sql_state'] ?? null,
                 'result_sets' => $result['result_sets'] ?? null,
             ]);
-
+    
             if ($result['status'] !== 'Success') {
                 Log::error('retrigger - Step 2 failed', [
                     'booking_no' => $bookingNo,
-                    'quote_no' => $quoteNo,
-                    'sp_remark' => $result['remark'],
+                    'quote_no'   => $quoteNo,
+                    'sp_remark'  => $result['remark'],
                 ]);
-
+    
                 $this->markAsFailed($quotation->ID, 'Booking XML', $result['remark'], $submittedBy);
-
+    
+                // Step 2 (XML generation) is a hard dependency — SCM Push and all
+                // subsequent steps require the XML to exist. Return early here only.
                 return response()->json([
-                    'success' => false,
-                    'failed_step' => 2,
+                    'success'      => false,
+                    'failed_step'  => 2,
                     'failed_label' => 'Booking XML',
-                    'steps' => $steps,
-                    'message' => $result['remark'],
+                    'steps'        => $steps,
+                    'message'      => $result['remark'],
                 ]);
             }
-
+    
             // ── Push XML to SCM ───────────────────────────────────────────────────────
             Log::info('retrigger - XML saved, pushing to SCM', [
                 'booking_no' => $bookingNo,
-                'quote_no' => $quoteNo,
+                'quote_no'   => $quoteNo,
             ]);
-
+    
             $pushRequest = new \Illuminate\Http\Request();
             $pushRequest->merge(['quote_no' => $quoteNo]);
-
+    
             $pushResponse = json_decode(
                 $this->pushBookingToSCM($pushRequest)->getContent(),
                 true
             );
-
+    
             Log::info('retrigger - pushBookingToSCM result', [
                 'booking_no' => $bookingNo,
-                'quote_no' => $quoteNo,
-                'result' => $pushResponse,
+                'quote_no'   => $quoteNo,
+                'result'     => $pushResponse,
             ]);
-
+    
             if (!($pushResponse['success'] ?? false)) {
                 $this->markAsFailed(
                     $quotation->ID,
@@ -4019,136 +4091,160 @@ class QuotationController extends Controller
                     $pushResponse['message'] ?? 'SCM push failed',
                     $submittedBy
                 );
-
-                return response()->json([
-                    'success' => false,
-                    'failed_step' => 2,
-                    'failed_label' => 'SCM Push',
-                    'steps' => $steps,
-                    'message' => $pushResponse['message'] ?? 'SCM push failed',
-                ]);
-            }
-
-            $steps[] = [
-                'step' => '2b',
-                'label' => 'SCM Push',
-                'status' => 'Success',
-                'remark' => $pushResponse['message'] ?? 'Pushed to SCM successfully',
-            ];
-
-            // Re-fetch after push
-            // AFTER:
-            $quotation = DB::table('Quote_QuotationInfo')
-                ->where('ID', $quotation->ID)
-                ->first(['ID', 'QuoteNo', 'SCMBookingID', 'SCMBookingXML', 'ClientCreated', 'OfficeCode']);
-
-            Log::info('retrigger - SCMBookingID after push', [
-                'booking_no' => $bookingNo,
-                'scm_booking_id' => $quotation->SCMBookingID ?? 'STILL NULL',
-            ]);
-
-            if (empty($quotation->SCMBookingID)) {
-                Log::error('retrigger - SCMBookingID still NULL after push', [
+    
+                // FIX 1: Record Step 2b as failed but do NOT return early.
+                // Steps 3 & 4 can still be attempted independently of the SCM push.
+                $steps[] = [
+                    'step'   => '2b',
+                    'label'  => 'SCM Push',
+                    'status' => 'Failed',
+                    'remark' => $pushResponse['message'] ?? 'SCM push failed',
+                ];
+    
+                Log::error('retrigger - Step 2b (SCM Push) failed, continuing to Steps 3 & 4', [
                     'booking_no' => $bookingNo,
-                    'quote_no' => $quoteNo,
+                    'quote_no'   => $quoteNo,
+                    'message'    => $pushResponse['message'] ?? 'SCM push failed',
                 ]);
-
-                return response()->json([
-                    'success' => false,
-                    'failed_step' => 2,
-                    'failed_label' => 'SCM Push',
-                    'steps' => $steps,
-                    'message' => 'SCMBookingID is NULL — SCM did not confirm the booking for QuoteNo: ' . $quoteNo,
+    
+            } else {
+                $steps[] = [
+                    'step'   => '2b',
+                    'label'  => 'SCM Push',
+                    'status' => 'Success',
+                    'remark' => $pushResponse['message'] ?? 'Pushed to SCM successfully',
+                ];
+    
+                // Re-fetch after successful push to get the updated SCMBookingID
+                $quotation = DB::table('Quote_QuotationInfo')
+                    ->where('ID', $quotation->ID)
+                    ->first(['ID', 'QuoteNo', 'SCMBookingID', 'SCMBookingXML', 'ClientCreated', 'OfficeCode']);
+    
+                Log::info('retrigger - SCMBookingID after push', [
+                    'booking_no'     => $bookingNo,
+                    'scm_booking_id' => $quotation->SCMBookingID ?? 'STILL NULL',
                 ]);
+    
+                if (empty($quotation->SCMBookingID)) {
+                    Log::error('retrigger - SCMBookingID still NULL after push', [
+                        'booking_no' => $bookingNo,
+                        'quote_no'   => $quoteNo,
+                    ]);
+    
+                    // SCMBookingID missing after a reported-successful push is a data
+                    // integrity issue — record it but still continue to Steps 3 & 4.
+                    $steps[] = [
+                        'step'   => '2c',
+                        'label'  => 'SCM Booking ID Verify',
+                        'status' => 'Failed',
+                        'remark' => 'SCMBookingID is NULL after push — SCM did not confirm the booking for QuoteNo: ' . $quoteNo,
+                    ];
+    
+                    Log::warning('retrigger - Continuing to Steps 3 & 4 despite missing SCMBookingID', [
+                        'booking_no' => $bookingNo,
+                        'quote_no'   => $quoteNo,
+                    ]);
+                }
             }
         }
-
-        // ── Steps 3 and 4: Charge and Document Transfer ───────────────────────────
+    
+        // ── Steps 3 and 4: Charge and Document Transfer ───────────────────────────────
+        // FIX 2: Removed early return on step failure. Each step now runs independently.
+        // All failures are collected and reported together at the end.
         $retriggerSteps = [
-            3 => ['type' => 'Charge', 'label' => 'Charge Transfer'],
+            3 => ['type' => 'Charge',   'label' => 'Charge Transfer'],
             4 => ['type' => 'Document', 'label' => 'Document Transfer'],
         ];
-
+    
+        $overallSuccess = true;
+        $firstFailedStepNo   = null;
+        $firstFailedLabel    = null;
+    
         foreach ($retriggerSteps as $stepNo => $stepDef) {
-            // FIX 2: was "$step2 = $this->runBookingProcessMain($quotation->ID, 'XML')"
-            // Two problems: used $step2 (wrong name, leftover from outer branch) and
-            // hardcoded 'XML' instead of $stepDef['type'] (Charge / Document).
             $result = $this->runBookingProcessMain($quotation->ID, $stepDef['type']);
-
+    
             $steps[] = [
-                'step' => $stepNo,
-                'label' => $stepDef['label'],
+                'step'   => $stepNo,
+                'label'  => $stepDef['label'],
                 'status' => $result['status'],
                 'remark' => $result['remark'],
             ];
-
+    
             Log::info('retrigger - Step result', [
-                'booking_no' => $bookingNo,
-                'quote_no' => $quoteNo,
-                'step' => $stepNo,
-                'sp_called' => 'sp_Quote_BookingProcessMain',
-                'sp_params' => ['QuotationNo' => $quoteNo, 'ProcessType' => $stepDef['type']],
-                'sp_status' => $result['status'],
-                'sp_remark' => $result['remark'],
-                'sql_error' => $result['sql_error'] ?? null,
-                'sql_state' => $result['sql_state'] ?? null,
+                'booking_no'  => $bookingNo,
+                'quote_no'    => $quoteNo,
+                'step'        => $stepNo,
+                'sp_called'   => 'sp_Quote_BookingProcessMain',
+                'sp_params'   => ['QuotationNo' => $quoteNo, 'ProcessType' => $stepDef['type']],
+                'sp_status'   => $result['status'],
+                'sp_remark'   => $result['remark'],
+                'sql_error'   => $result['sql_error'] ?? null,
+                'sql_state'   => $result['sql_state'] ?? null,
                 'result_sets' => $result['result_sets'] ?? null,
             ]);
-
+    
             if ($result['status'] !== 'Success') {
                 Log::error('retrigger - Step failed', [
-                    'booking_no' => $bookingNo,
-                    'quote_no' => $quoteNo,
-                    'failed_step' => $stepNo,
+                    'booking_no'   => $bookingNo,
+                    'quote_no'     => $quoteNo,
+                    'failed_step'  => $stepNo,
                     'failed_label' => $stepDef['label'],
-                    'sp_remark' => $result['remark'],
+                    'sp_remark'    => $result['remark'],
                 ]);
-
+    
                 $this->markAsFailed($quotation->ID, $stepDef['label'], $result['remark'], $submittedBy);
-
-                foreach ($retriggerSteps as $remainingNo => $remainingDef) {
-                    if ($remainingNo > $stepNo) {
-                        $steps[] = [
-                            'step' => $remainingNo,
-                            'label' => $remainingDef['label'],
-                            'status' => 'Skipped',
-                            'remark' => 'Skipped due to previous step failure',
-                        ];
-                    }
-                }
-
-                return response()->json([
-                    'success' => false,
-                    'failed_step' => $stepNo,
-                    'failed_label' => $stepDef['label'],
-                    'steps' => $steps,
-                    'message' => $result['remark'],
-                ]);
+    
+                $overallSuccess      = false;
+                $firstFailedStepNo   = $firstFailedStepNo ?? $stepNo;
+                $firstFailedLabel    = $firstFailedLabel  ?? $stepDef['label'];
+                // Continue to next step — do NOT return early
             }
         }
-
-        // ── All steps passed ──────────────────────────────────────────────────────
+    
+        // ── Also factor in any Step 2b / 2c failures recorded above ──────────────────
+        $step2bFailed = collect($steps)->contains(fn($s) => in_array($s['step'], ['2b', '2c']) && $s['status'] === 'Failed');
+        if ($step2bFailed) {
+            $overallSuccess = false;
+        }
+    
+        if (!$overallSuccess) {
+            $failedRemarks = collect($steps)
+                ->where('status', 'Failed')
+                ->pluck('remark')
+                ->filter()
+                ->implode(' | ');
+    
+            return response()->json([
+                'success'      => false,
+                'failed_step'  => $firstFailedStepNo,
+                'failed_label' => $firstFailedLabel,
+                'steps'        => $steps,
+                'message'      => $failedRemarks,
+            ]);
+        }
+    
+        // ── All steps passed ──────────────────────────────────────────────────────────
         DB::table('Quote_QuotationInfo')
             ->where('ID', $quotation->ID)
             ->update([
-                'SCMINTStatus' => 'Success',
+                'SCMINTStatus'   => 'Success',
                 'LastModifiedBy' => $submittedBy,
-                'updatedon' => now(),
+                'updatedon'      => now(),
             ]);
-
+    
         Log::info('retrigger - Completed successfully', [
             'booking_no' => $bookingNo,
-            'quote_no' => $quoteNo,
-            'user' => $submittedBy,
+            'quote_no'   => $quoteNo,
+            'user'       => $submittedBy,
         ]);
-
+    
         return response()->json([
             'success' => true,
             'message' => 'Retrigger completed successfully',
-            'steps' => $steps,
+            'steps'   => $steps,
         ]);
     }
-
+    
     public function getCommunicationTemplates(Request $request)
     {
         $module = $request->input('module');
@@ -4173,194 +4269,194 @@ class QuotationController extends Controller
     }
 
 
-public function getTermsTemplates(Request $request): JsonResponse
-{
-    $quotationId = trim($request->input('quotation_id', ''));
-
-    if (!$quotationId) {
-        return response()->json(['success' => false, 'message' => 'quotation_id is required'], 400);
-    }
-
-    try {
-        // Step 1: Run Eloquent UPDATE first
-        DB::table('Quote_QuotationInfo')
-            ->where('ID', $quotationId)
-            ->update(['OfficeCode' => DB::raw("RTRIM(OfficeCode)")]);
-
-        // Step 2: Force a fresh connection — the Eloquent UPDATE leaves the
-        // shared PDO handle in a dirty state on pdo_sqlsrv. Disconnecting
-        // forces Laravel to open a clean connection on the next getPdo() call.
-        DB::disconnect();
-        DB::reconnect();
-
-        $pdo = DB::connection()->getPdo();
-
-        // pdo_sqlsrv on IIS can return null on the first getPdo() after disconnect().
-        // Retry once before giving up.
-        if (!$pdo instanceof \PDO) {
-            Log::warning('getTermsTemplates - getPdo() returned null, retrying reconnect', [
-                'quotation_id' => $quotationId,
-            ]);
+    public function getTermsTemplates(Request $request): JsonResponse
+    {
+        $quotationId = trim($request->input('quotation_id', ''));
+    
+        if (!$quotationId) {
+            return response()->json(['success' => false, 'message' => 'quotation_id is required'], 400);
+        }
+    
+        try {
+            // Step 1: Run Eloquent UPDATE first
+            DB::table('Quote_QuotationInfo')
+                ->where('ID', $quotationId)
+                ->update(['OfficeCode' => DB::raw("RTRIM(OfficeCode)")]);
+    
+            // Step 2: Force a fresh connection — the Eloquent UPDATE leaves the
+            // shared PDO handle in a dirty state on pdo_sqlsrv. Disconnecting
+            // forces Laravel to open a clean connection on the next getPdo() call.
             DB::disconnect();
             DB::reconnect();
+    
             $pdo = DB::connection()->getPdo();
-        }
-
-        if (!$pdo instanceof \PDO) {
-            Log::error('getTermsTemplates - getPdo() returned null after retry', [
-                'quotation_id' => $quotationId,
-            ]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Database connection unavailable. Please try again.',
-            ], 500);
-        }
-
-        // Step 3: Raw PDO with SET NOCOUNT ON + columnCount() guard.
-        $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC dbo.sp_Quote_TermsandConditionList ?");
-        $stmt->execute([$quotationId]);
-
-        $rows           = [];
-        $resultSetIndex = 0;
-
-        do {
-            $resultSetIndex++;
-
-            if ($stmt->columnCount() === 0) {
-                Log::debug('getTermsTemplates - Skipping no-column result set #' . $resultSetIndex);
-                continue;
-            }
-
-            try {
-                if ($stmt->columnCount() === 0) {
-                    Log::debug('getTermsTemplates - columnCount() race, skipping set #' . $resultSetIndex);
-                    continue;
-                }
-
-                $fetched = $stmt->fetchAll(\PDO::FETCH_OBJ);
-
-                if (empty($fetched)) {
-                    continue;
-                }
-
-                $firstVal = array_values((array) $fetched[0])[0] ?? '';
-
-                if (is_string($firstVal) && str_starts_with(trim($firstVal), 'Failed')) {
-                    Log::warning('getTermsTemplates - SP returned failure', [
-                        'quotation_id' => $quotationId,
-                        'message'      => $firstVal,
-                    ]);
-                    return response()->json([
-                        'success' => false,
-                        'code'    => 'NOT_CONFIGURED',
-                        'message' => $firstVal,
-                    ], 404);
-                }
-
-                $row        = (array) $fetched[0];
-                $nameColumn = null;
-
-                foreach (['TemplateName', 'Name', 'TCName', 'TermsName'] as $candidate) {
-                    if (array_key_exists($candidate, $row)) {
-                        $nameColumn = $candidate;
-                        break;
-                    }
-                }
-
-                if (!$nameColumn) {
-                    Log::debug('getTermsTemplates - No name column in result set #' . $resultSetIndex, [
-                        'columns' => array_keys($row),
-                    ]);
-                    continue;
-                }
-
-                $descColumn = null;
-                foreach (['Description', 'TermsAndCondition', 'TCContent', 'Content', 'Body'] as $candidate) {
-                    if (array_key_exists($candidate, $row)) {
-                        $descColumn = $candidate;
-                        break;
-                    }
-                }
-
-                $rows = $fetched;
-
-                Log::info('getTermsTemplates - Templates found', [
+    
+            // pdo_sqlsrv on IIS can return null on the first getPdo() after disconnect().
+            // Retry once before giving up.
+            if (!$pdo instanceof \PDO) {
+                Log::warning('getTermsTemplates - getPdo() returned null, retrying reconnect', [
                     'quotation_id' => $quotationId,
-                    'count'        => count($rows),
-                    'name_column'  => $nameColumn,
-                    'desc_column'  => $descColumn ?? 'not found',
-                    'result_set'   => $resultSetIndex,
                 ]);
-                break;
-
-            } catch (\PDOException $e) {
-                Log::debug('getTermsTemplates - Skipping result set #' . $resultSetIndex, [
-                    'error' => $e->getMessage(),
+                DB::disconnect();
+                DB::reconnect();
+                $pdo = DB::connection()->getPdo();
+            }
+    
+            if (!$pdo instanceof \PDO) {
+                Log::error('getTermsTemplates - getPdo() returned null after retry', [
+                    'quotation_id' => $quotationId,
                 ]);
-                if (str_contains($e->getMessage(), 'no fields') || str_contains($e->getMessage(), 'no field')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Database connection unavailable. Please try again.',
+                ], 500);
+            }
+    
+            // Step 3: Raw PDO with SET NOCOUNT ON + columnCount() guard.
+            $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC dbo.sp_Quote_TermsandConditionList ?");
+            $stmt->execute([$quotationId]);
+    
+            $rows           = [];
+            $resultSetIndex = 0;
+    
+            do {
+                $resultSetIndex++;
+    
+                if ($stmt->columnCount() === 0) {
+                    Log::debug('getTermsTemplates - Skipping no-column result set #' . $resultSetIndex);
+                    continue;
+                }
+    
+                try {
+                    if ($stmt->columnCount() === 0) {
+                        Log::debug('getTermsTemplates - columnCount() race, skipping set #' . $resultSetIndex);
+                        continue;
+                    }
+    
+                    $fetched = $stmt->fetchAll(\PDO::FETCH_OBJ);
+    
+                    if (empty($fetched)) {
+                        continue;
+                    }
+    
+                    $firstVal = array_values((array) $fetched[0])[0] ?? '';
+    
+                    if (is_string($firstVal) && str_starts_with(trim($firstVal), 'Failed')) {
+                        Log::warning('getTermsTemplates - SP returned failure', [
+                            'quotation_id' => $quotationId,
+                            'message'      => $firstVal,
+                        ]);
+                        return response()->json([
+                            'success' => false,
+                            'code'    => 'NOT_CONFIGURED',
+                            'message' => $firstVal,
+                        ], 404);
+                    }
+    
+                    $row        = (array) $fetched[0];
+                    $nameColumn = null;
+    
+                    foreach (['TemplateName', 'Name', 'TCName', 'TermsName'] as $candidate) {
+                        if (array_key_exists($candidate, $row)) {
+                            $nameColumn = $candidate;
+                            break;
+                        }
+                    }
+    
+                    if (!$nameColumn) {
+                        Log::debug('getTermsTemplates - No name column in result set #' . $resultSetIndex, [
+                            'columns' => array_keys($row),
+                        ]);
+                        continue;
+                    }
+    
+                    $descColumn = null;
+                    foreach (['Description', 'TermsAndCondition', 'TCContent', 'Content', 'Body'] as $candidate) {
+                        if (array_key_exists($candidate, $row)) {
+                            $descColumn = $candidate;
+                            break;
+                        }
+                    }
+    
+                    $rows = $fetched;
+    
+                    Log::info('getTermsTemplates - Templates found', [
+                        'quotation_id' => $quotationId,
+                        'count'        => count($rows),
+                        'name_column'  => $nameColumn,
+                        'desc_column'  => $descColumn ?? 'not found',
+                        'result_set'   => $resultSetIndex,
+                    ]);
+                    break;
+    
+                } catch (\PDOException $e) {
+                    Log::debug('getTermsTemplates - Skipping result set #' . $resultSetIndex, [
+                        'error' => $e->getMessage(),
+                    ]);
+                    if (str_contains($e->getMessage(), 'no fields') || str_contains($e->getMessage(), 'no field')) {
+                        break;
+                    }
+                    continue;
+                }
+    
+            } while ((function () use ($stmt) {
+                try {
+                    return $stmt->nextRowset();
+                } catch (\PDOException $e) {
+                    Log::debug('getTermsTemplates - nextRowset() threw: ' . $e->getMessage());
+                    return false;
+                }
+            })());
+    
+            if (empty($rows)) {
+                Log::warning('getTermsTemplates - SP returned no usable templates', [
+                    'quotation_id'     => $quotationId,
+                    'result_sets_seen' => $resultSetIndex,
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'code'    => 'NOT_CONFIGURED',
+                    'message' => 'No T&C templates configured for this quotation.',
+                ], 404);
+            }
+    
+            $row        = (array) $rows[0];
+            $nameColumn = null;
+            foreach (['TemplateName', 'Name', 'TCName', 'TermsName'] as $candidate) {
+                if (array_key_exists($candidate, $row)) {
+                    $nameColumn = $candidate;
                     break;
                 }
-                continue;
             }
-
-        } while ((function () use ($stmt) {
-            try {
-                return $stmt->nextRowset();
-            } catch (\PDOException $e) {
-                Log::debug('getTermsTemplates - nextRowset() threw: ' . $e->getMessage());
-                return false;
+    
+            $descColumn = null;
+            foreach (['Description', 'TermsAndCondition', 'TCContent', 'Content', 'Body'] as $candidate) {
+                if (array_key_exists($candidate, $row)) {
+                    $descColumn = $candidate;
+                    break;
+                }
             }
-        })());
-
-        if (empty($rows)) {
-            Log::warning('getTermsTemplates - SP returned no usable templates', [
-                'quotation_id'     => $quotationId,
-                'result_sets_seen' => $resultSetIndex,
+    
+            $templates = array_map(fn($r) => (object) [
+                'Name'        => ((array) $r)[$nameColumn] ?? '',
+                'Description' => $descColumn ? base64_encode((string)(((array) $r)[$descColumn] ?? '')) : '',
+            ], $rows);
+    
+            return response()->json(['success' => true, 'templates' => $templates]);
+    
+        } catch (\Exception $e) {
+            Log::error('getTermsTemplates - Failed', [
+                'quotation_id' => $quotationId,
+                'error'        => $e->getMessage(),
+                'file'         => $e->getFile(),
+                'line'         => $e->getLine(),
             ]);
             return response()->json([
                 'success' => false,
-                'code'    => 'NOT_CONFIGURED',
-                'message' => 'No T&C templates configured for this quotation.',
-            ], 404);
+                'message' => 'Failed to load T&C templates: ' . $e->getMessage(),
+            ], 500);
         }
-
-        $row        = (array) $rows[0];
-        $nameColumn = null;
-        foreach (['TemplateName', 'Name', 'TCName', 'TermsName'] as $candidate) {
-            if (array_key_exists($candidate, $row)) {
-                $nameColumn = $candidate;
-                break;
-            }
-        }
-
-        $descColumn = null;
-        foreach (['Description', 'TermsAndCondition', 'TCContent', 'Content', 'Body'] as $candidate) {
-            if (array_key_exists($candidate, $row)) {
-                $descColumn = $candidate;
-                break;
-            }
-        }
-
-        $templates = array_map(fn($r) => (object) [
-            'Name'        => ((array) $r)[$nameColumn] ?? '',
-            'Description' => $descColumn ? base64_encode((string)(((array) $r)[$descColumn] ?? '')) : '',
-        ], $rows);
-
-        return response()->json(['success' => true, 'templates' => $templates]);
-
-    } catch (\Exception $e) {
-        Log::error('getTermsTemplates - Failed', [
-            'quotation_id' => $quotationId,
-            'error'        => $e->getMessage(),
-            'file'         => $e->getFile(),
-            'line'         => $e->getLine(),
-        ]);
-        return response()->json([
-            'success' => false,
-            'message' => 'Failed to load T&C templates: ' . $e->getMessage(),
-        ], 500);
     }
-}
     /**
      * Load T&C templates via sp_Quote_CommunicationDetail_List.
      * The SP filters by Service+Process+OfficeCode resolved from the QuoteNo internally,
@@ -5635,7 +5731,6 @@ public function getTermsTemplates(Request $request): JsonResponse
     /**
      * Get currencies for office
      */
-
     public function getCurrencies(Request $request)
     {
         try {
@@ -5704,6 +5799,7 @@ public function getTermsTemplates(Request $request): JsonResponse
             ], 500);
         }
     }
+
     /**
      * Get exchange rate for currency
      */
@@ -8288,91 +8384,91 @@ public function getTermsTemplates(Request $request): JsonResponse
             }
 
             $xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
-<ArrayOfTransaction>
-    <Transaction>
-        <ID>{$request->quote_no}</ID>
-        <Status>{$request->status}</Status>
-        <CutomerRefNo>" . htmlspecialchars($request->customer_ref_no ?? '', ENT_XML1) . "</CutomerRefNo>
-        <TransactionId>" . htmlspecialchars($request->transaction_id ?? '', ENT_XML1) . "</TransactionId>
-        <Errors>{$errorsXml}</Errors>
-    </Transaction>
-</ArrayOfTransaction>";
-
-$pdo = DB::getPdo();
-$stmt = $pdo->prepare("EXEC dbo.sp_Quote_BookingCreateInfoUpdate @InputXML = ?");
-$stmt->execute([$xml]);
-
-// SP returns a SELECT only on failure — check for error message
-$result = $stmt->fetch(\PDO::FETCH_ASSOC);
-if ($result) {
-$msg = array_values($result)[0] ?? '';
-if (str_starts_with(trim($msg), 'Failed')) {
-Log::error('handleBookingIntegrationResponse - SP failed', [
-'quote_no' => $request->quote_no,
-'sp_msg' => $msg,
-]);
-return response()->json(['success' => false, 'message' => $msg], 500);
-}
-}
-
-Log::info('handleBookingIntegrationResponse - Success', [
-'quote_no' => $request->quote_no,
-'status' => $request->status,
-'booking_no' => $request->customer_ref_no,
-]);
-
-return response()->json(['success' => true]);
-} catch (\Exception $e) {
-Log::error('handleBookingIntegrationResponse error: ' . $e->getMessage());
-return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
-}
-}
-
-public function getIncoTerms(Request $request)
-{
-$filter = $request->input('filter', ''); // default to '' not null — some SPs reject NULL on VARCHAR params
-
-try {
-// FIX: was DB::connection()->getPdo() — wrong connection
-$pdo = DB::connection('sqlsrv')->getPdo();
-$stmt = $pdo->prepare("SET NOCOUNT ON; EXEC dbo.sp_IncoTerms @Filter = ?");
-$stmt->execute([$filter]);
-
-$results = [];
-do {
-try {
-$rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
-
-if (empty($rows)) {
-continue;
-}
-
-// Skip error rowsets from SP CATCH block
-if (isset($rows[0]->Err_Message)) {
-continue;
-}
-
-// First rowset containing IncoTermCode is the one we want
-if (isset($rows[0]->IncoTermCode)) {
-$results = $rows;
-break;
-}
-} catch (\PDOException $e) {
-continue;
-}
-} while ($stmt->nextRowset());
-
-return response()->json(['success' => true, 'data' => $results]);
-} catch (\Exception $e) {
-Log::error('getIncoTerms - Failed', ['error' => $e->getMessage()]);
-return response()->json([
-'success' => false,
-'data' => [],
-'message' => $e->getMessage()
-], 500);
-}
-}
-
+            <ArrayOfTransaction>
+                <Transaction>
+                    <ID>{$request->quote_no}</ID>
+                    <Status>{$request->status}</Status>
+                    <CutomerRefNo>" . htmlspecialchars($request->customer_ref_no ?? '', ENT_XML1) . "</CutomerRefNo>
+                    <TransactionId>" . htmlspecialchars($request->transaction_id ?? '', ENT_XML1) . "</TransactionId>
+                    <Errors>{$errorsXml}</Errors>
+                </Transaction>
+            </ArrayOfTransaction>";
+            
+            $pdo = DB::getPdo();
+            $stmt = $pdo->prepare("EXEC dbo.sp_Quote_BookingCreateInfoUpdate @InputXML = ?");
+            $stmt->execute([$xml]);
+            
+            // SP returns a SELECT only on failure — check for error message
+            $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+            if ($result) {
+            $msg = array_values($result)[0] ?? '';
+            if (str_starts_with(trim($msg), 'Failed')) {
+            Log::error('handleBookingIntegrationResponse - SP failed', [
+            'quote_no' => $request->quote_no,
+            'sp_msg' => $msg,
+            ]);
+            return response()->json(['success' => false, 'message' => $msg], 500);
+            }
+            }
+            
+            Log::info('handleBookingIntegrationResponse - Success', [
+            'quote_no' => $request->quote_no,
+            'status' => $request->status,
+            'booking_no' => $request->customer_ref_no,
+            ]);
+            
+            return response()->json(['success' => true]);
+            } catch (\Exception $e) {
+            Log::error('handleBookingIntegrationResponse error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            }
+            }
+            
+            public function getIncoTerms(Request $request)
+            {
+            $filter = $request->input('filter', ''); // default to '' not null — some SPs reject NULL on VARCHAR params
+            
+            try {
+            // FIX: was DB::connection()->getPdo() — wrong connection
+            $pdo = DB::connection('sqlsrv')->getPdo();
+            $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC dbo.sp_IncoTerms @Filter = ?");
+            $stmt->execute([$filter]);
+            
+            $results = [];
+            do {
+            try {
+            $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+                        
+            if (empty($rows)) {
+            continue;
+            }
+            
+            // Skip error rowsets from SP CATCH block
+            if (isset($rows[0]->Err_Message)) {
+            continue;
+            }
+            
+            // First rowset containing IncoTermCode is the one we want
+            if (isset($rows[0]->IncoTermCode)) {
+            $results = $rows;
+            break;
+            }
+            } catch (\PDOException $e) {
+            continue;
+            }
+            } while ($stmt->nextRowset());
+            
+            return response()->json(['success' => true, 'data' => $results]);
+            } catch (\Exception $e) {
+            Log::error('getIncoTerms - Failed', ['error' => $e->getMessage()]);
+            return response()->json([
+            'success' => false,
+            'data' => [],
+            'message' => $e->getMessage()
+            ], 500);
+            }
+    }
+            
 public function getClientList(Request $request)
 {
 $filter = trim($request->input('filter', ''));

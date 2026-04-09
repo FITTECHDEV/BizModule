@@ -1027,8 +1027,8 @@
                 $.ajax({
                     url: '{{ route('quotation.charges') }}',
                     type: 'GET',
-                    data: { booking_no: bookingNo },
-                    beforeSend: function() {
+                        data: { booking_no: bookingNo, quotation_id: '{{ $quotation->ID ?? '' }}' },                    
+                        beforeSend: function() {
                         const spinner = '<tr><td colspan="7" class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>';
                         $('#revenueChargesViewTable, #costChargesViewTable').html(spinner);
                     },
