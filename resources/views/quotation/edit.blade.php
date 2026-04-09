@@ -6490,7 +6490,7 @@ $('#wonProcessModal').on('hide.bs.modal', function () {
                     SubmittedBy: "{{ Auth::user()->username ?? 'system' }}",
                     Action: "Update",
                     QuotationID: quotationId,
-                    ClientCode: $('#selectedClientCode').val() || '',
+                    ClientCode: $('#selectedClientCode').val() || '{{ $quotation->pri_id ?? '' }}',
                     Company: companyName,
                     Address1: address1,
                     Address2: $('#customerAddress2Input').val()?.trim() || '',

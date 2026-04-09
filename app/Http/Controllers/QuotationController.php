@@ -3677,7 +3677,7 @@ class QuotationController extends Controller
 
     public function getReasons(Request $request)
     {
-        $module = $request->input('module', 'Quotation');
+        $module = $request->input('module', 'QuoteLogger');
         $reasonType = $request->input('reason_type');
         $filter = $request->input('filter', '');
 
