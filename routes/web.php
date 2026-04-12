@@ -1137,6 +1137,8 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
         ->name('quotation.copy-charges.charges');
     Route::post('/quotation/process-won', [App\Http\Controllers\QuotationController::class, 'processWon'])
         ->name('quotation.process-won');
+        Route::get('/quotation/create-booking/existing-data', [App\Http\Controllers\QuotationController::class, 'getBookingFormData'])
+    ->name('quotation.booking.existing-data');
 
 
     // ============================================

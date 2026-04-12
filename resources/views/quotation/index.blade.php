@@ -1241,39 +1241,69 @@ if (_ssStepsCheck && _ssStepsCheck.find(function(s) { return s.status && s.statu
 return;
 }
 
-// Fresh open — full reset   ← this line was already here
+// Fresh open — load templates AND existing booking data in parallel
 modal.data('last-quote-no', quoteNo);
 resetCreateBookingForm();
-        setDropdownLoading('#cb_service_template');
-        $.get('{{ route('quotation.booking.service-templates') }}', {
-                    quotation_id: quotationId
-                })
-            .done(function(res) {
-                var $s = $('#cb_service_template').empty().append('<option value=""></option>');
-                if (res.success && res.templates && res.templates.length) {
-                    $.each(res.templates, function(i, t) {
-                        $s.append($('<option>', {
-                            value: t.Name,
-                            text: t.Name
-                        }));
-                    });
-                } else {
-                    var msg = res.code === 'NO_TEMPLATES_CONFIGURED' ?
-                        'No templates available for this office.' : (res.message ||
-                            'No templates available for this office.');
-                    $s.append('<option value="" disabled>No templates available</option>');
-                    $('#cb_service_template').closest('.form-group').append(
-                        '<small class="text-danger cb-config-warning mt-1 d-block">' +
-                        '<i class="fas fa-exclamation-triangle mr-1"></i>' + msg +
-                        '</small>'
-                    );
-                    $('#submitCreateBookingBtn').prop('disabled', true);
-                }
-            })
-            .fail(function() {
-                $('#cb_service_template').empty().append(
-                    '<option value="" disabled>Failed to load — try again</option>');
-            });
+setDropdownLoading('#cb_service_template');
+
+$.when(
+    $.get('{{ route('quotation.booking.service-templates') }}', { quotation_id: quotationId }),
+    $.get('{{ route('quotation.booking.existing-data') }}',    { quotation_id: quotationId })
+).done(function(templatesRes, existingRes) {
+    var templates = templatesRes[0];
+    var existing  = existingRes[0];
+
+    // ── Populate service template dropdown ──────────────────────────────
+    var $s = $('#cb_service_template').empty().append('<option value=""></option>');
+    if (templates.success && templates.templates && templates.templates.length) {
+        $.each(templates.templates, function(i, t) {
+            $s.append($('<option>', { value: t.Name, text: t.Name }));
+        });
+    } else {
+        var msg = templates.code === 'NO_TEMPLATES_CONFIGURED'
+            ? 'No templates available for this office.'
+            : (templates.message || 'No templates available for this office.');
+        $s.append('<option value="" disabled>No templates available</option>');
+        $('#cb_service_template').closest('.form-group').append(
+            '<small class="text-danger cb-config-warning mt-1 d-block">' +
+            '<i class="fas fa-exclamation-triangle mr-1"></i>' + msg + '</small>'
+        );
+        $('#submitCreateBookingBtn').prop('disabled', true);
+    }
+
+    // ── Pre-populate from DB if data exists ─────────────────────────────
+    if (existing.success && existing.data) {
+        var d = existing.data;
+
+        if (d.service_template) $s.val(d.service_template);
+
+        if (d.bill_to_party_code) {
+            $('#cb_bill_to_party').val(d.bill_to_party_text);
+            $('#cb_bill_to_party_code').val(d.bill_to_party_code);
+        }
+
+        if (d.forwarder_code) {
+            $('#cb_forwarder').val(d.forwarder_text);
+            $('#cb_forwarder_code').val(d.forwarder_code);
+        }
+
+        $('#cb_include_country').prop('checked', !!d.include_country);
+
+        if (d.receipt_code) {
+            $('#cb_place_of_receipt').val(d.receipt_text);
+            $('#cb_place_of_receipt_code').val(d.receipt_code);
+        }
+
+        if (d.delivery_code) {
+            $('#cb_place_of_delivery').val(d.delivery_text);
+            $('#cb_place_of_delivery_code').val(d.delivery_code);
+        }
+    }
+}).fail(function() {
+    $('#cb_service_template').empty().append(
+        '<option value="" disabled>Failed to load — try again</option>'
+    );
+});
     });
 
   $('#createBookingModal').on('hidden.bs.modal', function() {
@@ -1622,12 +1652,22 @@ $('#cb_place_of_delivery_id').val(savedState.deliveryId);
                 iconClass  = 'fas fa-circle text-secondary';
                 badgeClass = 'badge-secondary';
                 statusText = 'Pending';
-            } else if (done.status === 'Success') {
-                iconClass  = 'fas fa-check-circle text-success';
-                badgeClass = 'badge-success';
-                statusText = 'Success';
-                if (done.remark)
-                    remarkHtml = '<small class="text-muted d-block mt-1">' + done.remark + '</small>';
+         } else if (done.status === 'Success') {
+    iconClass  = 'fas fa-check-circle text-success';
+    badgeClass = 'badge-success';
+    statusText = 'Success';
+    if (done.remark)
+        remarkHtml = '<small class="text-muted d-block mt-1">' + done.remark + '</small>';
+    if ([2, '2b', 3, 4].indexOf(def.step) !== -1) {
+        retriggerBtn =
+            '<button class="btn btn-xs btn-outline-secondary btn-retrigger ml-2"'
+            + ' data-quotation-id="' + quotationId + '"'
+            + ' data-booking-no="' + bookingNo + '"'
+            + ' data-step="' + def.step + '"'
+            + ' title="Re-run this step">'
+            + '<i class="fas fa-redo-alt mr-1"></i>Re-run'
+            + '</button>';
+    }
             } else if (done.status === 'Skipped') {
                 iconClass  = 'fas fa-minus-circle text-secondary';
                 badgeClass = 'badge-secondary';

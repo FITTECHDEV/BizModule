@@ -183,7 +183,7 @@ class QuotationController extends Controller
 
             // ── Fetch SP result sets — office filtering done by SP ────────────
             $allRows = $this->callQuotationListSP('Total', $spFromDate, $spToDate, $spOfficeCode);
-            $lostCancelledRows = $this->callQuotationListSP('Cancelled', $spFromDate, $spToDate, $spOfficeCode);
+            $lostCancelledRows = $this->callQuotationListSP('Lost', $spFromDate, $spToDate, $spOfficeCode);
             $failedProgressRows = $this->callQuotationListSP('Failed Progress', $spFromDate, $spToDate, $spOfficeCode);
 
             // ── Load SCMINTStatus for Total branch rows ───────────────────────
@@ -196,27 +196,48 @@ class QuotationController extends Controller
                     ->keyBy('QuoteNo');
             }
 
+            $spQuoteNos = array_column($allRows, 'QuoteNo');
+$dbQuoteNos = $scmLookup->keys()->toArray();
+
+Log::info('QuoteNo match check', [
+    'sp_sample'  => array_slice($spQuoteNos, 0, 3),
+    'db_sample'  => array_slice($dbQuoteNos, 0, 3),
+    'sp_missing' => array_slice(array_diff($spQuoteNos, $dbQuoteNos), 0, 5),
+]);
+
             // ── Compute stats ─────────────────────────────────────────────────
             $inProgress = $won = $completed = $failedInt = $failedProgress = 0;
 
             foreach ($allRows as $row) {
                 $db = $scmLookup->get($row->QuoteNo);
-                $quoteStatus = strtoupper(trim($db->QuoteStatus ?? $row->Status ?? ''));
-                $scmStatus = $db ? (is_string($db->SCMINTStatus) ? strtoupper(trim($db->SCMINTStatus)) : null) : null;
+$quoteStatus = trim($db->QuoteStatus ?? $row->Status ?? '');
+$scmStatus = $db ? $db->SCMINTStatus : null;
 
-                if ($quoteStatus === 'COMPLETED') {
-                    $completed++;
-                } elseif ($quoteStatus === 'WON' && $scmStatus === 'SUCCESS') {
-                    $completed++;
-                } elseif ($quoteStatus === 'WON' && !is_null($scmStatus)) {
-                    $failedInt++;
-                } elseif ($quoteStatus === 'WON') {
-                    $won++;
-                } elseif ($quoteStatus === 'FAILED PROGRESS') {
-                    $failedProgress++;
-                } else {
-                    $inProgress++;
-                }
+// if ($quoteStatus === 'Completed') {
+//     $completed++;
+// } elseif ($quoteStatus === 'Won' && $scmStatus === 'Success') {
+//     $completed++;
+// } elseif ($quoteStatus === 'Won' && !is_null($scmStatus)) {
+//     $failedInt++;
+// } elseif ($quoteStatus === 'Won') {
+//     $won++;
+// } elseif ($quoteStatus === 'Failed Progress') {
+//     $failedProgress++;
+// } else {
+//     $inProgress++;
+// }
+
+if ($quoteStatus === 'Completed') {
+    $completed++;
+} elseif ($quoteStatus === 'Won') {
+    $won++;
+} elseif ($quoteStatus === 'Failed Progress') {
+    $failedProgress++;
+} elseif ($quoteStatus === 'Failed Int.' || $quoteStatus === 'Failed Int') {
+    $failedInt++;
+} else {
+    $inProgress++;
+}
             }
 
             $lostCanceled = count($lostCancelledRows);
@@ -246,13 +267,21 @@ class QuotationController extends Controller
                     $quoteStatus = strtoupper(trim($db->QuoteStatus ?? $row->Status ?? ''));
                     $scmStatus = $db ? (is_string($db->SCMINTStatus) ? strtoupper(trim($db->SCMINTStatus)) : null) : null;
 
-                    return match ($cardFilter) {
-                        'in_progress' => !in_array($quoteStatus, ['WON', 'COMPLETED', 'LOST', 'CANCELLED', 'CANCEL', 'FAILED PROGRESS']),
-                        'won' => $quoteStatus === 'WON' && is_null($scmStatus),
-                        'completed' => $quoteStatus === 'COMPLETED' || ($quoteStatus === 'WON' && $scmStatus === 'SUCCESS'),
-                        'failed_int' => $quoteStatus === 'WON' && !is_null($scmStatus) && $scmStatus !== 'SUCCESS',
-                        default => true,
-                    };
+//                     return match ($cardFilter) {
+// 'in_progress' => !in_array($quoteStatus, ['WON', 'COMPLETED', 'LOST', 'CANCELLED', 'CANCEL', 'FAILED PROGRESS', 'FAILED INT', 'FAILED INT.'])
+//                  && !(!is_null($scmStatus) && $scmStatus !== 'SUCCESS' && $quoteStatus === 'WON'),                        'won' => $quoteStatus === 'WON' && is_null($scmStatus),
+//                         'completed' => $quoteStatus === 'COMPLETED' || ($quoteStatus === 'WON' && $scmStatus === 'SUCCESS'),
+//                         'failed_int' => $quoteStatus === 'WON' && !is_null($scmStatus) && $scmStatus !== 'SUCCESS',
+//                         default => true,
+//                     };
+
+return match ($cardFilter) {
+    'in_progress' => !in_array($quoteStatus, ['WON', 'COMPLETED', 'LOST', 'CANCELLED', 'CANCEL', 'FAILED PROGRESS', 'FAILED INT', 'FAILED INT.']),
+    'won'         => $quoteStatus === 'WON',
+    'completed'   => $quoteStatus === 'COMPLETED',
+    'failed_int'  => in_array($quoteStatus, ['FAILED INT', 'FAILED INT.']),
+    default       => true,
+};
                 }));
             }
 
@@ -307,15 +336,25 @@ class QuotationController extends Controller
                 $quoteStatus = trim($db->QuoteStatus ?? $row->Status ?? '');
                 $scmStatus   = $db->SCMINTStatus ?? null;
 
+                // $displayStatus = match (true) {
+                //     strtolower($quoteStatus) === 'completed' => 'Completed',
+                //     strtolower($quoteStatus) === 'won' && strtolower((string)$scmStatus) === 'success' => 'Completed',
+                //     strtolower($quoteStatus) === 'won' && !is_null($scmStatus) && strtolower((string)$scmStatus) !== 'success' => 'Failed Int.',
+                //     strtolower($quoteStatus) === 'won' => 'Won',
+                //     strtolower($quoteStatus) === 'failed progress' => 'Failed Progress',
+                //     in_array(strtolower($quoteStatus), ['lost', 'cancelled', 'cancel']) => 'Lost / Canceled',
+                //     default => 'In Progress',
+                // };
+
                 $displayStatus = match (true) {
-                    strtolower($quoteStatus) === 'completed' => 'Completed',
-                    strtolower($quoteStatus) === 'won' && strtolower((string)$scmStatus) === 'success' => 'Completed',
-                    strtolower($quoteStatus) === 'won' && !is_null($scmStatus) && strtolower((string)$scmStatus) !== 'success' => 'Failed Int.',
-                    strtolower($quoteStatus) === 'won' => 'Won',
-                    strtolower($quoteStatus) === 'failed progress' => 'Failed Progress',
-                    in_array(strtolower($quoteStatus), ['lost', 'cancelled', 'cancel']) => 'Lost / Canceled',
-                    default => 'In Progress',
-                };
+    strtolower($quoteStatus) === 'completed'                                          => 'Completed',
+    strtolower($quoteStatus) === 'won'                                                => 'Won',
+    in_array(strtolower($quoteStatus), ['failed int.', 'failed int'])                 => 'Failed Int.',
+    strtolower($quoteStatus) === 'failed progress'                                    => 'Failed Progress',
+    in_array(strtolower($quoteStatus), ['lost', 'cancelled', 'cancel'])               => 'Lost / Canceled',
+    default                                                                           => 'In Progress',
+};
+
 
                 $badgeClass = match ($displayStatus) {
                     'Won' => 'badge-success',
@@ -349,8 +388,8 @@ class QuotationController extends Controller
 
                 $actionHtml = '<div class="action-buttons">';
                 if ($db) {
-                    $isWon = $quoteStatus === 'Won' && is_null($scmStatus);
-                    $isFailedInt = $quoteStatus === 'Won' && !is_null($scmStatus) && $scmStatus !== 'Success';
+         $isWon = $quoteStatus === 'Won';
+$isFailedInt = in_array(strtolower($quoteStatus), ['failed int.', 'failed int']);
 
                     $actionHtml .= '<a href="' . route('quotation.view', $db->ID) . '" class="btn btn-info btn-sm" title="View"><i class="fas fa-eye"></i></a>';
 
@@ -756,8 +795,8 @@ class QuotationController extends Controller
                 // Action buttons
                 $actionHtml = '<div class="action-buttons">';
                 if ($db) {
-                    $isWon = $quoteStatus === 'Won' && is_null($scmStatus);
-                    $isFailedInt = $quoteStatus === 'Won' && !is_null($scmStatus) && $scmStatus !== 'Success';
+                   $isWon = $quoteStatus === 'Won';
+$isFailedInt = in_array(strtolower($quoteStatus), ['failed int.', 'failed int']);
                     $isInProgress = $quoteStatus === 'In Progress';
 
                     $actionHtml .= '<a href="' . route('quotation.view', $db->ID) . '" class="btn btn-info btn-sm" title="View"><i class="fas fa-eye"></i></a>';
@@ -3608,26 +3647,28 @@ class QuotationController extends Controller
 
             $overallSuccess = empty($errors) && is_array($output) && count($output) > 0;
 
-            if (!$overallSuccess) {
-                $errorMessage = !empty($errors)
-                    ? implode(' | ', $errors)
-                    : 'Failed to mark as Won';
+        if (!$overallSuccess) {
+    $errorMessage = !empty($errors)
+        ? implode(' | ', $errors)
+        : 'Failed to mark as Won';
 
-                $steps[] = [
-                    'step'   => 2,
-                    'label'  => 'Mark as Won',
-                    'status' => 'Failed',
-                    'remark' => $errorMessage,
-                ];
+    $this->markAsFailed($quotation->ID, 'Mark as Won', $errorMessage, $submittedBy); // ← add this
 
-                return response()->json([
-                    'success'      => false,
-                    'failed_step'  => 2,
-                    'failed_label' => 'Mark as Won',
-                    'message'      => $errorMessage,
-                    'steps'        => $steps,
-                ]);
-            }
+    $steps[] = [
+        'step'   => 2,
+        'label'  => 'Mark as Won',
+        'status' => 'Failed',
+        'remark' => $errorMessage,
+    ];
+
+    return response()->json([
+        'success'      => false,
+        'failed_step'  => 2,
+        'failed_label' => 'Mark as Won',
+        'message'      => $errorMessage,
+        'steps'        => $steps,
+    ]);
+}
 
             // Success path
             $successRemark = '';
@@ -3652,27 +3693,29 @@ class QuotationController extends Controller
                 'message' => $successRemark ?: 'Quotation marked as Won successfully.',
                 'steps'   => $steps,
             ]);
-        } catch (\Exception $e) {
-            Log::error('processWon - Step 2 failed', [
-                'quotation_id' => $quotationId,
-                'error'      => $e->getMessage(),
-            ]);
+     } catch (\Exception $e) {
+    Log::error('processWon - Step 2 failed', [
+        'quotation_id' => $quotationId,
+        'error'        => $e->getMessage(),
+    ]);
 
-            $steps[] = [
-                'step'   => 2,
-                'label'  => 'Mark as Won',
-                'status' => 'Failed',
-                'remark' => $e->getMessage(),  // ← already correct
-            ];
+    $this->markAsFailed($quotation->ID, 'Mark as Won', $e->getMessage(), $submittedBy); // ← add this
 
-            return response()->json([
-                'success'      => false,
-                'failed_step'  => 2,
-                'failed_label' => 'Mark as Won',
-                'message'      => $e->getMessage(),  // ← change from hardcoded string to $e->getMessage()
-                'steps'        => $steps,
-            ]);
-        }
+    $steps[] = [
+        'step'   => 2,
+        'label'  => 'Mark as Won',
+        'status' => 'Failed',
+        'remark' => $e->getMessage(),
+    ];
+
+    return response()->json([
+        'success'      => false,
+        'failed_step'  => 2,
+        'failed_label' => 'Mark as Won',
+        'message'      => $e->getMessage(),
+        'steps'        => $steps,
+    ]);
+}
     }
 
     public function getReasons(Request $request)
@@ -4224,14 +4267,14 @@ if (empty($quotation->SCMBookingID) || !$scmBookingExists || $forceStep2) {
         }
     
         // ── All steps passed ──────────────────────────────────────────────────────────
-        DB::table('Quote_QuotationInfo')
-            ->where('ID', $quotation->ID)
-            ->update([
-                'SCMINTStatus'   => 'Success',
-                'LastModifiedBy' => $submittedBy,
-                'updatedon'      => now(),
-            ]);
-    
+DB::table('Quote_QuotationInfo')
+    ->where('ID', $quotation->ID)
+    ->update([
+        'QuoteStatus'    => 'Completed',
+        'SCMINTStatus'   => 'Success',
+        'LastModifiedBy' => $submittedBy,
+        'updatedon'      => now(),
+    ]);
         Log::info('retrigger - Completed successfully', [
             'booking_no' => $bookingNo,
             'quote_no'   => $quoteNo,
@@ -7196,13 +7239,14 @@ if (empty($quotation->SCMBookingID) || !$scmBookingExists || $forceStep2) {
         }
 
         // ── All steps passed: mark SCMINTStatus = 'Success' ──────────────────────
-        DB::table('Quote_QuotationInfo')
-            ->where('ID', $request->id)
-            ->update([
-                'SCMINTStatus' => 'Success',
-                'LastModifiedBy' => $submittedBy,
-                'updatedon' => now(),
-            ]);
+DB::table('Quote_QuotationInfo')
+    ->where('ID', $request->id)
+    ->update([
+        'QuoteStatus'    => 'Completed',
+        'SCMINTStatus'   => 'Success',
+        'LastModifiedBy' => $submittedBy,
+        'updatedon'      => now(),
+    ]);
 
         Log::info('processBooking - All steps completed successfully', [
             'quote_no' => $quoteNo,
@@ -7244,7 +7288,7 @@ if (empty($quotation->SCMBookingID) || !$scmBookingExists || $forceStep2) {
             DB::table('Quote_QuotationInfo')
                 ->where('ID', $quotationId)
                 ->update([
-                    'QuoteStatus' => 'Won',
+'QuoteStatus' => 'Failed Int.',
                     'SCMINTStatus' => 'Failed',
                     'QuoteStatusDescription' => $description,
                     'LastModifiedBy' => $submittedBy,
@@ -7325,6 +7369,59 @@ if (empty($quotation->SCMBookingID) || !$scmBookingExists || $forceStep2) {
             return ['status' => 'Failed', 'remark' => $e->getMessage()];
         }
     }
+
+    public function getBookingFormData(Request $request): \Illuminate\Http\JsonResponse
+{
+    $quotationId = $request->input('quotation_id');
+
+    if (empty($quotationId)) {
+        return response()->json(['success' => false, 'data' => null]);
+    }
+
+    $row = DB::table('Quote_QuotationInfo')
+        ->where('ID', $quotationId)
+        ->first([
+            'ServiceTemplate',
+            'BillToPartyCode',
+            'BillToParty',
+            'ForwarderCode',
+            'Forwarder',
+            'IncludeCountry',
+            'PlaceOfReceiptCode',
+            'PlaceOfReceipt',
+            'PlaceOfDeliveryCode',
+            'PlaceOfDelivery',
+        ]);
+
+    if (!$row || empty($row->BillToPartyCode)) {
+        // Row exists but booking info was never saved — treat as fresh
+        return response()->json(['success' => false, 'data' => null]);
+    }
+
+    return response()->json([
+        'success' => true,
+        'data' => [
+            'service_template'  => $row->ServiceTemplate,
+            'bill_to_party_code'=> $row->BillToPartyCode,
+            'bill_to_party_text'=> $row->BillToParty
+                                    ? $row->BillToPartyCode . ' — ' . $row->BillToParty
+                                    : $row->BillToPartyCode,
+            'forwarder_code'    => $row->ForwarderCode,
+            'forwarder_text'    => $row->Forwarder
+                                    ? $row->ForwarderCode . ' — ' . $row->Forwarder
+                                    : $row->ForwarderCode,
+            'include_country'   => (bool) $row->IncludeCountry,
+            'receipt_code'      => $row->PlaceOfReceiptCode,
+            'receipt_text'      => $row->PlaceOfReceipt
+                                    ? $row->PlaceOfReceipt . ' (' . $row->PlaceOfReceiptCode . ')'
+                                    : $row->PlaceOfReceiptCode,
+            'delivery_code'     => $row->PlaceOfDeliveryCode,
+            'delivery_text'     => $row->PlaceOfDelivery
+                                    ? $row->PlaceOfDelivery . ' (' . $row->PlaceOfDeliveryCode . ')'
+                                    : $row->PlaceOfDeliveryCode,
+        ],
+    ]);
+}
 
     /**
      * Execute sp_Quote_BookingProcessMain for a single process type.
