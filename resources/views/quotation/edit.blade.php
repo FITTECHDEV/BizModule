@@ -368,8 +368,9 @@
 
                                     {{-- Preview + Apply button --}}
                                     <div id="termsDescriptionWrapper" style="display:none; margin-top: 6px;">
-                                        <textarea id="termsDescriptionPreview" class="form-control form-control-sm" rows="4" readonly
-                                            style="background-color: #e9ecef; font-size: 0.8rem; resize: none;"></textarea>
+                                       <iframe id="termsDescriptionPreview"
+    style="width:100%; height:200px; border:1px solid #ced4da; border-radius:4px; background:#fff; display:block;">
+</iframe>
                                         <button type="button" class="btn btn-primary btn-sm btn-block mt-2"
                                             id="applyTermsBtn">
                                             <i class="fas fa-save mr-1"></i> Apply Terms
@@ -2967,6 +2968,15 @@
 
             const termsDescriptionCache = {};
 
+            function b64DecodeUnicode(str) {
+    if (!str) return '';
+    return decodeURIComponent(
+        atob(str).split('').map(function(c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join('')
+    );
+}
+
             function setGenerateBtn() {
                 const $btn = $('#generateQuoteBtn');
                 const shouldDisable = termsState.generating || !termsState.applied;
@@ -3066,6 +3076,7 @@
                         }
                     },
                     error: function(xhr) {
+                        
                         console.error('loadTransportModes failed:', xhr);
                         $('#transportModeSelect')
                             .empty()
@@ -3173,9 +3184,9 @@ if (currentCode) $sel.val(currentCode);
     originalTransportMode = $('#transportModeSelect').val();
 
     // Sync IncoTerm display → select before snapshotting
-// AFTER
 const $incoSel = $('#incoTermSelect');
-const currentInco = $('#incoTermDisplay').val();
+const currentInco = $('#incoTermCode').val() || $('#incoTermDisplay').val();
+
 if (incoTermsLoaded && currentInco) {
     // Options are available — always sync select to the current display value
     $incoSel.val(currentInco);
@@ -3230,19 +3241,20 @@ console.log('IncoTerm savedIncoTerm:', savedIncoTerm);
 console.log('IncoTerm options available:', $sel.find('option').map(function() { return $(this).val(); }).get());
 if (savedIncoTerm) {
     $sel.val(savedIncoTerm);
-    console.log('IncoTerm after .val():', $sel.val());
     if (!$sel.val()) {
-        // Fallback: match option whose value or text starts with savedIncoTerm
+        // Fallback: match by option text (handles case where DB stores name not code)
         $sel.find('option').each(function () {
-            if ($(this).val().indexOf(savedIncoTerm) === 0 ||
-                savedIncoTerm.indexOf($(this).val()) === 0) {
-                $sel.val($(this).val());
+            const optVal  = $(this).val();
+            const optText = $(this).text();
+            if (optVal === savedIncoTerm ||
+                optText.indexOf(savedIncoTerm) !== -1 ||
+                savedIncoTerm.indexOf(optVal) === 0) {
+                $sel.val(optVal);
                 return false;
             }
         });
     }
 }
-originalIncoTerm = $sel.val() || savedIncoTerm;
 
 $('#incoTermDisplay').addClass('d-none');
 $sel.removeClass('d-none').prop('disabled', false);
@@ -3250,19 +3262,22 @@ $sel.removeClass('d-none').prop('disabled', false);
     });
 } else {
     const savedIncoTerm = $('#incoTermCode').val() || $('#incoTermDisplay').val();
-    if (savedIncoTerm) {
-        $('#incoTermSelect').val(savedIncoTerm);
-        if (!$('#incoTermSelect').val()) {
-            $('#incoTermSelect option').each(function () {
-                if ($(this).val().indexOf(savedIncoTerm) === 0 ||
-                    savedIncoTerm.indexOf($(this).val()) === 0) {
-                    $('#incoTermSelect').val($(this).val());
-                    return false;
-                }
-            });
-        }
+if (savedIncoTerm) {
+    $('#incoTermSelect').val(savedIncoTerm);
+    if (!$('#incoTermSelect').val()) {
+        // Fallback: match by option text (handles case where DB stores name not code)
+        $('#incoTermSelect option').each(function () {
+            const optVal  = $(this).val();
+            const optText = $(this).text();
+            if (optVal === savedIncoTerm ||
+                optText.indexOf(savedIncoTerm) !== -1 ||
+                savedIncoTerm.indexOf(optVal) === 0) {
+                $('#incoTermSelect').val(optVal);
+                return false;
+            }
+        });
     }
-    originalIncoTerm = $('#incoTermSelect').val() || savedIncoTerm;
+}
 
     $('#incoTermDisplay').addClass('d-none');
     $('#incoTermSelect').removeClass('d-none').prop('disabled', false);
@@ -6683,21 +6698,23 @@ $('#wonProcessModal').on('hide.bs.modal', function () {
             });
 
 
-            function loadTermsTemplates() {
-                const codeToUse = officeCode;
+           function loadTermsTemplates() {
+    console.log('DEBUG bookingNo:', bookingNo, '| tcAlreadyApplied:', tcAlreadyApplied);
+    const codeToUse = officeCode;
 
                 if (!codeToUse) {
                     setTimeout(loadTermsTemplates, 500);
                     return;
                 }
 
-                $.ajax({
-                    url: '{{ route('quotation.terms-templates') }}',
-                    type: 'GET',
-                    data: {
-                        quotation_id: quotationId
-                    },
-                    success: function(response) {
+               $.ajax({
+    url: '{{ route('quotation.terms-templates') }}',
+    type: 'GET',
+    dataType: 'json',          
+    data: {
+        quotation_id: quotationId
+    },
+    success: function(response)  {
                         const $select = $('#termsTemplateSelect');
                         $select.empty();
 
@@ -6713,46 +6730,56 @@ $('#wonProcessModal').on('hide.bs.modal', function () {
 
                                 // Single template — use cached description if SP returned it,
                                 // otherwise fall back to getCommunicationDescription
-                                const singleDesc = t.Description || '';
+                                const singleDesc = t.Description ? b64DecodeUnicode(t.Description) : '';
 
-                                if (singleDesc) {
-                                    $('#termsDescriptionPreview').val(singleDesc);
-                                    $('#termsDescriptionWrapper').show();
-                                    $('#applyTermsBtn').hide();
+                           if (singleDesc) {
+    (function () {
+        const iframe = document.getElementById('termsDescriptionPreview');
+        if (iframe.dataset.blobUrl) URL.revokeObjectURL(iframe.dataset.blobUrl);
+        const blob = new Blob([singleDesc], { type: 'text/html' });
+        const url  = URL.createObjectURL(blob);
+        iframe.dataset.blobUrl = url;
+        iframe.src = url;
+    })();
+    $('#termsDescriptionWrapper').show();
+    $('#applyTermsBtn').hide();
 
-                                    if (tcAlreadyApplied) {
-                                        termsState.applied = true;
-                                        setGenerateBtn();
-                                        return;
-                                    }
+    if (tcAlreadyApplied) {
+        termsState.applied = true;
+        setGenerateBtn();
+        return;
+    }
 
-                                    $.ajax({
-                                        url: '{{ route('quotation.communication.save-terms') }}',
-                                        type: 'POST',
-                                        data: {
-                                            _token: '{{ csrf_token() }}',
-                                            booking_no: bookingNo,
-                                            terms_condition: singleDesc,
-                                            template_name: t.Name
-                                        },
-                                        success: function(saveResponse) {
-                                            if (saveResponse.success) {
-                                                termsState.applied = true;
-                                                setGenerateBtn();
-                                            } else {
-                                                showNotification(
-                                                    'Auto-apply T&C failed: ' +
-                                                    (saveResponse.message ||
-                                                        'Unknown error'),
-                                                    'warning'
-                                                );
-                                                setGenerateBtn();
-                                            }
-                                        },
-                                        error: function() {
-                                            setGenerateBtn();
-                                        }
-                                    });
+    $.ajax({
+        url: '{{ route('quotation.communication.save-terms') }}',
+        type: 'POST',
+        data: {
+            _token:          '{{ csrf_token() }}',
+            booking_no:      bookingNo,
+            terms_condition: singleDesc,
+            template_name:   t.Name
+        },
+        success: function (saveResponse) {
+            if (saveResponse.success) {
+                termsState.applied = true;
+                setGenerateBtn();
+            } else {
+                // Save failed but description is loaded — show Apply button so
+                // user can retry manually rather than being silently blocked
+                $('#applyTermsBtn').show();
+                showNotification(
+                    'Auto-apply T&C failed: ' + (saveResponse.message || 'Unknown error'),
+                    'warning'
+                );
+                setGenerateBtn();
+            }
+        },
+        error: function () {
+            $('#applyTermsBtn').show();
+            showNotification('Auto-apply T&C failed — click Apply Terms to retry', 'warning');
+            setGenerateBtn();
+        }
+    });
 
                                 } else {
                                     // SP did not return description — fetch it
@@ -6834,11 +6861,11 @@ $('#wonProcessModal').on('hide.bs.modal', function () {
                             $('#termsAutoAppliedBadge').hide();
 
                             // Cache descriptions returned by the SP — keyed by template name
-                            response.templates.forEach(function(t) {
-                                if (t.Description) {
-                                    termsDescriptionCache[t.Name] = t.Description;
-                                }
-                            });
+                         response.templates.forEach(function(t) {
+    if (t.Description) {
+        termsDescriptionCache[t.Name] = b64DecodeUnicode(t.Description);
+    }
+});
 
                             if (!tcAlreadyApplied) {
                                 $('#termsTemplateSelect').closest('.mt-3.pt-2')
@@ -6901,12 +6928,19 @@ $('#wonProcessModal').on('hide.bs.modal', function () {
                                 if (matchedName) {
                                     $('#termsTemplateSelect').val(matchedName);
                                     if (tcAlreadyApplied) {
-                                        const savedDesc =
-                                            '{{ addslashes($quotation->terms_condition ?? '') }}';
-                                        if (savedDesc) {
-                                            $('#termsDescriptionPreview').val(savedDesc);
-                                            $('#termsDescriptionWrapper').show();
-                                        }
+                                       const savedDesc = @json($quotation->terms_condition ?? '');
+
+                                 if (savedDesc) {
+    (function() {
+        const iframe = document.getElementById('termsDescriptionPreview');
+        if (iframe.dataset.blobUrl) URL.revokeObjectURL(iframe.dataset.blobUrl);
+        const blob = new Blob([savedDesc], { type: 'text/html' });
+        const url  = URL.createObjectURL(blob);
+        iframe.dataset.blobUrl = url;
+        iframe.src = url;
+    })();
+    $('#termsDescriptionWrapper').show();
+}
                                         termsState.applied = true;
                                         setGenerateBtn();
                                     } else {
@@ -6914,12 +6948,19 @@ $('#wonProcessModal').on('hide.bs.modal', function () {
                                     }
                                 } else {
                                     if (tcAlreadyApplied) {
-                                        const savedDesc =
-                                            '{{ addslashes($quotation->terms_condition ?? '') }}';
+                               const savedDesc = @json($quotation->terms_condition ?? '');
+
                                         if (savedDesc) {
-                                            $('#termsDescriptionPreview').val(savedDesc);
-                                            $('#termsDescriptionWrapper').show();
-                                        }
+    (function() {
+        const iframe = document.getElementById('termsDescriptionPreview');
+        if (iframe.dataset.blobUrl) URL.revokeObjectURL(iframe.dataset.blobUrl);
+        const blob = new Blob([savedDesc], { type: 'text/html' });
+        const url  = URL.createObjectURL(blob);
+        iframe.dataset.blobUrl = url;
+        iframe.src = url;
+    })();
+    $('#termsDescriptionWrapper').show();
+}
                                         termsState.applied = true;
                                         setGenerateBtn();
                                     }
@@ -6928,12 +6969,19 @@ $('#wonProcessModal').on('hide.bs.modal', function () {
                                 }
                             } else {
                                 if (tcAlreadyApplied) {
-                                    const savedDesc =
-                                        '{{ addslashes($quotation->terms_condition ?? '') }}';
-                                    if (savedDesc) {
-                                        $('#termsDescriptionPreview').val(savedDesc);
-                                        $('#termsDescriptionWrapper').show();
-                                    }
+                                    const savedDesc = @json($quotation->terms_condition ?? '');
+
+                                 if (savedDesc) {
+    (function() {
+        const iframe = document.getElementById('termsDescriptionPreview');
+        if (iframe.dataset.blobUrl) URL.revokeObjectURL(iframe.dataset.blobUrl);
+        const blob = new Blob([savedDesc], { type: 'text/html' });
+        const url  = URL.createObjectURL(blob);
+        iframe.dataset.blobUrl = url;
+        iframe.src = url;
+    })();
+    $('#termsDescriptionWrapper').show();
+}
                                     termsState.applied = true;
                                     setGenerateBtn();
                                 }
@@ -6979,10 +7027,17 @@ $('#wonProcessModal').on('hide.bs.modal', function () {
                 });
             }
             // HELPER — called from both the cache path and the fetch fallback path
-            function _applyTermsDescription(templateName, description) {
-                $('#termsDescriptionPreview').val(description);
-                $('#termsDescriptionWrapper').show();
-                $('#applyTermsBtn').prop('disabled', false);
+    function _applyTermsDescription(templateName, description) {
+    // Render HTML in iframe — avoids raw markup showing as plain text in a textarea
+    const iframe = document.getElementById('termsDescriptionPreview');
+    if (iframe.dataset.blobUrl) URL.revokeObjectURL(iframe.dataset.blobUrl);
+    const blob = new Blob([description], { type: 'text/html' });
+    const url  = URL.createObjectURL(blob);
+    iframe.dataset.blobUrl = url;
+    iframe.src = url;
+
+    $('#termsDescriptionWrapper').show();
+    $('#applyTermsBtn').prop('disabled', false);
 
                 $.ajax({
                     url: '{{ route('quotation.communication.save-terms') }}',
@@ -7062,8 +7117,11 @@ $('#wonProcessModal').on('hide.bs.modal', function () {
                 });
             });
 
-            $('#applyTermsBtn').on('click', function() {
-                const description = $('#termsDescriptionPreview').val();
+           $('#applyTermsBtn').on('click', function() {
+    const iframe = document.getElementById('termsDescriptionPreview');
+    const description = iframe.dataset.blobUrl
+        ? (iframe.contentDocument || iframe.contentWindow.document).body.innerHTML
+        : '';
 
                 if (!description || description === 'Loading...') {
                     showNotification('No Terms & Conditions to apply', 'warning');
