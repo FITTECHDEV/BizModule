@@ -5354,18 +5354,19 @@ class QuotationController extends Controller
             $versionCounter = 0; // sequential counter — only incremented for files that exist on disk
 
             foreach ($documents as $doc) {
-                $relativePath = $this->normalizeFilePath($doc->FilePath);
-                $fileExists = \Storage::disk('public')->exists($relativePath);
+                $isAzurePath = str_starts_with($doc->FilePath, 'Quotation/');
+                $relativePath = $isAzurePath ? $doc->FilePath : $this->normalizeFilePath($doc->FilePath);
 
-                // Skip versions whose file no longer exists on disk.
-                // Do NOT increment versionCounter here — the counter must only reflect
-                // downloadable versions so that downloadPdf()->skip($version - 1) resolves correctly.
+                $fileExists = $isAzurePath
+                    ? \Storage::disk('azure')->exists($relativePath)
+                    : \Storage::disk('public')->exists($relativePath);
+
                 if (!$fileExists) {
-                    Log::warning('getQuotationVersions - File missing on disk, skipping', [
+                    Log::warning('getQuotationVersions - File missing on both disk and Azure, skipping', [
                         'quotation_id' => $id,
                         'file_name' => $doc->Name,
-                        'raw_path' => $doc->FilePath,
-                        'relative' => $relativePath,
+                        'file_path' => $doc->FilePath,
+                        'is_azure' => $isAzurePath,
                     ]);
                     continue;
                 }
