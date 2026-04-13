@@ -1241,39 +1241,69 @@ if (_ssStepsCheck && _ssStepsCheck.find(function(s) { return s.status && s.statu
 return;
 }
 
-// Fresh open — full reset   ← this line was already here
+// Fresh open — load templates AND existing booking data in parallel
 modal.data('last-quote-no', quoteNo);
 resetCreateBookingForm();
-        setDropdownLoading('#cb_service_template');
-        $.get('{{ route('quotation.booking.service-templates') }}', {
-                    quotation_id: quotationId
-                })
-            .done(function(res) {
-                var $s = $('#cb_service_template').empty().append('<option value=""></option>');
-                if (res.success && res.templates && res.templates.length) {
-                    $.each(res.templates, function(i, t) {
-                        $s.append($('<option>', {
-                            value: t.Name,
-                            text: t.Name
-                        }));
-                    });
-                } else {
-                    var msg = res.code === 'NO_TEMPLATES_CONFIGURED' ?
-                        'No templates available for this office.' : (res.message ||
-                            'No templates available for this office.');
-                    $s.append('<option value="" disabled>No templates available</option>');
-                    $('#cb_service_template').closest('.form-group').append(
-                        '<small class="text-danger cb-config-warning mt-1 d-block">' +
-                        '<i class="fas fa-exclamation-triangle mr-1"></i>' + msg +
-                        '</small>'
-                    );
-                    $('#submitCreateBookingBtn').prop('disabled', true);
-                }
-            })
-            .fail(function() {
-                $('#cb_service_template').empty().append(
-                    '<option value="" disabled>Failed to load — try again</option>');
-            });
+setDropdownLoading('#cb_service_template');
+
+$.when(
+    $.get('{{ route('quotation.booking.service-templates') }}', { quotation_id: quotationId }),
+    $.get('{{ route('quotation.booking.existing-data') }}',    { quotation_id: quotationId })
+).done(function(templatesRes, existingRes) {
+    var templates = templatesRes[0];
+    var existing  = existingRes[0];
+
+    // ── Populate service template dropdown ──────────────────────────────
+    var $s = $('#cb_service_template').empty().append('<option value=""></option>');
+    if (templates.success && templates.templates && templates.templates.length) {
+        $.each(templates.templates, function(i, t) {
+            $s.append($('<option>', { value: t.Name, text: t.Name }));
+        });
+    } else {
+        var msg = templates.code === 'NO_TEMPLATES_CONFIGURED'
+            ? 'No templates available for this office.'
+            : (templates.message || 'No templates available for this office.');
+        $s.append('<option value="" disabled>No templates available</option>');
+        $('#cb_service_template').closest('.form-group').append(
+            '<small class="text-danger cb-config-warning mt-1 d-block">' +
+            '<i class="fas fa-exclamation-triangle mr-1"></i>' + msg + '</small>'
+        );
+        $('#submitCreateBookingBtn').prop('disabled', true);
+    }
+
+    // ── Pre-populate from DB if data exists ─────────────────────────────
+    if (existing.success && existing.data) {
+        var d = existing.data;
+
+        if (d.service_template) $s.val(d.service_template);
+
+        if (d.bill_to_party_code) {
+            $('#cb_bill_to_party').val(d.bill_to_party_text);
+            $('#cb_bill_to_party_code').val(d.bill_to_party_code);
+        }
+
+        if (d.forwarder_code) {
+            $('#cb_forwarder').val(d.forwarder_text);
+            $('#cb_forwarder_code').val(d.forwarder_code);
+        }
+
+        $('#cb_include_country').prop('checked', !!d.include_country);
+
+        if (d.receipt_code) {
+            $('#cb_place_of_receipt').val(d.receipt_text);
+            $('#cb_place_of_receipt_code').val(d.receipt_code);
+        }
+
+        if (d.delivery_code) {
+            $('#cb_place_of_delivery').val(d.delivery_text);
+            $('#cb_place_of_delivery_code').val(d.delivery_code);
+        }
+    }
+}).fail(function() {
+    $('#cb_service_template').empty().append(
+        '<option value="" disabled>Failed to load — try again</option>'
+    );
+});
     });
 
   $('#createBookingModal').on('hidden.bs.modal', function() {
@@ -1612,7 +1642,7 @@ $('#cb_place_of_delivery_id').val(savedState.deliveryId);
         BOOKING_STEPS.forEach(function(def) {
             var done = completedSteps.find(function(s) { return String(s.step) === String(def.step); });
             var iconClass, badgeClass, statusText, remarkHtml = '', retriggerBtn = '';
-            var isActive = (activeStep !== undefined && def.step === activeStep);
+            var isActive = (activeStep !== null && activeStep !== undefined && String(def.step) === String(activeStep));
     
             if (isActive) {
                 iconClass  = 'fas fa-spinner fa-spin text-primary';
@@ -1622,12 +1652,22 @@ $('#cb_place_of_delivery_id').val(savedState.deliveryId);
                 iconClass  = 'fas fa-circle text-secondary';
                 badgeClass = 'badge-secondary';
                 statusText = 'Pending';
-            } else if (done.status === 'Success') {
-                iconClass  = 'fas fa-check-circle text-success';
-                badgeClass = 'badge-success';
-                statusText = 'Success';
-                if (done.remark)
-                    remarkHtml = '<small class="text-muted d-block mt-1">' + done.remark + '</small>';
+         } else if (done.status === 'Success') {
+    iconClass  = 'fas fa-check-circle text-success';
+    badgeClass = 'badge-success';
+    statusText = 'Success';
+    if (done.remark)
+        remarkHtml = '<small class="text-muted d-block mt-1">' + done.remark + '</small>';
+    if ([2, '2b', 3, 4].indexOf(def.step) !== -1) {
+        retriggerBtn =
+            '<button class="btn btn-xs btn-outline-secondary btn-retrigger ml-2"'
+            + ' data-quotation-id="' + quotationId + '"'
+            + ' data-booking-no="' + bookingNo + '"'
+            + ' data-step="' + def.step + '"'
+            + ' title="Re-run this step">'
+            + '<i class="fas fa-redo-alt mr-1"></i>Re-run'
+            + '</button>';
+    }
             } else if (done.status === 'Skipped') {
                 iconClass  = 'fas fa-minus-circle text-secondary';
                 badgeClass = 'badge-secondary';
@@ -1673,6 +1713,12 @@ $('#cb_place_of_delivery_id').val(savedState.deliveryId);
         var $btn         = $(this);
         var quotationId  = $btn.data('quotation-id');
         var bookingNo    = $btn.data('booking-no');
+        var failedStep   = $btn.data('step');
+    
+        // force_step2 = 1 when the failed step is 2b or 3.
+        // Both indicate the booking is missing in SCM (orphaned SCMBookingID).
+        // The backend guard ensures this is ignored if the booking actually exists in SCM.
+        var forceStep2 = (['2b', 3].indexOf(String(failedStep)) !== -1) ? 1 : 0;
     
         $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i>Retrying...');
     
@@ -1683,18 +1729,19 @@ $('#cb_place_of_delivery_id').val(savedState.deliveryId);
                 _token:       '{{ csrf_token() }}',
                 quotation_id: quotationId,
                 booking_no:   bookingNo,
+                force_step2:  forceStep2,
             },
-success: function(res) {
-    var previousSteps = $('#createBookingModal').data('completed-steps') || [];
-    var newSteps = res.steps || [];
-
-    // Merge: new steps override previous ones for the same step number
-    var merged = previousSteps.filter(function(ps) {
-        return !newSteps.find(function(ns) { return ns.step === ps.step; });
-    }).concat(newSteps);
-
-    $('#createBookingModal').data('completed-steps', merged);
-    renderBookingSteps(merged);
+    success: function(res) {
+        var previousSteps = $('#createBookingModal').data('completed-steps') || [];
+        var newSteps = res.steps || [];
+    
+        // Merge: new steps override previous ones for the same step number
+        var merged = previousSteps.filter(function(ps) {
+            return !newSteps.find(function(ns) { return ns.step === ps.step; });
+        }).concat(newSteps);
+    
+        $('#createBookingModal').data('completed-steps', merged);
+        renderBookingSteps(merged);
                 if (res.success) {
                     $('#cbProgressError').addClass('d-none');
                     $('#cbProgressSuccess').removeClass('d-none');
@@ -1725,161 +1772,238 @@ try { sessionStorage.setItem('cbStepsState_' + _qId, JSON.stringify(merged)); } 
 
     // ── Submit Create Booking ─────────────────────────────────────────────────
 $('#submitCreateBookingBtn').on('click', function() {
-        var $btn = $(this);
-        var quotationId = $('#createBookingModal').data('quotation-id');
-        var bookingNo = $('#createBookingModal').data('booking-no');
+    var $btn = $(this);
+    var quotationId = $('#createBookingModal').data('quotation-id');
+    var bookingNo   = $('#createBookingModal').data('booking-no');
 
-        // If failed steps already exist, skip re-submission and go straight to steps panel
-        var _savedSteps = null;
-        if (quotationId) {
-            try {
-                var _raw = sessionStorage.getItem('cbStepsState_' + quotationId);
-                if (_raw) _savedSteps = JSON.parse(_raw);
-            } catch(e) {}
-        }
-
-    if (_savedSteps && _savedSteps.find(function(s) {
-    return s.status && s.status.toLowerCase() === 'failed';
-})) {
-    $('#createBookingModal').data('completed-steps', _savedSteps);
-    $('#createBookingForm').addClass('d-none');
-    $('#cbProgressPanel').removeClass('d-none');
-    $('#submitCreateBookingBtn, #cancelCreateBookingBtn').addClass('d-none');
-    $('#cbCloseBtn').removeClass('d-none');
-    $('#cbEditLink').removeClass('d-none');
-    $('#cbViewStepsLink').addClass('d-none');
-    $('#cbProgressError, #cbProgressSuccess').addClass('d-none');
-    renderBookingSteps(_savedSteps);
-    return;
-}
-
-        var serviceTemplate = $('#cb_service_template').val();
-        var billToParty = $('#cb_bill_to_party_code').val();
-        var forwarder = $('#cb_forwarder_code').val();
-        var placeOfReceipt = $('#cb_place_of_receipt_code').val();
-        var placeOfDelivery = $('#cb_place_of_delivery_code').val();
-
-        var errors = [];
-        if (!serviceTemplate) errors.push('Service Template');
-        if (!billToParty) errors.push('Bill To Party');
-        if (!forwarder) errors.push('Forwarder');
-        if (!placeOfReceipt) errors.push('Place of Receipt');
-        if (!placeOfDelivery) errors.push('Place of Delivery');
-
-        if (errors.length) {
-            alert('Please complete the following required fields:\n• ' + errors.join('\n• '));
-            return;
-        }
-
-        // Save form state so it can be restored if booking fails
-        var _formState = {
-            serviceTemplate: serviceTemplate,
-            billToPartyText: $('#cb_bill_to_party').val(),
-            billToPartyCode: billToParty,
-            forwarderText: $('#cb_forwarder').val(),
-            forwarderCode: forwarder,
-            includeCountry: $('#cb_include_country').is(':checked'),
-            receiptText: $('#cb_place_of_receipt').val(),
-            receiptCode: placeOfReceipt,
-            receiptId: $('#cb_place_of_receipt_id').val(),
-            deliveryText: $('#cb_place_of_delivery').val(),
-            deliveryCode: placeOfDelivery,
-            deliveryId: $('#cb_place_of_delivery_id').val(),
-        };
-        $('#createBookingModal').data('saved-form-state', _formState);
-        // Persist to sessionStorage so state survives page refresh
+    // ── Guard: if failed steps already exist, show steps panel ──────────
+    var _savedSteps = null;
+    if (quotationId) {
         try {
-            sessionStorage.setItem('cbFormState_' + quotationId, JSON.stringify(_formState));
-        } catch (e) {}
-
-
-        // Disable button to prevent double submission
-        $btn.prop('disabled', true).html(
-            '<i class="fas fa-spinner fa-spin mr-1"></i> Processing...');
-
+            var _raw = sessionStorage.getItem('cbStepsState_' + quotationId);
+            if (_raw) _savedSteps = JSON.parse(_raw);
+        } catch(e) {}
+    }
+    if (_savedSteps && _savedSteps.find(function(s) {
+        return s.status && s.status.toLowerCase() === 'failed';
+    })) {
+        $('#createBookingModal').data('completed-steps', _savedSteps);
         $('#createBookingForm').addClass('d-none');
         $('#cbProgressPanel').removeClass('d-none');
         $('#submitCreateBookingBtn, #cancelCreateBookingBtn').addClass('d-none');
-        $('#cbEditLink').addClass('d-none');
+        $('#cbCloseBtn').removeClass('d-none');
+        $('#cbEditLink').removeClass('d-none');
+        $('#cbViewStepsLink').addClass('d-none');
         $('#cbProgressError, #cbProgressSuccess').addClass('d-none');
-        renderBookingSteps([], 0);
-
-        $.ajax({
-            url: '{{ route('quotation.process-booking') }}',
-            type: 'POST',
-            data: {
-                _token: '{{ csrf_token() }}',
-                id: quotationId, // ← UUID — used by controller to fetch the record
-                booking_no: bookingNo, // ← kept for logging only
-                service_template: serviceTemplate,
-                bill_to_party: billToParty,
-                forwarder: forwarder,
-                include_country: $('#cb_include_country').is(':checked') ? 1 : 0,
-                place_of_receipt: placeOfReceipt,
-                place_of_delivery: placeOfDelivery
-            },
-            success: function(res) {
-$('#createBookingModal').data('completed-steps', res.steps || []);
-renderBookingSteps(res.steps || []);
-
-                if (res.success) {
-                    var msg = '<i class="fas fa-check-circle mr-2"></i>' +
-                        'All steps completed. Booking has been created in SCM.';
-                    if (res.scm_booking_no)
-                        msg += '<br><strong class="mt-2 d-block">SCM Booking No: ' + res
-                        .scm_booking_no + '</strong>';
-                    if (res.scm_booking_id)
-                        msg += '<strong>SCM Booking ID: ' + res.scm_booking_id +
-                        '</strong>';
-                    $('#cbProgressSuccess').html(msg).removeClass('d-none');
-                    $('#createBookingModal').removeData('saved-form-state').removeData(
-                        'last-quote-no');
-                    try {
-                        sessionStorage.removeItem('cbFormState_' + quotationId);
-                        sessionStorage.removeItem('cbStepsState_' + quotationId);
-                    } catch (e) {}
-                    table.ajax.reload(null, false);
-                } else {
-                    var failedStep = (res.steps || []).find(function(s) {
-                        return s.status === 'Failed';
-                    });
-                    $('#cbProgressError')
-                        .html('<strong>' + (res.failed_label || 'Step') +
-                            ' failed:</strong> ' +
-                            (failedStep ? failedStep.remark : 'Unknown error'))
-                        .removeClass('d-none');
-                    table.ajax.reload(null, false);
-$('#cbEditLink').removeClass('d-none');
-try { sessionStorage.setItem('cbStepsState_' + quotationId, JSON.stringify(res.steps || [])); } catch (e) {}                }
-            },
-            error: function(xhr) {
-                var msg = 'An unexpected error occurred.';
-                var json = xhr.responseJSON;
-                if (json) {
-                    if (json.errors) {
-                        // Laravel validation (422)
-                        msg = Object.values(json.errors).flat().join('<br>');
-                    } else if (json.message) {
-                        msg = json.message;
-                    }
-                } else if (xhr.status === 0) {
-                    msg = 'Connection lost. Please check your network and try again.';
-                } else if (xhr.status >= 500) {
-                    msg = 'Server error (' + xhr.status + '). Please contact support.';
-                }
-                $('#cbProgressError').html(msg).removeClass('d-none');
-                if (json?.steps) renderBookingSteps(json.steps);
-                    if (json?.steps && json.steps.length) {
-        try { sessionStorage.setItem('cbStepsState_' + quotationId, JSON.stringify(json.steps)); } catch(e) {}
+        renderBookingSteps(_savedSteps);
+        return;
     }
-                $('#cbEditLink').removeClass('d-none');
-            },
-            complete: function() {
-                $btn.prop('disabled', false).html('Create');
-                $('#cbCloseBtn').removeClass('d-none');
-            }
+
+    // ── Validate form fields ──────────────────────────────────────────────
+    var serviceTemplate  = $('#cb_service_template').val();
+    var billToParty      = $('#cb_bill_to_party_code').val();
+    var forwarder        = $('#cb_forwarder_code').val();
+    var placeOfReceipt   = $('#cb_place_of_receipt_code').val();
+    var placeOfDelivery  = $('#cb_place_of_delivery_code').val();
+    var includeCountry   = $('#cb_include_country').is(':checked') ? 1 : 0;
+
+    var errors = [];
+    if (!serviceTemplate) errors.push('Service Template');
+    if (!billToParty)     errors.push('Bill To Party');
+    if (!forwarder)       errors.push('Forwarder');
+    if (!placeOfReceipt)  errors.push('Place of Receipt');
+    if (!placeOfDelivery) errors.push('Place of Delivery');
+
+    if (errors.length) {
+        alert('Please complete the following required fields:\n• ' + errors.join('\n• '));
+        return;
+    }
+
+    // ── Save form state ───────────────────────────────────────────────────
+    var _formState = {
+        serviceTemplate: serviceTemplate,
+        billToPartyText: $('#cb_bill_to_party').val(),
+        billToPartyCode: billToParty,
+        forwarderText:   $('#cb_forwarder').val(),
+        forwarderCode:   forwarder,
+        includeCountry:  $('#cb_include_country').is(':checked'),
+        receiptText:     $('#cb_place_of_receipt').val(),
+        receiptCode:     placeOfReceipt,
+        receiptId:       $('#cb_place_of_receipt_id').val(),
+        deliveryText:    $('#cb_place_of_delivery').val(),
+        deliveryCode:    placeOfDelivery,
+        deliveryId:      $('#cb_place_of_delivery_id').val(),
+    };
+    $('#createBookingModal').data('saved-form-state', _formState);
+    try { sessionStorage.setItem('cbFormState_' + quotationId, JSON.stringify(_formState)); } catch(e) {}
+
+    // ── Switch to progress panel — all steps Pending ──────────────────────
+    $btn.prop('disabled', true);
+    $('#createBookingForm').addClass('d-none');
+    $('#cbProgressPanel').removeClass('d-none');
+    $('#submitCreateBookingBtn, #cancelCreateBookingBtn').addClass('d-none');
+    $('#cbEditLink').addClass('d-none');
+    $('#cbProgressError, #cbProgressSuccess').addClass('d-none');
+
+    // Show all steps as Pending initially — no active step yet
+    renderBookingSteps([], null);
+
+    // ── Shared AJAX payload builder ───────────────────────────────────────
+    var basePayload = {
+        _token:           '{{ csrf_token() }}',
+        id:               quotationId,
+        booking_no:       bookingNo,
+        service_template: serviceTemplate,
+        bill_to_party:    billToParty,
+        forwarder:        forwarder,
+        include_country:  includeCountry,
+        place_of_receipt: placeOfReceipt,
+        place_of_delivery: placeOfDelivery,
+    };
+
+    // completedSteps accumulates results as each step finishes
+    var completedSteps = [];
+
+    // ── runStep: fires one AJAX call, updates UI, returns a Promise ───────
+    // stepNo    — matches BOOKING_STEPS[].step  (0, 2, '2b', 3, 4)
+    // url       — the route for this step
+    // extraData — any additional POST fields for this step only
+    function runStep(stepNo, url, extraData) {
+        // Mark this step as active (spinner) before the request fires
+        renderBookingSteps(completedSteps, stepNo);
+
+        var payload = $.extend({}, basePayload, extraData || {});
+
+        return $.ajax({
+            url:  url,
+            type: 'POST',
+            data: payload,
         });
+    }
+
+    // ── Pipeline — each .then() runs after the previous step completes ────
+    // Step 0 — Save Booking Info
+    runStep(0, '{{ route('quotation.booking.step.save-info') }}')
+    .then(function(res) {
+        completedSteps.push({ step: 0, label: 'Save Booking Info', status: res.status, remark: res.remark || '' });
+        renderBookingSteps(completedSteps, null);
+
+        if (!res.success) {
+            return $.Deferred().reject(res, 0, 'Save Booking Info');
+        }
+
+        // Step 2 — Booking XML
+        return runStep(2, '{{ route('quotation.booking.step.xml') }}');
+    })
+    .then(function(res) {
+        completedSteps.push({ step: 2, label: 'Booking XML', status: res.status, remark: res.remark || '' });
+        renderBookingSteps(completedSteps, null);
+
+        if (!res.success) {
+            return $.Deferred().reject(res, 2, 'Booking XML');
+        }
+
+        // Step 2b — SCM Push
+        return runStep('2b', '{{ route('quotation.booking.step.scm-push') }}');
+    })
+    .then(function(res) {
+        completedSteps.push({ step: '2b', label: 'SCM Push', status: res.status, remark: res.remark || '' });
+        renderBookingSteps(completedSteps, null);
+
+        if (!res.success) {
+            return $.Deferred().reject(res, '2b', 'SCM Push');
+        }
+
+        // Step 3 — Charge Transfer
+        return runStep(3, '{{ route('quotation.booking.step.charges') }}');
+    })
+    .then(function(res) {
+        completedSteps.push({ step: 3, label: 'Charge Transfer', status: res.status, remark: res.remark || '' });
+        renderBookingSteps(completedSteps, null);
+
+        if (!res.success) {
+            return $.Deferred().reject(res, 3, 'Charge Transfer');
+        }
+
+        // Step 4 — Document Transfer
+        return runStep(4, '{{ route('quotation.booking.step.documents') }}');
+    })
+    .then(function(res) {
+        // ── All steps succeeded ───────────────────────────────────────────
+        completedSteps.push({ step: 4, label: 'Document Transfer', status: res.status, remark: res.remark || '' });
+        renderBookingSteps(completedSteps, null);
+
+        $('#createBookingModal').data('completed-steps', completedSteps);
+
+        var msg = '<i class="fas fa-check-circle mr-2"></i>All steps completed. Booking has been created in SCM.';
+        $('#cbProgressSuccess').html(msg).removeClass('d-none');
+        $('#cbProgressError').addClass('d-none');
+        $('#cbEditLink').addClass('d-none');
+        $('#cbViewStepsLink').addClass('d-none');
+
+        $('#createBookingModal').removeData('saved-form-state').removeData('last-quote-no');
+        try {
+            sessionStorage.removeItem('cbFormState_' + quotationId);
+            sessionStorage.removeItem('cbStepsState_' + quotationId);
+        } catch(e) {}
+
+        table.ajax.reload(null, false);
+    })
+    .fail(function(res, failedStepNo, failedLabel) {
+        // ── A step failed — mark remaining steps as Skipped ──────────────
+        // failedStepNo and failedLabel come from $.Deferred().reject() above
+        // res here may be a jqXHR object (network error) or our response object
+    var stepOrder = [0, 2, '2b', 3, 4];
+var failedIdx = stepOrder.indexOf(failedStepNo);
+
+// Safety: if strict indexOf missed (type mismatch), retry with string comparison
+if (failedIdx === -1) {
+    failedIdx = stepOrder.map(String).indexOf(String(failedStepNo));
+}
+
+stepOrder.forEach(function(sNo, idx) {
+    if (idx > failedIdx) {
+        // Guard: don't push a Skipped entry if this step was already recorded
+        var alreadyRecorded = completedSteps.find(function(s) {
+            return String(s.step) === String(sNo);
+        });
+        if (!alreadyRecorded) {
+            var def = BOOKING_STEPS.find(function(d) { return String(d.step) === String(sNo); });
+            completedSteps.push({
+                step:   sNo,
+                label:  def ? def.label : 'Step ' + sNo,
+                status: 'Skipped',
+                remark: 'Skipped due to previous step failure',
+            });
+        }
+    }
+});
+        $('#createBookingModal').data('completed-steps', completedSteps);
+        renderBookingSteps(completedSteps, null);
+
+        // Determine error message
+        var errorMsg = 'Unknown error';
+        if (res && res.remark)  errorMsg = res.remark;
+        else if (res && res.responseJSON) {
+            errorMsg = res.responseJSON.message || errorMsg;
+        } else if (res && res.statusText) {
+            errorMsg = 'Network error: ' + res.statusText;
+        }
+
+        $('#cbProgressError')
+            .html('<strong>' + (failedLabel || 'Step') + ' failed:</strong> ' + errorMsg)
+            .removeClass('d-none');
+        $('#cbEditLink').removeClass('d-none');
+
+        try { sessionStorage.setItem('cbStepsState_' + quotationId, JSON.stringify(completedSteps)); } catch(e) {}
+
+        table.ajax.reload(null, false);
+    })
+    .always(function() {
+        $btn.prop('disabled', false).html('Create');
+        $('#cbCloseBtn').removeClass('d-none');
     });
+});
 
     // ── CRM Sync modal ────────────────────────────────────────────────────────
     $('#btnOpenCrmSync').on('click', function() {
