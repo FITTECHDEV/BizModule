@@ -3742,11 +3742,17 @@ class QuotationController extends Controller
         $request->validate([
             'quotation_id' => 'required|string',
             'reason_remark' => 'nullable|string',
+            'source' => 'nullable|string',
         ]);
 
         $quotationId = $request->input('quotation_id');
         $reasonRemark = $request->input('reason_remark', '');
+        $source = $request->input('source', 'dashboard'); // default keeps existing behaviour
         $submittedBy = Auth::user()->displayName ?? (Auth::user()->Email ?? 'system');
+
+        // When called from the edit page, failures leave the quote In Progress.
+        // When called from the dashboard, failures mark it as Failed Int. (existing behaviour).
+        $shouldMarkFailed = $source !== 'edit';
 
         $quotation = DB::table('Quote_QuotationInfo')
             ->where('ID', $quotationId)
@@ -3772,11 +3778,13 @@ class QuotationController extends Controller
             'quotation_id' => $quotationId,
             'status' => $clientResult['status'],
             'remark' => $clientResult['remark'],
+            'source' => $source,
         ]);
 
         if ($clientResult['status'] !== 'Success') {
-            // markAsFailed sets QuoteStatus=Won, SCMINTStatus=Failed → shows as Failed Int.
-            $this->markAsFailed($quotation->ID, 'Client Creation', $clientResult['remark'], $submittedBy);
+            if ($shouldMarkFailed) {
+                $this->markAsFailed($quotation->ID, 'Client Creation', $clientResult['remark'], $submittedBy);
+            }
 
             return response()->json([
                 'success' => false,
@@ -3802,15 +3810,14 @@ class QuotationController extends Controller
 
             $pdo = DB::connection()->getPdo();
             $stmt = $pdo->prepare("
-                SET NOCOUNT ON;
-                DECLARE @OutputJson VARCHAR(2000);
-                EXEC sp_Quote_Quotaiton_StatusUpdate ?, @OutputJson OUTPUT;
-                SELECT @OutputJson AS OutputJson
-            ");
+            SET NOCOUNT ON;
+            DECLARE @OutputJson VARCHAR(2000);
+            EXEC sp_Quote_Quotaiton_StatusUpdate ?, @OutputJson OUTPUT;
+            SELECT @OutputJson AS OutputJson
+        ");
 
             $stmt->execute([$inputJson]);
 
-            // Drain all result sets to reach the final SELECT
             $spResult = null;
             do {
                 try {
@@ -3819,19 +3826,17 @@ class QuotationController extends Controller
                         $spResult = $rows[0]['OutputJson'];
                     }
                 } catch (\Exception $fetchEx) {
-                    // some result sets are not fetchable (e.g. NOCOUNT metadata) — skip
+                    // non-fetchable result sets — skip
                 }
             } while ($stmt->nextRowset());
 
             Log::info('processWon - Step 2 raw SP result', [
                 'quotation_id' => $quotationId,
                 'raw_result' => $spResult,
+                'source' => $source,
             ]);
 
             if ($spResult === null) {
-                // SP returned no output — surface the SQL error if any
-                $errorInfo = $stmt->errorInfo();
-                $sqlMsg = !empty($errorInfo[2]) ? $errorInfo[2] : null;
                 $errorInfo = $stmt->errorInfo();
                 $sqlMsg = !empty($errorInfo[2]) ? $errorInfo[2] : null;
                 throw new \RuntimeException(
@@ -3840,18 +3845,13 @@ class QuotationController extends Controller
                 );
             }
 
-            $normalized = $spResult;
-            if (str_starts_with(trim($spResult), '{')) {
-                $normalized = '[' . $spResult . ']';
-            }
+            $normalized = str_starts_with(trim($spResult), '{') ? '[' . $spResult . ']' : $spResult;
             $output = json_decode($normalized, true);
 
-            // Collect all non-success remarks, excluding the status-update confirmation
             $errors = [];
             if (is_array($output)) {
                 foreach ($output as $item) {
                     if (($item['Status'] ?? '') === 'Failed' && isset($item['Remark'])) {
-                        // Exclude the "Status updated to WON" line — it's not an error
                         if (stripos($item['Remark'], 'has been updated to') === false) {
                             $errors[] = $item['Remark'];
                         }
@@ -3864,7 +3864,11 @@ class QuotationController extends Controller
             if (!$overallSuccess) {
                 $errorMessage = !empty($errors) ? implode(' | ', $errors) : 'Failed to mark as Won';
 
-                $this->markAsFailed($quotation->ID, 'Mark as Won', $errorMessage, $submittedBy); // ← add this
+                // SP already reset QuoteStatus to 'In Progress' on its failure path.
+                // Only call markAsFailed (sets SCMINTStatus=Failed) for dashboard flow.
+                if ($shouldMarkFailed) {
+                    $this->markAsFailed($quotation->ID, 'Mark as Won', $errorMessage, $submittedBy);
+                }
 
                 $steps[] = [
                     'step' => 2,
@@ -3882,7 +3886,6 @@ class QuotationController extends Controller
                 ]);
             }
 
-            // Success path
             $successRemark = '';
             if (is_array($output)) {
                 foreach ($output as $item) {
@@ -3909,9 +3912,12 @@ class QuotationController extends Controller
             Log::error('processWon - Step 2 failed', [
                 'quotation_id' => $quotationId,
                 'error' => $e->getMessage(),
+                'source' => $source,
             ]);
 
-            $this->markAsFailed($quotation->ID, 'Mark as Won', $e->getMessage(), $submittedBy); // ← add this
+            if ($shouldMarkFailed) {
+                $this->markAsFailed($quotation->ID, 'Mark as Won', $e->getMessage(), $submittedBy);
+            }
 
             $steps[] = [
                 'step' => 2,
