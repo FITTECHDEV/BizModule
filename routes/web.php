@@ -1100,10 +1100,23 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
     // POST routes are NOT affected by {id} GET wildcards,
     // but keeping them grouped here is cleaner.
     // ============================================
-    Route::post('/quotation/process-booking', [App\Http\Controllers\QuotationController::class, 'processBooking'])
-        ->name('quotation.process-booking');
-    Route::post('/quotation/booking/create', [App\Http\Controllers\QuotationController::class, 'createBooking'])
-        ->name('quotation.booking.create');
+Route::post('/quotation/process-booking', [App\Http\Controllers\QuotationController::class, 'processBooking'])
+    ->name('quotation.process-booking');
+
+// ── Individual booking step routes (sequential pipeline) ─────────────────
+Route::post('/quotation/booking/step/save-info', [App\Http\Controllers\QuotationController::class, 'processBookingStep0'])
+    ->name('quotation.booking.step.save-info');
+Route::post('/quotation/booking/step/xml', [App\Http\Controllers\QuotationController::class, 'processBookingStep2'])
+    ->name('quotation.booking.step.xml');
+Route::post('/quotation/booking/step/scm-push', [App\Http\Controllers\QuotationController::class, 'processBookingStep2b'])
+    ->name('quotation.booking.step.scm-push');
+Route::post('/quotation/booking/step/charges', [App\Http\Controllers\QuotationController::class, 'processBookingStep3'])
+    ->name('quotation.booking.step.charges');
+Route::post('/quotation/booking/step/documents', [App\Http\Controllers\QuotationController::class, 'processBookingStep4'])
+    ->name('quotation.booking.step.documents');
+
+Route::post('/quotation/booking/create', [App\Http\Controllers\QuotationController::class, 'createBooking'])
+    ->name('quotation.booking.create');
     Route::post('/quotation/charge/save', [App\Http\Controllers\QuotationController::class, 'saveCharge'])
         ->name('quotation.charge.save');
     Route::post('/quotation/charge/delete', [App\Http\Controllers\QuotationController::class, 'deleteCharge'])

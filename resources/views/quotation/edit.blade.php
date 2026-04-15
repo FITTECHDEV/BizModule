@@ -5157,7 +5157,6 @@ $('#wonProcessModal').on('hide.bs.modal', function () {
                         $('#reasonRemark').addClass('is-invalid').focus();
                         return;
                     }
-
                     $('#reasonRemark').removeClass('is-invalid');
                     updateStatus(status, reasonCode, reasonRemark, bookingNo);
                 });
