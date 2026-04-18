@@ -1,9 +1,489 @@
-
 <!DOCTYPE html>
-<html>
-<head><title>Test</title></head>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>IIS — Online</title>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Bebas+Neue&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --red: #e01b1b;
+      --red-bright: #ff2a2a;
+      --red-dim: #8a0f0f;
+      --red-glow: rgba(224, 27, 27, 0.35);
+      --black: #060606;
+      --black2: #0f0f0f;
+      --white: #f0ece8;
+      --gray: #1a1a1a;
+      --border: rgba(224, 27, 27, 0.3);
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--black);
+      color: var(--white);
+      font-family: 'Share Tech Mono', monospace;
+      overflow-x: hidden;
+    }
+
+    /* SCANLINE OVERLAY */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.07) 2px,
+        rgba(0,0,0,0.07) 4px
+      );
+      pointer-events: none;
+      z-index: 999;
+    }
+
+    /* NOISE TEXTURE */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 998;
+      opacity: 0.5;
+    }
+
+    /* GRID BACKGROUND */
+    .bg-grid {
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(224,27,27,0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(224,27,27,0.05) 1px, transparent 1px);
+      background-size: 60px 60px;
+      animation: gridDrift 20s linear infinite;
+      z-index: 0;
+    }
+
+    @keyframes gridDrift {
+      0% { transform: translateY(0); }
+      100% { transform: translateY(60px); }
+    }
+
+    /* CORNER ACCENTS */
+    .corner {
+      position: fixed;
+      width: 80px;
+      height: 80px;
+      z-index: 10;
+    }
+    .corner::before, .corner::after {
+      content: '';
+      position: absolute;
+      background: var(--red);
+    }
+    .corner::before { width: 100%; height: 2px; }
+    .corner::after  { width: 2px; height: 100%; }
+    .corner.tl { top: 24px; left: 24px; }
+    .corner.tr { top: 24px; right: 24px; transform: scaleX(-1); }
+    .corner.bl { bottom: 24px; left: 24px; transform: scaleY(-1); }
+    .corner.br { bottom: 24px; right: 24px; transform: scale(-1); }
+
+    /* MAIN LAYOUT */
+    .wrapper {
+      position: relative;
+      z-index: 5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 100px 32px;
+      gap: 48px;
+    }
+
+    /* STATUS BAR */
+    .status-bar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, var(--red), var(--red-bright), var(--red), transparent);
+      animation: scanBar 3s ease-in-out infinite;
+    }
+    @keyframes scanBar {
+      0%, 100% { opacity: 0.4; }
+      50% { opacity: 1; }
+    }
+
+    /* HEADER CHIP */
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      border: 1px solid var(--border);
+      padding: 6px 18px;
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--red);
+      animation: fadeSlideDown 0.8s ease both;
+    }
+
+    .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--red-bright);
+      animation: pulse 1.4s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; box-shadow: 0 0 0 0 var(--red-glow); }
+      50% { opacity: 0.6; box-shadow: 0 0 0 5px transparent; }
+    }
+
+    /* BIG HEADING */
+    .headline {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(72px, 14vw, 160px);
+      letter-spacing: 0.04em;
+      line-height: 0.9;
+      text-align: center;
+      position: relative;
+      animation: fadeSlideUp 1s 0.2s ease both;
+    }
+
+    .headline .line1 { color: var(--white); display: block; }
+    .headline .line2 { color: var(--red); display: block; position: relative; }
+
+    /* GLITCH on line2 */
+    .headline .line2::before,
+    .headline .line2::after {
+      content: attr(data-text);
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+    }
+    .headline .line2::before {
+      color: var(--red-bright);
+      animation: glitch1 4s infinite steps(1);
+      clip-path: polygon(0 20%, 100% 20%, 100% 40%, 0 40%);
+    }
+    .headline .line2::after {
+      color: #ff8080;
+      animation: glitch2 4s infinite steps(1);
+      clip-path: polygon(0 60%, 100% 60%, 100% 80%, 0 80%);
+    }
+
+    @keyframes glitch1 {
+      0%, 90%, 100% { transform: none; opacity: 0; }
+      92% { transform: translateX(-3px); opacity: 1; }
+      94% { transform: translateX(3px); opacity: 1; }
+      96% { transform: none; opacity: 0; }
+    }
+    @keyframes glitch2 {
+      0%, 88%, 100% { transform: none; opacity: 0; }
+      90% { transform: translateX(3px); opacity: 1; }
+      92% { transform: translateX(-2px); opacity: 1; }
+      94% { transform: none; opacity: 0; }
+    }
+
+    /* SUBTITLE */
+    .subtitle {
+      font-size: 13px;
+      letter-spacing: 0.15em;
+      color: rgba(240,236,232,0.45);
+      text-align: center;
+      animation: fadeSlideUp 1s 0.4s ease both;
+    }
+
+    /* DIVIDER */
+    .divider {
+      width: 100%;
+      max-width: 500px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      animation: fadeSlideUp 1s 0.5s ease both;
+    }
+    .divider-line {
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--red-dim), transparent);
+    }
+    .divider-icon {
+      font-size: 10px;
+      color: var(--red);
+      letter-spacing: 0.2em;
+    }
+
+    /* INFO GRID */
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2px;
+      width: 100%;
+      max-width: 640px;
+      animation: fadeSlideUp 1s 0.6s ease both;
+    }
+
+    .info-cell {
+      background: rgba(224,27,27,0.04);
+      border: 1px solid var(--border);
+      padding: 18px 20px;
+      position: relative;
+      overflow: hidden;
+      transition: background 0.3s;
+    }
+    .info-cell:hover {
+      background: rgba(224,27,27,0.1);
+    }
+    .info-cell::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 2px;
+      background: var(--red);
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 0.4s ease;
+    }
+    .info-cell:hover::after { transform: scaleX(1); }
+
+    .info-label {
+      font-size: 9px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--red);
+      margin-bottom: 6px;
+    }
+    .info-value {
+      font-size: 13px;
+      color: var(--white);
+      font-family: 'Space Mono', monospace;
+    }
+
+    /* TYPEWRITER TERMINAL */
+    .terminal {
+      width: 100%;
+      max-width: 640px;
+      background: var(--black2);
+      border: 1px solid var(--border);
+      animation: fadeSlideUp 1s 0.8s ease both;
+    }
+
+    .terminal-bar {
+      background: rgba(224,27,27,0.15);
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .t-dot { width: 9px; height: 9px; border-radius: 50%; }
+    .t-dot.r { background: var(--red); }
+    .t-dot.y { background: #555; }
+    .t-dot.g { background: #333; }
+    .terminal-title {
+      font-size: 10px;
+      letter-spacing: 0.15em;
+      color: rgba(240,236,232,0.35);
+      margin-left: 4px;
+    }
+
+    .terminal-body {
+      padding: 20px 24px;
+      font-size: 12px;
+      font-family: 'Share Tech Mono', monospace;
+      line-height: 2;
+      color: rgba(240,236,232,0.7);
+      min-height: 140px;
+    }
+
+    .line-ok { color: #4caf50; }
+    .line-red { color: var(--red-bright); }
+    .line-dim { color: rgba(240,236,232,0.3); }
+
+    .cursor {
+      display: inline-block;
+      width: 8px; height: 14px;
+      background: var(--red);
+      vertical-align: middle;
+      margin-left: 3px;
+      animation: blink 0.9s step-end infinite;
+    }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+    /* FOOTER */
+    .footer-text {
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      color: rgba(240,236,232,0.2);
+      text-transform: uppercase;
+      text-align: center;
+      animation: fadeSlideUp 1s 1s ease both;
+    }
+
+    /* ENTRY ANIMATIONS */
+    @keyframes fadeSlideDown {
+      from { opacity: 0; transform: translateY(-20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeSlideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* VERTICAL SIDE LABELS */
+    .side-label {
+      position: fixed;
+      font-size: 10px;
+      letter-spacing: 0.3em;
+      color: rgba(224,27,27,0.3);
+      text-transform: uppercase;
+      z-index: 10;
+    }
+    .side-label.left {
+      left: 24px; top: 50%;
+      transform: translateX(-50%) rotate(-90deg);
+      transform-origin: center;
+    }
+    .side-label.right {
+      right: 24px; top: 50%;
+      transform: translateX(50%) rotate(90deg);
+      transform-origin: center;
+    }
+
+    @media (max-width: 560px) {
+      .info-grid { grid-template-columns: 1fr 1fr; }
+      .side-label { display: none; }
+      .corner { width: 50px; height: 50px; }
+    }
+  </style>
+</head>
 <body>
-    <h1>Hello World</h1>
-    <p>IIS is serving this page correctly.</p>
+
+<div class="bg-grid"></div>
+<div class="status-bar"></div>
+<div class="corner tl"></div>
+<div class="corner tr"></div>
+<div class="corner bl"></div>
+<div class="corner br"></div>
+<div class="side-label left">IIS — Windows Server</div>
+<div class="side-label right">System Nominal</div>
+
+<div class="wrapper">
+
+  <div class="chip">
+    <span class="dot"></span>
+    Server Active
+  </div>
+
+  <div class="headline">
+    <span class="line1">Hello</span>
+    <span class="line2" data-text="World.">World.</span>
+  </div>
+
+  <p class="subtitle">IIS is serving this page correctly</p>
+
+  <div class="divider">
+    <div class="divider-line"></div>
+    <span class="divider-icon">◆ SYS ◆</span>
+    <div class="divider-line"></div>
+  </div>
+
+  <div class="info-grid">
+    <div class="info-cell">
+      <div class="info-label">Status</div>
+      <div class="info-value">200 OK</div>
+    </div>
+    <div class="info-cell">
+      <div class="info-label">Server</div>
+      <div class="info-value">IIS/Win</div>
+    </div>
+    <div class="info-cell">
+      <div class="info-label">Protocol</div>
+      <div class="info-value">HTTP/1.1</div>
+    </div>
+    <div class="info-cell">
+      <div class="info-label">Uptime</div>
+      <div class="info-value" id="uptime">00:00:00</div>
+    </div>
+    <div class="info-cell">
+      <div class="info-label">Host</div>
+      <div class="info-value" id="host">localhost</div>
+    </div>
+    <div class="info-cell">
+      <div class="info-label">Time</div>
+      <div class="info-value" id="clock">--:--:--</div>
+    </div>
+  </div>
+
+  <div class="terminal">
+    <div class="terminal-bar">
+      <span class="t-dot r"></span>
+      <span class="t-dot y"></span>
+      <span class="t-dot g"></span>
+      <span class="terminal-title">SYSTEM LOG — DIAGNOSTIC</span>
+    </div>
+    <div class="terminal-body" id="term-body">
+    </div>
+  </div>
+
+  <p class="footer-text">Freight In Time &nbsp;·&nbsp; IIS Test Node &nbsp;·&nbsp; Kenya</p>
+
+</div>
+
+<script>
+  // Clock
+  function updateClock() {
+    const now = new Date();
+    document.getElementById('clock').textContent =
+      now.toLocaleTimeString('en-GB', { hour12: false });
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  // Hostname
+  document.getElementById('host').textContent = location.hostname || 'localhost';
+
+  // Uptime counter
+  let secs = 0;
+  setInterval(() => {
+    secs++;
+    const h = String(Math.floor(secs / 3600)).padStart(2, '0');
+    const m = String(Math.floor((secs % 3600) / 60)).padStart(2, '0');
+    const s = String(secs % 60).padStart(2, '0');
+    document.getElementById('uptime').textContent = `${h}:${m}:${s}`;
+  }, 1000);
+
+  // Typewriter terminal
+  const lines = [
+    { text: '> Initializing IIS diagnostics...', cls: 'line-dim', delay: 200 },
+    { text: '> Binding to port 80 ............. <span class="line-ok">[OK]</span>', delay: 800 },
+    { text: '> Loading application pool ....... <span class="line-ok">[OK]</span>', delay: 1400 },
+    { text: '> Static content handler ......... <span class="line-ok">[OK]</span>', delay: 2000 },
+    { text: '> Request pipeline ready ......... <span class="line-ok">[OK]</span>', delay: 2600 },
+    { text: '> Test page delivered ............ <span class="line-red">[LIVE]</span>', delay: 3200 },
+  ];
+
+  const body = document.getElementById('term-body');
+
+  lines.forEach(({ text, cls, delay }) => {
+    setTimeout(() => {
+      const div = document.createElement('div');
+      div.className = cls || '';
+      div.innerHTML = text;
+      body.appendChild(div);
+    }, delay);
+  });
+
+  setTimeout(() => {
+    const cursor = document.createElement('div');
+    cursor.innerHTML = '> <span class="cursor"></span>';
+    body.appendChild(cursor);
+  }, 3800);
+</script>
+
 </body>
 </html>

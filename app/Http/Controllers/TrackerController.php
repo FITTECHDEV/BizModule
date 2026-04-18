@@ -2562,6 +2562,7 @@ public function mapNotificationsToTrip(Request $request)
         ], 500);
     }
 }
+
 // ========================================
 // NOTIFICATION MANAGEMENT METHODS
 // ========================================

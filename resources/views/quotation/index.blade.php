@@ -1718,7 +1718,7 @@ $('#cb_place_of_delivery_id').val(savedState.deliveryId);
         // force_step2 = 1 when the failed step is 2b or 3.
         // Both indicate the booking is missing in SCM (orphaned SCMBookingID).
         // The backend guard ensures this is ignored if the booking actually exists in SCM.
-        var forceStep2 = (['2b', 3].indexOf(String(failedStep)) !== -1) ? 1 : 0;
+        var forceStep2 = (['2', '2b', 3].indexOf(String(failedStep)) !== -1) ? 1 : 0;
     
         $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i>Retrying...');
     

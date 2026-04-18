@@ -106,7 +106,7 @@ class Kernel extends ConsoleKernel
                 Log::error('AR ZReport scheduled task failed at ' . now());
             });
 
-        $schedule->command('jimi:process-pending')->everyFiveMinutes();
+        // $schedule->command('jimi:process-pending')->everyFiveMinutes();
 
         $schedule->command('z_report_json_tz')
             ->dailyAt('11:00')

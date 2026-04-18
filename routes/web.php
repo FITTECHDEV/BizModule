@@ -1441,22 +1441,8 @@ Route::middleware(['auth'])->prefix('jimi-test')->group(function () {
     Route::post('/track', [JimiTestController::class, 'getTrackData'])->name('jimi.test.track');
 });
 
-// [2026-01-21 15:31:52] Production.ERROR: Error in user lookup {"username":"juma.k@freight-in-time.com","error":"SQLSTATE[42000]: [Microsoft][ODBC Driver 17 for SQL Server][SQL Server]Conversion failed when converting from a character string to uniqueidentifier. (SQL: select top 1 * from [Azure_Users] where LOWER(RTRIM(LTRIM(userPrincipalName))) = LOWER(juma.k@freight-in-time.com) and [id] is not null and [id] != )"}
-
 Route::get('zreport',        [App\Http\Controllers\ZReportRunnerController::class, 'index'])->name('zreport.index');
 Route::post('zreport/run',   [App\Http\Controllers\ZReportRunnerController::class, 'run'])->name('zreport.run');
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 Route::get('/azure-sync-user-apps/{email}', function ($email) {
@@ -1505,106 +1491,31 @@ Route::get('/azure-sync-user-apps/{email}', function ($email) {
 })->middleware('auth');
 
 
-// Add temporarily to routes/web.php
-Route::get('/debug-sp-industry', function () {
-    $pdo  = DB::connection('sqlsrv')->getPdo();
-    $stmt = $pdo->prepare("EXEC sp_IndustryTypeList @Filter = ''");
-    $stmt->execute();
-    $out = [];
-    $i   = 0;
-    do {
-        $i++;
-        try {
-            $rows      = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            $out["set_$i"] = [
-                'count'   => count($rows),
-                'columns' => !empty($rows) ? array_keys($rows[0]) : [],
-                'sample'  => $rows[0] ?? null,
-            ];
-        } catch (Exception $e) {
-            $out["set_$i"] = ['error' => $e->getMessage()];
-        }
-    } while ($stmt->nextRowset());
-    return response()->json($out);
-});
 
+Route::get('/debug-permissions', function () {
+    // Find the Azure user first to get their email
+    $azureUser = \App\Models\Logintracker\AzureUser::find('A71AFA52-654E-42D0-9BA1-C1818FE04ED0');
 
-// Add to routes/web.php temporarily
-Route::get('/debug-lookup-test', function () {
-    $request = request();
+    if (!$azureUser) {
+        return response()->json(['error' => 'Azure user not found']);
+    }
 
-    $countries = app(\App\Http\Controllers\QuotationController::class)->lookupCountries($request);
-    $industry  = app(\App\Http\Controllers\QuotationController::class)->lookupIndustryTypes($request);
+    // Use their email to find the auth user
+    $email = $azureUser->mail ?? $azureUser->userPrincipalName;
+    $authUser = \App\Models\User::where('email', $email)->first();
+
+    if (!$authUser) {
+        return response()->json([
+            'error'       => 'Auth user not found',
+            'azure_email' => $email,
+        ]);
+    }
 
     return response()->json([
-        'countries_count' => count(json_decode($countries->getContent(), true)),
-        'countries_sample' => array_slice(json_decode($countries->getContent(), true), 0, 2),
-        'industry_count'  => count(json_decode($industry->getContent(), true)),
-        'industry_sample' => array_slice(json_decode($industry->getContent(), true), 0, 2),
+        'auth_user_id'       => $authUser->id,
+        'email'              => $authUser->email,
+        'roles'              => $authUser->getRoleNames(),
+        'direct_permissions' => $authUser->getDirectPermissions()->pluck('name'),
+        'all_permissions'    => $authUser->getAllPermissions()->pluck('name'),
     ]);
 });
-
-
-# Add temporarily to routes/web.php
-Route::get('/debug-crm-sync', function () {
-    $rows = DB::connection('sqlsrv')
-        ->table('Quote_QuotationInfo')
-        ->whereIn('bookingno', [2761, 7351, 7496, 8219, 8488, 8490, 8506, 8507])
-        ->select('bookingno', 'QuoteNo', 'teamid', 'teamname', 'QuoteStatus', 'status', 'LastModifiedBy', 'Updatedon')
-        ->get();
-    return response()->json($rows);
-});
-
-
-
-// routes/web.php — TEMPORARY DEBUG ROUTE, remove after use
-Route::get('/debug/crm-rwanda', function () {
-    try {
-        $pdo = DB::connection('pgsql')->getPdo();
-
-        // Step 1: check if crm_details exists before calling SP
-        $before = $pdo->query("
-            SELECT COUNT(*) as cnt 
-            FROM information_schema.tables 
-            WHERE table_name = 'crm_details'
-        ")->fetch(\PDO::FETCH_OBJ);
-
-        // Step 2: call SP
-        $pdo->exec('CALL sp_QuoteDetails()');
-
-        // Step 3: check if crm_details exists after calling SP
-        $after = $pdo->query("
-            SELECT COUNT(*) as cnt 
-            FROM information_schema.tables 
-            WHERE table_name = 'crm_details'
-        ")->fetch(\PDO::FETCH_OBJ);
-
-        // Step 4: try counting rows
-        $count = 0;
-        $sample = [];
-        $error = null;
-        try {
-            $countResult = $pdo->query("SELECT COUNT(*) as cnt FROM crm_details")->fetch(\PDO::FETCH_OBJ);
-            $count = $countResult->cnt ?? 0;
-
-            // Step 5: get sample with ALL columns to see structure
-            $sample = $pdo->query("SELECT * FROM crm_details LIMIT 3")->fetchAll(\PDO::FETCH_OBJ);
-        } catch (\Exception $e) {
-            $error = $e->getMessage();
-        }
-
-        return response()->json([
-            'table_existed_before_sp' => $before->cnt > 0,
-            'table_exists_after_sp'   => $after->cnt > 0,
-            'row_count'               => $count,
-            'sample'                  => $sample,
-            'error'                   => $error,
-        ], 200, [], JSON_PRETTY_PRINT);
-    } catch (\Exception $e) {
-        return response()->json([
-            'error' => $e->getMessage(),
-            'file'  => $e->getFile(),
-            'line'  => $e->getLine(),
-        ], 500);
-    }
-})->middleware(['auth']);

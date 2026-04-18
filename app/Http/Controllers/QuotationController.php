@@ -130,19 +130,7 @@ class QuotationController extends Controller
             }
 
             // ── Date formatting ───────────────────────────────────────────────
-            $spFromDate = '';
-            $spToDate = '';
-            if ($days === 'custom' && $startDate && $endDate) {
-                try {
-                    $spFromDate = \Carbon\Carbon::createFromFormat('Y-m-d', $startDate)->format('d/m/Y');
-                    $spToDate = \Carbon\Carbon::createFromFormat('Y-m-d', $endDate)->format('d/m/Y');
-                } catch (\Exception $e) {
-                    Log::warning('portal - Invalid date range', [
-                        'start' => $startDate,
-                        'end' => $endDate,
-                    ]);
-                }
-            }
+            ['from' => $spFromDate, 'to' => $spToDate] = $this->resolveDateRange($days, $startDate, $endDate);
 
             // ── Resolve office code for SP ────────────────────────────────────
             // Requested office must be within the user's allowed codes.
@@ -501,6 +489,49 @@ class QuotationController extends Controller
         }
     }
 
+    /**
+     * Resolves $spFromDate / $spToDate from the request's 'days' parameter.
+     * Centralises logic used by portal(), dataFromSP(), and stats().
+     */
+    private function resolveDateRange(string $days, ?string $startDate, ?string $endDate): array
+    {
+        if ($days === 'custom' && $startDate && $endDate) {
+            try {
+                return [
+                    'from' => \Carbon\Carbon::createFromFormat('Y-m-d', $startDate)->format('d/m/Y'),
+                    'to' => \Carbon\Carbon::createFromFormat('Y-m-d', $endDate)->format('d/m/Y'),
+                ];
+            } catch (\Exception $e) {
+                Log::warning('resolveDateRange - Invalid custom range', [
+                    'start' => $startDate,
+                    'end' => $endDate,
+                ]);
+                return ['from' => '', 'to' => ''];
+            }
+        }
+
+        if ($days !== 'all' && is_numeric($days)) {
+            $daysInt = (int) $days;
+
+            if ($daysInt === 0) {
+                $date = now()->format('d/m/Y');
+                return ['from' => $date, 'to' => $date];
+            }
+
+            if ($daysInt === 1) {
+                $date = now()->subDay()->format('d/m/Y');
+                return ['from' => $date, 'to' => $date];
+            }
+
+            return [
+                'from' => now()->subDays($daysInt)->format('d/m/Y'),
+                'to' => now()->format('d/m/Y'),
+            ];
+        }
+
+        return ['from' => '', 'to' => ''];
+    }
+
     private function emptyStats(): array
     {
         return [
@@ -540,15 +571,7 @@ class QuotationController extends Controller
 
         $allowed = $allowedOfficeCodes->map(fn($c) => strtoupper(trim($c)))->toArray();
 
-        $spFromDate = '';
-        $spToDate = '';
-        if ($days === 'custom' && $startDate && $endDate) {
-            try {
-                $spFromDate = \Carbon\Carbon::createFromFormat('Y-m-d', $startDate)->format('d/m/Y');
-                $spToDate = \Carbon\Carbon::createFromFormat('Y-m-d', $endDate)->format('d/m/Y');
-            } catch (\Exception $e) {
-            }
-        }
+        ['from' => $spFromDate, 'to' => $spToDate] = $this->resolveDateRange($days, $startDate, $endDate);
 
         // Office dropdown filter
         $filterCode = null;
@@ -658,16 +681,7 @@ class QuotationController extends Controller
             $allowed = $allowedOfficeCodes->map(fn($c) => strtoupper(trim($c)))->toArray();
 
             // ── Date range — day filters ignored, SP only supports FromDate/ToDate ──
-            $spFromDate = '';
-            $spToDate = '';
-            if ($days === 'custom' && $startDate && $endDate) {
-                try {
-                    $spFromDate = \Carbon\Carbon::createFromFormat('Y-m-d', $startDate)->format('d/m/Y');
-                    $spToDate = \Carbon\Carbon::createFromFormat('Y-m-d', $endDate)->format('d/m/Y');
-                } catch (\Exception $e) {
-                    Log::warning('dataFromSP - Invalid date', ['start' => $startDate, 'end' => $endDate]);
-                }
-            }
+            ['from' => $spFromDate, 'to' => $spToDate] = $this->resolveDateRange($days, $startDate, $endDate);
 
             // ── Determine which SP call(s) to make per card ───────────────────
             // SP branches:
@@ -9863,23 +9877,23 @@ class QuotationController extends Controller
                     $description = htmlspecialchars($error['Description'] ?? '');
                     $severity = htmlspecialchars((string) ($error['Severity'] ?? '0'));
                     $errorXml .= "<Error>
-        <Code>{$code}</Code>
-        <Description>{$description}</Description>
-        <Severity>{$severity}</Severity>
-    </Error>";
+                    <Code>{$code}</Code>
+                    <Description>{$description}</Description>
+                    <Severity>{$severity}</Severity>
+                </Error>";
                 }
             }
 
             $inputXml = "
-    <ArrayOfTransaction>
-        <Transaction>
-            <ID>{$quotation->QuoteNo}</ID>
-            <Status>{$status}</Status>
-            <CutomerRefNo>{$customerRefNo}</CutomerRefNo>
-            <TransactionId>{$transactionId}</TransactionId>
-            <Errors>{$errorXml}</Errors>
-        </Transaction>
-    </ArrayOfTransaction>";
+                <ArrayOfTransaction>
+                    <Transaction>
+                        <ID>{$quotation->QuoteNo}</ID>
+                        <Status>{$status}</Status>
+                        <CutomerRefNo>{$customerRefNo}</CutomerRefNo>
+                        <TransactionId>{$transactionId}</TransactionId>
+                        <Errors>{$errorXml}</Errors>
+                    </Transaction>
+                </ArrayOfTransaction>";
 
             Log::info('pushBookingToSCM - Passing to sp_Quote_BookingCreateInfoUpdate', [
                 'quote_no' => $quotation->QuoteNo,

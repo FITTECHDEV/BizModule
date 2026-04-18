@@ -14,7 +14,6 @@ use Illuminate\Validation\ValidationException;
 
 class UserController extends Controller
 {
-
     /**
      * System names to hide from dropdowns / filfters.
      * Stored lowercase for robust comparisons.
@@ -23,17 +22,16 @@ class UserController extends Controller
      */
     protected $excludedSystems = [
         // 'Import-Unknown',
-        // 'Unknown', 
+        // 'Unknown',
         // 'Microsoft Teams',
         // 'Office 365',
-        // 'Windows Authentication',  
-        // 'IT Infrastructure',       
-        // 'FITerp UAT',             
-        // 'Web Browser',           
+        // 'Windows Authentication',
+        // 'IT Infrastructure',
+        // 'FITerp UAT',
+        // 'Web Browser',
         // 'Mobile/Desktop Client'
         // 'all'
     ];
-
 
     /**
      * Specific systems to display in the monthly summary table.
@@ -51,9 +49,8 @@ class UserController extends Controller
         'Odoo',
         'OPS',
         'OPS UAT',
-        'Windows Sign In'
+        'Windows Sign In',
     ];
-
 
     /**
      * Return visible systems (excludes configured names) — case-insensitive.
@@ -182,8 +179,11 @@ class UserController extends Controller
                     $q->where(DB::raw('LOWER(application)'), strtolower($systemName));
 
                     foreach ($rawSystemNames as $rawSystem) {
-                        $q->orWhere(DB::raw('LOWER(application)'), strtolower($rawSystem))
-                            ->orWhere('application', 'LIKE', "%{$rawSystem}%");
+                        $q->orWhere(DB::raw('LOWER(application)'), strtolower($rawSystem))->orWhere(
+                            'application',
+                            'LIKE',
+                            "%{$rawSystem}%",
+                        );
                     }
 
                     $q->orWhere(DB::raw('LOWER(application)'), 'like', '%' . strtolower($systemName) . '%');
@@ -228,22 +228,23 @@ class UserController extends Controller
                 }
 
                 // Add count only (we'll load signIns separately)
-                $query->withCount(['signIns as sign_ins_count' => function ($q) use ($start, $end, $system, $applySystemFilter) {
-                    $q->whereBetween('date_utc', [$start, $end]);
-                    if (!empty($this->excludedSystems)) {
-                        $q->whereNotIn(DB::raw('LOWER(application)'), $this->excludedSystems);
-                    }
-                    if ($system) {
-                        $applySystemFilter($q, $system);
-                    }
-                }]);
+                $query->withCount([
+                    'signIns as sign_ins_count' => function ($q) use ($start, $end, $system, $applySystemFilter) {
+                        $q->whereBetween('date_utc', [$start, $end]);
+                        if (!empty($this->excludedSystems)) {
+                            $q->whereNotIn(DB::raw('LOWER(application)'), $this->excludedSystems);
+                        }
+                        if ($system) {
+                            $applySystemFilter($q, $system);
+                        }
+                    },
+                ]);
 
                 $users = $query->paginate($this->perPage)->withQueryString();
 
                 // FIXED: Load signIns separately after pagination
                 $users->getCollection()->transform(function ($user) use ($start, $end, $system, $applySystemFilter) {
-                    $signInsQuery = SigninLog::where('user_id', $user->id)
-                        ->whereBetween('date_utc', [$start, $end]);
+                    $signInsQuery = SigninLog::where('user_id', $user->id)->whereBetween('date_utc', [$start, $end]);
 
                     if (!empty($this->excludedSystems)) {
                         $signInsQuery->whereNotIn(DB::raw('LOWER(application)'), $this->excludedSystems);
@@ -269,9 +270,15 @@ class UserController extends Controller
                     })
                     ->get();
 
-                $loggedInEmails = $logins->pluck('username')->filter()->unique()->map(fn($email) => strtolower(trim($email)));
+                $loggedInEmails = $logins
+                    ->pluck('username')
+                    ->filter()
+                    ->unique()
+                    ->map(fn($email) => strtolower(trim($email)));
                 $totalUsers = AzureUser::valid()->count();
-                $loggedInCount = $loggedInEmails->isEmpty() ? 0 : AzureUser::valid()->whereIn(DB::raw('LOWER(userPrincipalName)'), $loggedInEmails)->count();
+                $loggedInCount = $loggedInEmails->isEmpty()
+                    ? 0
+                    : AzureUser::valid()->whereIn(DB::raw('LOWER(userPrincipalName)'), $loggedInEmails)->count();
                 $notLoggedInCount = $totalUsers - $loggedInCount;
 
                 $systems = $this->visibleSystems();
@@ -290,7 +297,7 @@ class UserController extends Controller
 
                 Log::debug('AJAX Response Users', [
                     'user_ids' => array_column($mappedUsers, 'id'),
-                    'sample_users' => array_slice($mappedUsers, 0, 5)
+                    'sample_users' => array_slice($mappedUsers, 0, 5),
                 ]);
                 DB::disableQueryLog();
 
@@ -331,22 +338,23 @@ class UserController extends Controller
                 });
             }
 
-            $query->withCount(['signIns as sign_ins_count' => function ($q) use ($start, $end, $system, $applySystemFilter) {
-                $q->whereBetween('date_utc', [$start, $end]);
-                if (!empty($this->excludedSystems)) {
-                    $q->whereNotIn(DB::raw('LOWER(application)'), $this->excludedSystems);
-                }
-                if ($system) {
-                    $applySystemFilter($q, $system);
-                }
-            }]);
+            $query->withCount([
+                'signIns as sign_ins_count' => function ($q) use ($start, $end, $system, $applySystemFilter) {
+                    $q->whereBetween('date_utc', [$start, $end]);
+                    if (!empty($this->excludedSystems)) {
+                        $q->whereNotIn(DB::raw('LOWER(application)'), $this->excludedSystems);
+                    }
+                    if ($system) {
+                        $applySystemFilter($q, $system);
+                    }
+                },
+            ]);
 
             $users = $query->paginate($this->perPage)->withQueryString();
 
             // FIXED: Load signIns separately after pagination
             $users->getCollection()->transform(function ($user) use ($start, $end, $system, $applySystemFilter) {
-                $signInsQuery = SigninLog::where('user_id', $user->id)
-                    ->whereBetween('date_utc', [$start, $end]);
+                $signInsQuery = SigninLog::where('user_id', $user->id)->whereBetween('date_utc', [$start, $end]);
 
                 if (!empty($this->excludedSystems)) {
                     $signInsQuery->whereNotIn(DB::raw('LOWER(application)'), $this->excludedSystems);
@@ -369,9 +377,15 @@ class UserController extends Controller
                 })
                 ->get();
 
-            $loggedInEmails = $logins->pluck('username')->filter()->unique()->map(fn($email) => strtolower(trim($email)));
+            $loggedInEmails = $logins
+                ->pluck('username')
+                ->filter()
+                ->unique()
+                ->map(fn($email) => strtolower(trim($email)));
             $totalUsers = AzureUser::valid()->count();
-            $loggedInCount = $loggedInEmails->isEmpty() ? 0 : AzureUser::valid()->whereIn(DB::raw('LOWER(userPrincipalName)'), $loggedInEmails)->count();
+            $loggedInCount = $loggedInEmails->isEmpty()
+                ? 0
+                : AzureUser::valid()->whereIn(DB::raw('LOWER(userPrincipalName)'), $loggedInEmails)->count();
             $notLoggedInCount = $totalUsers - $loggedInCount;
 
             $systems = $this->visibleSystems();
@@ -391,7 +405,20 @@ class UserController extends Controller
             $rangeLabel = $this->getRangeLabel($rangeInput);
             $systemInput = $system ?: 'All Systems';
 
-            return view('logintracker.dashboard', compact('mappedUsers', 'loggedInCount', 'notLoggedInCount', 'rangeInput', 'system', 'totalUsers', 'rangeLabel', 'systemInput', 'systems'));
+            return view(
+                'logintracker.dashboard',
+                compact(
+                    'mappedUsers',
+                    'loggedInCount',
+                    'notLoggedInCount',
+                    'rangeInput',
+                    'system',
+                    'totalUsers',
+                    'rangeLabel',
+                    'systemInput',
+                    'systems',
+                ),
+            );
         } catch (\Exception $e) {
             Log::error('Error in index method', [
                 'error' => $e->getMessage(),
@@ -404,12 +431,11 @@ class UserController extends Controller
         }
     }
 
-
     public function show(Request $request, $identifier)
     {
         Log::info('UserController@show called', [
-            'identifier'    => $identifier,
-            'request_url'   => $request->fullUrl(),
+            'identifier' => $identifier,
+            'request_url' => $request->fullUrl(),
             'request_input' => $request->all(),
         ]);
 
@@ -440,7 +466,7 @@ class UserController extends Controller
                         $end = $now->copy()->endOfMonth();
                         Log::info('Date preset: This Month', [
                             'start' => $start->toDateString(),
-                            'end' => $end->toDateString()
+                            'end' => $end->toDateString(),
                         ]);
                         break;
 
@@ -449,7 +475,7 @@ class UserController extends Controller
                         $end = $now->copy()->subMonth()->endOfMonth();
                         Log::info('Date preset: Last Month', [
                             'start' => $start->toDateString(),
-                            'end' => $end->toDateString()
+                            'end' => $end->toDateString(),
                         ]);
                         break;
 
@@ -458,7 +484,7 @@ class UserController extends Controller
                         $end = $now->copy()->endOfMonth();
                         Log::info('Date preset: Last 3 Months', [
                             'start' => $start->toDateString(),
-                            'end' => $end->toDateString()
+                            'end' => $end->toDateString(),
                         ]);
                         break;
 
@@ -467,7 +493,7 @@ class UserController extends Controller
                         $start = $now->copy()->startOfMonth();
                         $end = $now->copy()->endOfMonth();
                         Log::warning('Invalid date preset, using current month', [
-                            'preset' => $preset
+                            'preset' => $preset,
                         ]);
                 }
             }
@@ -478,14 +504,12 @@ class UserController extends Controller
                     $end = Carbon::parse($endDate)->endOfDay();
 
                     if ($end->lt($start)) {
-                        return redirect()->back()
-                            ->withInput()
-                            ->with('error', 'End date cannot be before start date.');
+                        return redirect()->back()->withInput()->with('error', 'End date cannot be before start date.');
                     }
 
                     Log::info('Custom date range selected', [
                         'start' => $start->toDateString(),
-                        'end' => $end->toDateString()
+                        'end' => $end->toDateString(),
                     ]);
                 } else {
                     // Default to current month if no valid dates provided
@@ -494,15 +518,15 @@ class UserController extends Controller
 
                     Log::info('No valid custom dates, defaulting to current month', [
                         'start' => $start->toDateString(),
-                        'end' => $end->toDateString()
+                        'end' => $end->toDateString(),
                     ]);
                 }
             }
 
             Log::info('Date Range Resolved', [
                 'preset' => $preset,
-                'start'  => $start->toDateTimeString(),
-                'end'    => $end->toDateTimeString(),
+                'start' => $start->toDateTimeString(),
+                'end' => $end->toDateTimeString(),
             ]);
 
             // ====================================================================
@@ -511,7 +535,7 @@ class UserController extends Controller
             $allOctoberDates = SigninLog::where('user_id', $user->id)
                 ->whereBetween('date_utc', [
                     Carbon::parse('2025-10-01')->startOfDay(),
-                    Carbon::parse('2025-10-31')->endOfDay()
+                    Carbon::parse('2025-10-31')->endOfDay(),
                 ])
                 ->select(DB::raw('CONVERT(DATE, date_utc) as login_date'))
                 ->distinct()
@@ -523,13 +547,11 @@ class UserController extends Controller
                 'user_email' => $user->userPrincipalName,
                 'user_id' => $user->id,
                 'dates_with_activity' => $allOctoberDates,
-                'total_dates' => count($allOctoberDates)
+                'total_dates' => count($allOctoberDates),
             ]);
 
             // Check specifically for Oct 27
-            $oct27Count = SigninLog::where('user_id', $user->id)
-                ->whereDate('date_utc', '2025-10-27')
-                ->count();
+            $oct27Count = SigninLog::where('user_id', $user->id)->whereDate('date_utc', '2025-10-27')->count();
 
             $oct27Apps = SigninLog::where('user_id', $user->id)
                 ->whereDate('date_utc', '2025-10-27')
@@ -537,11 +559,10 @@ class UserController extends Controller
                 ->unique()
                 ->toArray();
 
-
             Log::info('🔍 DEBUG: October 27th Specific Check', [
                 'user_email' => $user->userPrincipalName,
                 'records_found' => $oct27Count,
-                'applications' => $oct27Apps
+                'applications' => $oct27Apps,
             ]);
 
             // Check the selected date range
@@ -556,7 +577,7 @@ class UserController extends Controller
             Log::info('🔍 DEBUG: Dates in Selected Range', [
                 'selected_range' => [$start->toDateString(), $end->toDateString()],
                 'dates_found' => $selectedRangeDates,
-                'count' => count($selectedRangeDates)
+                'count' => count($selectedRangeDates),
             ]);
             // ====================================================================
             // END DEBUG
@@ -577,7 +598,10 @@ class UserController extends Controller
             $currentMonthEnd = Carbon::now()->endOfMonth();
 
             // Get raw data grouped by date and application for CURRENT MONTH
-            $currentMonthApplicationsRaw = SigninLog::where(DB::raw('LOWER(username)'), strtolower($user->userPrincipalName))
+            $currentMonthApplicationsRaw = SigninLog::where(
+                DB::raw('LOWER(username)'),
+                strtolower($user->userPrincipalName),
+            )
                 ->whereBetween('date_utc', [$currentMonthStart, $currentMonthEnd])
                 ->whereNotNull('application')
                 ->where('application', '!=', '')
@@ -596,14 +620,14 @@ class UserController extends Controller
                 $rawAppLower = strtolower(trim($app->application));
 
                 // Try to get clean name from systemMap, fallback to original name
-                $cleanName = $systemMap[$rawAppLower] ?? $systemMap[$app->application] ?? $app->application;
+                $cleanName = $systemMap[$rawAppLower] ?? ($systemMap[$app->application] ?? $app->application);
 
                 if (!isset($mappedCurrentMonth[$cleanName])) {
                     $mappedCurrentMonth[$cleanName] = [
                         'application' => $cleanName,
                         'dates' => [],
                         'last_used' => $app->last_used,
-                        'is_mapped' => isset($systemMap[$rawAppLower]) || isset($systemMap[$app->application])
+                        'is_mapped' => isset($systemMap[$rawAppLower]) || isset($systemMap[$app->application]),
                     ];
                 }
 
@@ -621,11 +645,11 @@ class UserController extends Controller
             // Convert to collection with usage_count = number of unique days
             $currentMonthApplications = collect($mappedCurrentMonth)
                 ->map(function ($item) {
-                    return (object)[
+                    return (object) [
                         'application' => $item['application'],
                         'usage_count' => count($item['dates']), // Number of days used
                         'last_used' => $item['last_used'],
-                        'is_mapped' => $item['is_mapped']
+                        'is_mapped' => $item['is_mapped'],
                     ];
                 })
                 ->sortByDesc('last_used')
@@ -636,13 +660,15 @@ class UserController extends Controller
                 'count' => $currentMonthApplications->count(),
                 'month' => Carbon::now()->format('F Y'),
                 'date_range' => [$currentMonthStart->toDateString(), $currentMonthEnd->toDateString()],
-                'details' => $currentMonthApplications->map(function ($app) {
-                    return [
-                        'name' => $app->application,
-                        'days_used' => $app->usage_count,
-                        'is_mapped' => $app->is_mapped
-                    ];
-                })->toArray()
+                'details' => $currentMonthApplications
+                    ->map(function ($app) {
+                        return [
+                            'name' => $app->application,
+                            'days_used' => $app->usage_count,
+                            'is_mapped' => $app->is_mapped,
+                        ];
+                    })
+                    ->toArray(),
             ]);
 
             // ====================================================================
@@ -671,14 +697,14 @@ class UserController extends Controller
                 $rawAppLower = strtolower(trim($app->application));
 
                 // Try to get clean name from systemMap, fallback to original name
-                $cleanName = $systemMap[$rawAppLower] ?? $systemMap[$app->application] ?? $app->application;
+                $cleanName = $systemMap[$rawAppLower] ?? ($systemMap[$app->application] ?? $app->application);
 
                 if (!isset($mappedRecent[$cleanName])) {
                     $mappedRecent[$cleanName] = [
                         'application' => $cleanName,
                         'dates' => [],
                         'last_used' => $app->last_used,
-                        'is_mapped' => isset($systemMap[$rawAppLower]) || isset($systemMap[$app->application])
+                        'is_mapped' => isset($systemMap[$rawAppLower]) || isset($systemMap[$app->application]),
                     ];
                 }
 
@@ -696,11 +722,11 @@ class UserController extends Controller
             // Convert to collection with usage_count = number of unique days
             $recentApplications = collect($mappedRecent)
                 ->map(function ($item) {
-                    return (object)[
+                    return (object) [
                         'application' => $item['application'],
                         'usage_count' => count($item['dates']), // Number of days used
                         'last_used' => $item['last_used'],
-                        'is_mapped' => $item['is_mapped']
+                        'is_mapped' => $item['is_mapped'],
                     ];
                 })
                 ->sortByDesc('last_used')
@@ -711,13 +737,15 @@ class UserController extends Controller
                 'count' => $recentApplications->count(),
                 'date_range' => [$start->toDateString(), $end->toDateString()],
                 'preset_used' => $preset,
-                'details' => $recentApplications->map(function ($app) {
-                    return [
-                        'name' => $app->application,
-                        'days_used' => $app->usage_count,
-                        'is_mapped' => $app->is_mapped
-                    ];
-                })->toArray()
+                'details' => $recentApplications
+                    ->map(function ($app) {
+                        return [
+                            'name' => $app->application,
+                            'days_used' => $app->usage_count,
+                            'is_mapped' => $app->is_mapped,
+                        ];
+                    })
+                    ->toArray(),
             ]);
 
             // ====================================================================
@@ -729,7 +757,7 @@ class UserController extends Controller
             try {
                 Log::info('Starting Monthly Summary Build', [
                     'date_range' => [$start->toDateString(), $end->toDateString()],
-                    'display_systems' => $this->displaySystems
+                    'display_systems' => $this->displaySystems,
                 ]);
 
                 if (empty($systemMap)) {
@@ -738,21 +766,15 @@ class UserController extends Controller
 
                 // Fetch raw login data with optimized query
                 $loginDataRaw = SigninLog::where(DB::raw('LOWER(username)'), strtolower($user->userPrincipalName))
-                    ->whereBetween('date_utc', [
-                        $start->format('Y-m-d 00:00:00'),
-                        $end->format('Y-m-d 23:59:59')
-                    ])
+                    ->whereBetween('date_utc', [$start->format('Y-m-d 00:00:00'), $end->format('Y-m-d 23:59:59')])
                     ->whereNotNull('application')
                     ->where('application', '!=', '')
                     ->select([
                         DB::raw('CONVERT(DATE, date_utc) as login_date'),
                         DB::raw('LTRIM(RTRIM(LOWER(application))) as application'),
-                        DB::raw('COUNT(*) as login_count')
+                        DB::raw('COUNT(*) as login_count'),
                     ])
-                    ->groupBy(
-                        DB::raw('CONVERT(DATE, date_utc)'),
-                        DB::raw('LTRIM(RTRIM(LOWER(application)))')
-                    )
+                    ->groupBy(DB::raw('CONVERT(DATE, date_utc)'), DB::raw('LTRIM(RTRIM(LOWER(application)))'))
                     ->orderBy('login_date')
                     ->get();
 
@@ -761,9 +783,14 @@ class UserController extends Controller
                     'unique_apps' => $loginDataRaw->pluck('application')->unique()->values()->toArray(),
                     'date_range' => [
                         $loginDataRaw->min('login_date') ?? 'N/A',
-                        $loginDataRaw->max('login_date') ?? 'N/A'
+                        $loginDataRaw->max('login_date') ?? 'N/A',
                     ],
-                    'all_dates_in_raw_data' => $loginDataRaw->pluck('login_date')->unique()->sort()->values()->toArray()
+                    'all_dates_in_raw_data' => $loginDataRaw
+                        ->pluck('login_date')
+                        ->unique()
+                        ->sort()
+                        ->values()
+                        ->toArray(),
                 ]);
 
                 // Build optimized reverse lookup: clean system name => array of lowercase raw variations
@@ -774,9 +801,9 @@ class UserController extends Controller
                     'mapping_details' => array_map(function ($variations) {
                         return [
                             'count' => count($variations),
-                            'samples' => array_slice($variations, 0, 3)
+                            'samples' => array_slice($variations, 0, 3),
                         ];
-                    }, $cleanToRawMap)
+                    }, $cleanToRawMap),
                 ]);
 
                 // Process and map raw data to clean system names
@@ -785,13 +812,17 @@ class UserController extends Controller
                 Log::info('Processed Data Structure', [
                     'dates_with_activity' => count($processedData),
                     'dates_list' => array_keys($processedData),
-                    'total_logins_mapped' => array_sum(array_map(function ($systems) {
-                        return array_sum($systems);
-                    }, $processedData)),
-                    'sample_date_data' => !empty($processedData) ? [
-                        'date' => array_key_first($processedData),
-                        'systems' => array_keys($processedData[array_key_first($processedData)])
-                    ] : null
+                    'total_logins_mapped' => array_sum(
+                        array_map(function ($systems) {
+                            return array_sum($systems);
+                        }, $processedData),
+                    ),
+                    'sample_date_data' => !empty($processedData)
+                        ? [
+                            'date' => array_key_first($processedData),
+                            'systems' => array_keys($processedData[array_key_first($processedData)]),
+                        ]
+                        : null,
                 ]);
 
                 // Build the monthly summary rows using associative arrays
@@ -812,19 +843,17 @@ class UserController extends Controller
                     'first_5_rows' => array_slice($monthlySummary, 0, 5),
                     'display_systems' => $this->displaySystems,
                     'systems_with_data' => $systemsWithData,
-                    'sample_processed_data' => array_slice($processedData, 0, 2, true)
+                    'sample_processed_data' => array_slice($processedData, 0, 2, true),
                 ]);
-
 
                 if (
                     stripos($user->userPrincipalName, 'amay') !== false ||
                     stripos($user->displayName ?? '', 'amay') !== false
                 ) {
-
                     Log::info('🔍 AMAY SPECIFIC DEBUG - Raw Database Query', [
                         'user_email' => $user->userPrincipalName,
                         'user_id' => $user->id,
-                        'searching_for_dates' => ['2025-10-10', '2025-10-23']
+                        'searching_for_dates' => ['2025-10-10', '2025-10-23'],
                     ]);
 
                     // Check what's actually in the database for Oct 10 and 23
@@ -842,12 +871,12 @@ class UserController extends Controller
 
                     Log::info('🔍 AMAY - October 10 Raw Data', [
                         'record_count' => count($amayOct10Data),
-                        'records' => $amayOct10Data
+                        'records' => $amayOct10Data,
                     ]);
 
                     Log::info('🔍 AMAY - October 23 Raw Data', [
                         'record_count' => count($amayOct23Data),
-                        'records' => $amayOct23Data
+                        'records' => $amayOct23Data,
                     ]);
 
                     // Check what applications are on those dates
@@ -866,7 +895,7 @@ class UserController extends Controller
                     Log::info('🔍 AMAY - Applications Used', [
                         'oct_10_apps' => $oct10Apps,
                         'oct_23_apps' => $oct23Apps,
-                        'system_map_sample' => array_slice(config('systemmap', []), 0, 10, true)
+                        'system_map_sample' => array_slice(config('systemmap', []), 0, 10, true),
                     ]);
                 }
 
@@ -874,19 +903,35 @@ class UserController extends Controller
                     'total_rows' => count($monthlySummary),
                     'date_range' => [$start->format('d/M/Y'), $end->format('d/M/Y')],
                     'systems_with_data' => $systemsWithData,
-                    'rows_with_activity' => count(array_filter($monthlySummary, function ($row) {
-                        return count(array_filter($row, function ($v, $k) {
-                            return $k !== 'LoginDate' && $v !== '';
-                        }, ARRAY_FILTER_USE_BOTH)) > 0;
-                    })),
-                    'first_3_rows' => array_slice(array_map(function ($row) {
-                        return [
-                            'date' => $row['LoginDate'],
-                            'systems' => array_filter($row, function ($v, $k) {
-                                return $k !== 'LoginDate' && $v !== '';
-                            }, ARRAY_FILTER_USE_BOTH)
-                        ];
-                    }, $monthlySummary), 0, 3)
+                    'rows_with_activity' => count(
+                        array_filter($monthlySummary, function ($row) {
+                            return count(
+                                array_filter(
+                                    $row,
+                                    function ($v, $k) {
+                                        return $k !== 'LoginDate' && $v !== '';
+                                    },
+                                    ARRAY_FILTER_USE_BOTH,
+                                ),
+                            ) > 0;
+                        }),
+                    ),
+                    'first_3_rows' => array_slice(
+                        array_map(function ($row) {
+                            return [
+                                'date' => $row['LoginDate'],
+                                'systems' => array_filter(
+                                    $row,
+                                    function ($v, $k) {
+                                        return $k !== 'LoginDate' && $v !== '';
+                                    },
+                                    ARRAY_FILTER_USE_BOTH,
+                                ),
+                            ];
+                        }, $monthlySummary),
+                        0,
+                        3,
+                    ),
                 ]);
             } catch (\Exception $e) {
                 Log::error('Error building monthly summary', [
@@ -901,8 +946,10 @@ class UserController extends Controller
             // ====================================================================
             // 6. SIGN-INS QUERY (NO EXCLUSIONS - SHOW ALL APPLICATIONS)
             // ====================================================================
-            $signInsQuery = SigninLog::where(DB::raw('LOWER(username)'), strtolower($user->userPrincipalName))
-                ->whereBetween('date_utc', [$start, $end]);
+            $signInsQuery = SigninLog::where(
+                DB::raw('LOWER(username)'),
+                strtolower($user->userPrincipalName),
+            )->whereBetween('date_utc', [$start, $end]);
 
             if ($request->filled('search')) {
                 $search = $request->input('search');
@@ -911,10 +958,7 @@ class UserController extends Controller
                 });
             }
 
-            $signIns = $signInsQuery
-                ->orderBy('date_utc', 'desc')
-                ->paginate($this->perPage)
-                ->withQueryString();
+            $signIns = $signInsQuery->orderBy('date_utc', 'desc')->paginate($this->perPage)->withQueryString();
 
             Log::info('Sign-ins Query', [
                 'total' => $signIns->total(),
@@ -964,24 +1008,27 @@ class UserController extends Controller
                 'unique_apps' => $uniqueAppsCount,
                 'monthly_summary_rows' => count($monthlySummary),
                 'current_month_apps' => $currentMonthApplications->count(),
-                'recent_apps' => $recentApplications->count()
+                'recent_apps' => $recentApplications->count(),
             ]);
 
             // ====================================================================
             // 9. RETURN VIEW
             // ====================================================================
-            return view('logintracker.users.show', compact(
-                'user',
-                'signIns',
-                'start',
-                'end',
-                'range',
-                'rangeLabel',
-                'recentApplications',
-                'currentMonthApplications',
-                'monthlySummary',
-                'uniqueAppsCount'
-            ));
+            return view(
+                'logintracker.users.show',
+                compact(
+                    'user',
+                    'signIns',
+                    'start',
+                    'end',
+                    'range',
+                    'rangeLabel',
+                    'recentApplications',
+                    'currentMonthApplications',
+                    'monthlySummary',
+                    'uniqueAppsCount',
+                ),
+            );
         } catch (\Throwable $e) {
             Log::error('UserController@show failed', [
                 'identifier' => $identifier,
@@ -991,15 +1038,13 @@ class UserController extends Controller
                 'stack_trace' => $e->getTraceAsString(),
             ]);
 
-            return redirect()
-                ->route('dashboard')
-                ->with('error', 'Unable to load user details. Please try again.');
+            return redirect()->route('dashboard')->with('error', 'Unable to load user details. Please try again.');
         }
     }
 
     /**
      * Build clean to raw system name mapping
-     * 
+     *
      * @param array $systemMap
      * @return array
      */
@@ -1029,7 +1074,7 @@ class UserController extends Controller
 
     /**
      * Process raw login data and map to clean system names
-     * 
+     *
      * @param \Illuminate\Support\Collection $loginDataRaw
      * @param array $cleanToRawMap
      * @return array
@@ -1055,14 +1100,14 @@ class UserController extends Controller
                         $processedData[$dateKey][$cleanSystem] = 0;
                     }
 
-                    $processedData[$dateKey][$cleanSystem] += (int)$record->login_count;
+                    $processedData[$dateKey][$cleanSystem] += (int) $record->login_count;
                     $matched = true;
 
                     Log::debug('Application Matched', [
                         'date' => $dateKey,
                         'raw_app' => $record->application,
                         'matched_to' => $cleanSystem,
-                        'count' => $record->login_count
+                        'count' => $record->login_count,
                     ]);
 
                     break; // Stop after first match
@@ -1074,7 +1119,7 @@ class UserController extends Controller
                 Log::warning('Unmatched Application', [
                     'date' => $dateKey,
                     'raw_app' => $record->application,
-                    'count' => $record->login_count
+                    'count' => $record->login_count,
                 ]);
             }
         }
@@ -1082,7 +1127,7 @@ class UserController extends Controller
         if (!empty($unmatchedApps)) {
             Log::warning('Summary of Unmatched Applications', [
                 'unique_unmatched' => array_unique($unmatchedApps),
-                'total_unmatched' => count($unmatchedApps)
+                'total_unmatched' => count($unmatchedApps),
             ]);
         }
 
@@ -1092,7 +1137,7 @@ class UserController extends Controller
     /**
      * Build monthly summary rows from processed data
      * NOW INCLUDES ALL DATES IN RANGE, NOT JUST DATES WITH ACTIVITY
-     * 
+     *
      * @param array $processedData
      * @param \Carbon\Carbon $start
      * @param \Carbon\Carbon $end
@@ -1123,13 +1168,13 @@ class UserController extends Controller
                 foreach ($systemCounts as $cleanSystem => $count) {
                     if (in_array($cleanSystem, $this->displaySystems, true)) {
                         // Use '1' for any activity (or show actual count if preferred)
-                        $row[$cleanSystem] = ($count > 0) ? '1' : '';
+                        $row[$cleanSystem] = $count > 0 ? '1' : '';
                     } else {
                         Log::warning('Clean system not in display systems', [
                             'date' => $dateStr,
                             'clean_system' => $cleanSystem,
                             'count' => $count,
-                            'available_systems' => $this->displaySystems
+                            'available_systems' => $this->displaySystems,
                         ]);
                     }
                 }
@@ -1141,10 +1186,16 @@ class UserController extends Controller
             Log::debug('Row Created', [
                 'date' => $row['LoginDate'],
                 'has_activity' => isset($processedData[$dateStr]),
-                'active_systems' => array_keys(array_filter($row, function ($v, $k) {
-                    return $k !== 'LoginDate' && $v !== '';
-                }, ARRAY_FILTER_USE_BOTH)),
-                'row_data' => $row
+                'active_systems' => array_keys(
+                    array_filter(
+                        $row,
+                        function ($v, $k) {
+                            return $k !== 'LoginDate' && $v !== '';
+                        },
+                        ARRAY_FILTER_USE_BOTH,
+                    ),
+                ),
+                'row_data' => $row,
             ]);
 
             // Move to next day
@@ -1156,7 +1207,7 @@ class UserController extends Controller
 
     /**
      * Get systems that have data across all rows
-     * 
+     *
      * @param array $monthlySummary
      * @return array
      */
@@ -1175,7 +1226,6 @@ class UserController extends Controller
         return $systemsWithData;
     }
 
-
     /**
      * Show users active this month
      */
@@ -1193,17 +1243,16 @@ class UserController extends Controller
                 'search' => $search,
                 'per_page' => $perPage,
                 'is_ajax' => $request->ajax(),
-                'date_range' => [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')]
+                'date_range' => [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')],
             ]);
 
             // Query users who logged in this month
-            $query = AzureUser::valid()
-                ->whereHas('signIns', function ($q) use ($startDate, $endDate) {
-                    $q->whereBetween('date_utc', [$startDate, $endDate]);
-                    if (!empty($this->excludedSystems)) {
-                        $q->whereNotIn(DB::raw('LOWER(application)'), $this->excludedSystems);
-                    }
-                });
+            $query = AzureUser::valid()->whereHas('signIns', function ($q) use ($startDate, $endDate) {
+                $q->whereBetween('date_utc', [$startDate, $endDate]);
+                if (!empty($this->excludedSystems)) {
+                    $q->whereNotIn(DB::raw('LOWER(application)'), $this->excludedSystems);
+                }
+            });
 
             // Apply search filter if provided
             if ($search) {
@@ -1216,12 +1265,15 @@ class UserController extends Controller
             }
 
             // Add login count only (we'll load signIns separately)
-            $query->withCount(['signIns as login_count' => function ($q) use ($startDate, $endDate) {
-                $q->whereBetween('date_utc', [$startDate, $endDate]);
-                if (!empty($this->excludedSystems)) {
-                    $q->whereNotIn(DB::raw('LOWER(application)'), $this->excludedSystems);
-                }
-            }])
+            $query
+                ->withCount([
+                    'signIns as login_count' => function ($q) use ($startDate, $endDate) {
+                        $q->whereBetween('date_utc', [$startDate, $endDate]);
+                        if (!empty($this->excludedSystems)) {
+                            $q->whereNotIn(DB::raw('LOWER(application)'), $this->excludedSystems);
+                        }
+                    },
+                ])
                 ->orderByDesc('login_count');
 
             $users = $query->paginate($perPage)->withQueryString();
@@ -1237,7 +1289,7 @@ class UserController extends Controller
                         })
                         ->orderByDesc('date_utc')
                         ->limit(5)
-                        ->get()
+                        ->get(),
                 );
                 return $user;
             });
@@ -1249,14 +1301,17 @@ class UserController extends Controller
                     'user_name' => $firstUser->displayName,
                     'login_count' => $firstUser->login_count,
                     'signIns_count' => $firstUser->signIns->count(),
-                    'signIns_data' => $firstUser->signIns->take(2)->map(function ($signIn) {
-                        return [
-                            'id' => $signIn->id,
-                            'date_utc' => $signIn->date_utc,
-                            'application' => $signIn->application,
-                            'all_fields' => array_keys($signIn->toArray())
-                        ];
-                    })->toArray()
+                    'signIns_data' => $firstUser->signIns
+                        ->take(2)
+                        ->map(function ($signIn) {
+                            return [
+                                'id' => $signIn->id,
+                                'date_utc' => $signIn->date_utc,
+                                'application' => $signIn->application,
+                                'all_fields' => array_keys($signIn->toArray()),
+                            ];
+                        })
+                        ->toArray(),
                 ]);
             }
 
@@ -1264,7 +1319,7 @@ class UserController extends Controller
                 'total_count' => $users->total(),
                 'current_page' => $users->currentPage(),
                 'per_page' => $users->perPage(),
-                'search' => $search
+                'search' => $search,
             ]);
 
             // Handle AJAX requests
@@ -1298,7 +1353,7 @@ class UserController extends Controller
         } catch (\Exception $e) {
             Log::error('Error in activeThisMonth', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
             if ($request->ajax()) {
@@ -1326,17 +1381,16 @@ class UserController extends Controller
                 'search' => $search,
                 'per_page' => $perPage,
                 'is_ajax' => $request->ajax(),
-                'date_range' => [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')]
+                'date_range' => [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')],
             ]);
 
             // Query users who logged in last month
-            $query = AzureUser::valid()
-                ->whereHas('signIns', function ($q) use ($startDate, $endDate) {
-                    $q->whereBetween('date_utc', [$startDate, $endDate]);
-                    if (!empty($this->excludedSystems)) {
-                        $q->whereNotIn(DB::raw('LOWER(application)'), $this->excludedSystems);
-                    }
-                });
+            $query = AzureUser::valid()->whereHas('signIns', function ($q) use ($startDate, $endDate) {
+                $q->whereBetween('date_utc', [$startDate, $endDate]);
+                if (!empty($this->excludedSystems)) {
+                    $q->whereNotIn(DB::raw('LOWER(application)'), $this->excludedSystems);
+                }
+            });
 
             // Apply search filter if provided
             if ($search) {
@@ -1349,12 +1403,15 @@ class UserController extends Controller
             }
 
             // Add login count only (we'll load signIns separately)
-            $query->withCount(['signIns as login_count' => function ($q) use ($startDate, $endDate) {
-                $q->whereBetween('date_utc', [$startDate, $endDate]);
-                if (!empty($this->excludedSystems)) {
-                    $q->whereNotIn(DB::raw('LOWER(application)'), $this->excludedSystems);
-                }
-            }])
+            $query
+                ->withCount([
+                    'signIns as login_count' => function ($q) use ($startDate, $endDate) {
+                        $q->whereBetween('date_utc', [$startDate, $endDate]);
+                        if (!empty($this->excludedSystems)) {
+                            $q->whereNotIn(DB::raw('LOWER(application)'), $this->excludedSystems);
+                        }
+                    },
+                ])
                 ->orderByDesc('login_count');
 
             $users = $query->paginate($perPage)->withQueryString();
@@ -1370,7 +1427,7 @@ class UserController extends Controller
                         })
                         ->orderByDesc('date_utc')
                         ->limit(1)
-                        ->get()
+                        ->get(),
                 );
                 return $user;
             });
@@ -1379,7 +1436,7 @@ class UserController extends Controller
                 'total_count' => $users->total(),
                 'current_page' => $users->currentPage(),
                 'per_page' => $users->perPage(),
-                'search' => $search
+                'search' => $search,
             ]);
 
             // Handle AJAX requests
@@ -1429,7 +1486,7 @@ class UserController extends Controller
         } catch (\Exception $e) {
             Log::error('Error in activeLastMonth', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
             if ($request->ajax()) {
@@ -1447,14 +1504,14 @@ class UserController extends Controller
     public function inactiveUsers(Request $request)
     {
         try {
-            $search         = $request->input('search');
-            $perPage        = $request->input('per_page', $this->perPage);
+            $search = $request->input('search');
+            $perPage = $request->input('per_page', $this->perPage);
             $threeMonthsAgo = Carbon::now()->subMonths(3)->startOfDay();
 
             Log::info('UserController@inactiveUsers called', [
-                'search'         => $search,
-                'per_page'       => $perPage,
-                'is_ajax'        => $request->ajax(),
+                'search' => $search,
+                'per_page' => $perPage,
+                'is_ajax' => $request->ajax(),
                 'inactive_since' => $threeMonthsAgo->toDateTimeString(),
             ]);
 
@@ -1470,11 +1527,14 @@ class UserController extends Controller
                 ->whereNotNull('userPrincipalName')
                 ->where('userPrincipalName', '!=', '')
                 ->whereRaw("userPrincipalName NOT LIKE 'User-%'")
-                ->whereRaw("NOT EXISTS (
+                ->whereRaw(
+                    "NOT EXISTS (
                 SELECT 1 FROM Azure_LoginDetails ald
                 WHERE ald.username = Azure_Users.userPrincipalName
                     AND ald.date_utc >= ?
-            )", [$threeMonthsAgo]);
+            )",
+                    [$threeMonthsAgo],
+                );
 
             if ($search) {
                 $query->where(function ($q) use ($search) {
@@ -1495,33 +1555,33 @@ class UserController extends Controller
             });
 
             Log::info('Inactive users loaded', [
-                'total_count'  => $users->total(),
+                'total_count' => $users->total(),
                 'current_page' => $users->currentPage(),
-                'per_page'     => $users->perPage(),
-                'search'       => $search,
+                'per_page' => $users->perPage(),
+                'search' => $search,
             ]);
 
             if ($request->ajax()) {
                 $mappedUsers = $users->map(function ($user) {
                     return [
-                        'id'                   => $user->id,
-                        'displayName'          => $user->displayName,
-                        'userPrincipalName'    => $user->userPrincipalName,
-                        'mail'                 => $user->mail,
+                        'id' => $user->id,
+                        'displayName' => $user->displayName,
+                        'userPrincipalName' => $user->userPrincipalName,
+                        'mail' => $user->mail,
                         'alternateEmailAddress' => $user->alternateEmailAddress,
-                        'signIns'              => [],
+                        'signIns' => [],
                     ];
                 });
 
                 return response()->json([
-                    'users'        => $mappedUsers->values()->toArray(),
-                    'total'        => $users->total(),
+                    'users' => $mappedUsers->values()->toArray(),
+                    'total' => $users->total(),
                     'current_page' => $users->currentPage(),
-                    'per_page'     => $users->perPage(),
-                    'last_page'    => $users->lastPage(),
-                    'from'         => $users->firstItem(),
-                    'to'           => $users->lastItem(),
-                    'pagination'   => (string) $users->links(),
+                    'per_page' => $users->perPage(),
+                    'last_page' => $users->lastPage(),
+                    'from' => $users->firstItem(),
+                    'to' => $users->lastItem(),
+                    'pagination' => (string) $users->links(),
                 ]);
             }
 
@@ -1539,8 +1599,6 @@ class UserController extends Controller
             return redirect()->route('dashboard')->with('error', 'An unexpected error occurred.');
         }
     }
-
-
 
     /**
      * Helper method to resolve date range based on selection
@@ -1563,7 +1621,7 @@ class UserController extends Controller
                     // If custom is selected but dates are missing, default to this month
                     Log::warning('Custom range selected but dates missing', [
                         'start_date' => $startDate,
-                        'end_date' => $endDate
+                        'end_date' => $endDate,
                     ]);
                     $start = Carbon::now()->startOfMonth();
                     $end = Carbon::now()->endOfMonth();
@@ -1653,7 +1711,7 @@ class UserController extends Controller
                 'system',
                 DB::raw('COUNT(*) as usage_count'),
                 DB::raw('MAX(date_utc) as last_used'),
-                DB::raw('STRING_AGG(CAST(system AS NVARCHAR(MAX)), \', \') WITHIN GROUP (ORDER BY system) as systems')
+                DB::raw('STRING_AGG(CAST(system AS NVARCHAR(MAX)), \', \') WITHIN GROUP (ORDER BY system) as systems'),
             ])
                 ->where(DB::raw('LOWER(username)'), strtolower($user->userPrincipalName))
                 ->whereBetween('date_utc', [$start, $end])
@@ -1668,7 +1726,7 @@ class UserController extends Controller
                 'system',
                 DB::raw('COUNT(*) as usage_count'),
                 DB::raw('MAX(date_utc) as last_used'),
-                DB::raw('GROUP_CONCAT(DISTINCT system ORDER BY system SEPARATOR ", ") as systems')
+                DB::raw('GROUP_CONCAT(DISTINCT system ORDER BY system SEPARATOR ", ") as systems'),
             ])
                 ->where(DB::raw('LOWER(username)'), strtolower($user->userPrincipalName))
                 ->whereBetween('date_utc', [$start, $end])

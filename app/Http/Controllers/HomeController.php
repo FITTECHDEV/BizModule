@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Yajra\DataTables\Facades\DataTables;
-use App\Http\Controllers\ShipmentReportController;
+use App\Http\Controllers\ShipmentReportController;      
 
 
 
