@@ -21,7 +21,8 @@
 @stop
 
 @php
-    $isBookingCreated = !empty($quotation->SCMBookingNo);
+    $lockedStatuses = ['Won', 'Completed'];
+    $isBookingCreated = in_array($quotation->quotestatus ?? '', $lockedStatuses);
 @endphp
 
 @section('content')
@@ -88,6 +89,17 @@
                                     value="{{ $quotation->SalesPersonEmail ?? '' }}" readonly>
                             </div>
                         </div>
+
+                        <div class="form-group row">
+    <label class="col-sm-5 col-form-label">Currency <span class="text-danger">*</span></label>
+    <div class="col-sm-7">
+        <input type="text" class="form-control form-control-sm" id="quotationCurrencyDisplay"
+            value="{{ $quotation->QuoteCurr ?? 'USD' }}" readonly>
+        <select class="form-control form-control-sm d-none" id="quotationCurrencySelect">
+            <option value="">-- Select --</option>
+        </select>
+    </div>
+</div>
                         @if (!$isBookingCreated)
                             <div class="row mt-3 pt-2" style="border-top: 1px solid #dee2e6;">
                                 <div class="col-md-12 text-right">
@@ -625,7 +637,7 @@
                                             readonly>
                                     </div>
                                 </div>
-                                <div class="form-group row mb-0">
+                     <div class="form-group row mb-0">
                                     <label class="col-sm-4 col-form-label">
                                         Industry <span class="text-danger customer-mandatory-star"
                                             style="display:none;">*</span>
@@ -642,6 +654,167 @@
                                 </div>
                             </div>
                         </div>
+
+                        {{-- ── Quote Includes ── --}}
+                        <div class="row mt-3 pt-2" style="border-top: 1px solid #dee2e6;">
+                            <div class="col-12">
+                                <p class="text-uppercase font-weight-bold mb-2"
+                                   style="font-size: 0.75rem; letter-spacing: 0.08em; color: #003580;">
+                                    Quote Includes
+                                </p>
+                                <div class="d-flex flex-wrap" style="gap: 8px;">
+                                    <label class="quote-includes-option d-flex align-items-center border rounded px-3 py-2 mb-0"
+                                           style="cursor:pointer; font-size:0.875rem; gap:8px; background:#fff;">
+                                        <input type="checkbox" id="quoteIncludesInsurance" name="quote_includes_insurance">
+                                        Insurance
+                                    </label>
+                                    <label class="quote-includes-option d-flex align-items-center border rounded px-3 py-2 mb-0"
+                                           style="cursor:pointer; font-size:0.875rem; gap:8px; background:#fff;">
+                                        <input type="checkbox" id="quoteIncludesLastMile" name="quote_includes_last_mile">
+                                        Last Mile
+                                    </label>
+                                    <label class="quote-includes-option d-flex align-items-center border rounded px-3 py-2 mb-0"
+                                           id="customDutyLabel"
+                                           style="cursor:pointer; font-size:0.875rem; gap:8px; background:#fff;">
+                                        <input type="checkbox" id="quoteIncludesCustomDuty" name="quote_includes_custom_duty">
+                                        Custom Duty
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- ── Product Details (visible only when Custom Duty is checked) ── --}}
+                        <div class="row mt-3" id="productDetailsSection" style="display:none;">
+                            <div class="col-12">
+                                <p class="text-uppercase font-weight-bold mb-2"
+                                   style="font-size: 0.75rem; letter-spacing: 0.08em; color: #003580;">
+                                    Product Details
+                                </p>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-bordered mb-1" id="productDetailsTable">
+                                        <thead class="thead-light">
+                                            <tr>
+                                                <th style="min-width:160px; font-size:0.75rem;">Description</th>
+                                                <th style="width:100px; font-size:0.75rem;">Weight</th>
+                                                <th style="width:100px; font-size:0.75rem;">L×B×H <small class="text-muted">(m³)</small></th>
+                                                <th style="width:80px; font-size:0.75rem;">QTY</th>
+                                                <th style="width:120px; font-size:0.75rem;">Price</th>
+                                                <th style="width:36px;"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="productDetailsBody">
+                                            <tr class="product-details-row">
+                                                <td>
+                                                    <input type="text" class="form-control form-control-sm"
+                                                           name="product_description[]" placeholder="Description">
+                                                </td>
+                                                <td>
+                                                    <div class="input-group input-group-sm">
+                                                        <input type="number" class="form-control form-control-sm"
+                                                               name="product_weight[]" step="0.01" min="0">
+                                                        <div class="input-group-append">
+                                                            <span class="input-group-text" style="font-size:0.75rem;">kg</span>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="input-group input-group-sm">
+                                                        <input type="number" class="form-control form-control-sm"
+                                                               name="product_dimensions[]" step="0.01" min="0">
+                                               <div class="input-group-append">
+    <span class="input-group-text" style="font-size:0.75rem;">m³</span>
+</div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <input type="number" class="form-control form-control-sm"
+                                                           name="product_qty[]" placeholder="Qty" min="1" step="1">
+                                                </td>
+                                                <td>
+                                                    <div class="input-group input-group-sm">
+                                                        <div class="input-group-prepend">
+                                                            <span class="input-group-text" style="font-size:0.75rem;">USD</span>
+                                                        </div>
+                                                        <input type="number" class="form-control form-control-sm"
+                                                               name="product_price[]" step="0.01" min="0">
+                                                    </div>
+                                                </td>
+                                                <td class="text-center align-middle">
+                                                    <button type="button"
+                                                            class="btn btn-sm btn-outline-danger remove-product-row-btn"
+                                                            style="padding:1px 6px; line-height:1.4;"
+                                                            title="Remove row">&times;</button>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <button type="button" class="btn btn-outline-primary btn-sm" id="addProductRowBtn"
+                                        style="font-size:0.8rem;">
+                                    + Add Row
+                                </button>
+                            </div>
+                        </div>
+
+                        {{-- ── Quote Includes JS (UI only — no API calls) ── --}}
+                     <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const customDutyCheckbox    = document.getElementById('quoteIncludesCustomDuty');
+        const productDetailsSection = document.getElementById('productDetailsSection');
+        const addProductRowBtn      = document.getElementById('addProductRowBtn');
+        const productDetailsBody    = document.getElementById('productDetailsBody');
+
+        if (!customDutyCheckbox || !productDetailsSection) return;
+
+        // Highlight checked label to match the screenshot style
+        document.querySelectorAll('.quote-includes-option input[type="checkbox"]')
+            .forEach(function (cb) {
+                cb.addEventListener('change', function () {
+                    const label = this.closest('label');
+                    if (!label) return;
+                    if (this.checked) {
+                        label.style.background  = '#003580';
+                        label.style.color       = '#fff';
+                        label.style.borderColor = '#003580';
+                    } else {
+                        label.style.background  = '#fff';
+                        label.style.color       = '';
+                        label.style.borderColor = '';
+                    }
+                });
+            });
+
+        // Show / hide Product Details when Custom Duty is toggled
+        customDutyCheckbox.addEventListener('change', function () {
+            productDetailsSection.style.display = this.checked ? 'block' : 'none';
+        });
+
+        // Add a new blank product row
+        addProductRowBtn.addEventListener('click', function () {
+            const firstRow = productDetailsBody.querySelector('.product-details-row');
+            if (!firstRow) return;
+            const newRow = firstRow.cloneNode(true);
+            newRow.querySelectorAll('input').forEach(function (input) {
+                input.value = '';
+            });
+            productDetailsBody.appendChild(newRow);
+        });
+
+        // Remove a product row via event delegation
+        productDetailsBody.addEventListener('click', function (e) {
+            if (!e.target.classList.contains('remove-product-row-btn')) return;
+            const rows = productDetailsBody.querySelectorAll('.product-details-row');
+            if (rows.length > 1) {
+                e.target.closest('tr').remove();
+            } else {
+                // Keep at least one row — just clear the inputs
+                rows[0].querySelectorAll('input').forEach(function (input) {
+                    input.value = '';
+                });
+            }
+        });
+    });
+</script>
 
                         {{-- ── Edit / Save / Cancel ── --}}
                         <div class="row mt-3 pt-2" style="border-top: 1px solid #dee2e6;">
@@ -3049,6 +3222,62 @@
                     }
                 });
             }
+
+            function loadInquiryCurrencies(callback) {
+    const $select = $('#quotationCurrencySelect');
+
+    // Already populated — just set saved value and continue
+    if ($select.data('populated')) {
+        if (typeof callback === 'function') callback();
+        return;
+    }
+
+    if (!officeId) {
+        console.error('loadInquiryCurrencies: officeId not available');
+        return;
+    }
+
+    $.ajax({
+        url: '/quotation/currencies',
+        type: 'GET',
+        data: { office_id: officeId },
+        beforeSend: function() {
+            $select.prop('disabled', true)
+                   .empty()
+                   .append('<option value="">Loading...</option>');
+        },
+        success: function(response) {
+            $select.empty().append('<option value="">-- Select --</option>');
+
+            if (response.success && response.currencies.length > 0) {
+                response.currencies.forEach(function(currency) {
+                    $select.append(
+                        `<option value="${currency.CurrencyCode}">${currency.CurrencyCode}</option>`
+                    );
+                });
+
+                // Default: saved value → USD → first option
+                const saved = $('#quotationCurrencyDisplay').val() || 'USD';
+                if ($select.find(`option[value="${saved}"]`).length) {
+                    $select.val(saved);
+                } else {
+                    $select.val($select.find('option:eq(1)').val());
+                }
+
+                $select.data('populated', true).prop('disabled', false);
+            } else {
+                $select.append('<option value="" disabled>No currencies available</option>');
+            }
+        },
+        error: function(xhr) {
+            console.error('loadInquiryCurrencies failed:', xhr);
+            $select.empty().append('<option value="" disabled>Failed to load</option>');
+        },
+        complete: function() {
+            if (typeof callback === 'function') callback();
+        }
+    });
+}
 
             // ============================================
             // TRANSPORT MODE DROPDOWN
@@ -7519,9 +7748,16 @@ $('#wonProcessModal').on('hide.bs.modal', function () {
                     display: $('#salesPersonDisplay').val(),
                     code: $('#salesPersonCode').val(),
                     email: $('#salesPersonEmail').val(),
+                    currency: $('#quotationCurrencyDisplay').val(),
                 };
                 $('#salesPersonDisplay').removeAttr('readonly');
                 $('#salesPersonEmail').removeAttr('readonly');
+    $('#quotationCurrencyDisplay').addClass('d-none');
+    loadInquiryCurrencies(function() {
+        $('#quotationCurrencySelect').removeClass('d-none');
+    });
+
+
                 $('#editInquiryBtn').addClass('d-none');
                 $('#saveInquiryBtn, #cancelInquiryBtn').removeClass('d-none');
 
@@ -7534,6 +7770,9 @@ $('#wonProcessModal').on('hide.bs.modal', function () {
                 $('#salesPersonDisplay').val(inquirySnapshot.display).attr('readonly', true);
                 $('#salesPersonCode').val(inquirySnapshot.code);
                 $('#salesPersonEmail').val(inquirySnapshot.email);
+                    $('#quotationCurrencySelect').addClass('d-none');
+    $('#quotationCurrencyDisplay').val(inquirySnapshot.currency).removeClass('d-none');
+
                 $('#editInquiryBtn').removeClass('d-none');
                 $('#saveInquiryBtn, #cancelInquiryBtn').addClass('d-none');
 
@@ -7543,51 +7782,55 @@ $('#wonProcessModal').on('hide.bs.modal', function () {
                 if ($sp.hasClass('ui-autocomplete-input')) $sp.autocomplete('destroy');
             });
 
-            $('#saveInquiryBtn').on('click', function() {
-                var code = $('#salesPersonCode').val().trim();
-                var email = $('#salesPersonEmail').val().trim();
-
-                if (!code) {
-                    showNotification('Please select a Sales Person.', 'error');
-                    return;
-                }
-                if (!email) {
-                    showNotification('Sales Person Email is required.', 'error');
-                    return;
-                }
-
-                var $btn = $(this).prop('disabled', true).html(
-                    '<i class="fas fa-spinner fa-spin"></i> Saving...');
-
-                $.ajax({
+           $('#saveInquiryBtn').on('click', function() {
+            var code     = $('#salesPersonCode').val().trim();
+            var email    = $('#salesPersonEmail').val().trim();
+            var currency = $('#quotationCurrencySelect').val();
+        
+            if (!code) {
+                showNotification('Please select a Sales Person.', 'error');
+                return;
+            }
+            if (!email) {
+                showNotification('Sales Person Email is required.', 'error');
+                return;
+            }
+            if (!currency) {
+                showNotification('Please select a Currency.', 'error');
+                return;
+            }
+        
+            var $btn = $(this).prop('disabled', true).html(
+                '<i class="fas fa-spinner fa-spin"></i> Saving...');
+            
+            $.ajax({
                     url: '{{ route('quotation.inquiry.save') }}',
                     type: 'POST',
                     data: {
-                        _token: '{{ csrf_token() }}',
-                        quotation_id: quotationId,
-                        sales_person_code: code,
+                        _token:             '{{ csrf_token() }}',
+                        quotation_id:       quotationId,
+                        sales_person_code:  code,
                         sales_person_email: email,
+                        quotation_currency: currency,
                     },
                     success: function(res) {
                         if (res.success) {
                             $('#salesPersonDisplay').attr('readonly', true);
                             $('#salesPersonEmail').attr('readonly', true);
+                            $('#quotationCurrencyDisplay').val(currency).removeClass('d-none');
+                            $('#quotationCurrencySelect').addClass('d-none');
                             $('#editInquiryBtn').removeClass('d-none');
-                            $('#saveInquiryBtn, #cancelInquiryBtn').addClass(
-                                'd-none');
+                            $('#saveInquiryBtn, #cancelInquiryBtn').addClass('d-none');
                             showNotification('Inquiry details saved.', 'success');
                         } else {
-                            showNotification(res.message || 'Save failed.',
-                                'error');
+                            showNotification(res.message || 'Save failed.', 'error');
                         }
                     },
                     error: function(xhr) {
-                        showNotification(xhr.responseJSON?.message ||
-                            'Server error.', 'error');
+                        showNotification(xhr.responseJSON?.message || 'Server error.', 'error');
                     },
                     complete: function() {
-                        $btn.prop('disabled', false).html(
-                            '<i class="fas fa-save mr-1"></i> Save');
+                        $btn.prop('disabled', false).html('<i class="fas fa-save mr-1"></i> Save');
                     }
                 });
             });
@@ -7871,10 +8114,11 @@ $('#wonProcessModal').on('hide.bs.modal', function () {
                         // ── Won process — 2-step modal (Client Creation → Mark as Won) ─────────────
             function runWonProcess(bookingNo, reasonRemark) {
             
-                const WON_STEPS = [
-                    { step: 1, label: 'Client Creation' },
-                    { step: 2, label: 'Mark as Won' },
-                ];
+            const WON_STEPS = [
+    { step: 1, label: 'Client Creation' },
+    { step: 2, label: 'Create Debtor' },
+    { step: 3, label: 'Mark as Won' },
+];
             
                 function renderWonSteps(completedSteps, activeStep) {
                     var $list = $('#wonStepList').empty();

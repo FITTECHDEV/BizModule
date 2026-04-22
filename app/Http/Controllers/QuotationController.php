@@ -130,19 +130,7 @@ class QuotationController extends Controller
             }
 
             // ── Date formatting ───────────────────────────────────────────────
-            $spFromDate = '';
-            $spToDate = '';
-            if ($days === 'custom' && $startDate && $endDate) {
-                try {
-                    $spFromDate = \Carbon\Carbon::createFromFormat('Y-m-d', $startDate)->format('d/m/Y');
-                    $spToDate = \Carbon\Carbon::createFromFormat('Y-m-d', $endDate)->format('d/m/Y');
-                } catch (\Exception $e) {
-                    Log::warning('portal - Invalid date range', [
-                        'start' => $startDate,
-                        'end' => $endDate,
-                    ]);
-                }
-            }
+            ['from' => $spFromDate, 'to' => $spToDate] = $this->resolveDateRange($days, $startDate, $endDate);
 
             // ── Resolve office code for SP ────────────────────────────────────
             // Requested office must be within the user's allowed codes.
@@ -178,7 +166,7 @@ class QuotationController extends Controller
 
             // ── Fetch SP result sets — office filtering done by SP ────────────
             $allRows = $this->callQuotationListSP('Total', $spFromDate, $spToDate, $spOfficeCode);
-            $lostCancelledRows = $this->callQuotationListSP('Cancelled', $spFromDate, $spToDate, $spOfficeCode);
+            $lostCancelledRows = $this->callQuotationListSP('Lost', $spFromDate, $spToDate, $spOfficeCode);
             $failedProgressRows = $this->callQuotationListSP('Failed Progress', $spFromDate, $spToDate, $spOfficeCode);
 
             // ── Load SCMINTStatus for Total branch rows ───────────────────────
@@ -191,24 +179,45 @@ class QuotationController extends Controller
                     ->keyBy('QuoteNo');
             }
 
+            $spQuoteNos = array_column($allRows, 'QuoteNo');
+            $dbQuoteNos = $scmLookup->keys()->toArray();
+
+            Log::info('QuoteNo match check', [
+                'sp_sample' => array_slice($spQuoteNos, 0, 3),
+                'db_sample' => array_slice($dbQuoteNos, 0, 3),
+                'sp_missing' => array_slice(array_diff($spQuoteNos, $dbQuoteNos), 0, 5),
+            ]);
+
             // ── Compute stats ─────────────────────────────────────────────────
             $inProgress = $won = $completed = $failedInt = $failedProgress = 0;
 
             foreach ($allRows as $row) {
                 $db = $scmLookup->get($row->QuoteNo);
-                $quoteStatus = strtoupper(trim($db->QuoteStatus ?? ($row->Status ?? '')));
-                $scmStatus = $db ? (is_string($db->SCMINTStatus) ? strtoupper(trim($db->SCMINTStatus)) : null) : null;
+                $quoteStatus = trim($db->QuoteStatus ?? ($row->Status ?? ''));
+                $scmStatus = $db ? $db->SCMINTStatus : null;
 
-                if ($quoteStatus === 'COMPLETED') {
+                // if ($quoteStatus === 'Completed') {
+                //     $completed++;
+                // } elseif ($quoteStatus === 'Won' && $scmStatus === 'Success') {
+                //     $completed++;
+                // } elseif ($quoteStatus === 'Won' && !is_null($scmStatus)) {
+                //     $failedInt++;
+                // } elseif ($quoteStatus === 'Won') {
+                //     $won++;
+                // } elseif ($quoteStatus === 'Failed Progress') {
+                //     $failedProgress++;
+                // } else {
+                //     $inProgress++;
+                // }
+
+                if ($quoteStatus === 'Completed') {
                     $completed++;
-                } elseif ($quoteStatus === 'WON' && $scmStatus === 'SUCCESS') {
-                    $completed++;
-                } elseif ($quoteStatus === 'WON' && !is_null($scmStatus)) {
-                    $failedInt++;
-                } elseif ($quoteStatus === 'WON') {
+                } elseif ($quoteStatus === 'Won') {
                     $won++;
-                } elseif ($quoteStatus === 'FAILED PROGRESS') {
+                } elseif ($quoteStatus === 'Failed Progress') {
                     $failedProgress++;
+                } elseif ($quoteStatus === 'Failed Int.' || $quoteStatus === 'Failed Int') {
+                    $failedInt++;
                 } else {
                     $inProgress++;
                 }
@@ -246,6 +255,14 @@ class QuotationController extends Controller
                                 : null)
                             : null;
 
+                        //                     return match ($cardFilter) {
+                        // 'in_progress' => !in_array($quoteStatus, ['WON', 'COMPLETED', 'LOST', 'CANCELLED', 'CANCEL', 'FAILED PROGRESS', 'FAILED INT', 'FAILED INT.'])
+                        //                  && !(!is_null($scmStatus) && $scmStatus !== 'SUCCESS' && $quoteStatus === 'WON'),                        'won' => $quoteStatus === 'WON' && is_null($scmStatus),
+                        //                         'completed' => $quoteStatus === 'COMPLETED' || ($quoteStatus === 'WON' && $scmStatus === 'SUCCESS'),
+                        //                         'failed_int' => $quoteStatus === 'WON' && !is_null($scmStatus) && $scmStatus !== 'SUCCESS',
+                        //                         default => true,
+                        //                     };
+
                         return match ($cardFilter) {
                             'in_progress' => !in_array($quoteStatus, [
                                 'WON',
@@ -254,11 +271,12 @@ class QuotationController extends Controller
                                 'CANCELLED',
                                 'CANCEL',
                                 'FAILED PROGRESS',
+                                'FAILED INT',
+                                'FAILED INT.',
                             ]),
-                            'won' => $quoteStatus === 'WON' && is_null($scmStatus),
-                            'completed' => $quoteStatus === 'COMPLETED' ||
-                                ($quoteStatus === 'WON' && $scmStatus === 'SUCCESS'),
-                            'failed_int' => $quoteStatus === 'WON' && !is_null($scmStatus) && $scmStatus !== 'SUCCESS',
+                            'won' => $quoteStatus === 'WON',
+                            'completed' => $quoteStatus === 'COMPLETED',
+                            'failed_int' => in_array($quoteStatus, ['FAILED INT', 'FAILED INT.']),
                             default => true,
                         };
                     }),
@@ -318,14 +336,20 @@ class QuotationController extends Controller
                 $quoteStatus = trim($db->QuoteStatus ?? ($row->Status ?? ''));
                 $scmStatus = $db->SCMINTStatus ?? null;
 
+                // $displayStatus = match (true) {
+                //     strtolower($quoteStatus) === 'completed' => 'Completed',
+                //     strtolower($quoteStatus) === 'won' && strtolower((string)$scmStatus) === 'success' => 'Completed',
+                //     strtolower($quoteStatus) === 'won' && !is_null($scmStatus) && strtolower((string)$scmStatus) !== 'success' => 'Failed Int.',
+                //     strtolower($quoteStatus) === 'won' => 'Won',
+                //     strtolower($quoteStatus) === 'failed progress' => 'Failed Progress',
+                //     in_array(strtolower($quoteStatus), ['lost', 'cancelled', 'cancel']) => 'Lost / Canceled',
+                //     default => 'In Progress',
+                // };
+
                 $displayStatus = match (true) {
                     strtolower($quoteStatus) === 'completed' => 'Completed',
-                    strtolower($quoteStatus) === 'won' && strtolower((string) $scmStatus) === 'success' => 'Completed',
-                    strtolower($quoteStatus) === 'won' &&
-                        !is_null($scmStatus) &&
-                        strtolower((string) $scmStatus) !== 'success'
-                        => 'Failed Int.',
                     strtolower($quoteStatus) === 'won' => 'Won',
+                    in_array(strtolower($quoteStatus), ['failed int.', 'failed int']) => 'Failed Int.',
                     strtolower($quoteStatus) === 'failed progress' => 'Failed Progress',
                     in_array(strtolower($quoteStatus), ['lost', 'cancelled', 'cancel']) => 'Lost / Canceled',
                     default => 'In Progress',
@@ -368,8 +392,8 @@ class QuotationController extends Controller
 
                 $actionHtml = '<div class="action-buttons">';
                 if ($db) {
-                    $isWon = $quoteStatus === 'Won' && is_null($scmStatus);
-                    $isFailedInt = $quoteStatus === 'Won' && !is_null($scmStatus) && $scmStatus !== 'Success';
+                    $isWon = $quoteStatus === 'Won';
+                    $isFailedInt = in_array(strtolower($quoteStatus), ['failed int.', 'failed int']);
 
                     $actionHtml .=
                         '<a href="' .
@@ -465,6 +489,49 @@ class QuotationController extends Controller
         }
     }
 
+    /**
+     * Resolves $spFromDate / $spToDate from the request's 'days' parameter.
+     * Centralises logic used by portal(), dataFromSP(), and stats().
+     */
+    private function resolveDateRange(string $days, ?string $startDate, ?string $endDate): array
+    {
+        if ($days === 'custom' && $startDate && $endDate) {
+            try {
+                return [
+                    'from' => \Carbon\Carbon::createFromFormat('Y-m-d', $startDate)->format('d/m/Y'),
+                    'to' => \Carbon\Carbon::createFromFormat('Y-m-d', $endDate)->format('d/m/Y'),
+                ];
+            } catch (\Exception $e) {
+                Log::warning('resolveDateRange - Invalid custom range', [
+                    'start' => $startDate,
+                    'end' => $endDate,
+                ]);
+                return ['from' => '', 'to' => ''];
+            }
+        }
+
+        if ($days !== 'all' && is_numeric($days)) {
+            $daysInt = (int) $days;
+
+            if ($daysInt === 0) {
+                $date = now()->format('d/m/Y');
+                return ['from' => $date, 'to' => $date];
+            }
+
+            if ($daysInt === 1) {
+                $date = now()->subDay()->format('d/m/Y');
+                return ['from' => $date, 'to' => $date];
+            }
+
+            return [
+                'from' => now()->subDays($daysInt)->format('d/m/Y'),
+                'to' => now()->format('d/m/Y'),
+            ];
+        }
+
+        return ['from' => '', 'to' => ''];
+    }
+
     private function emptyStats(): array
     {
         return [
@@ -504,15 +571,7 @@ class QuotationController extends Controller
 
         $allowed = $allowedOfficeCodes->map(fn($c) => strtoupper(trim($c)))->toArray();
 
-        $spFromDate = '';
-        $spToDate = '';
-        if ($days === 'custom' && $startDate && $endDate) {
-            try {
-                $spFromDate = \Carbon\Carbon::createFromFormat('Y-m-d', $startDate)->format('d/m/Y');
-                $spToDate = \Carbon\Carbon::createFromFormat('Y-m-d', $endDate)->format('d/m/Y');
-            } catch (\Exception $e) {
-            }
-        }
+        ['from' => $spFromDate, 'to' => $spToDate] = $this->resolveDateRange($days, $startDate, $endDate);
 
         // Office dropdown filter
         $filterCode = null;
@@ -622,16 +681,7 @@ class QuotationController extends Controller
             $allowed = $allowedOfficeCodes->map(fn($c) => strtoupper(trim($c)))->toArray();
 
             // ── Date range — day filters ignored, SP only supports FromDate/ToDate ──
-            $spFromDate = '';
-            $spToDate = '';
-            if ($days === 'custom' && $startDate && $endDate) {
-                try {
-                    $spFromDate = \Carbon\Carbon::createFromFormat('Y-m-d', $startDate)->format('d/m/Y');
-                    $spToDate = \Carbon\Carbon::createFromFormat('Y-m-d', $endDate)->format('d/m/Y');
-                } catch (\Exception $e) {
-                    Log::warning('dataFromSP - Invalid date', ['start' => $startDate, 'end' => $endDate]);
-                }
-            }
+            ['from' => $spFromDate, 'to' => $spToDate] = $this->resolveDateRange($days, $startDate, $endDate);
 
             // ── Determine which SP call(s) to make per card ───────────────────
             // SP branches:
@@ -3590,11 +3640,17 @@ class QuotationController extends Controller
         $request->validate([
             'quotation_id' => 'required|string',
             'reason_remark' => 'nullable|string',
+            'source' => 'nullable|string',
         ]);
 
         $quotationId = $request->input('quotation_id');
         $reasonRemark = $request->input('reason_remark', '');
+        $source = $request->input('source', 'dashboard'); // default keeps existing behaviour
         $submittedBy = Auth::user()->displayName ?? (Auth::user()->Email ?? 'system');
+
+        // When called from the edit page, failures leave the quote In Progress.
+        // When called from the dashboard, failures mark it as Failed Int. (existing behaviour).
+        $shouldMarkFailed = $source !== 'edit';
 
         $quotation = DB::table('Quote_QuotationInfo')
             ->where('ID', $quotationId)
@@ -3620,11 +3676,13 @@ class QuotationController extends Controller
             'quotation_id' => $quotationId,
             'status' => $clientResult['status'],
             'remark' => $clientResult['remark'],
+            'source' => $source,
         ]);
 
         if ($clientResult['status'] !== 'Success') {
-            // markAsFailed sets QuoteStatus=Won, SCMINTStatus=Failed → shows as Failed Int.
-            $this->markAsFailed($quotation->ID, 'Client Creation', $clientResult['remark'], $submittedBy);
+            if ($shouldMarkFailed) {
+                $this->markAsFailed($quotation->ID, 'Client Creation', $clientResult['remark'], $submittedBy);
+            }
 
             return response()->json([
                 'success' => false,
@@ -3650,15 +3708,14 @@ class QuotationController extends Controller
 
             $pdo = DB::connection()->getPdo();
             $stmt = $pdo->prepare("
-                SET NOCOUNT ON;
-                DECLARE @OutputJson VARCHAR(2000);
-                EXEC sp_Quote_Quotaiton_StatusUpdate ?, @OutputJson OUTPUT;
-                SELECT @OutputJson AS OutputJson
-            ");
+            SET NOCOUNT ON;
+            DECLARE @OutputJson VARCHAR(2000);
+            EXEC sp_Quote_Quotaiton_StatusUpdate ?, @OutputJson OUTPUT;
+            SELECT @OutputJson AS OutputJson
+        ");
 
             $stmt->execute([$inputJson]);
 
-            // Drain all result sets to reach the final SELECT
             $spResult = null;
             do {
                 try {
@@ -3667,19 +3724,17 @@ class QuotationController extends Controller
                         $spResult = $rows[0]['OutputJson'];
                     }
                 } catch (\Exception $fetchEx) {
-                    // some result sets are not fetchable (e.g. NOCOUNT metadata) — skip
+                    // non-fetchable result sets — skip
                 }
             } while ($stmt->nextRowset());
 
             Log::info('processWon - Step 2 raw SP result', [
                 'quotation_id' => $quotationId,
                 'raw_result' => $spResult,
+                'source' => $source,
             ]);
 
             if ($spResult === null) {
-                // SP returned no output — surface the SQL error if any
-                $errorInfo = $stmt->errorInfo();
-                $sqlMsg = !empty($errorInfo[2]) ? $errorInfo[2] : null;
                 $errorInfo = $stmt->errorInfo();
                 $sqlMsg = !empty($errorInfo[2]) ? $errorInfo[2] : null;
                 throw new \RuntimeException(
@@ -3688,18 +3743,13 @@ class QuotationController extends Controller
                 );
             }
 
-            $normalized = $spResult;
-            if (str_starts_with(trim($spResult), '{')) {
-                $normalized = '[' . $spResult . ']';
-            }
+            $normalized = str_starts_with(trim($spResult), '{') ? '[' . $spResult . ']' : $spResult;
             $output = json_decode($normalized, true);
 
-            // Collect all non-success remarks, excluding the status-update confirmation
             $errors = [];
             if (is_array($output)) {
                 foreach ($output as $item) {
                     if (($item['Status'] ?? '') === 'Failed' && isset($item['Remark'])) {
-                        // Exclude the "Status updated to WON" line — it's not an error
                         if (stripos($item['Remark'], 'has been updated to') === false) {
                             $errors[] = $item['Remark'];
                         }
@@ -3712,7 +3762,11 @@ class QuotationController extends Controller
             if (!$overallSuccess) {
                 $errorMessage = !empty($errors) ? implode(' | ', $errors) : 'Failed to mark as Won';
 
-                $this->markAsFailed($quotation->ID, 'Mark as Won', $errorMessage, $submittedBy); // ← add
+                // SP already reset QuoteStatus to 'In Progress' on its failure path.
+                // Only call markAsFailed (sets SCMINTStatus=Failed) for dashboard flow.
+                if ($shouldMarkFailed) {
+                    $this->markAsFailed($quotation->ID, 'Mark as Won', $errorMessage, $submittedBy);
+                }
 
                 $steps[] = [
                     'step' => 2,
@@ -3730,7 +3784,6 @@ class QuotationController extends Controller
                 ]);
             }
 
-            // Success path
             $successRemark = '';
             if (is_array($output)) {
                 foreach ($output as $item) {
@@ -3757,9 +3810,12 @@ class QuotationController extends Controller
             Log::error('processWon - Step 2 failed', [
                 'quotation_id' => $quotationId,
                 'error' => $e->getMessage(),
+                'source' => $source,
             ]);
 
-            $this->markAsFailed($quotation->ID, 'Mark as Won', $e->getMessage(), $submittedBy);
+            if ($shouldMarkFailed) {
+                $this->markAsFailed($quotation->ID, 'Mark as Won', $e->getMessage(), $submittedBy);
+            }
 
             $steps[] = [
                 'step' => 2,
@@ -3772,7 +3828,7 @@ class QuotationController extends Controller
                 'success' => false,
                 'failed_step' => 2,
                 'failed_label' => 'Mark as Won',
-                'message' => $e->getMessage(), // ← change from hardcoded string to $e->getMessage()
+                'message' => $e->getMessage(),
                 'steps' => $steps,
             ]);
         }
@@ -5068,8 +5124,7 @@ class QuotationController extends Controller
                 ->count();
 
             $nextVersion = $existingVersions + 1;
-            $fileName =
-                'Quotation_' . $quotation->bookingno . '_V' . $nextVersion . '_' . now()->format('Ymd_His') . '.pdf';
+            $fileName = 'quote v' . $nextVersion . '.pdf';
             $storagePath = $folder . '/' . $fileName;
             $fullPath = \Storage::disk('public')->path($storagePath);
 
@@ -5231,6 +5286,7 @@ class QuotationController extends Controller
             );
         }
     }
+    
     /**
      * Execute sp_Quote_QuotationFormat and return the HTML string.
      *
@@ -8644,6 +8700,7 @@ class QuotationController extends Controller
             'quotation_id' => 'required|string',
             'sales_person_code' => 'required|string',
             'sales_person_email' => 'required|email',
+            'quotation_currency' => 'required|string|size:3', // ADD
         ]);
 
         $submittedBy = auth()->user()->displayName ?? (auth()->user()->Email ?? 'system');
@@ -8653,9 +8710,10 @@ class QuotationController extends Controller
             'SubmittedDatetime' => now()->format('YmdHis'),
             'SubmittedBy' => $submittedBy,
             'Action' => 'Update',
-            'QuotationID' => $request->quotation_id, // ← GUID directly
+            'QuotationID' => $request->quotation_id,
             'SalesPersonCode' => $request->sales_person_code,
             'SalesPersonEmail' => $request->sales_person_email,
+            'QuotationCurrency' => $request->quotation_currency, // ADD
         ]);
 
         try {
@@ -9757,23 +9815,23 @@ class QuotationController extends Controller
                     $description = htmlspecialchars($error['Description'] ?? '');
                     $severity = htmlspecialchars((string) ($error['Severity'] ?? '0'));
                     $errorXml .= "<Error>
-                        <Code>{$code}</Code>
-                        <Description>{$description}</Description>
-                        <Severity>{$severity}</Severity>
-                    </Error>";
+                    <Code>{$code}</Code>
+                    <Description>{$description}</Description>
+                    <Severity>{$severity}</Severity>
+                </Error>";
                 }
             }
 
             $inputXml = "
-                    <ArrayOfTransaction>
-                        <Transaction>
-                            <ID>{$quotation->QuoteNo}</ID>
-                            <Status>{$status}</Status>
-                            <CutomerRefNo>{$customerRefNo}</CutomerRefNo>
-                            <TransactionId>{$transactionId}</TransactionId>
-                            <Errors>{$errorXml}</Errors>
-                        </Transaction>
-                    </ArrayOfTransaction>";
+                <ArrayOfTransaction>
+                    <Transaction>
+                        <ID>{$quotation->QuoteNo}</ID>
+                        <Status>{$status}</Status>
+                        <CutomerRefNo>{$customerRefNo}</CutomerRefNo>
+                        <TransactionId>{$transactionId}</TransactionId>
+                        <Errors>{$errorXml}</Errors>
+                    </Transaction>
+                </ArrayOfTransaction>";
 
             Log::info('pushBookingToSCM - Passing to sp_Quote_BookingCreateInfoUpdate', [
                 'quote_no' => $quotation->QuoteNo,
