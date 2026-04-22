@@ -1160,7 +1160,10 @@ public function allEntityRequests(Request $request)
  * DataTable for entities pending approval (used in client-party.approve.blade.php)
  */
 
-public function approvalEntityRequests(Request $request)
+public function
+
+
+approvalEntityRequests(Request $request)
 {
     $threeMonthsAgo = $this->getLastThreeMonthsFilter();
     $user = Auth::user();

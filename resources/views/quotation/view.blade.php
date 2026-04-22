@@ -260,7 +260,7 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    @php
+                   @php
                         $documents = DB::table('Quote_Quotation_Document')
                             ->where('QuotationInfoID', $quotation->ID)
                             ->where('DocumentType', 'QuotationPDF')
@@ -268,16 +268,19 @@
                             ->orderByDesc('CreatedOn')
                             ->get(['Name', 'FilePath', 'CreatedOn']);
                     @endphp
-
+                    
                     @if ($documents->isNotEmpty())
                         @foreach ($documents as $index => $doc)
                             @php
                                 preg_match('/_V(\d+)_/i', $doc->Name, $matches);
                                 $version = $matches[1] ?? $index + 1;
                                 $displayName = $doc->Name ?? "Quotation_{$quotation->bookingno}_V{$version}.pdf";
-                                $downloadUrl = \Storage::disk('public')->exists($doc->FilePath)
-                                    ? \Storage::disk('public')->url($doc->FilePath)
-                                    : '#';
+                                
+                                // Use the same route the edit page uses — avoids the storage::exists() false negative
+                                $downloadUrl = route('quotation.download-pdf', [
+                                    'id'      => $quotation->ID,
+                                    'version' => $version,
+                                ]);
                             @endphp
                             <div class="form-group row mb-1">
                                 <label class="col-sm-4 col-form-label">Version {{ $version }}</label>

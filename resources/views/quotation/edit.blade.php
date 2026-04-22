@@ -21,7 +21,8 @@
 @stop
 
 @php
-    $isBookingCreated = !empty($quotation->SCMBookingNo);
+    $lockedStatuses = ['Won', 'Completed'];
+    $isBookingCreated = in_array($quotation->quotestatus ?? '', $lockedStatuses);
 @endphp
 
 @section('content')
@@ -5059,17 +5060,17 @@
             });
 
             $('#wonProcessModal').on('click', '.close, #wonProcessCloseBtn', function (e) {
-    e.preventDefault();
-    e.stopPropagation();
-    $('#wonProcessModal').modal('hide');
-});
+                e.preventDefault();
+                e.stopPropagation();
+                $('#wonProcessModal').modal('hide');
+            });
 
-// Prevent closing mid-process via backdrop click or ESC
-$('#wonProcessModal').on('hide.bs.modal', function () {
-    if ($('#wonProcessCloseBtn').hasClass('d-none')) {
-        return false; // block close while processing
-    }
-});
+            // Prevent closing mid-process via backdrop click or ESC
+            $('#wonProcessModal').on('hide.bs.modal', function () {
+                if ($('#wonProcessCloseBtn').hasClass('d-none')) {
+                    return false; // block close while processing
+                }
+            });
 
             $('#wonModal .close, #wonModal button[data-dismiss="modal"]').on('click', function(e) {
                 e.preventDefault();
@@ -6847,11 +6848,11 @@ $('#wonProcessModal').on('hide.bs.modal', function () {
                             $('#termsAutoAppliedBadge').hide();
 
                             // Cache descriptions returned by the SP — keyed by template name
-                         response.templates.forEach(function(t) {
-    if (t.Description) {
-        termsDescriptionCache[t.Name] = b64DecodeUnicode(t.Description);
-    }
-});
+                            response.templates.forEach(function(t) {
+                                if (t.Description) {
+                                    termsDescriptionCache[t.Name] = b64DecodeUnicode(t.Description);
+                                }
+                            });
 
                             if (!tcAlreadyApplied) {
                                 $('#termsTemplateSelect').closest('.mt-3.pt-2')
@@ -6917,16 +6918,16 @@ $('#wonProcessModal').on('hide.bs.modal', function () {
                                        const savedDesc = @json($quotation->terms_condition ?? '');
 
                                  if (savedDesc) {
-    (function() {
-        const iframe = document.getElementById('termsDescriptionPreview');
-        if (iframe.dataset.blobUrl) URL.revokeObjectURL(iframe.dataset.blobUrl);
-        const blob = new Blob([savedDesc], { type: 'text/html' });
-        const url  = URL.createObjectURL(blob);
-        iframe.dataset.blobUrl = url;
-        iframe.src = url;
-    })();
-    $('#termsDescriptionWrapper').show();
-}
+                                    (function() {
+                                        const iframe = document.getElementById('termsDescriptionPreview');
+                                        if (iframe.dataset.blobUrl) URL.revokeObjectURL(iframe.dataset.blobUrl);
+                                        const blob = new Blob([savedDesc], { type: 'text/html' });
+                                        const url  = URL.createObjectURL(blob);
+                                        iframe.dataset.blobUrl = url;
+                                        iframe.src = url;
+                                    })();
+                                    $('#termsDescriptionWrapper').show();
+                                }
                                         termsState.applied = true;
                                         setGenerateBtn();
                                     } else {
@@ -6936,17 +6937,17 @@ $('#wonProcessModal').on('hide.bs.modal', function () {
                                     if (tcAlreadyApplied) {
                                const savedDesc = @json($quotation->terms_condition ?? '');
 
-                                        if (savedDesc) {
-    (function() {
-        const iframe = document.getElementById('termsDescriptionPreview');
-        if (iframe.dataset.blobUrl) URL.revokeObjectURL(iframe.dataset.blobUrl);
-        const blob = new Blob([savedDesc], { type: 'text/html' });
-        const url  = URL.createObjectURL(blob);
-        iframe.dataset.blobUrl = url;
-        iframe.src = url;
-    })();
-    $('#termsDescriptionWrapper').show();
-}
+                                    if (savedDesc) {
+                                    (function() {
+                                        const iframe = document.getElementById('termsDescriptionPreview');
+                                        if (iframe.dataset.blobUrl) URL.revokeObjectURL(iframe.dataset.blobUrl);
+                                        const blob = new Blob([savedDesc], { type: 'text/html' });
+                                        const url  = URL.createObjectURL(blob);
+                                        iframe.dataset.blobUrl = url;
+                                        iframe.src = url;
+                                    })();
+                                    $('#termsDescriptionWrapper').show();
+                                }
                                         termsState.applied = true;
                                         setGenerateBtn();
                                     }
@@ -6958,16 +6959,16 @@ $('#wonProcessModal').on('hide.bs.modal', function () {
                                     const savedDesc = @json($quotation->terms_condition ?? '');
 
                                  if (savedDesc) {
-    (function() {
-        const iframe = document.getElementById('termsDescriptionPreview');
-        if (iframe.dataset.blobUrl) URL.revokeObjectURL(iframe.dataset.blobUrl);
-        const blob = new Blob([savedDesc], { type: 'text/html' });
-        const url  = URL.createObjectURL(blob);
-        iframe.dataset.blobUrl = url;
-        iframe.src = url;
-    })();
-    $('#termsDescriptionWrapper').show();
-}
+                                (function() {
+                                    const iframe = document.getElementById('termsDescriptionPreview');
+                                    if (iframe.dataset.blobUrl) URL.revokeObjectURL(iframe.dataset.blobUrl);
+                                    const blob = new Blob([savedDesc], { type: 'text/html' });
+                                    const url  = URL.createObjectURL(blob);
+                                    iframe.dataset.blobUrl = url;
+                                    iframe.src = url;
+                                })();
+                                $('#termsDescriptionWrapper').show();
+                            }
                                     termsState.applied = true;
                                     setGenerateBtn();
                                 }
@@ -7013,17 +7014,17 @@ $('#wonProcessModal').on('hide.bs.modal', function () {
                 });
             }
             // HELPER — called from both the cache path and the fetch fallback path
-    function _applyTermsDescription(templateName, description) {
-    // Render HTML in iframe — avoids raw markup showing as plain text in a textarea
-    const iframe = document.getElementById('termsDescriptionPreview');
-    if (iframe.dataset.blobUrl) URL.revokeObjectURL(iframe.dataset.blobUrl);
-    const blob = new Blob([description], { type: 'text/html' });
-    const url  = URL.createObjectURL(blob);
-    iframe.dataset.blobUrl = url;
-    iframe.src = url;
-
-    $('#termsDescriptionWrapper').show();
-    $('#applyTermsBtn').prop('disabled', false);
+            function _applyTermsDescription(templateName, description) {
+            // Render HTML in iframe — avoids raw markup showing as plain text in a textarea
+            const iframe = document.getElementById('termsDescriptionPreview');
+            if (iframe.dataset.blobUrl) URL.revokeObjectURL(iframe.dataset.blobUrl);
+            const blob = new Blob([description], { type: 'text/html' });
+            const url  = URL.createObjectURL(blob);
+            iframe.dataset.blobUrl = url;
+            iframe.src = url;
+        
+            $('#termsDescriptionWrapper').show();
+            $('#applyTermsBtn').prop('disabled', false);
 
                 $.ajax({
                     url: '{{ route('quotation.communication.save-terms') }}',
@@ -7104,10 +7105,10 @@ $('#wonProcessModal').on('hide.bs.modal', function () {
             });
 
            $('#applyTermsBtn').on('click', function() {
-    const iframe = document.getElementById('termsDescriptionPreview');
-    const description = iframe.dataset.blobUrl
-        ? (iframe.contentDocument || iframe.contentWindow.document).body.innerHTML
-        : '';
+            const iframe = document.getElementById('termsDescriptionPreview');
+            const description = iframe.dataset.blobUrl
+                ? (iframe.contentDocument || iframe.contentWindow.document).body.innerHTML
+                : '';
 
                 if (!description || description === 'Loading...') {
                     showNotification('No Terms & Conditions to apply', 'warning');
@@ -7855,12 +7856,12 @@ $('#wonProcessModal').on('hide.bs.modal', function () {
             }
 
                         // ── Won process — 2-step modal (Client Creation → Mark as Won) ─────────────
-            function runWonProcess(bookingNo, reasonRemark) {
-            
-                const WON_STEPS = [
-                    { step: 1, label: 'Client Creation' },
-                    { step: 2, label: 'Mark as Won' },
-                ];
+                        function runWonProcess(bookingNo, reasonRemark) {
+                        
+                            const WON_STEPS = [
+                                { step: 1, label: 'Client Creation' },
+                                { step: 2, label: 'Mark as Won' },
+                            ];
             
                 function renderWonSteps(completedSteps, activeStep) {
                     var $list = $('#wonStepList').empty();
@@ -7883,12 +7884,12 @@ $('#wonProcessModal').on('hide.bs.modal', function () {
                             statusText = 'Success';
                             if (done.remark)
                                 remarkHtml = '<small class="text-muted d-block mt-1">' + done.remark + '</small>';
-} else {
-    iconClass  = 'fas fa-times-circle text-danger';
-    badgeClass = 'badge-danger';
-    statusText = 'Failed';
-    // remark shown once in the error alert below — not duplicated here
-}
+                        } else {
+                            iconClass  = 'fas fa-times-circle text-danger';
+                            badgeClass = 'badge-danger';
+                            statusText = 'Failed';
+                            // remark shown once in the error alert below — not duplicated here
+                        }
             
                         $list.append(
                             '<div class="list-group-item py-2">'
@@ -7927,13 +7928,13 @@ $('#wonProcessModal').on('hide.bs.modal', function () {
                                 window.location.href = '{{ route("quotation.index") }}';
                             }, 1500);
                     } else {
-var failedStep  = (res.steps || []).find(function(s) { return s.status === 'Failed'; });
-var rawMsg      = (failedStep && failedStep.remark) ? failedStep.remark : (res.message || 'Unknown error');
-var errorLines  = rawMsg.split('|').map(function(s) { return s.trim(); }).filter(Boolean);
-var bulletHtml  = '<ul class="mb-0 pl-3">' + errorLines.map(function(l) { return '<li>' + l + '</li>'; }).join('') + '</ul>';
-$('#wonProgressError')
-    .html('<strong>' + (res.failed_label || 'Step') + ' failed:</strong>' + bulletHtml)
-    .removeClass('d-none');
+                    var failedStep  = (res.steps || []).find(function(s) { return s.status === 'Failed'; });
+                    var rawMsg      = (failedStep && failedStep.remark) ? failedStep.remark : (res.message || 'Unknown error');
+                    var errorLines  = rawMsg.split('|').map(function(s) { return s.trim(); }).filter(Boolean);
+                    var bulletHtml  = '<ul class="mb-0 pl-3">' + errorLines.map(function(l) { return '<li>' + l + '</li>'; }).join('') + '</ul>';
+                    $('#wonProgressError')
+                        .html('<strong>' + (res.failed_label || 'Step') + ' failed:</strong>' + bulletHtml)
+                        .removeClass('d-none');
                         $('#wonProcessCloseBtn').removeClass('d-none');
                     }
                     },

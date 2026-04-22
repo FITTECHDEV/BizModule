@@ -37,12 +37,12 @@
             </div>
         </div>
 
-        {{-- 3. Lost / Canceled --}}
+        {{-- 3. Lost / Cancelled --}}
         <div class="col-6 col-md-4 col-lg mb-2">
             <div class="small-box bg-warning card-filter-trigger compact-card" data-filter="lost_canceled">
                 <div class="inner">
                     <h3 id="stat-lost-canceled">{{ $stats['lost_canceled'] }}</h3>
-                    <p>Lost / Canceled</p>
+                    <p>Lost / Cancelled</p>
                 </div>
                 <div class="icon">
                     <i class="fas fa-times-circle"></i>

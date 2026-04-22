@@ -1519,3 +1519,9 @@ Route::get('/debug-permissions', function () {
         'all_permissions'    => $authUser->getAllPermissions()->pluck('name'),
     ]);
 });
+// Add a temporary debug route in web.php or api.php
+Route::get('/debug-azure-files/{prefix}', function ($prefix) {
+    $files = Storage::disk('azure')->files('Kenya/ClientParty');
+    $filtered = array_filter($files, fn($f) => str_contains($f, $prefix));
+    return response()->json(array_values($filtered));
+});

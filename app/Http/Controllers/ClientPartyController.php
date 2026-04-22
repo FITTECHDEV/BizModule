@@ -1303,66 +1303,152 @@ class ClientPartyController extends Controller
      * @param  string  $attachmentId  - The unique ID of the attachment
      * @return \Illuminate\Http\Response
      */
+    // public function preview($attachmentId)
+    // {
+    //     try {
+    //         // Fetch the specific attachment by its ID (not entity ID)
+    //         $attachment = ClientPartyAttahment::where('ID', $attachmentId)->firstOrFail();
+
+    //         Log::info('Preview attachment request:', [
+    //             'attachmentId' => $attachmentId,
+    //             'fileName' => $attachment->FileName,
+    //             'filePath' => $attachment->FilePath,
+    //             'entityId' => $attachment->CustEntityID,
+    //         ]);
+
+    //         // Check if file exists in Azure storage
+    //         if (! Storage::disk('azure')->exists($attachment->FilePath)) {
+    //             Log::error('File not found in Azure storage:', [
+    //                 'filePath' => $attachment->FilePath,
+    //                 'attachmentId' => $attachmentId,
+    //             ]);
+    //             abort(404, 'File not found in storage');
+    //         }
+
+    //         // Get file extension to determine content type
+    //         $extension = pathinfo($attachment->FileName, PATHINFO_EXTENSION);
+    //         $mimeType = $extension === 'pdf' ? 'application/pdf' : 'application/octet-stream';
+
+    //         Log::info('File retrieved successfully:', [
+    //             'attachmentId' => $attachmentId,
+    //             'fileName' => $attachment->FileName,
+    //             'mimeType' => $mimeType,
+    //         ]);
+
+    //         // Download file from Azure and return as inline (for preview)
+    //         return Storage::disk('azure')->download(
+    //             $attachment->FilePath,
+    //             $attachment->FileName,
+    //             [
+    //                 'Content-Type' => $mimeType,
+    //                 'Content-Disposition' => 'inline; filename="' . $attachment->FileName . '"',
+    //             ]
+    //         );
+    //     } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+    //         Log::error('Attachment not found in database:', [
+    //             'attachmentId' => $attachmentId,
+    //             'error' => $e->getMessage(),
+    //         ]);
+
+    //         return response()->json([
+    //             'error' => 'Attachment not found',
+    //         ], 404);
+    //     } catch (\Exception $e) {
+    //         Log::error('Preview failed with exception:', [
+    //             'attachmentId' => $attachmentId,
+    //             'error' => $e->getMessage(),
+    //             'trace' => $e->getTraceAsString(),
+    //         ]);
+
+    //         return response()->json([
+    //             'error' => 'Error retrieving file: ' . $e->getMessage(),
+    //         ], 500);
+    //     }
+    // }
     public function preview($attachmentId)
     {
         try {
-            // Fetch the specific attachment by its ID (not entity ID)
             $attachment = ClientPartyAttahment::where('ID', $attachmentId)->firstOrFail();
 
             Log::info('Preview attachment request:', [
                 'attachmentId' => $attachmentId,
-                'fileName' => $attachment->FileName,
-                'filePath' => $attachment->FilePath,
-                'entityId' => $attachment->CustEntityID,
+                'fileName'     => $attachment->FileName,
+                'filePath'     => $attachment->FilePath,
+                'entityId'     => $attachment->CustEntityID,
             ]);
 
-            // Check if file exists in Azure storage
-            if (! Storage::disk('azure')->exists($attachment->FilePath)) {
-                Log::error('File not found in Azure storage:', [
-                    'filePath' => $attachment->FilePath,
+            $resolvedPath = null;
+
+            // Step 1: Try exact DB path first
+            if (Storage::disk('azure')->exists($attachment->FilePath)) {
+                $resolvedPath = $attachment->FilePath;
+            } else {
+                // Step 2: List Azure folder and match by normalizing both sides to ASCII
+                $directory = dirname($attachment->FilePath);  // e.g. "Kenya/ClientParty"
+                $dbFilename = basename($attachment->FilePath); // e.g. "KE2601641_Ingilizce faaliyet belgesi 23.09.pdf"
+
+                $azureFiles = Storage::disk('azure')->files($directory);
+
+                foreach ($azureFiles as $azureFile) {
+                    $azureFilename   = basename($azureFile);
+                    $normalizedAzure = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $azureFilename);
+                    $normalizedDb    = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $dbFilename);
+
+                    Log::info('Comparing filenames:', [
+                        'azureFile'       => $azureFile,
+                        'azureFilename'   => $azureFilename,
+                        'dbFilename'      => $dbFilename,
+                        'normalizedAzure' => $normalizedAzure,
+                        'normalizedDb'    => $normalizedDb,
+                    ]);
+
+                    if ($normalizedAzure === $normalizedDb) {
+                        $resolvedPath = $azureFile;
+                        Log::info('Matched via normalization:', ['resolvedPath' => $resolvedPath]);
+                        break;
+                    }
+                }
+            }
+
+            if (! $resolvedPath) {
+                Log::error('File not found in Azure storage (tried exact and normalized match):', [
+                    'filePath'     => $attachment->FilePath,
                     'attachmentId' => $attachmentId,
                 ]);
                 abort(404, 'File not found in storage');
             }
 
-            // Get file extension to determine content type
             $extension = pathinfo($attachment->FileName, PATHINFO_EXTENSION);
-            $mimeType = $extension === 'pdf' ? 'application/pdf' : 'application/octet-stream';
+            $mimeType  = strtolower($extension) === 'pdf' ? 'application/pdf' : 'application/octet-stream';
 
             Log::info('File retrieved successfully:', [
                 'attachmentId' => $attachmentId,
-                'fileName' => $attachment->FileName,
-                'mimeType' => $mimeType,
+                'fileName'     => $attachment->FileName,
+                'resolvedPath' => $resolvedPath,
+                'mimeType'     => $mimeType,
             ]);
 
-            // Download file from Azure and return as inline (for preview)
             return Storage::disk('azure')->download(
-                $attachment->FilePath,
+                $resolvedPath,
                 $attachment->FileName,
                 [
-                    'Content-Type' => $mimeType,
+                    'Content-Type'        => $mimeType,
                     'Content-Disposition' => 'inline; filename="' . $attachment->FileName . '"',
                 ]
             );
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             Log::error('Attachment not found in database:', [
                 'attachmentId' => $attachmentId,
-                'error' => $e->getMessage(),
+                'error'        => $e->getMessage(),
             ]);
-
-            return response()->json([
-                'error' => 'Attachment not found',
-            ], 404);
+            return response()->json(['error' => 'Attachment not found'], 404);
         } catch (\Exception $e) {
             Log::error('Preview failed with exception:', [
                 'attachmentId' => $attachmentId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
+                'error'        => $e->getMessage(),
+                'trace'        => $e->getTraceAsString(),
             ]);
-
-            return response()->json([
-                'error' => 'Error retrieving file: ' . $e->getMessage(),
-            ], 500);
+            return response()->json(['error' => 'Error retrieving file: ' . $e->getMessage()], 500);
         }
     }
 
@@ -2068,7 +2154,7 @@ class ClientPartyController extends Controller
 
         if (isset($d365Results['debtor'])) $payload['DebtorNo'] = $d365Results['debtor'];
         if (isset($d365Results['vendor'])) $payload['VendorNo'] = $d365Results['vendor'];
-        
+
         // Ensure LicenceTypeValue is never null when passed to SP (Cust_PartyLicense.License_Code is NOT NULL)
         $payload['LicenceTypeCode']  = !empty(trim($entity->LicenceTypeCode ?? ''))  ? $entity->LicenceTypeCode  : 'NIL';
         $payload['LicenceTypeValue'] = !empty(trim($entity->LicenceTypeValue ?? '')) ? $entity->LicenceTypeValue : 'NIL';

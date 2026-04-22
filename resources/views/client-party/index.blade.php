@@ -11,13 +11,13 @@
                         <i class="fas fa-users"></i>
                     </div>
                     <div>
-                        <h1 class="header-title">Client Party Dashboard</h1>
+                        <h1 class="header-title"></h1>
                         <p class="header-subtitle">Manage and monitor client party entities</p>
                     </div>
                 </div>
                 <div class="date-range-badge">
                     <i class="fas fa-calendar-range text-primary"></i>
-                    <span class="text-muted">Last 3 months:</span>
+                    <span class="text-muted">
                     <span class="fw-bold date-range-text">
                         {{ \Carbon\Carbon::now()->subMonths(3)->format('M d') }} —
                         {{ \Carbon\Carbon::now()->format('M d, Y') }}
