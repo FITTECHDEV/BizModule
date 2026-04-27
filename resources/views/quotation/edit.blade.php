@@ -857,6 +857,7 @@
                             <table class="table table-bordered table-sm table-hover">
                                 <thead class="thead-light">
                                     <tr>
+                                       <th style="width:32px; display:none;" class="bulk-delete-col"><input type="checkbox" id="revenueSelectAll" title="Select all"></th>
                                         <th>Charge Name</th>
                                         <th>Rate</th>
                                         <th class="col-extra">Quantity</th>
@@ -879,25 +880,25 @@
 
                 <!-- Cost Section -->
                 <div class="card card-danger">
-                    <!-- AFTER -->
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <div class="d-flex align-items-center">
-                            <h3 class="card-title mb-0 mr-1">Cost</h3>
-                            <span class="text-white small ml-2" id="costTotalHeader" style="white-space:nowrap;">
-                                Total: <strong id="costTotalHeaderAmount">0.00</strong>
-                            </span>
+                   <div class="card-header d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center">
+                                <h3 class="card-title mb-0 mr-1">Cost</h3>
+                                <span class="text-white small ml-2" id="costTotalHeader" style="white-space:nowrap;">
+                                    Total: <strong id="costTotalHeaderAmount">0.00</strong>
+                                </span>
+                            </div>
+                             <div class="d-flex align-items-center ml-auto">
+                                <a href="#" class="text-white show-items-link" data-table="cost">
+                                    <i class="fas fa-columns mr-1"></i> Show More
+                                </a>
+                              </div>
                         </div>
-                        <div class="d-flex align-items-center ml-auto">
-                            <a href="#" class="text-white show-items-link" data-table="cost">
-                                <i class="fas fa-columns mr-1"></i> Show More
-                            </a>
-                        </div>
-                    </div>
                     <div class="card-body">
                         <div class="table-responsive">
                             <table class="table table-bordered table-sm table-hover">
                                 <thead class="thead-light">
                                     <tr>
+                                 <th style="width:32px; display:none;" class="bulk-delete-col"><input type="checkbox" id="costSelectAll" title="Select all"></th>
                                         <th>Charge Name</th>
                                         <th>Rate</th>
                                         <th class="col-extra">Quantity</th>
@@ -974,6 +975,15 @@
 
                                 <button type="button" class="btn btn-secondary ml-2" id="openCopyChargesBtn">
                                     <i class="fas fa-copy"></i> Copy Charges
+                                </button>
+                                <button type="button" class="btn btn-danger ml-2" id="openBulkDeleteBtn">
+                                    <i class="fas fa-trash"></i> Delete Charges
+                                </button>
+                                <button type="button" class="btn btn-success ml-2 d-none" id="confirmBulkDeleteBtn">
+                                    <i class="fas fa-check"></i> Confirm Delete
+                                </button>
+                                <button type="button" class="btn btn-secondary ml-2 d-none" id="cancelBulkDeleteBtn">
+                                    <i class="fas fa-times"></i> Cancel
                                 </button>
                                 <a href="{{ route('quotation.index') }}" class="btn btn-link">Close</a>
 
@@ -1459,6 +1469,35 @@
                             <i class="fas fa-paper-plane mr-1"></i> Send
                         </button>
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- BULK DELETE CONFIRM MODAL --}}
+        <div class="modal fade" id="bulkDeleteConfirmModal" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog modal-sm" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2 class="modal-title">
+                            <i class="fas fa-trash text-danger mr-2"></i>Delete Charges
+                        </h2>
+                        <button type="button" class="close" data-dismiss="modal">
+                            <span>&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body text-center">
+                        <p class="mb-1">You are about to delete</p>
+                        <h4 class="text-danger font-weight-bold" id="bulkDeleteCount">0</h4>
+                        <p class="mb-0">charge(s). This cannot be undone.</p>
+                    </div>
+                    <div class="modal-footer justify-content-center">
+                        <button type="button" class="btn btn-danger" id="bulkDeleteProceedBtn">
+                            <i class="fas fa-trash mr-1"></i> Delete
+                        </button>
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                            Cancel
+                        </button>
                     </div>
                 </div>
             </div>
@@ -3142,13 +3181,13 @@
             const termsDescriptionCache = {};
 
             function b64DecodeUnicode(str) {
-    if (!str) return '';
-    return decodeURIComponent(
-        atob(str).split('').map(function(c) {
-            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-        }).join('')
-    );
-}
+                if (!str) return '';
+                return decodeURIComponent(
+                    atob(str).split('').map(function(c) {
+                        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                    }).join('')
+                );
+            }
 
             function setGenerateBtn() {
                 const $btn = $('#generateQuoteBtn');
@@ -3224,60 +3263,60 @@
             }
 
             function loadInquiryCurrencies(callback) {
-    const $select = $('#quotationCurrencySelect');
-
-    // Already populated — just set saved value and continue
-    if ($select.data('populated')) {
-        if (typeof callback === 'function') callback();
-        return;
-    }
-
-    if (!officeId) {
-        console.error('loadInquiryCurrencies: officeId not available');
-        return;
-    }
-
-    $.ajax({
-        url: '/quotation/currencies',
-        type: 'GET',
-        data: { office_id: officeId },
-        beforeSend: function() {
-            $select.prop('disabled', true)
-                   .empty()
-                   .append('<option value="">Loading...</option>');
-        },
-        success: function(response) {
-            $select.empty().append('<option value="">-- Select --</option>');
-
-            if (response.success && response.currencies.length > 0) {
-                response.currencies.forEach(function(currency) {
-                    $select.append(
-                        `<option value="${currency.CurrencyCode}">${currency.CurrencyCode}</option>`
-                    );
-                });
-
-                // Default: saved value → USD → first option
-                const saved = $('#quotationCurrencyDisplay').val() || 'USD';
-                if ($select.find(`option[value="${saved}"]`).length) {
-                    $select.val(saved);
-                } else {
-                    $select.val($select.find('option:eq(1)').val());
+                const $select = $('#quotationCurrencySelect');
+            
+                // Already populated — just set saved value and continue
+                if ($select.data('populated')) {
+                    if (typeof callback === 'function') callback();
+                    return;
+                }
+            
+                if (!officeId) {
+                    console.error('loadInquiryCurrencies: officeId not available');
+                    return;
                 }
 
-                $select.data('populated', true).prop('disabled', false);
-            } else {
-                $select.append('<option value="" disabled>No currencies available</option>');
+                $.ajax({
+                    url: '/quotation/currencies',
+                    type: 'GET',
+                    data: { office_id: officeId },
+                    beforeSend: function() {
+                        $select.prop('disabled', true)
+                               .empty()
+                               .append('<option value="">Loading...</option>');
+                    },
+                    success: function(response) {
+                        $select.empty().append('<option value="">-- Select --</option>');
+            
+                        if (response.success && response.currencies.length > 0) {
+                            response.currencies.forEach(function(currency) {
+                                $select.append(
+                                    `<option value="${currency.CurrencyCode}">${currency.CurrencyCode}</option>`
+                                );
+                            });
+            
+                            // Default: saved value → USD → first option
+                            const saved = $('#quotationCurrencyDisplay').val() || 'USD';
+                            if ($select.find(`option[value="${saved}"]`).length) {
+                                $select.val(saved);
+                            } else {
+                                $select.val($select.find('option:eq(1)').val());
+                            }
+            
+                            $select.data('populated', true).prop('disabled', false);
+                        } else {
+                            $select.append('<option value="" disabled>No currencies available</option>');
+                        }
+                    },
+                    error: function(xhr) {
+                        console.error('loadInquiryCurrencies failed:', xhr);
+                        $select.empty().append('<option value="" disabled>Failed to load</option>');
+                    },
+                    complete: function() {
+                        if (typeof callback === 'function') callback();
+                    }
+                });
             }
-        },
-        error: function(xhr) {
-            console.error('loadInquiryCurrencies failed:', xhr);
-            $select.empty().append('<option value="" disabled>Failed to load</option>');
-        },
-        complete: function() {
-            if (typeof callback === 'function') callback();
-        }
-    });
-}
 
             // ============================================
             // TRANSPORT MODE DROPDOWN
@@ -3352,185 +3391,185 @@
                     success: function(data) {
                         const list = Array.isArray(data) ? data : [];
             
-const $sel = $('#serviceClassSelect').empty()
-    .append('<option value="">-- Select --</option>');
-list.forEach(function(item) {
-    const code = (item.Code || item.ServiceClass || '').trim();
-    const name = (item.Name || item.Description || code).trim();
-    $sel.append(`<option value="${code}">${name}</option>`);
-});
-// Pre-select after options are rendered — savedCode is from PHP at definition time,
-// but we also check the current display value in case it was updated mid-session
-const currentCode = $('#serviceClassDisplay').val() || savedCode;
-if (currentCode) $sel.val(currentCode);
-                        serviceClassesLoaded = true;
-                    },
-                    complete: function() {
-                        if (typeof callback === 'function') callback();
-                    }
+                const $sel = $('#serviceClassSelect').empty()
+                    .append('<option value="">-- Select --</option>');
+                list.forEach(function(item) {
+                    const code = (item.Code || item.ServiceClass || '').trim();
+                    const name = (item.Name || item.Description || code).trim();
+                    $sel.append(`<option value="${code}">${name}</option>`);
                 });
+                // Pre-select after options are rendered — savedCode is from PHP at definition time,
+                // but we also check the current display value in case it was updated mid-session
+                const currentCode = $('#serviceClassDisplay').val() || savedCode;
+                if (currentCode) $sel.val(currentCode);
+                                        serviceClassesLoaded = true;
+                                    },
+                                    complete: function() {
+                                        if (typeof callback === 'function') callback();
+                                    }
+                                });
+                            }
+                
+                            function loadShipmentCountries(callback) {
+                                if (shipmentCountriesLoaded) {
+                                    if (typeof callback === 'function') callback();
+                                    return;
+                                }
+                                const savedOriginCode = '{{ $quotation->origin_country_code ?? '' }}';
+                                const savedDestCode = '{{ $quotation->destination_country_code ?? '' }}';
+                                $.ajax({
+                                    url: '{{ route('quotation.lookup.countries') }}',
+                                    type: 'GET',
+                                    data: {
+                                        filter: ''
+                                    },
+                                    success: function(data) {
+                                        const list = Array.isArray(data) ? data : [];
+                
+                                        function fill(selectId, savedCode) {
+                                            const $sel = $('#' + selectId).empty()
+                                                .append('<option value="">-- Select --</option>');
+                                            list.forEach(function(c) {
+                                                const name = (c.CountryName || '').trim();
+                                                const code = (c.CountryCode || '').trim();
+                                                $sel.append(
+                                                    `<option value="${code}" data-name="${name}" ${code === savedCode ? 'selected' : ''}>${name}</option>`
+                                                );
+                                            });
+                                        }
+                                        fill('originCountrySelect', savedOriginCode);
+                                        fill('destCountrySelect', savedDestCode);
+                                        shipmentCountriesLoaded = true;
+                                    },
+                                    complete: function() {
+                                        if (typeof callback === 'function') callback();
+                                    }
+                                });
+                            }
+                
+                            $('#editShipmentDetailsBtn').on('click', function() {
+                    originalShipmentMode = $('#shipmentModeSelect').val();
+                    originalTransportMode = $('#transportModeSelect').val();
+
+                // Sync IncoTerm display → select before snapshotting
+            const $incoSel = $('#incoTermSelect');
+            const currentInco = $('#incoTermCode').val() || $('#incoTermDisplay').val();
+
+            if (incoTermsLoaded && currentInco) {
+                // Options are available — always sync select to the current display value
+                $incoSel.val(currentInco);
             }
-
-            function loadShipmentCountries(callback) {
-                if (shipmentCountriesLoaded) {
-                    if (typeof callback === 'function') callback();
-                    return;
-                }
-                const savedOriginCode = '{{ $quotation->origin_country_code ?? '' }}';
-                const savedDestCode = '{{ $quotation->destination_country_code ?? '' }}';
-                $.ajax({
-                    url: '{{ route('quotation.lookup.countries') }}',
-                    type: 'GET',
-                    data: {
-                        filter: ''
-                    },
-                    success: function(data) {
-                        const list = Array.isArray(data) ? data : [];
-
-                        function fill(selectId, savedCode) {
-                            const $sel = $('#' + selectId).empty()
-                                .append('<option value="">-- Select --</option>');
-                            list.forEach(function(c) {
-                                const name = (c.CountryName || '').trim();
-                                const code = (c.CountryCode || '').trim();
-                                $sel.append(
-                                    `<option value="${code}" data-name="${name}" ${code === savedCode ? 'selected' : ''}>${name}</option>`
-                                );
-                            });
+            // First edit (incoTermsLoaded = false): AJAX pre-selection handles it
+            originalIncoTerm = currentInco;
+            
+                // Sync origin country display → select before snapshotting
+                const $origSel = $('#originCountrySelect');
+                if (!$origSel.val()) {
+                    const displayedOrigin = $('#originCountryDisplay').val();
+                    $origSel.find('option').each(function () {
+                        if ($(this).data('name') === displayedOrigin || $(this).text().trim() === displayedOrigin) {
+                            $origSel.val($(this).val());
+                            return false;
                         }
-                        fill('originCountrySelect', savedOriginCode);
-                        fill('destCountrySelect', savedDestCode);
-                        shipmentCountriesLoaded = true;
-                    },
-                    complete: function() {
-                        if (typeof callback === 'function') callback();
-                    }
-                });
-            }
-
-            $('#editShipmentDetailsBtn').on('click', function() {
-    originalShipmentMode = $('#shipmentModeSelect').val();
-    originalTransportMode = $('#transportModeSelect').val();
-
-    // Sync IncoTerm display → select before snapshotting
-const $incoSel = $('#incoTermSelect');
-const currentInco = $('#incoTermCode').val() || $('#incoTermDisplay').val();
-
-if (incoTermsLoaded && currentInco) {
-    // Options are available — always sync select to the current display value
-    $incoSel.val(currentInco);
-}
-// First edit (incoTermsLoaded = false): AJAX pre-selection handles it
-originalIncoTerm = currentInco;
-
-    // Sync origin country display → select before snapshotting
-    const $origSel = $('#originCountrySelect');
-    if (!$origSel.val()) {
-        const displayedOrigin = $('#originCountryDisplay').val();
-        $origSel.find('option').each(function () {
-            if ($(this).data('name') === displayedOrigin || $(this).text().trim() === displayedOrigin) {
-                $origSel.val($(this).val());
-                return false;
-            }
-        });
-    }
-    originalOriginCountry = $origSel.val() || '';
-    originalOriginCountryName = $('#originCountryDisplay').val();
-
-    // Sync destination country display → select before snapshotting
-    const $destSel = $('#destCountrySelect');
-    if (!$destSel.val()) {
-        const displayedDest = $('#destCountryDisplay').val();
-        $destSel.find('option').each(function () {
-            if ($(this).data('name') === displayedDest || $(this).text().trim() === displayedDest) {
-                $destSel.val($(this).val());
-                return false;
-            }
-        });
-    }
-    originalDestCountry = $destSel.val() || '';
-    originalDestCountryName = $('#destCountryDisplay').val();
+                    });
+                }
+                originalOriginCountry = $origSel.val() || '';
+                originalOriginCountryName = $('#originCountryDisplay').val();
+            
+                // Sync destination country display → select before snapshotting
+                const $destSel = $('#destCountrySelect');
+                if (!$destSel.val()) {
+                    const displayedDest = $('#destCountryDisplay').val();
+                    $destSel.find('option').each(function () {
+                        if ($(this).data('name') === displayedDest || $(this).text().trim() === displayedDest) {
+                            $destSel.val($(this).val());
+                            return false;
+                        }
+                    });
+                }
+                originalDestCountry = $destSel.val() || '';
+                originalDestCountryName = $('#destCountryDisplay').val();
                 $('#shipmentModeSelect, #transportModeSelect').prop('disabled', false);
 
 
-if (!incoTermsLoaded) {
-    const savedIncoTerm = $('#incoTermCode').val();
-    $.ajax({
-        url: '{{ route('quotation.inco-terms') }}',
-        type: 'GET',
-        success: function(r) {
-            const $sel = $('#incoTermSelect').empty().append(
-                '<option value="">-- Select --</option>');
-            (r.success ? r.data : []).forEach(function(item) {
-                const code = item.IncoTermCode || '';
-                $sel.append(`<option value="${code}">${code} — ${item.Name}</option>`);
+            if (!incoTermsLoaded) {
+                const savedIncoTerm = $('#incoTermCode').val();
+                $.ajax({
+                    url: '{{ route('quotation.inco-terms') }}',
+                    type: 'GET',
+                    success: function(r) {
+                        const $sel = $('#incoTermSelect').empty().append(
+                            '<option value="">-- Select --</option>');
+                        (r.success ? r.data : []).forEach(function(item) {
+                            const code = item.IncoTermCode || '';
+                            $sel.append(`<option value="${code}">${code} — ${item.Name}</option>`);
+                        });
+               incoTermsLoaded = true;
+            console.log('IncoTerm savedIncoTerm:', savedIncoTerm);
+            console.log('IncoTerm options available:', $sel.find('option').map(function() { return $(this).val(); }).get());
+            if (savedIncoTerm) {
+                $sel.val(savedIncoTerm);
+                if (!$sel.val()) {
+                    // Fallback: match by option text (handles case where DB stores name not code)
+                    $sel.find('option').each(function () {
+                        const optVal  = $(this).val();
+                        const optText = $(this).text();
+                        if (optVal === savedIncoTerm ||
+                            optText.indexOf(savedIncoTerm) !== -1 ||
+                            savedIncoTerm.indexOf(optVal) === 0) {
+                            $sel.val(optVal);
+                            return false;
+                        }
+                    });
+                }
+            }
+
+            $('#incoTermDisplay').addClass('d-none');
+            $sel.removeClass('d-none').prop('disabled', false);
+                    }
+                });
+            } else {
+                const savedIncoTerm = $('#incoTermCode').val() || $('#incoTermDisplay').val();
+            if (savedIncoTerm) {
+                $('#incoTermSelect').val(savedIncoTerm);
+                if (!$('#incoTermSelect').val()) {
+                    // Fallback: match by option text (handles case where DB stores name not code)
+                    $('#incoTermSelect option').each(function () {
+                        const optVal  = $(this).val();
+                        const optText = $(this).text();
+                        if (optVal === savedIncoTerm ||
+                            optText.indexOf(savedIncoTerm) !== -1 ||
+                            savedIncoTerm.indexOf(optVal) === 0) {
+                            $('#incoTermSelect').val(optVal);
+                            return false;
+                        }
+                    });
+                }
+            }
+            
+                $('#incoTermDisplay').addClass('d-none');
+                $('#incoTermSelect').removeClass('d-none').prop('disabled', false);
+            }
+                  
+            // Snapshot display values before any async loads mutate the DOM
+            originalServiceClass = $('#serviceClassCode').val() || $('#serviceClassDisplay').val();
+            originalServiceClassDisplay = $('#serviceClassDisplay').val();
+            
+            loadShipmentCountries(function() {
+                $('#originCountryDisplay').hide();
+                $('#originCountryEditWrap').show();
+                $('#destCountryDisplay').hide();
+                $('#destCountryEditWrap').show();
             });
-   incoTermsLoaded = true;
-console.log('IncoTerm savedIncoTerm:', savedIncoTerm);
-console.log('IncoTerm options available:', $sel.find('option').map(function() { return $(this).val(); }).get());
-if (savedIncoTerm) {
-    $sel.val(savedIncoTerm);
-    if (!$sel.val()) {
-        // Fallback: match by option text (handles case where DB stores name not code)
-        $sel.find('option').each(function () {
-            const optVal  = $(this).val();
-            const optText = $(this).text();
-            if (optVal === savedIncoTerm ||
-                optText.indexOf(savedIncoTerm) !== -1 ||
-                savedIncoTerm.indexOf(optVal) === 0) {
-                $sel.val(optVal);
-                return false;
-            }
-        });
-    }
-}
-
-$('#incoTermDisplay').addClass('d-none');
-$sel.removeClass('d-none').prop('disabled', false);
-        }
-    });
-} else {
-    const savedIncoTerm = $('#incoTermCode').val() || $('#incoTermDisplay').val();
-if (savedIncoTerm) {
-    $('#incoTermSelect').val(savedIncoTerm);
-    if (!$('#incoTermSelect').val()) {
-        // Fallback: match by option text (handles case where DB stores name not code)
-        $('#incoTermSelect option').each(function () {
-            const optVal  = $(this).val();
-            const optText = $(this).text();
-            if (optVal === savedIncoTerm ||
-                optText.indexOf(savedIncoTerm) !== -1 ||
-                savedIncoTerm.indexOf(optVal) === 0) {
-                $('#incoTermSelect').val(optVal);
-                return false;
-            }
-        });
-    }
-}
-
-    $('#incoTermDisplay').addClass('d-none');
-    $('#incoTermSelect').removeClass('d-none').prop('disabled', false);
-}
-      
-// Snapshot display values before any async loads mutate the DOM
-originalServiceClass = $('#serviceClassCode').val() || $('#serviceClassDisplay').val();
-originalServiceClassDisplay = $('#serviceClassDisplay').val();
-
-loadShipmentCountries(function() {
-    $('#originCountryDisplay').hide();
-    $('#originCountryEditWrap').show();
-    $('#destCountryDisplay').hide();
-    $('#destCountryEditWrap').show();
-});
-
-loadServiceClasses(function() {
-    // Pre-select using the snapshotted value — options are now rendered
-    if (originalServiceClass) {
-        $('#serviceClassSelect').val(originalServiceClass);
-    }
-    $('#serviceClassDisplay').addClass('d-none');
-    $('#serviceClassSelect').removeClass('d-none').prop('disabled', false);
-});
+            
+            loadServiceClasses(function() {
+                // Pre-select using the snapshotted value — options are now rendered
+                if (originalServiceClass) {
+                    $('#serviceClassSelect').val(originalServiceClass);
+                }
+                $('#serviceClassDisplay').addClass('d-none');
+                $('#serviceClassSelect').removeClass('d-none').prop('disabled', false);
+            });
 
                 $(this).hide();
                 $('#saveShipmentDetailsBtn, #cancelShipmentDetailsBtn').show();
@@ -3608,10 +3647,10 @@ loadServiceClasses(function() {
                             $('#shipmentModeSelect, #transportModeSelect').prop('disabled',
                                 true);
 
-$('#incoTermSelect').val(incoTerm).addClass('d-none').prop('disabled', true);
-$('#incoTermDisplay').removeClass('d-none').val(incoTerm);
-$('#incoTermCode').val(incoTerm);
-originalIncoTerm = incoTerm;
+                            $('#incoTermSelect').val(incoTerm).addClass('d-none').prop('disabled', true);
+                            $('#incoTermDisplay').removeClass('d-none').val(incoTerm);
+                            $('#incoTermCode').val(incoTerm);
+                            originalIncoTerm = incoTerm;
 
                             $('#originCountryEditWrap').hide();
                             $('#originCountryDisplay').val(
@@ -3623,10 +3662,10 @@ originalIncoTerm = incoTerm;
                             ).show();
 
 
-$('#serviceClassSelect').val(serviceClass).addClass('d-none').prop('disabled', true);
-$('#serviceClassDisplay').val(serviceClass).removeClass('d-none');  // code, same as page load
-originalServiceClass = serviceClass;
-originalServiceClassDisplay = serviceClass;
+                             $('#serviceClassSelect').val(serviceClass).addClass('d-none').prop('disabled', true);
+                             $('#serviceClassDisplay').val(serviceClass).removeClass('d-none');  // code, same as page load
+                             originalServiceClass = serviceClass;
+                             originalServiceClassDisplay = serviceClass;
 
                             $('#saveShipmentDetailsBtn, #cancelShipmentDetailsBtn').hide();
                             $('#editShipmentDetailsBtn').show();
@@ -3736,6 +3775,116 @@ originalServiceClassDisplay = serviceClass;
                 showNotification('Cannot load charges: No booking number', 'error');
             }
 
+                      // ============================================
+            // BULK DELETE — REVENUE & COST
+            // ============================================
+            const BULK_DELETE_URL = '{{ route('quotation.charges.bulk-delete') }}';
+            let bulkDeleteMode = false;
+            
+            function enterBulkDeleteMode() {
+                bulkDeleteMode = true;
+                $('.bulk-delete-col').show();
+                $('#revenueSelectAll, #costSelectAll').prop('checked', false);
+                $('#openBulkDeleteBtn').addClass('d-none');
+                $('#confirmBulkDeleteBtn, #cancelBulkDeleteBtn').removeClass('d-none');
+            }
+            
+            function exitBulkDeleteMode() {
+                bulkDeleteMode = false;
+                $('.bulk-delete-col').hide();
+                $('#revenueSelectAll, #costSelectAll').prop('checked', false);
+                $('.charge-row-check').prop('checked', false);
+                $('#confirmBulkDeleteBtn, #cancelBulkDeleteBtn').addClass('d-none');
+                $('#openBulkDeleteBtn').removeClass('d-none');
+            }
+            
+            $('#openBulkDeleteBtn').on('click', function () {
+                const totalCharges = revenueCharges.length + costCharges.length;
+                if (!totalCharges) {
+                    showNotification('No charges to delete', 'warning');
+                    return;
+                }
+                enterBulkDeleteMode();
+            });
+            
+            $('#cancelBulkDeleteBtn').on('click', function () {
+                exitBulkDeleteMode();
+            });
+            
+            // Master checkbox — checks all revenue AND cost rows
+            $(document).on('change', '#revenueSelectAll', function () {
+                $('#revenueChargesTable .charge-row-check').prop('checked', $(this).is(':checked'));
+            });
+            
+            $(document).on('change', '#costSelectAll', function () {
+                $('#costChargesTable .charge-row-check').prop('checked', $(this).is(':checked'));
+            });
+            
+            $('#confirmBulkDeleteBtn').on('click', function () {
+                const ids = $('.charge-row-check:checked').map(function () {
+                    return $(this).data('id');
+                }).get();
+            
+                if (!ids.length) {
+                    showNotification('No charges selected', 'warning');
+                    return;
+                }
+            
+                $('#bulkDeleteCount').text(ids.length);
+                $('#bulkDeleteConfirmModal').modal('show');
+            });
+            
+            $('#bulkDeleteProceedBtn').on('click', function () {
+                const ids = $('.charge-row-check:checked').map(function () {
+                    return $(this).data('id');
+                }).get();
+            
+                $('#bulkDeleteConfirmModal').modal('hide');
+                executeBulkDelete(ids);
+            });
+            
+           $('#bulkDeleteConfirmModal').on('hidden.bs.modal', function () {
+                $('#bulkDeleteCount').text(0);
+            });
+
+            $('#bulkDeleteConfirmModal .close, #bulkDeleteConfirmModal button[data-dismiss="modal"]').on('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                $('#bulkDeleteConfirmModal').modal('hide');
+            });
+            
+            function executeBulkDelete(ids) {
+                $.ajax({
+                    url:  BULK_DELETE_URL,
+                    type: 'POST',
+                    data: {
+                        _token:       '{{ csrf_token() }}',
+                        quotation_id: quotationId,
+                        charge_ids:   ids,
+                    },
+                    beforeSend: function () {
+                        $('#confirmBulkDeleteBtn').prop('disabled', true)
+                            .html('<i class="fas fa-spinner fa-spin mr-1"></i> Deleting...');
+                    },
+                    success: function (response) {
+                        if (response.success) {
+                            showNotification(response.message, 'success');
+                            exitBulkDeleteMode();
+                            loadCharges();
+                        } else {
+                            showNotification(response.message || 'Failed to delete charges', 'error');
+                        }
+                    },
+                    error: function (xhr) {
+                        showNotification(xhr.responseJSON?.message || 'Delete failed', 'error');
+                    },
+                    complete: function () {
+                        $('#confirmBulkDeleteBtn').prop('disabled', false)
+                            .html('<i class="fas fa-check mr-1"></i> Confirm Delete');
+                    }
+                });
+            }
+            
             function loadCharges() {
                 $.ajax({
                     url: '{{ route('quotation.charges') }}',
@@ -5174,27 +5323,31 @@ originalServiceClassDisplay = serviceClass;
                     revenueCharges.forEach(function(charge, index) {
                         totalAmount += parseFloat(charge.amtInChgCurr || 0);
                         totalBaseAmount += parseFloat(charge.amtInBaseCurr || 0);
-                        tbody.append(`
-                            <tr>
-                                <td>${charge.chargeName || charge.chargeCode || ''}</td>
-                                <td class="text-right">${parseFloat(charge.rate || 0).toFixed(2)}</td>
-                                <td class="text-right col-extra">${parseFloat(charge.quantity || 0).toFixed(2)}</td>
-                                <td class="col-extra">${charge.basedOnAndUOM || charge.basedOnUOM || ''}</td>
-                                <td class="col-extra">${charge.chgCurr || getBaseCurrency()}</td>
-                                <td class="text-right">${parseFloat(charge.amtInChgCurr  || 0).toFixed(2)}</td>
-                                <td class="text-right">${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
-                                <td class="text-center">
-                                    <button type="button" class="btn btn-warning btn-action edit-revenue-charge"
-                                        data-index="${index}" data-id="${charge.id}">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-danger btn-action delete-revenue-charge"
-                                        data-index="${index}" data-id="${charge.id}">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                        `);
+                      tbody.append(`
+                        <tr>
+                           <td class="text-center bulk-delete-col" style="display:none;">
+                                <input type="checkbox" class="charge-row-check"
+                                    data-type="revenue" data-id="${charge.id}">
+                            </td>
+                            <td>${charge.chargeName || charge.chargeCode || ''}</td>
+                            <td class="text-right">${parseFloat(charge.rate || 0).toFixed(2)}</td>
+                            <td class="text-right col-extra">${parseFloat(charge.quantity || 0).toFixed(2)}</td>
+                            <td class="col-extra">${charge.basedOnAndUOM || charge.basedOnUOM || ''}</td>
+                            <td class="col-extra">${charge.chgCurr || getBaseCurrency()}</td>
+                            <td class="text-right">${parseFloat(charge.amtInChgCurr  || 0).toFixed(2)}</td>
+                            <td class="text-right">${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
+                            <td class="text-center">
+                                <button type="button" class="btn btn-warning btn-action edit-revenue-charge"
+                                    data-index="${index}" data-id="${charge.id}">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button type="button" class="btn btn-danger btn-action delete-revenue-charge"
+                                    data-index="${index}" data-id="${charge.id}">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `);
                     });
                 }
 
@@ -5222,6 +5375,10 @@ originalServiceClassDisplay = serviceClass;
                         totalBaseAmount += parseFloat(charge.amtInBaseCurr || 0);
                         tbody.append(`
                             <tr>
+                             <td class="text-center bulk-delete-col" style="display:none;">
+                                <input type="checkbox" class="charge-row-check"
+                                       data-type="cost" data-id="${charge.id}">
+                            </td>
                                 <td>${charge.chargeName || charge.chargeCode || ''}</td>
                                 <td class="text-right">${parseFloat(charge.rate || 0).toFixed(2)}</td>
                                 <td class="text-right col-extra">${parseFloat(charge.quantity || 0).toFixed(2)}</td>
@@ -5301,17 +5458,17 @@ originalServiceClassDisplay = serviceClass;
             });
 
             $('#wonProcessModal').on('click', '.close, #wonProcessCloseBtn', function (e) {
-    e.preventDefault();
-    e.stopPropagation();
-    $('#wonProcessModal').modal('hide');
-});
+                e.preventDefault();
+                e.stopPropagation();
+                $('#wonProcessModal').modal('hide');
+            });
 
-// Prevent closing mid-process via backdrop click or ESC
-$('#wonProcessModal').on('hide.bs.modal', function () {
-    if ($('#wonProcessCloseBtn').hasClass('d-none')) {
-        return false; // block close while processing
-    }
-});
+            // Prevent closing mid-process via backdrop click or ESC
+            $('#wonProcessModal').on('hide.bs.modal', function () {
+                if ($('#wonProcessCloseBtn').hasClass('d-none')) {
+                    return false; // block close while processing
+                }
+            });
 
             $('#wonModal .close, #wonModal button[data-dismiss="modal"]').on('click', function(e) {
                 e.preventDefault();
@@ -6927,23 +7084,23 @@ $('#wonProcessModal').on('hide.bs.modal', function () {
             });
 
 
-           function loadTermsTemplates() {
-    console.log('DEBUG bookingNo:', bookingNo, '| tcAlreadyApplied:', tcAlreadyApplied);
-    const codeToUse = officeCode;
-
-                if (!codeToUse) {
-                    setTimeout(loadTermsTemplates, 500);
-                    return;
-                }
-
-               $.ajax({
-    url: '{{ route('quotation.terms-templates') }}',
-    type: 'GET',
-    dataType: 'json',          
-    data: {
-        quotation_id: quotationId
-    },
-    success: function(response)  {
+                        function loadTermsTemplates() {
+                            console.log('DEBUG bookingNo:', bookingNo, '| tcAlreadyApplied:', tcAlreadyApplied);
+                            const codeToUse = officeCode;
+                        
+                                        if (!codeToUse) {
+                                            setTimeout(loadTermsTemplates, 500);
+                                            return;
+                                        }
+                        
+                                       $.ajax({
+                            url: '{{ route('quotation.terms-templates') }}',
+                            type: 'GET',
+                            dataType: 'json',          
+                            data: {
+                                quotation_id: quotationId
+                            },
+                            success: function(response)  {
                         const $select = $('#termsTemplateSelect');
                         $select.empty();
 
@@ -6962,53 +7119,53 @@ $('#wonProcessModal').on('hide.bs.modal', function () {
                                 const singleDesc = t.Description ? b64DecodeUnicode(t.Description) : '';
 
                            if (singleDesc) {
-    (function () {
-        const iframe = document.getElementById('termsDescriptionPreview');
-        if (iframe.dataset.blobUrl) URL.revokeObjectURL(iframe.dataset.blobUrl);
-        const blob = new Blob([singleDesc], { type: 'text/html' });
-        const url  = URL.createObjectURL(blob);
-        iframe.dataset.blobUrl = url;
-        iframe.src = url;
-    })();
-    $('#termsDescriptionWrapper').show();
-    $('#applyTermsBtn').hide();
-
-    if (tcAlreadyApplied) {
-        termsState.applied = true;
-        setGenerateBtn();
-        return;
-    }
-
-    $.ajax({
-        url: '{{ route('quotation.communication.save-terms') }}',
-        type: 'POST',
-        data: {
-            _token:          '{{ csrf_token() }}',
-            booking_no:      bookingNo,
-            terms_condition: singleDesc,
-            template_name:   t.Name
-        },
-        success: function (saveResponse) {
-            if (saveResponse.success) {
-                termsState.applied = true;
-                setGenerateBtn();
-            } else {
-                // Save failed but description is loaded — show Apply button so
-                // user can retry manually rather than being silently blocked
-                $('#applyTermsBtn').show();
-                showNotification(
-                    'Auto-apply T&C failed: ' + (saveResponse.message || 'Unknown error'),
-                    'warning'
-                );
-                setGenerateBtn();
-            }
-        },
-        error: function () {
-            $('#applyTermsBtn').show();
-            showNotification('Auto-apply T&C failed — click Apply Terms to retry', 'warning');
-            setGenerateBtn();
-        }
-    });
+                                (function () {
+                                    const iframe = document.getElementById('termsDescriptionPreview');
+                                    if (iframe.dataset.blobUrl) URL.revokeObjectURL(iframe.dataset.blobUrl);
+                                    const blob = new Blob([singleDesc], { type: 'text/html' });
+                                    const url  = URL.createObjectURL(blob);
+                                    iframe.dataset.blobUrl = url;
+                                    iframe.src = url;
+                                })();
+                                $('#termsDescriptionWrapper').show();
+                                $('#applyTermsBtn').hide();
+                            
+                                if (tcAlreadyApplied) {
+                                    termsState.applied = true;
+                                    setGenerateBtn();
+                                    return;
+                                }
+                            
+                                $.ajax({
+                                    url: '{{ route('quotation.communication.save-terms') }}',
+                                    type: 'POST',
+                                    data: {
+                                        _token:          '{{ csrf_token() }}',
+                                        booking_no:      bookingNo,
+                                        terms_condition: singleDesc,
+                                        template_name:   t.Name
+                                    },
+                                    success: function (saveResponse) {
+                                        if (saveResponse.success) {
+                                            termsState.applied = true;
+                                            setGenerateBtn();
+                                        } else {
+                                            // Save failed but description is loaded — show Apply button so
+                                            // user can retry manually rather than being silently blocked
+                                            $('#applyTermsBtn').show();
+                                            showNotification(
+                                                'Auto-apply T&C failed: ' + (saveResponse.message || 'Unknown error'),
+                                                'warning'
+                                            );
+                                            setGenerateBtn();
+                                        }
+                                    },
+                                    error: function () {
+                                        $('#applyTermsBtn').show();
+                                        showNotification('Auto-apply T&C failed — click Apply Terms to retry', 'warning');
+                                        setGenerateBtn();
+                                    }
+                                });
 
                                 } else {
                                     // SP did not return description — fetch it
@@ -7090,11 +7247,11 @@ $('#wonProcessModal').on('hide.bs.modal', function () {
                             $('#termsAutoAppliedBadge').hide();
 
                             // Cache descriptions returned by the SP — keyed by template name
-                         response.templates.forEach(function(t) {
-    if (t.Description) {
-        termsDescriptionCache[t.Name] = b64DecodeUnicode(t.Description);
-    }
-});
+                             response.templates.forEach(function(t) {
+                                if (t.Description) {
+                                    termsDescriptionCache[t.Name] = b64DecodeUnicode(t.Description);
+                                }
+                            });
 
                             if (!tcAlreadyApplied) {
                                 $('#termsTemplateSelect').closest('.mt-3.pt-2')
@@ -7160,16 +7317,16 @@ $('#wonProcessModal').on('hide.bs.modal', function () {
                                        const savedDesc = @json($quotation->terms_condition ?? '');
 
                                  if (savedDesc) {
-    (function() {
-        const iframe = document.getElementById('termsDescriptionPreview');
-        if (iframe.dataset.blobUrl) URL.revokeObjectURL(iframe.dataset.blobUrl);
-        const blob = new Blob([savedDesc], { type: 'text/html' });
-        const url  = URL.createObjectURL(blob);
-        iframe.dataset.blobUrl = url;
-        iframe.src = url;
-    })();
-    $('#termsDescriptionWrapper').show();
-}
+                                    (function() {
+                                        const iframe = document.getElementById('termsDescriptionPreview');
+                                        if (iframe.dataset.blobUrl) URL.revokeObjectURL(iframe.dataset.blobUrl);
+                                        const blob = new Blob([savedDesc], { type: 'text/html' });
+                                        const url  = URL.createObjectURL(blob);
+                                        iframe.dataset.blobUrl = url;
+                                        iframe.src = url;
+                                    })();
+                                    $('#termsDescriptionWrapper').show();
+                                }
                                         termsState.applied = true;
                                         setGenerateBtn();
                                     } else {
@@ -7179,17 +7336,17 @@ $('#wonProcessModal').on('hide.bs.modal', function () {
                                     if (tcAlreadyApplied) {
                                const savedDesc = @json($quotation->terms_condition ?? '');
 
-                                        if (savedDesc) {
-    (function() {
-        const iframe = document.getElementById('termsDescriptionPreview');
-        if (iframe.dataset.blobUrl) URL.revokeObjectURL(iframe.dataset.blobUrl);
-        const blob = new Blob([savedDesc], { type: 'text/html' });
-        const url  = URL.createObjectURL(blob);
-        iframe.dataset.blobUrl = url;
-        iframe.src = url;
-    })();
-    $('#termsDescriptionWrapper').show();
-}
+                                    if (savedDesc) {
+                                        (function() {
+                                            const iframe = document.getElementById('termsDescriptionPreview');
+                                            if (iframe.dataset.blobUrl) URL.revokeObjectURL(iframe.dataset.blobUrl);
+                                            const blob = new Blob([savedDesc], { type: 'text/html' });
+                                            const url  = URL.createObjectURL(blob);
+                                            iframe.dataset.blobUrl = url;
+                                            iframe.src = url;
+                                        })();
+                                        $('#termsDescriptionWrapper').show();
+                                    }
                                         termsState.applied = true;
                                         setGenerateBtn();
                                     }
@@ -7201,16 +7358,16 @@ $('#wonProcessModal').on('hide.bs.modal', function () {
                                     const savedDesc = @json($quotation->terms_condition ?? '');
 
                                  if (savedDesc) {
-    (function() {
-        const iframe = document.getElementById('termsDescriptionPreview');
-        if (iframe.dataset.blobUrl) URL.revokeObjectURL(iframe.dataset.blobUrl);
-        const blob = new Blob([savedDesc], { type: 'text/html' });
-        const url  = URL.createObjectURL(blob);
-        iframe.dataset.blobUrl = url;
-        iframe.src = url;
-    })();
-    $('#termsDescriptionWrapper').show();
-}
+                                    (function() {
+                                        const iframe = document.getElementById('termsDescriptionPreview');
+                                        if (iframe.dataset.blobUrl) URL.revokeObjectURL(iframe.dataset.blobUrl);
+                                        const blob = new Blob([savedDesc], { type: 'text/html' });
+                                        const url  = URL.createObjectURL(blob);
+                                        iframe.dataset.blobUrl = url;
+                                        iframe.src = url;
+                                    })();
+                                    $('#termsDescriptionWrapper').show();
+                                }
                                     termsState.applied = true;
                                     setGenerateBtn();
                                 }
@@ -7255,18 +7412,18 @@ $('#wonProcessModal').on('hide.bs.modal', function () {
                     }
                 });
             }
-            // HELPER — called from both the cache path and the fetch fallback path
-    function _applyTermsDescription(templateName, description) {
-    // Render HTML in iframe — avoids raw markup showing as plain text in a textarea
-    const iframe = document.getElementById('termsDescriptionPreview');
-    if (iframe.dataset.blobUrl) URL.revokeObjectURL(iframe.dataset.blobUrl);
-    const blob = new Blob([description], { type: 'text/html' });
-    const url  = URL.createObjectURL(blob);
-    iframe.dataset.blobUrl = url;
-    iframe.src = url;
-
-    $('#termsDescriptionWrapper').show();
-    $('#applyTermsBtn').prop('disabled', false);
+                // HELPER — called from both the cache path and the fetch fallback path
+                function _applyTermsDescription(templateName, description) {
+                // Render HTML in iframe — avoids raw markup showing as plain text in a textarea
+                const iframe = document.getElementById('termsDescriptionPreview');
+                if (iframe.dataset.blobUrl) URL.revokeObjectURL(iframe.dataset.blobUrl);
+                const blob = new Blob([description], { type: 'text/html' });
+                const url  = URL.createObjectURL(blob);
+                iframe.dataset.blobUrl = url;
+                iframe.src = url;
+            
+                $('#termsDescriptionWrapper').show();
+                $('#applyTermsBtn').prop('disabled', false);
 
                 $.ajax({
                     url: '{{ route('quotation.communication.save-terms') }}',
@@ -7346,11 +7503,11 @@ $('#wonProcessModal').on('hide.bs.modal', function () {
                 });
             });
 
-           $('#applyTermsBtn').on('click', function() {
-    const iframe = document.getElementById('termsDescriptionPreview');
-    const description = iframe.dataset.blobUrl
-        ? (iframe.contentDocument || iframe.contentWindow.document).body.innerHTML
-        : '';
+            $('#applyTermsBtn').on('click', function() {
+             const iframe = document.getElementById('termsDescriptionPreview');
+             const description = iframe.dataset.blobUrl
+                 ? (iframe.contentDocument || iframe.contentWindow.document).body.innerHTML
+                 : '';
 
                 if (!description || description === 'Loading...') {
                     showNotification('No Terms & Conditions to apply', 'warning');
@@ -7752,10 +7909,10 @@ $('#wonProcessModal').on('hide.bs.modal', function () {
                 };
                 $('#salesPersonDisplay').removeAttr('readonly');
                 $('#salesPersonEmail').removeAttr('readonly');
-    $('#quotationCurrencyDisplay').addClass('d-none');
-    loadInquiryCurrencies(function() {
-        $('#quotationCurrencySelect').removeClass('d-none');
-    });
+                $('#quotationCurrencyDisplay').addClass('d-none');
+                loadInquiryCurrencies(function() {
+                    $('#quotationCurrencySelect').removeClass('d-none');
+                });
 
 
                 $('#editInquiryBtn').addClass('d-none');
@@ -7771,7 +7928,7 @@ $('#wonProcessModal').on('hide.bs.modal', function () {
                 $('#salesPersonCode').val(inquirySnapshot.code);
                 $('#salesPersonEmail').val(inquirySnapshot.email);
                     $('#quotationCurrencySelect').addClass('d-none');
-    $('#quotationCurrencyDisplay').val(inquirySnapshot.currency).removeClass('d-none');
+                $('#quotationCurrencyDisplay').val(inquirySnapshot.currency).removeClass('d-none');
 
                 $('#editInquiryBtn').removeClass('d-none');
                 $('#saveInquiryBtn, #cancelInquiryBtn').addClass('d-none');

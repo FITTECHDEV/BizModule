@@ -1217,6 +1217,11 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
         'lookupEquipmentTypes',
     ])->name('quotation.lookup.equipmentTypes');
 
+    Route::post('/quotation/charges/bulk-delete', [
+        App\Http\Controllers\QuotationController::class,
+        'bulkDeleteCharges',
+    ])->name('quotation.charges.bulk-delete');
+
     // ============================================
     // WRITE ACTIONS (POST)
     // POST routes are NOT affected by {id} GET wildcards,
