@@ -11,7 +11,7 @@
             <h1 class="page-main-title">Edit User</h1>
             <div class="current-status status-{{ $user->status }}">
                 <i class="fas fa-circle"></i>
-                {{ ucfirst($user->status) }}
+                {{ ucfirst($user->Status) }}
             </div>
         </div>
         <a href="{{ route('azure.users.show', $user->Id) }}" class="back-to-dashboard">
@@ -26,7 +26,7 @@
         <div class="row">
             <div class="col-12">
                 <div class="edit-form-container">
-                    <form id="editUserForm" action="{{ route('users.update', $user) }}" method="POST">
+                    <form id="editUserForm" action="{{ route('azure.users.update', $user) }}" method="POST">
                         @csrf
                         @method('PUT')
 
@@ -44,7 +44,7 @@
                                     </label>
                                     <input type="text" id="name" name="name"
                                         class="form-control @error('name') is-invalid @enderror"
-                                        value="{{ old('name', $user->displayName ?? ($user->name ?? '')) }}" readonly>
+                                        value="{{ old('name', $user->displayName ?? '') }}" readonly>
                                     @error('name')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
@@ -152,13 +152,10 @@
                                             style="flex: 1;">
 
                                             @foreach ($offices as $office)
-                                                @php
-                                                    $officeCode = trim($office->Code);
-                                                    $currentBaseOffice = $user->BaseOfficeCode
-                                                        ? trim($user->BaseOfficeCode)
-                                                        : null;
-                                                    $isSelected = $currentBaseOffice === $officeCode;
-                                                @endphp
+                                            @php
+                                                $officeCode = trim($office->Code);
+                                                $isSelected = $currentBaseOffice === $officeCode;
+                                            @endphp
 
                                                 <option value="{{ $officeCode }}" {{ $isSelected ? 'selected' : '' }}>
                                                     {{ $office->Name }}
@@ -3191,31 +3188,6 @@
             }
         }
 
-        function showLoading() {
-            const baseOffice = document.getElementById('scm_base_office')?.value || 'Not set';
-
-            if (typeof Swal !== 'undefined') {
-                Swal.fire({
-                    title: 'Updating User...',
-                    html: `
-                <div style="text-align: left;">
-                    <p>Please wait while we update the user:</p>
-                    <ul style="text-align: left; padding-left: 20px;">
-                        <li>Base Office: <strong>${baseOffice}</strong></li>
-                        <li>Module assignments: Processing...</li>
-                    </ul>
-                </div>
-            `,
-                    allowOutsideClick: false,
-                    allowEscapeKey: false,
-                    showConfirmButton: false,
-                    willOpen: () => {
-                        Swal.showLoading();
-                    }
-                });
-            }
-        }
-
         function showAlert(type, title, message) {
             if (typeof Swal !== 'undefined') {
                 Swal.fire({
@@ -3392,31 +3364,13 @@
             }
         }
 
-        // ✅ Initialize on page load
         $(document).ready(function() {
             const originalValue = $('#scm_base_office').val();
             $('#scm_base_office').data('original-value', originalValue);
-
-            // Hide both buttons initially
+        
             $('#saveBaseOfficeBtn').hide();
             $('#cancelBaseOfficeBtn').hide();
-
-            // Show/hide buttons when value changes
-            $('#scm_base_office').on('change', function() {
-                checkBaseOfficeChange();
-            });
-        });
-
-        // ✅ Initialize on page load
-        $(document).ready(function() {
-            // Store original value
-            const originalValue = $('#scm_base_office').val();
-            $('#scm_base_office').data('original-value', originalValue);
-
-            // Hide button initially
-            $('#saveBaseOfficeBtn').hide();
-
-            // Show/hide button when value changes
+        
             $('#scm_base_office').on('change', function() {
                 checkBaseOfficeChange();
             });
@@ -3768,12 +3722,7 @@
                 checkWindowsSignInStatus();
             }, 500);
         });
-
-        // Initialize on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            initializeModules();
-        });
-
+        
         // ✅ NEW: Detect base office changes and show Update User button
         $('#scm_base_office').on('change', function() {
             console.log('📍 Base Office changed to:', $(this).val());

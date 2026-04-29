@@ -56,7 +56,7 @@
                         <div class="user-avatar-large mx-auto mb-3">
                             {{ strtoupper(substr($user->displayName ?? 'NA', 0, 2)) }}
                         </div>
-                        <h3 class="profile-username text-center">{{ $user->displayName ?? 'N/A' }}</h3>
+                        <h3 class="profile-username text-center">{{ $user->displayName ?? '-' }}</h3>
                         <p class="text-muted text-center">{{ $user->jobTitle ?? 'No Job Title' }}</p>
 
                         @php
@@ -76,7 +76,7 @@
                     <strong><i class="fas fa-envelope mr-1"></i> Email</strong>
                     <p class="text-muted mb-2">
                         <a href="mailto:{{ $user->mail ?? $user->userPrincipalName }}">
-                            {{ $user->mail ?? ($user->userPrincipalName ?? 'N/A') }}
+                            {{ $user->mail ?? ($user->userPrincipalName ?? '-') }}
                         </a>
                     </p>
 
@@ -87,7 +87,7 @@
                                 <a href="tel:{{ $phone }}">{{ $phone }}</a><br>
                             @endforeach
                         @else
-                            N/A
+                            -
                         @endif
                     </p>
 
@@ -96,13 +96,13 @@
                         @if ($user->mobilePhone)
                             <a href="tel:{{ $user->mobilePhone }}">{{ $user->mobilePhone }}</a>
                         @else
-                            N/A
+                            -
                         @endif
                     </p>
 
                     <strong><i class="fas fa-map-marker-alt mr-1"></i> Location</strong>
                     <p class="text-muted mb-2">
-                        {{ $user->officeLocation ?? ($user->city ?? 'N/A') }}
+                        {{ $user->officeLocation ?? ($user->city ?? '-') }}
                         @if ($user->country)
                             <br><small>{{ $user->country }}</small>
                         @endif
@@ -286,13 +286,13 @@
                         <div class="col-md-4">
                             <div class="info-item">
                                 <label>User Principal Name</label>
-                                <p>{{ $user->userPrincipalName ?? 'N/A' }}</p>
+                                <p>{{ $user->userPrincipalName ?? '-' }}</p>
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="info-item">
                                 <label>Employee ID</label>
-                                <p>{{ $user->EmployeCode ?? 'N/A' }}</p>
+                                <p>{{ $user->EmployeCode ?? '-' }}</p>
                             </div>
                         </div>
                         <div class="col-md-4">
@@ -312,7 +312,7 @@
                         <div class="col-md-4">
                             <div class="info-item">
                                 <label>Azure AD Object ID</label>
-                                <p><code>{{ $user->Id ?? 'N/A' }}</code></p>
+                                <p><code>{{ $user->Id ?? '-' }}</code></p>
                             </div>
                         </div>
                         <div class="col-md-4">
@@ -331,7 +331,7 @@
                         <div class="col-md-4">
                             <div class="info-item">
                                 <label>Created Date</label>
-                                <p>{{ $user->createdDateTime ? \Carbon\Carbon::parse($user->createdDateTime)->format('M d, Y H:i') : 'N/A' }}
+                                <p>{{ $user->createdDateTime ? \Carbon\Carbon::parse($user->createdDateTime)->format('M d, Y H:i') : '-' }}
                                 </p>
                             </div>
                         </div>
@@ -341,7 +341,7 @@
                         <div class="col-md-4">
                             <div class="info-item">
                                 <label>Last Modified</label>
-                                <p>{{ $user->updated_at ? $user->updated_at->format('M d, Y H:i') : 'N/A' }}</p>
+                                <p>{{ $user->updated_at ? $user->updated_at->format('M d, Y H:i') : '-' }}</p>
                             </div>
                         </div>
                     </div>
@@ -358,37 +358,37 @@
                         <div class="col-md-6">
                             <div class="info-item">
                                 <label>Job Title</label>
-                                <p>{{ $user->jobTitle ?? 'N/A' }}</p>
+                                <p>{{ $user->jobTitle ?? '-' }}</p>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="info-item">
                                 <label>Department</label>
-                                <p>{{ $user->department ?? 'N/A' }}</p>
+                                <p>{{ $user->department ?? '-' }}</p>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="info-item">
                                 <label>Company</label>
-                                <p>{{ $user->companyName ?? 'N/A' }}</p>
+                                <p>{{ $user->companyName ?? '-' }}</p>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="info-item">
                                 <label>Office Location</label>
-                                <p>{{ $user->officeLocation ?? 'N/A' }}</p>
+                                <p>{{ $user->officeLocation ?? '-' }}</p>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="info-item">
                                 <label>Manager</label>
-                                <p>{{ $user->manager ?? 'N/A' }}</p>
+                                <p>{{ $user->manager ?? '-' }}</p>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="info-item">
                                 <label>Employee Type</label>
-                                <p>{{ $user->employeeType ?? 'N/A' }}</p>
+                                <p>{{ $user->employeeType ?? '-' }}</p>
                             </div>
                         </div>
                     </div>
@@ -405,37 +405,37 @@
                         <div class="col-md-6">
                             <div class="info-item">
                                 <label>Street Address</label>
-                                <p>{{ $user->streetAddress ?? 'N/A' }}</p>
+                                <p>{{ $user->streetAddress ?? '-' }}</p>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="info-item">
                                 <label>City</label>
-                                <p>{{ $user->city ?? 'N/A' }}</p>
+                                <p>{{ $user->city ?? '-' }}</p>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="info-item">
                                 <label>State/Province</label>
-                                <p>{{ $user->state ?? 'N/A' }}</p>
+                                <p>{{ $user->state ?? '-' }}</p>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="info-item">
                                 <label>Postal Code</label>
-                                <p>{{ $user->postalCode ?? 'N/A' }}</p>
+                                <p>{{ $user->postalCode ?? '-' }}</p>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="info-item">
                                 <label>Country</label>
-                                <p>{{ $user->country ?? 'N/A' }}</p>
+                                <p>{{ $user->country ?? '-' }}</p>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="info-item">
                                 <label>Usage Location</label>
-                                <p>{{ $user->usageLocation ?? 'N/A' }}</p>
+                                <p>{{ $user->usageLocation ?? '-' }}</p>
                             </div>
                         </div>
                     </div>

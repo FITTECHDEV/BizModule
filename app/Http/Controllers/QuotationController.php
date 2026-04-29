@@ -5200,66 +5200,28 @@ class QuotationController extends Controller
 
             Log::info('PDF Generation - Starting', ['quotation_id' => $id]);
 
-            // ============================================
-            // LOAD QUOTATION
-            // ============================================
             $quotation = \App\Models\QuotationInfo::where('ID', $id)->first();
 
             if (!$quotation) {
                 Log::error('PDF Generation - Quotation not found', ['id' => $id]);
-                return response()->json(
-                    [
-                        'success' => false,
-                        'message' => 'Quotation not found',
-                    ],
-                    404,
-                );
+                return response()->json(['success' => false, 'message' => 'Quotation not found'], 404);
             }
 
-            $submittedBy = auth()->user()->displayName ?? (auth()->user()->Email ?? 'system');
-
-            // ============================================
-            // GUARD: QuoteNo must be set
-            // ============================================
-            // $quoteNo = trim((string) ($quotation->QuoteNo ?? ''));
-
-            // if (empty($quoteNo)) {
-            //     Log::error('PDF Generation - QuoteNo is empty', ['id' => $id]);
-            //     return response()->json([
-            //         'success' => false,
-            //         'message' => 'QuoteNo is not set on this quotation. Cannot generate PDF.',
-            //     ], 422);
-            // }
-
+            $submittedBy = substr(auth()->user()->displayName ?? (auth()->user()->Email ?? 'system'), 0, 50);
             if (empty($quotation->ID)) {
                 Log::error('PDF Generation - QuotationID is empty', ['id' => $id]);
                 return response()->json(
-                    [
-                        'success' => false,
-                        'message' => 'Quotation ID is not set. Cannot generate PDF.',
-                    ],
+                    ['success' => false, 'message' => 'Quotation ID is not set. Cannot generate PDF.'],
                     422,
                 );
             }
 
-            // ── Force-trim OfficeCode unconditionally ─────────────────────────────
-            // whereRaw guard ("OfficeCode != RTRIM(OfficeCode)") does not reliably
-            // detect trailing spaces on all SQL Server collations — the update
-            // silently never fires. Always RTRIM so sp_Quote_QuotationFormat's
-            // office name lookup (where CO.Code = @OfficeCode) finds a match
-            // and the header block renders correctly.
+            // Force-trim OfficeCode — SP reads it directly via Left(QI.OfficeCode,2)
             DB::table('Quote_QuotationInfo')
                 ->where('ID', $id)
                 ->update(['OfficeCode' => DB::raw('RTRIM(OfficeCode)')]);
 
-            // Log::info('PDF Generation - OfficeCode after heal', [
-            //     'quote_no'    => $quoteNo,
-            //     'office_code' => DB::table('Quote_QuotationInfo')->where('ID', $id)->value('OfficeCode'),
-            // ]);
-
-            // ============================================
-            // CALL sp_Quote_QuotationFormat
-            // ============================================
+            // ── Call sp_Quote_QuotationFormat ─────────────────────────────────────
             $html = null;
             $spError = null;
 
@@ -5271,7 +5233,6 @@ class QuotationController extends Controller
                     @QuoteFormat = @QuoteFormat OUTPUT;
                 SELECT @QuoteFormat AS QuoteFormat;
             ");
-
                 $stmt->execute([$quotation->ID]);
 
                 $setIndex = 0;
@@ -5279,14 +5240,11 @@ class QuotationController extends Controller
                     $setIndex++;
                     try {
                         $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
-
                         if (empty($rows)) {
                             continue;
                         }
-
                         if (isset($rows[0]->QuoteFormat)) {
                             $raw = (string) $rows[0]->QuoteFormat;
-
                             if (str_starts_with(trim($raw), 'Failed (Reason)')) {
                                 $spError = $raw;
                             } else {
@@ -5295,55 +5253,29 @@ class QuotationController extends Controller
                             break;
                         }
                     } catch (\PDOException $e) {
-                        // Log::debug('PDF Generation - Skipping intermediate result set #' . $setIndex, [
-                        //     'quote_no' => $quoteNo,
-                        //     'error'    => $e->getMessage(),
-                        // ]);
                         continue;
                     }
                 } while ($stmt->nextRowset());
             } catch (\Exception $e) {
-                // Log::error('PDF Generation - SP execution threw exception', [
-                //     // 'quote_no' => $quoteNo,
-                //     'error'    => $e->getMessage(),
-                //     'file'     => $e->getFile(),
-                //     'line'     => $e->getLine(),
-                // ]);
                 return response()->json(
-                    [
-                        'success' => false,
-                        'message' => 'Failed to execute quotation format SP: ' . $e->getMessage(),
-                    ],
+                    ['success' => false, 'message' => 'Failed to execute quotation format SP: ' . $e->getMessage()],
                     500,
                 );
             }
 
             if (!empty($spError)) {
-                // Log::error('PDF Generation - SP returned failure string', [
-                //     // 'quote_no' => $quoteNo,
-                //     'sp_error' => $spError,
-                // ]);
                 return response()->json(
-                    [
-                        'success' => false,
-                        'message' => 'Quotation format SP failed: ' . $spError,
-                    ],
+                    ['success' => false, 'message' => 'Quotation format SP failed: ' . $spError],
                     500,
                 );
             }
 
             if (empty($html) || trim($html) === '') {
-                // Log::error('PDF Generation - SP returned empty HTML', [
-                //     'quote_no'          => $quoteNo,
-                //     'tc_template_set'   => !empty($quotation->QuotationTCTemplate),
-                //     'tc_template_value' => $quotation->QuotationTCTemplate ?? 'NULL',
-                // ]);
                 return response()->json(
                     [
                         'success' => false,
                         'message' =>
-                            'No quotation HTML returned from SP. ' .
-                            'Ensure a Terms & Conditions template is applied before generating.',
+                            'No quotation HTML returned from SP. Ensure a Terms & Conditions template is applied before generating.',
                     ],
                     422,
                 );
@@ -5355,19 +5287,10 @@ class QuotationController extends Controller
                 'tc_template' => $quotation->QuotationTCTemplate ?? 'N/A',
             ]);
 
-            // ============================================
-            // FIX LOGO PATH
-            // ============================================
             $html = str_replace('public/img/logo.png', public_path('img/logo.png'), $html);
-
-            // ============================================
-            // ADJUST LOGO SIZE
-            // ============================================
             $html = str_replace('style="height: 42px;"', 'style="height: 80px; width: auto;"', $html);
 
-            // ============================================
-            // RENDER PDF WITH DOMPDF
-            // ============================================
+            // ── Render PDF ────────────────────────────────────────────────────────
             try {
                 $options = new \Dompdf\Options();
                 $options->set('isHtml5ParserEnabled', true);
@@ -5380,29 +5303,16 @@ class QuotationController extends Controller
                 $pdf->loadHtml($html, 'UTF-8');
                 $pdf->setPaper('A4', 'portrait');
                 $pdf->render();
-
-                // Log::info('PDF Generation - DomPDF rendered successfully', [
-                //     'quote_no' => $quoteNo,
-                // ]);
             } catch (\Exception $e) {
-                // Log::error('PDF Generation - DomPDF render failed', [
-                //     'quote_no' => $quoteNo,
-                //     'error'    => $e->getMessage(),
-                //     'file'     => $e->getFile(),
-                //     'line'     => $e->getLine(),
-                // ]);
                 return response()->json(
-                    [
-                        'success' => false,
-                        'message' => 'PDF render failed: ' . $e->getMessage(),
-                    ],
+                    ['success' => false, 'message' => 'PDF render failed: ' . $e->getMessage()],
                     500,
                 );
             }
 
-            // ============================================
-            // DETERMINE VERSION NUMBER
-            // ============================================
+            // ── Determine version number ──────────────────────────────────────────
+            // Count existing non-deleted documents for this quotation.
+            // SP has a duplicate-filename guard so the count must be accurate.
             $folder = 'quotations/' . $quotation->bookingno;
 
             try {
@@ -5414,27 +5324,20 @@ class QuotationController extends Controller
                 ]);
             }
 
-            $existingVersions = DB::table('Quote_Quotation_Document')
-                ->where('QuotationInfoID', $quotation->ID)
-                ->where('DocumentType', 'QuotationPDF')
-                ->where('IsDeleted', 0)
-                ->count();
-
-            $nextVersion = $existingVersions + 1;
-            $fileName =
-                'Quotation_' . $quotation->bookingno . '_V' . $nextVersion . '_' . now()->format('Ymd_His') . '.pdf';
+            $fileName = 'quote_' . now()->format('Ymd_His') . '.pdf';
             $storagePath = $folder . '/' . $fileName;
             $fullPath = \Storage::disk('public')->path($storagePath);
 
-            Log::info('PDF Generation - Paths resolved', [
-                'storage_path' => $storagePath,
-                'version' => $nextVersion,
-                'existing_versions' => $existingVersions,
-            ]);
+            // Log::info('PDF Generation - Paths resolved', [
+            //     'storage_path' => $storagePath,
+            //     'existing_versions' => $existingVersions,
+            // ]);
 
-            // ============================================
-            // WRITE PDF TO DISK
-            // ============================================
+            // ── Write PDF to local disk ───────────────────────────────────────────
+            // $azureWarning initialized here so it is always in scope,
+            // including the early-return inside the SP catch block below.
+            $azureWarning = null;
+
             try {
                 $dir = dirname($fullPath);
                 if (!file_exists($dir)) {
@@ -5460,71 +5363,147 @@ class QuotationController extends Controller
                     'line' => $e->getLine(),
                 ]);
                 return response()->json(
+                    ['success' => false, 'message' => 'Failed to save PDF to disk: ' . $e->getMessage()],
+                    500,
+                );
+            }
+
+            // ── Step 1: Register document via SP ─────────────────────────────────
+            // SP owns the INSERT. Must succeed before Azure upload to avoid orphaned blobs.
+            $azureWarning = null;
+
+            try {
+                $pdoSp = DB::connection()->getPdo();
+                $stmtSp = $pdoSp->prepare("
+        SET NOCOUNT ON;
+        DECLARE @Status VARCHAR(25), @Remark VARCHAR(200);
+        EXEC dbo.sp_Quote_QuotationDocumentAdd ?, ?, ?,
+            @Status = @Status OUTPUT,
+            @Remark = @Remark OUTPUT;
+        SELECT @Status AS Status, @Remark AS Remark;
+    ");
+                $stmtSp->execute([
+                    $quotation->ID, // @QuotationID
+                    $submittedBy, // @Username (already trimmed to 50)
+                    $fileName, // @Filename — SP builds FilePath internally
+                ]);
+
+                $spResult = null;
+                do {
+                    try {
+                        $spRows = $stmtSp->fetchAll(\PDO::FETCH_OBJ);
+                        if (!empty($spRows) && isset($spRows[0]->Status)) {
+                            $spResult = $spRows[0];
+                            break;
+                        }
+                    } catch (\PDOException $e) {
+                        continue;
+                    }
+                } while ($stmtSp->nextRowset());
+
+                if (!$spResult) {
+                    // SP returned nothing — clean up local file and fail
+                    @unlink($fullPath);
+                    Log::error('PDF Generation - SP returned no output, local file removed', [
+                        'quotation_id' => $quotation->ID,
+                        'file' => $fileName,
+                    ]);
+                    return response()->json(
+                        [
+                            'success' => false,
+                            'message' => 'Document registration SP returned no output.',
+                        ],
+                        500,
+                    );
+                }
+
+                if (strtolower(trim($spResult->Status)) !== 'success') {
+                    // SP rejected — clean up local file and fail
+                    @unlink($fullPath);
+                    Log::error('PDF Generation - SP registration failed, local file removed', [
+                        'quotation_id' => $quotation->ID,
+                        'sp_status' => $spResult->Status,
+                        'sp_remark' => $spResult->Remark,
+                    ]);
+                    return response()->json(
+                        [
+                            'success' => false,
+                            'message' => 'Document registration failed: ' . $spResult->Remark,
+                        ],
+                        500,
+                    );
+                }
+
+                Log::info('PDF Generation - SP registration succeeded', [
+                    'quotation_id' => $quotation->ID,
+                    'sp_remark' => $spResult->Remark,
+                    'file' => $fileName,
+                ]);
+            } catch (\Exception $spEx) {
+                @unlink($fullPath);
+                Log::error('PDF Generation - SP call failed, local file removed', [
+                    'quotation_id' => $quotation->ID,
+                    'error' => $spEx->getMessage(),
+                ]);
+                return response()->json(
                     [
                         'success' => false,
-                        'message' => 'Failed to save PDF to disk: ' . $e->getMessage(),
+                        'message' => 'Document registration failed: ' . $spEx->getMessage(),
                     ],
                     500,
                 );
             }
 
-            // ============================================
-            // RECORD IN DATABASE
-            // ============================================
+            // ── Step 2: Upload to Azure ───────────────────────────────────────────
+            // SP already wrote FilePath as 'Quotation/{officeCode}/{fileName}'.
+            // Blob path must match exactly.
+            $officeShortCode = DB::table('Cust_Office')
+                ->where('TeamCode', $quotation->teamid)
+                ->where('IsActive', 1)
+                ->where('IsDeleted', 0)
+                ->value('Code');
+
+            $officeShortCode = $officeShortCode
+                ? strtoupper(trim($officeShortCode))
+                : strtoupper(substr($quotation->OfficeCode ?? 'XX', 0, 2)); // use already-loaded model
+
+            $blobPath = 'Quotation/' . $officeShortCode . '/' . $fileName;
+
             try {
-                DB::table('Quote_Quotation_Document')->insert([
-                    'Id' => DB::raw('NEWID()'),
-                    'QuotationInfoID' => $quotation->ID,
-                    'DocumentType' => 'QuotationPDF',
-                    'Name' => $fileName,
-                    'IsVisible' => 1,
-                    'IsPrinted' => 1,
-                    'PrintedOn' => now(),
-                    'FilePath' => $storagePath,
-                    'CreatedBy' => $submittedBy,
-                    'CreatedOn' => now(),
-                    'LastModifiedBy' => $submittedBy,
-                    'LastModifiedOn' => now(),
-                    'IsDeleted' => 0,
-                ]);
+                \Storage::disk('azure')->put($blobPath, file_get_contents($fullPath));
 
-                // Log::info('PDF Generation - Document record inserted', [
-                //     'quote_no' => $quoteNo,
-                //     'version'  => $nextVersion,
-                //     'file'     => $fileName,
-                // ]);
-            } catch (\Exception $e) {
-                // Non-fatal: PDF is on disk and can be served.
-                // Log::error('PDF Generation - DB insert failed (non-fatal, PDF is on disk)', [
-                //     'quote_no' => $quoteNo,
-                //     'error'    => $e->getMessage(),
-                //     'file'     => $e->getFile(),
-                //     'line'     => $e->getLine(),
-                // ]);
-
-                return response()->json([
-                    'success' => true,
-                    'version' => $nextVersion,
-                    'label' => 'Version ' . $nextVersion,
-                    'url' => route('quotation.download-pdf', [$id, $nextVersion]),
-                    'warning' =>
-                        'PDF generated but version record could not be saved. Please refresh if the version does not appear.',
+                Log::info('PDF Generation - Uploaded to Azure', [
+                    'quotation_id' => $quotation->ID,
+                    'blob_path' => $blobPath,
                 ]);
+            } catch (\Exception $azureEx) {
+                // Non-fatal: DB record exists, blob missing. Flag for manual recovery.
+                Log::error('PDF Generation - Azure upload failed (non-fatal)', [
+                    'quotation_id' => $quotation->ID,
+                    'blob_path' => $blobPath,
+                    'error' => $azureEx->getMessage(),
+                ]);
+                $azureWarning = 'PDF registered but Azure upload failed: ' . $azureEx->getMessage();
             }
 
-            // Log::info('PDF Generation - Completed successfully', [
-            //     'booking_no'  => $quotation->bookingno,
-            //     'quote_no'    => $quoteNo,
-            //     'version'     => $nextVersion,
-            //     'path'        => $storagePath,
-            //     'tc_template' => $quotation->QuotationTCTemplate ?? 'N/A',
-            // ]);
+            // ── Step 3: Cleanup local temp file ──────────────────────────────────
+            @unlink($fullPath);
+            Log::info('PDF Generation - Local temp file removed', ['path' => $fullPath]);
+            // ── End Azure block ───────────────────────────────────────────────────
+
+            // Version number is positional — count existing non-deleted docs after insert
+            $versionNumber = DB::table('Quote_Quotation_Document')
+                ->where('QuotationInfoID', $quotation->ID)
+                ->where('DocumentType', 'QuotationPDF')
+                ->where('IsDeleted', 0)
+                ->count();
 
             return response()->json([
                 'success' => true,
-                'version' => $nextVersion,
-                'label' => 'Version ' . $nextVersion,
-                'url' => route('quotation.download-pdf', [$id, $nextVersion]),
+                'version' => $versionNumber,
+                'label' => 'Version ' . $versionNumber,
+                'url' => route('quotation.download-pdf', [$id, $versionNumber]),
+                'warning' => $azureWarning,
             ]);
         } catch (\Exception $e) {
             Log::error('PDF Generation - Unexpected top-level exception', [
@@ -5534,12 +5513,8 @@ class QuotationController extends Controller
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString(),
             ]);
-
             return response()->json(
-                [
-                    'success' => false,
-                    'message' => 'PDF generation failed unexpectedly: ' . $e->getMessage(),
-                ],
+                ['success' => false, 'message' => 'PDF generation failed unexpectedly: ' . $e->getMessage()],
                 500,
             );
         }
@@ -5647,81 +5622,69 @@ class QuotationController extends Controller
         }
     }
 
-    public function getQuotationVersions($id)
-    {
-        try {
-            $quotation = \App\Models\QuotationInfo::where('ID', $id)->first();
+  public function getQuotationVersions($id)
+{
+    try {
+        $quotation = \App\Models\QuotationInfo::where('ID', $id)->first();
 
-            if (!$quotation) {
-                return response()->json(['success' => false, 'message' => 'Quotation not found'], 404);
-            }
-
-            $documents = DB::table('Quote_Quotation_Document')
-                ->where('QuotationInfoID', $quotation->ID)
-                ->where('DocumentType', 'QuotationPDF')
-                ->where('IsDeleted', 0)
-                ->orderBy('CreatedOn', 'asc')
-                ->get(['Id', 'Name', 'FilePath', 'CreatedOn']);
-
-            $versions = [];
-
-            $versionCounter = 0; // sequential counter — only incremented for files that exist on disk
-
-            foreach ($documents as $doc) {
-                $relativePath = $this->normalizeFilePath($doc->FilePath);
-                $fileExists = \Storage::disk('public')->exists($relativePath);
-
-                // Skip versions whose file no longer exists on disk.
-                // Do NOT increment versionCounter here — the counter must only reflect
-                // downloadable versions so that downloadPdf()->skip($version - 1) resolves correctly.
-                if (!$fileExists) {
-                    Log::warning('getQuotationVersions - File missing on disk, skipping', [
-                        'quotation_id' => $id,
-                        'file_name' => $doc->Name,
-                        'raw_path' => $doc->FilePath,
-                        'relative' => $relativePath,
-                    ]);
-                    continue;
-                }
-
-                $versionCounter++;
-
-                Log::info('getQuotationVersions - Version entry', [
-                    'quotation_id' => $id,
-                    'version_no' => $versionCounter,
-                    'file_name' => $doc->Name,
-                    'file_path' => $relativePath,
-                ]);
-
-                $versions[] = [
-                    'version' => $versionCounter,
-                    'label' => 'Version ' . $versionCounter,
-                    'url' => route('quotation.download-pdf', [$id, $versionCounter]),
-                    'created_on' => $doc->CreatedOn,
-                    'file_name' => $doc->Name,
-                    'doc_id' => $doc->Id,
-                ];
-            }
-            Log::info('getQuotationVersions - Completed', [
-                'quotation_id' => $id,
-                'total_db_docs' => $documents->count(),
-                'versions_found' => count($versions),
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'versions' => $versions,
-            ]);
-        } catch (\Exception $e) {
-            Log::error('getQuotationVersions - Failed', [
-                'id' => $id,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-
-            return response()->json(['success' => false, 'message' => 'Failed to load versions'], 500);
+        if (!$quotation) {
+            return response()->json(['success' => false, 'message' => 'Quotation not found'], 404);
         }
+
+        $documents = DB::table('Quote_Quotation_Document')
+            ->where('QuotationInfoID', $quotation->ID)
+            ->where('DocumentType', 'QuotationPDF')
+            ->where('IsDeleted', 0)
+            ->orderBy('CreatedOn', 'asc')
+            ->get(['Id', 'Name', 'FilePath', 'CreatedOn']);
+
+        $versions = [];
+        $versionCounter = 0;
+
+        foreach ($documents as $doc) {
+            $filePath = $doc->FilePath;
+            $fileExists = false;
+
+            // Check Azure if path starts with 'Quotation/'
+            if (str_starts_with($filePath, 'Quotation/')) {
+                $fileExists = \Storage::disk('azure')->exists($filePath);
+            } else {
+                // Legacy local disk check
+                $relativePath = $this->normalizeFilePath($filePath);
+                $fileExists = \Storage::disk('public')->exists($relativePath);
+            }
+
+            if (!$fileExists) {
+                Log::warning('getQuotationVersions - File missing, skipping', [
+                    'quotation_id' => $id,
+                    'file_path' => $filePath,
+                ]);
+                continue;
+            }
+
+            $versionCounter++;
+            $versions[] = [
+                'version' => $versionCounter,
+                'label' => 'Version ' . $versionCounter,
+                'url' => route('quotation.download-pdf', [$id, $versionCounter]),
+                'created_on' => $doc->CreatedOn,
+                'file_name' => $doc->Name,
+                'doc_id' => $doc->Id,
+            ];
+        }
+
+        return response()->json([
+            'success' => true,
+            'versions' => $versions,
+        ]);
+    } catch (\Exception $e) {
+        Log::error('getQuotationVersions - Failed', [
+            'id' => $id,
+            'error' => $e->getMessage(),
+        ]);
+        return response()->json(['success' => false, 'message' => 'Failed to load versions'], 500);
     }
+}
 
     public function getEmailHistory(Request $request)
     {
@@ -7305,44 +7268,63 @@ class QuotationController extends Controller
 
             $document = DB::table('Quote_Quotation_Document')
                 ->where('QuotationInfoID', $quotation->ID)
-                ->where('DocumentType', 'QuotationPDF') // FIX: was 'Quotation'
+                ->where('DocumentType', 'QuotationPDF')
                 ->where('IsDeleted', 0)
                 ->where('IsVisible', 1)
                 ->orderBy('CreatedOn', 'asc')
                 ->skip($version - 1)
                 ->take(1)
                 ->first(['Name', 'FilePath']);
+
             if (!$document) {
                 abort(404, 'Version ' . $version . ' not found');
             }
 
-            $relativePath = $this->normalizeFilePath($document->FilePath);
-            Log::info('downloadPdf - Path diagnostic', [
-                'raw_filepath' => $document->FilePath,
-                'relative_path' => $relativePath,
-                'storage_root' => \Storage::disk('public')->path(''),
-                'full_resolved' => \Storage::disk('public')->path($relativePath),
-                'exists' => \Storage::disk('public')->exists($relativePath),
-                'file_exists_raw' => file_exists($document->FilePath),
-                'file_exists_full' => file_exists(\Storage::disk('public')->path($relativePath)),
-            ]);
+            $filePath = $document->FilePath;
+
+            // ── Check if this is an Azure path (starts with 'Quotation/') ──
+            if (str_starts_with($filePath, 'Quotation/')) {
+                // Serve from Azure
+                if (!\Storage::disk('azure')->exists($filePath)) {
+                    Log::error('downloadPdf - Azure blob not found', [
+                        'id' => $id,
+                        'version' => $version,
+                        'blob_path' => $filePath,
+                    ]);
+                    abort(404, 'File not found in Azure storage');
+                }
+
+                Log::info('downloadPdf - Serving from Azure', [
+                    'id' => $id,
+                    'booking_no' => $quotation->bookingno,
+                    'version' => $version,
+                    'blob_path' => $filePath,
+                ]);
+
+                $contents = \Storage::disk('azure')->get($filePath);
+                return response($contents, 200)
+                    ->header('Content-Type', 'application/pdf')
+                    ->header('Content-Disposition', 'attachment; filename="' . $document->Name . '"');
+            }
+
+            // ── Legacy local disk path ──
+            $relativePath = $this->normalizeFilePath($filePath);
 
             if (!\Storage::disk('public')->exists($relativePath)) {
                 Log::error('downloadPdf - File not found on disk', [
                     'id' => $id,
                     'version' => $version,
-                    'raw_filepath' => $document->FilePath,
+                    'raw_filepath' => $filePath,
                     'relative_path' => $relativePath,
                 ]);
                 abort(404, 'File not found on disk');
             }
 
-            Log::info('downloadPdf - Downloaded', [
+            Log::info('downloadPdf - Serving from local disk', [
                 'id' => $id,
                 'booking_no' => $quotation->bookingno,
                 'version' => $version,
                 'file' => $document->Name,
-                'user' => Auth::user()->username ?? (Auth::user()->email ?? 'system'),
             ]);
 
             return \Storage::disk('public')->download($relativePath, $document->Name);

@@ -124,20 +124,20 @@
                                     <div class="user-avatar mr-2">
                                         {{ strtoupper(substr($user->displayName ?? 'NA', 0, 2)) }}
                                     </div>
-                                    <span>{{ $user->displayName ?? 'N/A' }}</span>
+                                    <span>{{ $user->displayName ?? '-' }}</span>
                                 </div>
                             </td>
                             <td class="d-none d-lg-table-cell">
-                                {{ $user->mail ?? ($user->userPrincipalName ?? 'N/A') }}
+                                {{ $user->mail ?? ($user->userPrincipalName ?? '-') }}
                             </td>
-                            <td>{{ $user->userPrincipalName ?? 'N/A' }}</td>
-                            <td class="d-none d-xl-table-cell">{{ $user->EmployeCode ?? 'N/A' }}</td>
+                            <td>{{ $user->userPrincipalName ?? '-' }}</td>
+                            <td class="d-none d-xl-table-cell">{{ $user->EmployeCode ?? '-' }}</td>
                             <td class="d-none d-lg-table-cell">
-                                {{ $user->department ?? 'N/A' }}
+                                {{ $user->department ?? '-' }}
                             </td>
-                            <td class="d-none d-xl-table-cell">{{ $user->companyName ?? 'N/A' }}</td>
+                            <td class="d-none d-xl-table-cell">{{ $user->companyName ?? '-' }}</td>
                             <td class="d-none d-lg-table-cell">
-                                {{ $user->officeLocation ?? ($user->city ?? 'N/A') }}
+                                {{ $user->officeLocation ?? ($user->city ?? '-') }}
                             </td>
                             <td>
                                 @php
@@ -679,115 +679,12 @@
     th:nth-child(8), td:nth-child(8) { width: 90px; } /* Status */
     th:nth-child(9), td:nth-child(9) { width: 130px; } /* Actions */
 }
-
-/* ============================================
-   TABLE-SPECIFIC PC RESPONSIVENESS
-   ============================================ */
-
-/* Smaller Laptops (992px - 1200px) - Show essential columns */
-@media (min-width: 992px) and (max-width: 1199px) {
-    .table td, .table th {
-        padding: 0.5rem 0.6rem;
-        font-size: 0.85rem;
-    }
-    
-    .user-avatar {
-        width: 32px;
-        height: 32px;
-        font-size: 13px;
-    }
-    
-    .badge {
-        font-size: 0.75rem;
-        padding: 0.25rem 0.45rem;
-    }
-    
-    .btn-group-sm > .btn {
-        padding: 0.25rem 0.45rem;
-        font-size: 0.8rem;
-    }
-}
-
-/* Large Laptops/Desktops (1200px - 1600px) - Show more columns */
-@media (min-width: 1200px) and (max-width: 1599px) {
-    .table td, .table th {
-        padding: 0.6rem 0.7rem;
-        font-size: 0.9rem;
-    }
-    
-    .user-avatar {
-        width: 34px;
-        height: 34px;
-        font-size: 13px;
-    }
-}
-
-/* Large Monitors (1600px+) - Show all columns comfortably */
-@media (min-width: 1600px) {
-    .table td, .table th {
-        padding: 0.7rem 0.85rem;
-        font-size: 0.95rem;
-    }
-    
-    .user-avatar {
-        width: 36px;
-        height: 36px;
-        font-size: 14px;
-    }
-}
-
-/* Table header styling */
-.table thead th {
-    font-weight: 600;
-    background-color: #f8f9fa;
-    border-bottom: 2px solid #dee2e6;
-    white-space: nowrap;
-    vertical-align: middle;
-}
-
-/* Enhanced hover effect */
-.table-hover tbody tr:hover {
-    background-color: #f1f3f5;
-    transition: background-color 0.15s ease;
-}
-
-/* Ensure actions column stays visible and centered */
-.table td:last-child,
-.table th:last-child {
-    text-align: center;
-    vertical-align: middle;
-    position: sticky;
-    right: 0;
-    background-color: #fff;
-    box-shadow: -2px 0 5px rgba(0,0,0,0.05);
-}
-
-.table-hover tbody tr:hover td:last-child {
-    background-color: #f1f3f5;
-}
-
-/* Better responsive table scroll */
-.table-responsive {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-}
-
-/* Fix column widths for better display */
-@media (min-width: 1200px) {
-    th:nth-child(1), td:nth-child(1) { min-width: 180px; } /* Name */
-    th:nth-child(2), td:nth-child(2) { min-width: 200px; } /* Email */
-    th:nth-child(3), td:nth-child(3) { min-width: 200px; } /* Login ID */
-    th:nth-child(4), td:nth-child(4) { width: 120px; } /* Employee ID */
-    th:nth-child(5), td:nth-child(5) { width: 130px; } /* Department */
-    th:nth-child(6), td:nth-child(6) { width: 130px; } /* Company */
-    th:nth-child(7), td:nth-child(7) { width: 120px; } /* Location */
-    th:nth-child(8), td:nth-child(8) { width: 90px; } /* Status */
-    th:nth-child(9), td:nth-child(9) { width: 130px; } /* Actions */
-}
     </style>
 @stop
 
 @section('js')
+    <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
     <script>
         let currentUserApplicationStatus = {
             azure: false,
@@ -835,10 +732,15 @@
                     }
                     $('#usersTableContainer').removeClass('table-loading');
                 },
-                error: function(xhr) {
+           error: function(xhr) {
                     console.error('Error loading users:', xhr);
-                    alert('Failed to load users. Please try again.');
                     $('#usersTableContainer').removeClass('table-loading');
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Load Failed',
+                        text: 'Failed to load users. Please try again.',
+                        confirmButtonColor: '#d33'
+                    });
                 }
             });
         }
@@ -1131,7 +1033,7 @@
         // APPLY CHANGES
         // ────────────────────────────────────────────
         $(document).ready(function() {
-            $('#applyChangesBtn').on('click', function() {
+            $('#applyChangesBtn').on('click', async function() {
                 const userId = $('#modal-user-id').val();
                 const userStatus = $('#modal-user-status').val();
                 const action = userStatus.toLowerCase() === 'active' ? 'Disable' : 'Enable';
@@ -1142,8 +1044,13 @@
                     selectedApps.push($(this).data('app'));
                 });
 
-                if (selectedApps.length === 0) {
-                    alert('⚠️ No Changes Selected\n\nPlease select at least one application.');
+            if (selectedApps.length === 0) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'No Changes Selected',
+                        text: 'Please select at least one application.',
+                        confirmButtonColor: '#3498db'
+                    });
                     return;
                 }
 
@@ -1152,9 +1059,18 @@
                     .text()
                 );
 
-                if (!confirm(
-                        `⚠️ Confirm ${action}\n\nYou are about to ${action.toLowerCase()}:\n${appNames.map(n => '• ' + n).join('\n')}\n\nContinue?`
-                    )) {
+         const confirmResult = await Swal.fire({
+                    icon: 'warning',
+                    title: `Confirm ${action}`,
+                    html: `You are about to ${action.toLowerCase()}:<br>${appNames.map(n => '• ' + n).join('<br>')}`,
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: `Yes, ${action.toLowerCase()}`,
+                    cancelButtonText: 'Cancel'
+                });
+
+                if (!confirmResult.isConfirmed) {
                     return;
                 }
 
@@ -1163,21 +1079,6 @@
                 applyApplicationChanges(userId, action, selectedApps);
             });
         });
-
-        function updateApplicationBadge(app, isActive) {
-            const statusBadge = $(`#${app}-status-badge`);
-            const checkbox = $(`#${app}Checkbox`);
-
-            if (isActive) {
-                statusBadge.attr('class', 'badge badge-sm badge-success ml-3').html('Active');
-                checkbox.prop('disabled', false);
-                checkbox.closest('.custom-control').removeClass('text-muted');
-            } else {
-                statusBadge.attr('class', 'badge badge-sm badge-secondary ml-3').html('No Access');
-                checkbox.prop('disabled', true);
-                checkbox.closest('.custom-control').addClass('text-muted');
-            }
-        }
 
         function updateApplicationBadge(app, isActive) {
             const statusBadge = $(`#${app}-status-badge`);
@@ -1229,20 +1130,35 @@
                         $('#applyChangesBtn').prop('disabled', true).html(
                             '<i class="fas fa-check"></i> Apply Changes');
 
-                        alert(data.message || 'Operation completed successfully');
-                        $('#manageAccessModal').modal('hide');
+$('#manageAccessModal').modal('hide');
                         loadUsers();
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Success',
+                            text: data.message || 'Operation completed successfully',
+                            confirmButtonColor: '#3498db'
+                        });
                     } else {
                         $('#applyChangesBtn').prop('disabled', false).html(
                             '<i class="fas fa-check"></i> Apply Changes');
-                        alert('❌ Operation Failed\n\n' + data.message);
+                        Swal.fire({
+    icon: 'error',
+    title: 'Operation Failed',
+    text: data.message || 'An error occurred while processing the request.',
+    confirmButtonColor: '#d33'
+});
                     }
                 },
                 error: function(xhr, status, error) {
                     console.error('Error:', error);
                     $('#applyChangesBtn').prop('disabled', false).html(
                         '<i class="fas fa-check"></i> Apply Changes');
-                    alert(`❌ Network Error\n\n${error}`);
+Swal.fire({
+                        icon: 'error',
+                        title: 'Network Error',
+                        text: error,
+                        confirmButtonColor: '#d33'
+                    });
                 }
             });
         }
@@ -1295,31 +1211,55 @@
                             }
                         }
 
-                        alert(message);
+Swal.fire({
+                            icon: 'success',
+                            title: 'Sync Completed',
+                            html: message.replace(/\n/g, '<br>'),
+                            confirmButtonColor: '#3498db'
+                        });
                         loadUsers();
                     } else {
-                        alert('❌ Sync Failed\n\n' + (response.message || 'Unknown error'));
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Sync Failed',
+                            text: response.message || 'Unknown error'
+                        });
                     }
                     $syncBtn.prop('disabled', false).html(originalText);
                 },
                 error: function(xhr) {
-                    let errorMsg = '❌ Sync Failed\n\n';
+     let errorLines = ['Sync Failed'];
                     if (xhr.responseJSON && xhr.responseJSON.errors) {
-                        errorMsg += 'Errors:\n';
                         xhr.responseJSON.errors.slice(0, 5).forEach((err, idx) => {
-                            errorMsg += `${idx + 1}. ${err.user}: ${err.error.substring(0, 80)}\n`;
+                            errorLines.push(`${idx + 1}. ${err.user}: ${err.error.substring(0, 80)}`);
                         });
                     } else {
-                        errorMsg += (xhr.responseJSON?.message || 'Network error');
+                        errorLines.push(xhr.responseJSON?.message || 'Network error');
                     }
-                    alert(errorMsg);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Sync Failed',
+                        html: errorLines.join('<br>'),
+                        confirmButtonColor: '#d33'
+                    });
                     $syncBtn.prop('disabled', false).html(originalText);
                 }
             });
         }
 
-        function retryAllPendingUsers() {
-            if (!confirm('⚠️ Retry Provisioning\n\nThis will attempt to activate all pending users.\n\nContinue?')) return;
+async function retryAllPendingUsers() {
+    const confirmResult = await Swal.fire({
+        icon: 'warning',
+        title: 'Retry Provisioning',
+        text: 'This will attempt to activate all pending users.',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Yes, retry',
+        cancelButtonText: 'Cancel'
+    });
+
+    if (!confirmResult.isConfirmed) return;
 
             const $retryBtn = $('#retryProvisioningBtn');
             const originalText = $retryBtn.html();
@@ -1333,14 +1273,24 @@
                     'Accept': 'application/json'
                 },
                 timeout: 180000,
-                success: function() {
-                    alert('✅ Activation completed!');
-                    loadUsers();
+            success: function() {
                     $retryBtn.prop('disabled', false).html(originalText);
+                    loadUsers();
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Activation Completed',
+                        text: 'All pending users have been processed.',
+                        confirmButtonColor: '#3498db'
+                    });
                 },
                 error: function(xhr) {
-                    alert('❌ Activation Failed\n\n' + (xhr.responseJSON?.message || 'Network error'));
                     $retryBtn.prop('disabled', false).html(originalText);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Activation Failed',
+                        text: xhr.responseJSON?.message || 'Network error',
+                        confirmButtonColor: '#d33'
+                    });
                 }
             });
         }

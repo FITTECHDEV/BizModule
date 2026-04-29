@@ -24,23 +24,23 @@
                 <div class="col-md-6">
                     <div class="row mb-3">
                         <div class="col-md-5 fw-bold">User Principal Name</div>
-                        <div class="col-md-7">{{ $user->userPrincipalName ?? 'N/A' }}</div>
+                        <div class="col-md-7">{{ $user->userPrincipalName ?? '-' }}</div>
                     </div>
                     <div class="row mb-3">
                         <div class="col-md-5 fw-bold">Display Name</div>
-                        <div class="col-md-7">{{ $user->displayName ?? 'N/A' }}</div>
+                        <div class="col-md-7">{{ $user->displayName ?? '-' }}</div>
                     </div>
                     <div class="row mb-3">
                         <div class="col-md-5 fw-bold">Email</div>
-                        <div class="col-md-7">{{ $user->mail ?? 'N/A' }}</div>
+                        <div class="col-md-7">{{ $user->mail ?? '-' }}</div>
                     </div>
                     <div class="row mb-3">
                         <div class="col-md-5 fw-bold">Job Title</div>
-                        <div class="col-md-7">{{ $user->jobTitle ?? 'N/A' }}</div>
+                        <div class="col-md-7">{{ $user->jobTitle ?? '-' }}</div>
                     </div>
                     <div class="row mb-3">
                         <div class="col-md-5 fw-bold">Department</div>
-                        <div class="col-md-7">{{ $user->department ?? 'N/A' }}</div>
+                        <div class="col-md-7">{{ $user->department ?? '-' }}</div>
                     </div>
                 </div>
 
@@ -48,7 +48,7 @@
                 <div class="col-md-6">
                     <div class="row mb-3">
                         <div class="col-md-5 fw-bold">Office Location</div>
-                        <div class="col-md-7">{{ $user->officeLocation ?? 'N/A' }}</div>
+                        <div class="col-md-7">{{ $user->officeLocation ?? '-' }}</div>
                     </div>
                     <div class="row mb-3">
                         <div class="col-md-5 fw-bold">Account Enabled</div>
@@ -64,7 +64,7 @@
                     </div>
                     <div class="row mb-3">
                         <div class="col-md-5 fw-bold">Created At</div>
-                        <div class="col-md-7">{{ $user->createdDateTime ? \Carbon\Carbon::parse($user->createdDateTime)->format('Y-m-d') : 'N/A' }}</div>
+                        <div class="col-md-7">{{ $user->createdDateTime ? \Carbon\Carbon::parse($user->createdDateTime)->format('Y-m-d') : '-' }}</div>
                     </div>
                 </div>
             </div>
