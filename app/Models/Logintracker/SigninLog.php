@@ -72,7 +72,7 @@ class SigninLog extends Model
                 if (is_null($model->user_id) || $model->user_id === '') {
                     Log::warning('SigninLog: user_id is null/empty, using fallback', [
                         'username' => $model->username,
-                        'user' => $model->user
+                        'user' => $model->user,
                     ]);
                     $model->user_id = static::getSystemUnknownUserId();
                 }
@@ -80,7 +80,7 @@ class SigninLog extends Model
                 Log::error('SigninLog boot error: ' . $e->getMessage(), [
                     'username' => $model->username ?? 'N/A',
                     'user' => $model->user ?? 'N/A',
-                    'trace' => $e->getTraceAsString()
+                    'trace' => $e->getTraceAsString(),
                 ]);
 
                 // Absolute fallback: use system unknown user to prevent constraint violation
@@ -107,7 +107,7 @@ class SigninLog extends Model
         } catch (\Exception $e) {
             Log::error('Failed to resolve user: ' . $e->getMessage(), [
                 'username' => $username,
-                'displayName' => $displayName
+                'displayName' => $displayName,
             ]);
             return null;
         }
@@ -143,7 +143,7 @@ class SigninLog extends Model
         } catch (\Exception $e) {
             Log::error('Failed to create new user: ' . $e->getMessage(), [
                 'username' => $username,
-                'displayName' => $displayName
+                'displayName' => $displayName,
             ]);
             return null;
         }
@@ -230,14 +230,14 @@ class SigninLog extends Model
             return [
                 'givenName' => $nameParts[0],
                 'surname' => end($nameParts),
-                'displayName' => implode(' ', $nameParts)
+                'displayName' => implode(' ', $nameParts),
             ];
         } else {
             $name = $nameParts[0] ?? 'Unknown';
             return [
                 'givenName' => $name,
                 'surname' => 'User',
-                'displayName' => $name . ' User'
+                'displayName' => $name . ' User',
             ];
         }
     }
@@ -283,10 +283,7 @@ class SigninLog extends Model
 
     public function scopeBetweenDateUtc($query, $start, $end)
     {
-        return $query->whereBetween('date_utc', [
-            Carbon::parse($start),
-            Carbon::parse($end)
-        ]);
+        return $query->whereBetween('date_utc', [Carbon::parse($start), Carbon::parse($end)]);
     }
 
     public function scopeLatestFirst($query)
@@ -331,7 +328,8 @@ class SigninLog extends Model
 
     public function scopeWithMfa($query)
     {
-        return $query->whereNotNull('multifactor_authentication_result')
+        return $query
+            ->whereNotNull('multifactor_authentication_result')
             ->where('multifactor_authentication_result', '!=', 'None');
     }
 
@@ -438,7 +436,8 @@ class SigninLog extends Model
      */
     public static function getSystemList()
     {
-        return static::select('system')->distinct()
+        return static::select('system')
+            ->distinct()
             ->whereNotNull('system')
             ->where('system', '!=', '')
             ->pluck('system')
@@ -449,7 +448,8 @@ class SigninLog extends Model
 
     public static function getApplicationList()
     {
-        return static::select('application')->distinct()
+        return static::select('application')
+            ->distinct()
             ->whereNotNull('application')
             ->where('application', '!=', '')
             ->pluck('application')
@@ -460,7 +460,8 @@ class SigninLog extends Model
 
     public static function getStatusList()
     {
-        return static::select('status')->distinct()
+        return static::select('status')
+            ->distinct()
             ->whereNotNull('status')
             ->where('status', '!=', '')
             ->pluck('status')
@@ -471,7 +472,8 @@ class SigninLog extends Model
 
     public static function getBrowserList()
     {
-        return static::select('browser')->distinct()
+        return static::select('browser')
+            ->distinct()
             ->whereNotNull('browser')
             ->where('browser', '!=', '')
             ->pluck('browser')
@@ -486,7 +488,9 @@ class SigninLog extends Model
     public static function getSuccessRate($days = 30)
     {
         $total = static::last30Days()->count();
-        if ($total === 0) return 0;
+        if ($total === 0) {
+            return 0;
+        }
 
         $successful = static::last30Days()->successful()->count();
         return round(($successful / $total) * 100, 2);
@@ -495,7 +499,9 @@ class SigninLog extends Model
     public static function getMfaUsageRate($days = 30)
     {
         $total = static::last30Days()->successful()->count();
-        if ($total === 0) return 0;
+        if ($total === 0) {
+            return 0;
+        }
 
         $withMfa = static::last30Days()->successful()->withMfa()->count();
         return round(($withMfa / $total) * 100, 2);
@@ -512,7 +518,7 @@ class SigninLog extends Model
         $batches = array_chunk($records, $batchSize);
 
         foreach ($batches as $batchIndex => $batch) {
-            Log::info("Processing batch " . ($batchIndex + 1) . " of " . count($batches));
+            Log::info('Processing batch ' . ($batchIndex + 1) . ' of ' . count($batches));
 
             foreach ($batch as $index => $record) {
                 try {
@@ -529,14 +535,17 @@ class SigninLog extends Model
                         'batch' => $batchIndex + 1,
                         'index' => $index,
                         'username' => $record['username'] ?? 'N/A',
-                        'error' => $e->getMessage()
+                        'error' => $e->getMessage(),
                     ];
 
                     Log::error('SigninLog batch import failed for record', [
                         'batch' => $batchIndex + 1,
                         'index' => $index,
-                        'record' => array_intersect_key($record, array_flip(['username', 'user', 'status', 'application'])),
-                        'error' => $e->getMessage()
+                        'record' => array_intersect_key(
+                            $record,
+                            array_flip(['username', 'user', 'status', 'application']),
+                        ),
+                        'error' => $e->getMessage(),
                     ]);
                 }
             }
@@ -546,7 +555,7 @@ class SigninLog extends Model
             'successful' => $successful,
             'failed' => $failed,
             'total' => count($records),
-            'success_rate' => $successful > 0 ? round(($successful / count($records)) * 100, 2) : 0
+            'success_rate' => $successful > 0 ? round(($successful / count($records)) * 100, 2) : 0,
         ]);
 
         return [
@@ -554,7 +563,7 @@ class SigninLog extends Model
             'failed' => $failed,
             'total' => count($records),
             'errors' => $errors,
-            'success_rate' => $successful > 0 ? round(($successful / count($records)) * 100, 2) : 0
+            'success_rate' => $successful > 0 ? round(($successful / count($records)) * 100, 2) : 0,
         ];
     }
 }

@@ -71,13 +71,9 @@ class System extends Model
      */
     public function users(): BelongsToMany
     {
-        return $this->belongsToMany(
-            AzureUser::class,
-            'application_user',
-            'application_id',
-            'user_id'
-        )->withPivot('id')
-         ->withTimestamps();
+        return $this->belongsToMany(AzureUser::class, 'application_user', 'application_id', 'user_id')
+            ->withPivot('id')
+            ->withTimestamps();
     }
 
     /**
@@ -117,12 +113,12 @@ class System extends Model
 
                     Log::info('Systems auto-populated successfully', [
                         'count' => $systems->count(),
-                        'systems' => $systems->pluck('name')->toArray()
+                        'systems' => $systems->pluck('name')->toArray(),
                     ]);
                 } catch (\Exception $e) {
                     Log::error('Failed to auto-populate systems', [
                         'error' => $e->getMessage(),
-                        'trace' => $e->getTraceAsString()
+                        'trace' => $e->getTraceAsString(),
                     ]);
 
                     // CHANGED: Return empty collection instead of fallback with hardcoded systems
@@ -137,7 +133,7 @@ class System extends Model
 
     /**
      * Normalize system name using systemmap config
-     * 
+     *
      * @param string $systemName
      * @param array|null $systemMap
      * @return string
@@ -147,26 +143,26 @@ class System extends Model
         if (empty($systemName)) {
             return 'Unknown';
         }
-        
+
         $normalized = trim($systemName);
-        
+
         if (empty($systemMap)) {
             $systemMap = config('systemmap', []);
         }
-        
+
         if (empty($systemMap)) {
             return $normalized;
         }
-        
+
         $lowerNormalized = strtolower($normalized);
-        
+
         // Case-insensitive lookup
         foreach ($systemMap as $rawName => $cleanName) {
             if (strtolower($rawName) === $lowerNormalized) {
                 return $cleanName;
             }
         }
-        
+
         return $normalized;
     }
 
@@ -177,59 +173,59 @@ class System extends Model
      * @throws \Exception
      */
 
-public static function populateDefaultSystems(): int
-{
-    $systemMap = config('systemmap', []);
-    
-    // Get unique systems from Azure_LoginDetails
-    $rawSystems = \DB::table('Azure_LoginDetails')
-        ->selectRaw('DISTINCT TRIM(system) as clean_system')
-        ->whereNotNull('system')
-        ->where('system', '!=', '')
-        ->get();
-    
-    $created = 0;
-    $normalizedSystems = collect();
-    
-    foreach ($rawSystems as $item) {
-        $normalized = self::normalizeSystemName($item->clean_system, $systemMap);
-        $normalizedSystems->push($normalized);
-    }
-    
-    // Insert unique normalized systems
-    foreach ($normalizedSystems->unique() as $systemName) {
-        // Check if exists (case-insensitive)
-        $existing = \DB::table('Azure_SoftwareMaster')
-            ->whereRaw('LOWER(name) = ?', [strtolower($systemName)])
-            ->first();
-        
-        if (!$existing) {
-            // ✅ CRITICAL FIX: Generate UUID instead of integer
-            $newId = (string) \Illuminate\Support\Str::uuid();
-            
-            \DB::table('Azure_SoftwareMaster')->insert([
-                'Id' => $newId,  // ✅ Now using UUID
-                'name' => $systemName
-            ]);
-            $created++;
-            
-            \Log::info('Created new system', [
-                'system_name' => $systemName,
-                'system_id' => $newId
-            ]);
+    public static function populateDefaultSystems(): int
+    {
+        $systemMap = config('systemmap', []);
+
+        // Get unique systems from Azure_LoginDetails
+        $rawSystems = \DB::table('Azure_LoginDetails')
+            ->selectRaw('DISTINCT TRIM(system) as clean_system')
+            ->whereNotNull('system')
+            ->where('system', '!=', '')
+            ->get();
+
+        $created = 0;
+        $normalizedSystems = collect();
+
+        foreach ($rawSystems as $item) {
+            $normalized = self::normalizeSystemName($item->clean_system, $systemMap);
+            $normalizedSystems->push($normalized);
         }
+
+        // Insert unique normalized systems
+        foreach ($normalizedSystems->unique() as $systemName) {
+            // Check if exists (case-insensitive)
+            $existing = \DB::table('Azure_SoftwareMaster')
+                ->whereRaw('LOWER(name) = ?', [strtolower($systemName)])
+                ->first();
+
+            if (!$existing) {
+                // ✅ CRITICAL FIX: Generate UUID instead of integer
+                $newId = (string) \Illuminate\Support\Str::uuid();
+
+                \DB::table('Azure_SoftwareMaster')->insert([
+                    'Id' => $newId, // ✅ Now using UUID
+                    'name' => $systemName,
+                ]);
+                $created++;
+
+                \Log::info('Created new system', [
+                    'system_name' => $systemName,
+                    'system_id' => $newId,
+                ]);
+            }
+        }
+
+        // Clear cache after populating
+        Cache::forget('systems_list');
+
+        Log::info('Populated Azure_SoftwareMaster from Azure_LoginDetails', [
+            'created' => $created,
+            'systems' => $normalizedSystems->unique()->toArray(),
+        ]);
+
+        return $created;
     }
-    
-    // Clear cache after populating
-    Cache::forget('systems_list');
-    
-    Log::info('Populated Azure_SoftwareMaster from Azure_LoginDetails', [
-        'created' => $created,
-        'systems' => $normalizedSystems->unique()->toArray()
-    ]);
-    
-    return $created;
-}
 
     /**
      * REMOVED: createFallbackCollection() method

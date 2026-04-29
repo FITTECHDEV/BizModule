@@ -18,7 +18,6 @@ class AzureDashboardController extends Controller
     public function index()
     {
         try {
-
             // Get filter parameters from request
             $search = request('search', '');
             $status = request('status', 'active');
@@ -64,23 +63,26 @@ class AzureDashboardController extends Controller
                     if ($searchType === 'department') {
                         // Department-only search
                         $q->whereRaw('LOWER(department) = ?', [$searchLower])
-                            ->orWhereRaw("LOWER(department) LIKE ?", ['% ' . $searchLower . ' %'])
-                            ->orWhereRaw("LOWER(department) LIKE ?", [$searchLower . ' %'])
-                            ->orWhereRaw("LOWER(department) LIKE ?", ['% ' . $searchLower]);
+                            ->orWhereRaw('LOWER(department) LIKE ?', ['% ' . $searchLower . ' %'])
+                            ->orWhereRaw('LOWER(department) LIKE ?', [$searchLower . ' %'])
+                            ->orWhereRaw('LOWER(department) LIKE ?', ['% ' . $searchLower]);
                     } elseif ($searchType === 'all') {
                         // All fields search (with department priority)
                         $q->whereRaw('LOWER(department) = ?', [$searchLower])
-                            ->orWhereRaw("LOWER(department) LIKE ?", ['% ' . $searchLower . ' %'])
-                            ->orWhereRaw("LOWER(department) LIKE ?", [$searchLower . ' %'])
-                            ->orWhereRaw("LOWER(department) LIKE ?", ['% ' . $searchLower])
+                            ->orWhereRaw('LOWER(department) LIKE ?', ['% ' . $searchLower . ' %'])
+                            ->orWhereRaw('LOWER(department) LIKE ?', [$searchLower . ' %'])
+                            ->orWhereRaw('LOWER(department) LIKE ?', ['% ' . $searchLower])
                             ->orWhereRaw('LOWER(companyName) LIKE ?', ['%' . $searchLower . '%'])
                             ->orWhereRaw('LOWER(displayName) LIKE ?', ['%' . $searchLower . '%'])
                             ->orWhereRaw('LOWER(officeLocation) LIKE ?', ['%' . $searchLower . '%'])
                             ->orWhere('EmployeCode', 'LIKE', "%{$search}%");
 
                         if (!str_contains($search, '@')) {
-                            $q->orWhere('mail', 'LIKE', "{$search}%@%")
-                                ->orWhere('userPrincipalName', 'LIKE', "{$search}%@%");
+                            $q->orWhere('mail', 'LIKE', "{$search}%@%")->orWhere(
+                                'userPrincipalName',
+                                'LIKE',
+                                "{$search}%@%",
+                            );
                         }
                     } elseif ($searchType === 'name') {
                         $q->whereRaw('LOWER(displayName) LIKE ?', ['%' . $searchLower . '%']);
@@ -88,8 +90,11 @@ class AzureDashboardController extends Controller
                         $q->whereRaw('LOWER(companyName) LIKE ?', ['%' . $searchLower . '%']);
                     } elseif ($searchType === 'email') {
                         if (!str_contains($search, '@')) {
-                            $q->where('mail', 'LIKE', "{$search}%@%")
-                                ->orWhere('userPrincipalName', 'LIKE', "{$search}%@%");
+                            $q->where('mail', 'LIKE', "{$search}%@%")->orWhere(
+                                'userPrincipalName',
+                                'LIKE',
+                                "{$search}%@%",
+                            );
                         }
                     }
                 });
@@ -151,18 +156,21 @@ class AzureDashboardController extends Controller
                 })
                 ->values();
 
-            return view('azure-management.dashboard.index', compact('stats', 'users', 'departments', 'companies', 'locations'));
+            return view(
+                'azure-management.dashboard.index',
+                compact('stats', 'users', 'departments', 'companies', 'locations'),
+            );
         } catch (\Exception $e) {
             Log::error('Azure Dashboard Error: ' . $e->getMessage(), [
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
-            return redirect()->back()
+            return redirect()
+                ->back()
                 ->withErrors(['error' => 'Failed to load dashboard: ' . $e->getMessage()]);
         }
     }
 
-    // Add this method to your controller or create a test route
     public function testSearch()
     {
         $search = 'freight in time';
@@ -211,12 +219,15 @@ class AzureDashboardController extends Controller
         } catch (\Exception $e) {
             Log::error('Azure Dashboard Stats Error: ' . $e->getMessage());
 
-            return response()->json([
-                'total' => 0,
-                'active' => 0,
-                'pending' => 0,
-                'inactive' => 0,
-            ], 500);
+            return response()->json(
+                [
+                    'total' => 0,
+                    'active' => 0,
+                    'pending' => 0,
+                    'inactive' => 0,
+                ],
+                500,
+            );
         }
     }
 
@@ -233,9 +244,7 @@ class AzureDashboardController extends Controller
                 ->get();
 
             // Users by status
-            $usersByStatus = AzureUser::selectRaw('Status, count(*) as count')
-                ->groupBy('Status')
-                ->get();
+            $usersByStatus = AzureUser::selectRaw('Status, count(*) as count')->groupBy('Status')->get();
 
             return response()->json([
                 'users_by_location' => $usersByLocation,
@@ -244,10 +253,13 @@ class AzureDashboardController extends Controller
         } catch (\Exception $e) {
             Log::error('Azure Dashboard Reports Error: ' . $e->getMessage());
 
-            return response()->json([
-                'users_by_location' => [],
-                'users_by_status' => [],
-            ], 500);
+            return response()->json(
+                [
+                    'users_by_location' => [],
+                    'users_by_status' => [],
+                ],
+                500,
+            );
         }
     }
 
@@ -278,7 +290,6 @@ class AzureDashboardController extends Controller
             return response()->json([]);
         }
     }
-
 
     /**
      * Get users for AJAX requests (No partials needed)
@@ -331,7 +342,7 @@ class AzureDashboardController extends Controller
                 'pagination' => $paginationHtml,
                 'total' => $users->total(),
                 'from' => $users->firstItem() ?? 0,
-                'to' => $users->lastItem() ?? 0
+                'to' => $users->lastItem() ?? 0,
             ]);
         } catch (\Exception $e) {
             Log::error('Get Users AJAX Error: ' . $e->getMessage());
@@ -342,8 +353,9 @@ class AzureDashboardController extends Controller
     /**
      * Build user row HTML
      */
-    private function buildUserRow($user, $currentStatus = 'active') // ADD parameter with default
+    private function buildUserRow($user, $currentStatus = 'active')
     {
+        // ADD parameter with default
         $displayName = $user->displayName ?? 'N/A';
         $initials = strtoupper(substr($displayName, 0, 2));
         $email = $user->mail ?? ($user->userPrincipalName ?? 'N/A');
@@ -376,37 +388,77 @@ class AzureDashboardController extends Controller
 
             $editButton = $isInactive
                 ? '<button class="btn btn-warning btn-sm btn-disabled" disabled title="Enable user first to edit" style="cursor: not-allowed; opacity: 0.6;"><i class="fas fa-edit"></i></button>'
-                : '<a href="' . $editUrl . '" class="btn btn-warning btn-sm" title="Edit User"><i class="fas fa-edit"></i></a>';
+                : '<a href="' .
+                    $editUrl .
+                    '" class="btn btn-warning btn-sm" title="Edit User"><i class="fas fa-edit"></i></a>';
 
             $manageButton = $showManageButton
-                ? '<button class="btn btn-danger btn-sm" onclick="openManageAccessModal(\'' . $userIdEscaped . '\', \'' . $displayNameEscaped . '\', \'' . $statusEscaped . '\')" title="Manage Access"><i class="fas fa-cog"></i></button>'
+                ? '<button class="btn btn-danger btn-sm" onclick="openManageAccessModal(\'' .
+                    $userIdEscaped .
+                    '\', \'' .
+                    $displayNameEscaped .
+                    '\', \'' .
+                    $statusEscaped .
+                    '\')" title="Manage Access"><i class="fas fa-cog"></i></button>'
                 : '';
 
-            $actions = '<div class="btn-group btn-group-sm" role="group">
-            <a href="' . $viewUrl . '" class="btn btn-info btn-sm" title="View User"><i class="fas fa-eye"></i></a>
-            ' . $editButton . '
-            ' . $manageButton . '
+            $actions =
+                '<div class="btn-group btn-group-sm" role="group">
+            <a href="' .
+                $viewUrl .
+                '" class="btn btn-info btn-sm" title="View User"><i class="fas fa-eye"></i></a>
+            ' .
+                $editButton .
+                '
+            ' .
+                $manageButton .
+                '
             </div>';
         } else {
             $upnEscaped = e($user->userPrincipalName);
-            $actions = '<button class="btn btn-warning btn-sm" onclick="fixUserRecord(\'' . $upnEscaped . '\')" title="Fix missing ID"><i class="fas fa-wrench"></i> Fix Record</button>';
+            $actions =
+                '<button class="btn btn-warning btn-sm" onclick="fixUserRecord(\'' .
+                $upnEscaped .
+                '\')" title="Fix missing ID"><i class="fas fa-wrench"></i> Fix Record</button>';
         }
 
         return '<tr>
         <td>
             <div class="d-flex align-items-center">
-                <div class="user-avatar mr-2">' . $initials . '</div>
-                <span>' . e($displayName) . '</span>
+                <div class="user-avatar mr-2">' .
+            $initials .
+            '</div>
+                <span>' .
+            e($displayName) .
+            '</span>
             </div>
         </td>
-        <td>' . e($email) . '</td>
-        <td>' . e($loginId) . '</td>
-        <td>' . e($employeeCode) . '</td>
-        <td>' . e($department) . '</td>
-        <td>' . e($company) . '</td>
-        <td>' . e($location) . '</td>
-        <td><span class="badge ' . $badgeClass . '">' . e($status) . '</span></td>
-        <td>' . $actions . '</td>
+        <td>' .
+            e($email) .
+            '</td>
+        <td>' .
+            e($loginId) .
+            '</td>
+        <td>' .
+            e($employeeCode) .
+            '</td>
+        <td>' .
+            e($department) .
+            '</td>
+        <td>' .
+            e($company) .
+            '</td>
+        <td>' .
+            e($location) .
+            '</td>
+        <td><span class="badge ' .
+            $badgeClass .
+            '">' .
+            e($status) .
+            '</span></td>
+        <td>' .
+            $actions .
+            '</td>
         </tr>';
     }
 
@@ -419,10 +471,17 @@ class AzureDashboardController extends Controller
             return '';
         }
 
-        $html = '<div class="row align-items-center">
+        $html =
+            '<div class="row align-items-center">
         <div class="col-md-6">
             <span class="text-muted">
-                Showing ' . ($users->firstItem() ?? 0) . ' to ' . ($users->lastItem() ?? 0) . ' of ' . $users->total() . ' users
+                Showing ' .
+            ($users->firstItem() ?? 0) .
+            ' to ' .
+            ($users->lastItem() ?? 0) .
+            ' of ' .
+            $users->total() .
+            ' users
             </span>
         </div>
         <div class="col-md-6">
@@ -436,26 +495,38 @@ class AzureDashboardController extends Controller
         // Previous button
         $html .= $users->onFirstPage()
             ? '<li class="page-item disabled"><span class="page-link">&laquo;</span></li>'
-            : '<li class="page-item"><a class="page-link page-nav" href="#" data-page="' . ($users->currentPage() - 1) . '">&laquo;</a></li>';
+            : '<li class="page-item"><a class="page-link page-nav" href="#" data-page="' .
+                ($users->currentPage() - 1) .
+                '">&laquo;</a></li>';
 
         // Page numbers
         foreach ($users->getUrlRange(1, $users->lastPage()) as $page => $url) {
             if ($page == $users->currentPage()) {
                 $html .= '<li class="page-item active"><span class="page-link">' . $page . '</span></li>';
             } else {
-                $html .= '<li class="page-item"><a class="page-link page-nav" href="#" data-page="' . $page . '">' . $page . '</a></li>';
+                $html .=
+                    '<li class="page-item"><a class="page-link page-nav" href="#" data-page="' .
+                    $page .
+                    '">' .
+                    $page .
+                    '</a></li>';
             }
         }
 
         // Next button
         $html .= $users->hasMorePages()
-            ? '<li class="page-item"><a class="page-link page-nav" href="#" data-page="' . ($users->currentPage() + 1) . '">&raquo;</a></li>'
+            ? '<li class="page-item"><a class="page-link page-nav" href="#" data-page="' .
+                ($users->currentPage() + 1) .
+                '">&raquo;</a></li>'
             : '<li class="page-item disabled"><span class="page-link">&raquo;</span></li>';
 
         // Last button
-        $html .= $users->currentPage() == $users->lastPage()
-            ? '<li class="page-item disabled"><span class="page-link">Last</span></li>'
-            : '<li class="page-item"><a class="page-link page-nav" href="#" data-page="' . $users->lastPage() . '">Last</a></li>';
+        $html .=
+            $users->currentPage() == $users->lastPage()
+                ? '<li class="page-item disabled"><span class="page-link">Last</span></li>'
+                : '<li class="page-item"><a class="page-link page-nav" href="#" data-page="' .
+                    $users->lastPage() .
+                    '">Last</a></li>';
 
         $html .= '</ul></div></div>';
 

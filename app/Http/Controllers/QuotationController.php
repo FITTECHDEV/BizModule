@@ -683,19 +683,6 @@ class QuotationController extends Controller
             // ── Date range — day filters ignored, SP only supports FromDate/ToDate ──
             ['from' => $spFromDate, 'to' => $spToDate] = $this->resolveDateRange($days, $startDate, $endDate);
 
-            // ── Determine which SP call(s) to make per card ───────────────────
-            // SP branches:
-            //   'Total'          → all records (no status filter)
-            //   'In Progress'    → all records (same branch as Total — filter in PHP)
-            //   'Won'            → all records (same branch — filter in PHP by SCMINTStatus IS NULL)
-            //   'Completed'      → all records (same branch — filter in PHP by SCMINTStatus=Success)
-            //   'Failed Int.'    → all records (same branch — filter in PHP by SCMINTStatus=Failed)
-            //   'Lost','Cancelled' → WHERE QuoteStatus IN ('Lost','Cancelled')
-            //   'Failed Progress'  → WHERE QuoteStatus = 'Failed Progress'
-            //
-            // We call SP with 'Total' for in_progress/won/completed/failed_int/total
-            // and with the exact status for lost_canceled/failed_progress
-
             $spStatus = match ($cardFilter) {
                 'lost_canceled' => 'Lost', // SP returns both Lost+Cancelled in one call
                 'failed_progress' => 'Failed Progress',
@@ -3220,122 +3207,6 @@ class QuotationController extends Controller
             ]);
 
             // ============================================
-            // HANDLE "WON" STATUS SEPARATELY (NOT IN SP)
-            // ============================================
-
-            // if ($targetStatus === 'Won') {
-            //     Log::info('Update Status - Handling Won status directly', [
-            //         'booking_no' => $bookingNo,
-            //         'current_status' => $currentStatus,
-            //         'user' => $submittedBy,
-            //         'office_code' => $officeCode
-            //     ]);
-
-            //     DB::beginTransaction();
-
-            //     try {
-            //         // Update quotation status
-            //         $updatedRows = DB::table('Quote_QuotationInfo')
-            //             ->where('bookingno', $bookingNo)
-            //             ->update([
-            //                 'QuoteStatus' => 'Won',
-            //                 'status' => 'Won',
-            //                 'SCMINTStatus' => null,
-            //                 'ReasonRemark' => $reasonRemark ?: null,
-            //                 'LastModifiedBy' => $submittedBy,
-            //                 'updatedon' => now()
-            //             ]);
-            //         if ($updatedRows === 0) {
-            //             DB::rollBack();
-            //             Log::error('Update Status - Won update affected no rows', [
-            //                 'booking_no' => $bookingNo,
-            //                 'quotation_id' => $quotation->ID,
-            //                 'user' => $submittedBy
-            //             ]);
-
-            //             return response()->json([
-            //                 'success' => false,
-            //                 'message' => 'Failed to update status: No records were updated'
-            //             ], 500);
-            //         }
-
-            //         // Insert history record
-
-            //         DB::table('Cust_EntityHistory')->insert([
-            //             'ID' => DB::raw('NEWID()'),
-            //             'CustEntityID' => $quotation->ID,
-            //             'RequestNo' => (string) $bookingNo,
-            //             'Comment' => $reasonRemark ?: 'Status updated to Won',
-            //             'Type' => 'Quotation Status Update',
-            //             'PreviousValue' => $currentStatus,
-            //             'NewValue' => 'Won',
-            //             'CreatedBy' => $submittedBy,
-            //             'CreatedOn' => now(),
-            //             'LastModifiedBy' => $submittedBy,
-            //             'LastModifiedOn' => now(),
-            //             'IsActive' => 1,
-            //             'IsDeleted' => 0
-            //         ]);
-
-            //         DB::commit();
-
-            //         Log::info('Update Status - Won status set successfully', [
-            //             'booking_no' => $bookingNo,
-            //             'quotation_id' => $quotation->ID,
-            //             'previous_status' => $currentStatus,
-            //             'new_status' => 'Won',
-            //             'rows_updated' => $updatedRows,
-            //             'user' => $submittedBy,
-            //             'office_code' => $officeCode,
-            //             'company' => $quotation->companyname ?? 'N/A'
-            //         ]);
-
-            //         return response()->json([
-            //             'success' => true,
-            //             'message' => 'Quotation marked as WON successfully'
-            //         ]);
-            //     } catch (\Illuminate\Database\QueryException $e) {
-
-            //         DB::rollBack();
-
-            //         Log::error('Update Status - Won query exception', [
-            //             'booking_no' => $bookingNo,
-            //             'quotation_id' => $quotation->ID,
-            //             'error_message' => $e->getMessage(),
-            //             'error_code' => $e->getCode(),
-            //             'sql' => $e->getSql() ?? 'N/A',
-            //             'bindings' => $e->getBindings() ?? [],
-            //             'file' => $e->getFile(),
-            //             'line' => $e->getLine(),
-            //             'office_code' => $officeCode
-            //         ]);
-
-            //         return response()->json([
-            //             'success' => false,
-            //             'message' => 'Database error while updating status to Won',
-            //             'error_details' => config('app.debug') ? $e->getMessage() : null
-            //         ], 500);
-            //     } catch (\Exception $e) {
-
-            //         DB::rollBack();
-
-            //         Log::error('Update Status - Won general exception', [
-            //             'booking_no' => $bookingNo,
-            //             'quotation_id' => $quotation->ID,
-            //             'error_message' => $e->getMessage(),
-            //             'file' => $e->getFile(),
-            //             'line' => $e->getLine(),
-            //             'office_code' => $officeCode
-            //         ]);
-
-            //         return response()->json([
-            //             'success' => false,
-            //             'message' => 'Failed to update status to Won: ' . $e->getMessage()
-            //         ], 500);
-            //     }
-            // }
-
-            // ============================================
             // HANDLE "LOST" AND "CANCEL" VIA STORED PROCEDURE
             // ============================================
 
@@ -4740,6 +4611,7 @@ class QuotationController extends Controller
             );
         }
     }
+    
     /**
      * Load T&C templates via sp_Quote_CommunicationDetail_List.
      * The SP filters by Service+Process+OfficeCode resolved from the QuoteNo internally,
@@ -5622,69 +5494,69 @@ class QuotationController extends Controller
         }
     }
 
-  public function getQuotationVersions($id)
-{
-    try {
-        $quotation = \App\Models\QuotationInfo::where('ID', $id)->first();
+    public function getQuotationVersions($id)
+    {
+        try {
+            $quotation = \App\Models\QuotationInfo::where('ID', $id)->first();
 
-        if (!$quotation) {
-            return response()->json(['success' => false, 'message' => 'Quotation not found'], 404);
-        }
-
-        $documents = DB::table('Quote_Quotation_Document')
-            ->where('QuotationInfoID', $quotation->ID)
-            ->where('DocumentType', 'QuotationPDF')
-            ->where('IsDeleted', 0)
-            ->orderBy('CreatedOn', 'asc')
-            ->get(['Id', 'Name', 'FilePath', 'CreatedOn']);
-
-        $versions = [];
-        $versionCounter = 0;
-
-        foreach ($documents as $doc) {
-            $filePath = $doc->FilePath;
-            $fileExists = false;
-
-            // Check Azure if path starts with 'Quotation/'
-            if (str_starts_with($filePath, 'Quotation/')) {
-                $fileExists = \Storage::disk('azure')->exists($filePath);
-            } else {
-                // Legacy local disk check
-                $relativePath = $this->normalizeFilePath($filePath);
-                $fileExists = \Storage::disk('public')->exists($relativePath);
+            if (!$quotation) {
+                return response()->json(['success' => false, 'message' => 'Quotation not found'], 404);
             }
 
-            if (!$fileExists) {
-                Log::warning('getQuotationVersions - File missing, skipping', [
-                    'quotation_id' => $id,
-                    'file_path' => $filePath,
-                ]);
-                continue;
+            $documents = DB::table('Quote_Quotation_Document')
+                ->where('QuotationInfoID', $quotation->ID)
+                ->where('DocumentType', 'QuotationPDF')
+                ->where('IsDeleted', 0)
+                ->orderBy('CreatedOn', 'asc')
+                ->get(['Id', 'Name', 'FilePath', 'CreatedOn']);
+
+            $versions = [];
+            $versionCounter = 0;
+
+            foreach ($documents as $doc) {
+                $filePath = $doc->FilePath;
+                $fileExists = false;
+
+                // Check Azure if path starts with 'Quotation/'
+                if (str_starts_with($filePath, 'Quotation/')) {
+                    $fileExists = \Storage::disk('azure')->exists($filePath);
+                } else {
+                    // Legacy local disk check
+                    $relativePath = $this->normalizeFilePath($filePath);
+                    $fileExists = \Storage::disk('public')->exists($relativePath);
+                }
+
+                if (!$fileExists) {
+                    Log::warning('getQuotationVersions - File missing, skipping', [
+                        'quotation_id' => $id,
+                        'file_path' => $filePath,
+                    ]);
+                    continue;
+                }
+
+                $versionCounter++;
+                $versions[] = [
+                    'version' => $versionCounter,
+                    'label' => 'Version ' . $versionCounter,
+                    'url' => route('quotation.download-pdf', [$id, $versionCounter]),
+                    'created_on' => $doc->CreatedOn,
+                    'file_name' => $doc->Name,
+                    'doc_id' => $doc->Id,
+                ];
             }
 
-            $versionCounter++;
-            $versions[] = [
-                'version' => $versionCounter,
-                'label' => 'Version ' . $versionCounter,
-                'url' => route('quotation.download-pdf', [$id, $versionCounter]),
-                'created_on' => $doc->CreatedOn,
-                'file_name' => $doc->Name,
-                'doc_id' => $doc->Id,
-            ];
+            return response()->json([
+                'success' => true,
+                'versions' => $versions,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('getQuotationVersions - Failed', [
+                'id' => $id,
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json(['success' => false, 'message' => 'Failed to load versions'], 500);
         }
-
-        return response()->json([
-            'success' => true,
-            'versions' => $versions,
-        ]);
-    } catch (\Exception $e) {
-        Log::error('getQuotationVersions - Failed', [
-            'id' => $id,
-            'error' => $e->getMessage(),
-        ]);
-        return response()->json(['success' => false, 'message' => 'Failed to load versions'], 500);
     }
-}
 
     public function getEmailHistory(Request $request)
     {

@@ -576,109 +576,161 @@
         }
 
         /* ============================================
-   TABLE-SPECIFIC PC RESPONSIVENESS
-   ============================================ */
+       TABLE-SPECIFIC PC RESPONSIVENESS
+       ============================================ */
 
-/* Smaller Laptops (992px - 1200px) - Show essential columns */
-@media (min-width: 992px) and (max-width: 1199px) {
-    .table td, .table th {
-        padding: 0.5rem 0.6rem;
-        font-size: 0.85rem;
-    }
-    
-    .user-avatar {
-        width: 32px;
-        height: 32px;
-        font-size: 13px;
-    }
-    
-    .badge {
-        font-size: 0.75rem;
-        padding: 0.25rem 0.45rem;
-    }
-    
-    .btn-group-sm > .btn {
-        padding: 0.25rem 0.45rem;
-        font-size: 0.8rem;
-    }
-}
+        /* Smaller Laptops (992px - 1200px) - Show essential columns */
+        @media (min-width: 992px) and (max-width: 1199px) {
 
-/* Large Laptops/Desktops (1200px - 1600px) - Show more columns */
-@media (min-width: 1200px) and (max-width: 1599px) {
-    .table td, .table th {
-        padding: 0.6rem 0.7rem;
-        font-size: 0.9rem;
-    }
-    
-    .user-avatar {
-        width: 34px;
-        height: 34px;
-        font-size: 13px;
-    }
-}
+            .table td,
+            .table th {
+                padding: 0.5rem 0.6rem;
+                font-size: 0.85rem;
+            }
 
-/* Large Monitors (1600px+) - Show all columns comfortably */
-@media (min-width: 1600px) {
-    .table td, .table th {
-        padding: 0.7rem 0.85rem;
-        font-size: 0.95rem;
-    }
-    
-    .user-avatar {
-        width: 36px;
-        height: 36px;
-        font-size: 14px;
-    }
-}
+            .user-avatar {
+                width: 32px;
+                height: 32px;
+                font-size: 13px;
+            }
 
-/* Table header styling */
-.table thead th {
-    font-weight: 600;
-    background-color: #f8f9fa;
-    border-bottom: 2px solid #dee2e6;
-    white-space: nowrap;
-    vertical-align: middle;
-}
+            .badge {
+                font-size: 0.75rem;
+                padding: 0.25rem 0.45rem;
+            }
 
-/* Enhanced hover effect */
-.table-hover tbody tr:hover {
-    background-color: #f1f3f5;
-    transition: background-color 0.15s ease;
-}
+            .btn-group-sm>.btn {
+                padding: 0.25rem 0.45rem;
+                font-size: 0.8rem;
+            }
+        }
 
-/* Ensure actions column stays visible and centered */
-.table td:last-child,
-.table th:last-child {
-    text-align: center;
-    vertical-align: middle;
-    position: sticky;
-    right: 0;
-    background-color: #fff;
-    box-shadow: -2px 0 5px rgba(0,0,0,0.05);
-}
+        /* Large Laptops/Desktops (1200px - 1600px) - Show more columns */
+        @media (min-width: 1200px) and (max-width: 1599px) {
 
-.table-hover tbody tr:hover td:last-child {
-    background-color: #f1f3f5;
-}
+            .table td,
+            .table th {
+                padding: 0.6rem 0.7rem;
+                font-size: 0.9rem;
+            }
 
-/* Better responsive table scroll */
-.table-responsive {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-}
+            .user-avatar {
+                width: 34px;
+                height: 34px;
+                font-size: 13px;
+            }
+        }
 
-/* Fix column widths for better display */
-@media (min-width: 1200px) {
-    th:nth-child(1), td:nth-child(1) { min-width: 180px; } /* Name */
-    th:nth-child(2), td:nth-child(2) { min-width: 200px; } /* Email */
-    th:nth-child(3), td:nth-child(3) { min-width: 200px; } /* Login ID */
-    th:nth-child(4), td:nth-child(4) { width: 120px; } /* Employee ID */
-    th:nth-child(5), td:nth-child(5) { width: 130px; } /* Department */
-    th:nth-child(6), td:nth-child(6) { width: 130px; } /* Company */
-    th:nth-child(7), td:nth-child(7) { width: 120px; } /* Location */
-    th:nth-child(8), td:nth-child(8) { width: 90px; } /* Status */
-    th:nth-child(9), td:nth-child(9) { width: 130px; } /* Actions */
-}
+        /* Large Monitors (1600px+) - Show all columns comfortably */
+        @media (min-width: 1600px) {
+
+            .table td,
+            .table th {
+                padding: 0.7rem 0.85rem;
+                font-size: 0.95rem;
+            }
+
+            .user-avatar {
+                width: 36px;
+                height: 36px;
+                font-size: 14px;
+            }
+        }
+
+        /* Table header styling */
+        .table thead th {
+            font-weight: 600;
+            background-color: #f8f9fa;
+            border-bottom: 2px solid #dee2e6;
+            white-space: nowrap;
+            vertical-align: middle;
+        }
+
+        /* Enhanced hover effect */
+        .table-hover tbody tr:hover {
+            background-color: #f1f3f5;
+            transition: background-color 0.15s ease;
+        }
+
+        /* Ensure actions column stays visible and centered */
+        .table td:last-child,
+        .table th:last-child {
+            text-align: center;
+            vertical-align: middle;
+            position: sticky;
+            right: 0;
+            background-color: #fff;
+            box-shadow: -2px 0 5px rgba(0, 0, 0, 0.05);
+        }
+
+        .table-hover tbody tr:hover td:last-child {
+            background-color: #f1f3f5;
+        }
+
+        /* Better responsive table scroll */
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* Fix column widths for better display */
+        @media (min-width: 1200px) {
+
+            th:nth-child(1),
+            td:nth-child(1) {
+                min-width: 180px;
+            }
+
+            /* Name */
+            th:nth-child(2),
+            td:nth-child(2) {
+                min-width: 200px;
+            }
+
+            /* Email */
+            th:nth-child(3),
+            td:nth-child(3) {
+                min-width: 200px;
+            }
+
+            /* Login ID */
+            th:nth-child(4),
+            td:nth-child(4) {
+                width: 120px;
+            }
+
+            /* Employee ID */
+            th:nth-child(5),
+            td:nth-child(5) {
+                width: 130px;
+            }
+
+            /* Department */
+            th:nth-child(6),
+            td:nth-child(6) {
+                width: 130px;
+            }
+
+            /* Company */
+            th:nth-child(7),
+            td:nth-child(7) {
+                width: 120px;
+            }
+
+            /* Location */
+            th:nth-child(8),
+            td:nth-child(8) {
+                width: 90px;
+            }
+
+            /* Status */
+            th:nth-child(9),
+            td:nth-child(9) {
+                width: 130px;
+            }
+
+            /* Actions */
+        }
     </style>
 @stop
 
@@ -732,7 +784,7 @@
                     }
                     $('#usersTableContainer').removeClass('table-loading');
                 },
-           error: function(xhr) {
+                error: function(xhr) {
                     console.error('Error loading users:', xhr);
                     $('#usersTableContainer').removeClass('table-loading');
                     Swal.fire({
@@ -1044,7 +1096,7 @@
                     selectedApps.push($(this).data('app'));
                 });
 
-            if (selectedApps.length === 0) {
+                if (selectedApps.length === 0) {
                     Swal.fire({
                         icon: 'warning',
                         title: 'No Changes Selected',
@@ -1055,11 +1107,12 @@
                 }
 
                 const appNames = selectedApps.map(app =>
-                    app === 'azure' ? 'Azure AD' : $(`#${app}Checkbox`).closest('label').find('strong')
+                    app === 'azure' ? 'Azure AD' : $(`#${app}Checkbox`).closest('label').find(
+                        'strong')
                     .text()
                 );
 
-         const confirmResult = await Swal.fire({
+                const confirmResult = await Swal.fire({
                     icon: 'warning',
                     title: `Confirm ${action}`,
                     html: `You are about to ${action.toLowerCase()}:<br>${appNames.map(n => '• ' + n).join('<br>')}`,
@@ -1130,7 +1183,7 @@
                         $('#applyChangesBtn').prop('disabled', true).html(
                             '<i class="fas fa-check"></i> Apply Changes');
 
-$('#manageAccessModal').modal('hide');
+                        $('#manageAccessModal').modal('hide');
                         loadUsers();
                         Swal.fire({
                             icon: 'success',
@@ -1142,18 +1195,18 @@ $('#manageAccessModal').modal('hide');
                         $('#applyChangesBtn').prop('disabled', false).html(
                             '<i class="fas fa-check"></i> Apply Changes');
                         Swal.fire({
-    icon: 'error',
-    title: 'Operation Failed',
-    text: data.message || 'An error occurred while processing the request.',
-    confirmButtonColor: '#d33'
-});
+                            icon: 'error',
+                            title: 'Operation Failed',
+                            text: data.message || 'An error occurred while processing the request.',
+                            confirmButtonColor: '#d33'
+                        });
                     }
                 },
                 error: function(xhr, status, error) {
                     console.error('Error:', error);
                     $('#applyChangesBtn').prop('disabled', false).html(
                         '<i class="fas fa-check"></i> Apply Changes');
-Swal.fire({
+                    Swal.fire({
                         icon: 'error',
                         title: 'Network Error',
                         text: error,
@@ -1211,7 +1264,7 @@ Swal.fire({
                             }
                         }
 
-Swal.fire({
+                        Swal.fire({
                             icon: 'success',
                             title: 'Sync Completed',
                             html: message.replace(/\n/g, '<br>'),
@@ -1228,7 +1281,7 @@ Swal.fire({
                     $syncBtn.prop('disabled', false).html(originalText);
                 },
                 error: function(xhr) {
-     let errorLines = ['Sync Failed'];
+                    let errorLines = ['Sync Failed'];
                     if (xhr.responseJSON && xhr.responseJSON.errors) {
                         xhr.responseJSON.errors.slice(0, 5).forEach((err, idx) => {
                             errorLines.push(`${idx + 1}. ${err.user}: ${err.error.substring(0, 80)}`);
@@ -1247,19 +1300,19 @@ Swal.fire({
             });
         }
 
-async function retryAllPendingUsers() {
-    const confirmResult = await Swal.fire({
-        icon: 'warning',
-        title: 'Retry Provisioning',
-        text: 'This will attempt to activate all pending users.',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Yes, retry',
-        cancelButtonText: 'Cancel'
-    });
+        async function retryAllPendingUsers() {
+            const confirmResult = await Swal.fire({
+                icon: 'warning',
+                title: 'Retry Provisioning',
+                text: 'This will attempt to activate all pending users.',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Yes, retry',
+                cancelButtonText: 'Cancel'
+            });
 
-    if (!confirmResult.isConfirmed) return;
+            if (!confirmResult.isConfirmed) return;
 
             const $retryBtn = $('#retryProvisioningBtn');
             const originalText = $retryBtn.html();
@@ -1273,7 +1326,7 @@ async function retryAllPendingUsers() {
                     'Accept': 'application/json'
                 },
                 timeout: 180000,
-            success: function() {
+                success: function() {
                     $retryBtn.prop('disabled', false).html(originalText);
                     loadUsers();
                     Swal.fire({

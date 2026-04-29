@@ -46,8 +46,6 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
      */
     private array $validationErrors = [];
 
-
-
     /**
      * Get validation errors for reporting
      */
@@ -55,7 +53,6 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
     {
         return $this->validationErrors ?? [];
     }
-
 
     /** Statistics tracking */
     private array $stats = [
@@ -73,8 +70,8 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
             'username' => 0,
             'email' => 0,
             'sign_in_identifier' => 0,
-            'created_new' => 0
-        ]
+            'created_new' => 0,
+        ],
     ];
 
     /** Memory management */
@@ -105,7 +102,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
         Log::info('SigninLogsImport initialized', [
             'bulk_insert_enabled' => $this->useBulkInsert,
             'bulk_threshold' => $this->bulkThreshold,
-            'lock_key' => self::$lockKey
+            'lock_key' => self::$lockKey,
         ]);
     }
 
@@ -118,10 +115,9 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
                 isset($lockData['started_at']) &&
                 Carbon::parse($lockData['started_at'])->addSeconds(self::$lockTimeout)->isPast()
             ) {
-
                 Log::warning('Found stale import lock, clearing it', [
                     'lock_data' => $lockData,
-                    'lock_age_minutes' => Carbon::parse($lockData['started_at'])->diffInMinutes()
+                    'lock_age_minutes' => Carbon::parse($lockData['started_at'])->diffInMinutes(),
                 ]);
 
                 Cache::forget(self::$lockKey);
@@ -135,7 +131,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
             'started_at' => now()->toISOString(),
             'process_id' => getmypid(),
             'server' => gethostname(),
-            'process' => getmypid() ?: 'unknown'
+            'process' => getmypid() ?: 'unknown',
         ];
 
         Cache::put(self::$lockKey, $lockData, self::$lockTimeout);
@@ -144,15 +140,19 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
 
     private function initializeProgress(): void
     {
-        Cache::put(self::$progressKey, [
-            'started_at' => now()->toISOString(),
-            'processed' => 0,
-            'total' => 0,
-            'status' => 'initializing',
-            'current_batch' => 0,
-            'total_batches' => 0,
-            'memory_usage_mb' => round(memory_get_usage(true) / 1024 / 1024, 2)
-        ], self::$lockTimeout);
+        Cache::put(
+            self::$progressKey,
+            [
+                'started_at' => now()->toISOString(),
+                'processed' => 0,
+                'total' => 0,
+                'status' => 'initializing',
+                'current_batch' => 0,
+                'total_batches' => 0,
+                'memory_usage_mb' => round(memory_get_usage(true) / 1024 / 1024, 2),
+            ],
+            self::$lockTimeout,
+        );
     }
 
     private function updateProgress(array $updates): void
@@ -160,7 +160,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
         $current = Cache::get(self::$progressKey, []);
         $updated = array_merge($current, $updates, [
             'updated_at' => now()->toISOString(),
-            'memory_usage_mb' => round(memory_get_usage(true) / 1024 / 1024, 2)
+            'memory_usage_mb' => round(memory_get_usage(true) / 1024 / 1024, 2),
         ]);
 
         Cache::put(self::$progressKey, $updated, self::$lockTimeout);
@@ -170,7 +170,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
     {
         $configs = [
             'DB_CONNECTION' => env('DB_CONNECTION'),
-            'SIGNIN_EXCEL_CHUNK_SIZE' => env('SIGNIN_EXCEL_CHUNK_SIZE', 200)
+            'SIGNIN_EXCEL_CHUNK_SIZE' => env('SIGNIN_EXCEL_CHUNK_SIZE', 200),
         ];
 
         foreach ($configs as $key => $value) {
@@ -190,14 +190,17 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
     /**
      * CRITICAL FIX: Enhanced user resolution with better null ID handling
      */
-    private function getUserFromCacheOrCreate(string $userPrincipalName, ?string $userDisplayName = null, ?string $userIdFromCsv = null)
-    {
+    private function getUserFromCacheOrCreate(
+        string $userPrincipalName,
+        ?string $userDisplayName = null,
+        ?string $userIdFromCsv = null,
+    ) {
         $userPrincipalName = trim($userPrincipalName);
 
         if (empty($userPrincipalName) || strlen($userPrincipalName) > 255) {
             Log::warning('Invalid username provided', [
                 'username' => substr($userPrincipalName, 0, 50),
-                'length' => strlen($userPrincipalName)
+                'length' => strlen($userPrincipalName),
             ]);
             $this->stats['errors']++;
             return null;
@@ -211,7 +214,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
             // CRITICAL: Ensure user has valid ID
             if (empty($user->id)) {
                 Log::warning('Cached user has no ID, removing from cache and re-resolving', [
-                    'username' => $userPrincipalName
+                    'username' => $userPrincipalName,
                 ]);
                 unset($this->userCache[$cacheKey]);
             } else {
@@ -241,7 +244,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
 
         Log::warning('No valid user found and creation disabled/failed', [
             'username' => $userPrincipalName,
-            'create_users_enabled' => env('SIGNIN_IMPORT_CREATE_USERS', false)
+            'create_users_enabled' => env('SIGNIN_IMPORT_CREATE_USERS', false),
         ]);
 
         return null;
@@ -274,7 +277,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
 
                 Log::info('✅ Generated ID for user', [
                     'username' => $user->userPrincipalName,
-                    'new_id' => $newId
+                    'new_id' => $newId,
                 ]);
 
                 // Track this fix
@@ -283,20 +286,18 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
                 return $user;
             } else {
                 Log::error('❌ Failed to update user ID in database', [
-                    'username' => $user->userPrincipalName
+                    'username' => $user->userPrincipalName,
                 ]);
                 return null;
             }
         } catch (\Exception $e) {
             Log::error('❌ Exception while fixing user ID', [
                 'username' => $user->userPrincipalName ?? 'unknown',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
             return null;
         }
     }
-
-
 
     /**
      * CRITICAL NEW METHOD: Ensures user has valid ID, generates one if missing
@@ -323,7 +324,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
             Log::info('Successfully generated ID for existing user', [
                 'username' => $user->userPrincipalName,
                 'new_id' => $newId,
-                'display_name' => $user->displayName ?? 'unknown'
+                'display_name' => $user->displayName ?? 'unknown',
             ]);
 
             // Track this as a user update
@@ -334,14 +335,13 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
             Log::error('Failed to generate ID for user', [
                 'username' => $user->userPrincipalName ?? 'unknown',
                 'error' => $e->getMessage(),
-                'trace' => substr($e->getTraceAsString(), 0, 300)
+                'trace' => substr($e->getTraceAsString(), 0, 300),
             ]);
 
             // Return user as-is, let validation handle the null ID
             return $user;
         }
     }
-
 
     /**
      * COMPLETELY REWRITTEN findUserByMultipleStrategies method
@@ -363,17 +363,17 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
                     $user = AzureUser::where('id', $userIdFromCsv)->first();
                     if ($user) {
                         $this->stats['users_matched_by_strategy']['exact_id']++;
-                        Log::debug("User found via exact ID match", [
+                        Log::debug('User found via exact ID match', [
                             'username' => $userPrincipalName,
                             'user_id' => $user->id,
-                            'strategy' => 'exact_id'
+                            'strategy' => 'exact_id',
                         ]);
                         return $user;
                     }
                 } catch (\Exception $e) {
                     Log::warning('Exact ID lookup failed', [
                         'user_id' => $userIdFromCsv,
-                        'error' => $e->getMessage()
+                        'error' => $e->getMessage(),
                     ]);
                 }
             }
@@ -381,21 +381,23 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
             // Strategy 2: Direct case-insensitive userPrincipalName match
             // Using COLLATE for SQL Server case-insensitive comparison
             try {
-                $user = AzureUser::whereRaw('LOWER(RTRIM(LTRIM(userPrincipalName))) = LOWER(?)', [trim($userPrincipalName)])->first();
+                $user = AzureUser::whereRaw('LOWER(RTRIM(LTRIM(userPrincipalName))) = LOWER(?)', [
+                    trim($userPrincipalName),
+                ])->first();
                 if ($user) {
                     $this->stats['users_matched_by_strategy']['username']++;
-                    Log::debug("User found via case-insensitive username match", [
+                    Log::debug('User found via case-insensitive username match', [
                         'search_term' => $userPrincipalName,
                         'found_username' => $user->userPrincipalName,
                         'user_id' => $user->id,
-                        'strategy' => 'username_case_insensitive'
+                        'strategy' => 'username_case_insensitive',
                     ]);
                     return $user;
                 }
             } catch (\Exception $e) {
                 Log::warning('Case-insensitive username lookup failed', [
                     'username' => $userPrincipalName,
-                    'error' => $e->getMessage()
+                    'error' => $e->getMessage(),
                 ]);
             }
 
@@ -403,22 +405,24 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
             if (filter_var($userPrincipalName, FILTER_VALIDATE_EMAIL)) {
                 try {
                     $user = AzureUser::whereRaw('LOWER(RTRIM(LTRIM(mail))) = LOWER(?)', [trim($userPrincipalName)])
-                        ->orWhereRaw('LOWER(RTRIM(LTRIM(alternateEmailAddress))) = LOWER(?)', [trim($userPrincipalName)])
+                        ->orWhereRaw('LOWER(RTRIM(LTRIM(alternateEmailAddress))) = LOWER(?)', [
+                            trim($userPrincipalName),
+                        ])
                         ->first();
                     if ($user) {
                         $this->stats['users_matched_by_strategy']['email']++;
-                        Log::debug("User found via email match", [
+                        Log::debug('User found via email match', [
                             'email' => $userPrincipalName,
                             'found_username' => $user->userPrincipalName,
                             'user_id' => $user->id,
-                            'strategy' => 'email_match'
+                            'strategy' => 'email_match',
                         ]);
                         return $user;
                     }
                 } catch (\Exception $e) {
                     Log::warning('Email lookup failed', [
                         'email' => $userPrincipalName,
-                        'error' => $e->getMessage()
+                        'error' => $e->getMessage(),
                     ]);
                 }
             }
@@ -431,19 +435,19 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
                     ->first();
                 if ($user) {
                     $this->stats['users_matched_by_strategy']['sign_in_identifier']++;
-                    Log::info("User found via pattern match", [
+                    Log::info('User found via pattern match', [
                         'search_term' => $userPrincipalName,
                         'pattern' => $searchPattern,
                         'found_username' => $user->userPrincipalName,
                         'user_id' => $user->id,
-                        'strategy' => 'pattern_match'
+                        'strategy' => 'pattern_match',
                     ]);
                     return $user;
                 }
             } catch (\Exception $e) {
                 Log::warning('Pattern matching lookup failed', [
                     'username' => $userPrincipalName,
-                    'error' => $e->getMessage()
+                    'error' => $e->getMessage(),
                 ]);
             }
 
@@ -454,14 +458,18 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
                 'username' => $userPrincipalName,
                 'user_id_from_csv' => $userIdFromCsv,
                 'error' => $e->getMessage(),
-                'trace' => substr($e->getTraceAsString(), 0, 500)
+                'trace' => substr($e->getTraceAsString(), 0, 500),
             ]);
         }
 
         return null;
     }
-    private function createUserFromSigninData(string $userPrincipalName, ?string $userDisplayName = null, ?string $userIdFromCsv = null)
-    {
+
+    private function createUserFromSigninData(
+        string $userPrincipalName,
+        ?string $userDisplayName = null,
+        ?string $userIdFromCsv = null,
+    ) {
         try {
             // Enhanced validation
             if (strlen($userPrincipalName) > 255) {
@@ -498,10 +506,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
             ];
 
             // Use updateOrCreate to handle race conditions
-            $user = AzureUser::updateOrCreate(
-                ['userPrincipalName' => $userPrincipalName],
-                $userData
-            );
+            $user = AzureUser::updateOrCreate(['userPrincipalName' => $userPrincipalName], $userData);
 
             $this->userCache[$userPrincipalName] = $user;
 
@@ -511,14 +516,14 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
                 Log::info('Created new user from signin log', [
                     'username' => $userPrincipalName,
                     'user_id' => $user->id,
-                    'display_name' => $userData['displayName']
+                    'display_name' => $userData['displayName'],
                 ]);
             } else {
                 $this->stats['users_found']++;
                 $this->stats['users_matched_by_strategy']['username']++;
                 Log::debug('Found existing user via updateOrCreate', [
                     'username' => $userPrincipalName,
-                    'user_id' => $user->id
+                    'user_id' => $user->id,
                 ]);
             }
 
@@ -527,7 +532,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
             Log::error('Failed to create user from signin log', [
                 'username' => $userPrincipalName,
                 'error' => $e->getMessage(),
-                'trace' => substr($e->getTraceAsString(), 0, 300)
+                'trace' => substr($e->getTraceAsString(), 0, 300),
             ]);
             $this->stats['errors']++;
             return null;
@@ -540,9 +545,10 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
             return substr(trim($displayName), 0, 255);
         }
 
-        $emailPart = strpos($userPrincipalName, '@') !== false
-            ? substr($userPrincipalName, 0, strpos($userPrincipalName, '@'))
-            : $userPrincipalName;
+        $emailPart =
+            strpos($userPrincipalName, '@') !== false
+                ? substr($userPrincipalName, 0, strpos($userPrincipalName, '@'))
+                : $userPrincipalName;
 
         $displayName = str_replace(['.', '_', '-'], ' ', $emailPart);
         $displayName = ucwords(strtolower($displayName));
@@ -578,13 +584,13 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
             Log::error('Import failed with critical error', [
                 'error' => $e->getMessage(),
                 'stats' => $this->stats,
-                'trace' => substr($e->getTraceAsString(), 0, 500)
+                'trace' => substr($e->getTraceAsString(), 0, 500),
             ]);
 
             $this->updateProgress([
                 'status' => 'failed',
                 'error' => $e->getMessage(),
-                'final_stats' => $this->stats
+                'final_stats' => $this->stats,
             ]);
 
             $this->cleanup();
@@ -609,14 +615,14 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
         Log::info('Starting signin logs import', [
             'total_rows' => $totalRows,
             'chunk_size' => $chunkSize,
-            'total_batches' => $chunks->count()
+            'total_batches' => $chunks->count(),
         ]);
 
         $this->updateProgress([
             'total' => $totalRows,
             'total_batches' => $chunks->count(),
             'chunk_size' => $chunkSize,
-            'status' => 'processing'
+            'status' => 'processing',
         ]);
 
         foreach ($chunks as $chunkIndex => $chunk) {
@@ -637,8 +643,8 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
                         'processed' => $this->stats['processed'],
                         'inserted' => $this->stats['inserted'],
                         'skipped' => $this->stats['skipped'],
-                        'errors' => $this->stats['errors']
-                    ]
+                        'errors' => $this->stats['errors'],
+                    ],
                 ]);
 
                 // Periodic maintenance
@@ -647,7 +653,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
                     Log::info("Periodic maintenance after batch {$batchNumber}", [
                         'cache_cleanup' => 'completed',
                         'stats' => $this->stats,
-                        'memory_after_cleanup_mb' => round(memory_get_usage(true) / 1024 / 1024, 2)
+                        'memory_after_cleanup_mb' => round(memory_get_usage(true) / 1024 / 1024, 2),
                     ]);
                 }
 
@@ -656,7 +662,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
                     'status' => 'processing_batch_' . $batchNumber,
                     'processed' => $this->stats['processed'],
                     'inserted' => $this->stats['inserted'],
-                    'completion_percentage' => round(($batchNumber / $chunks->count()) * 100, 2)
+                    'completion_percentage' => round(($batchNumber / $chunks->count()) * 100, 2),
                 ]);
             } catch (\Exception $e) {
                 $consecutiveFailures++;
@@ -667,21 +673,21 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
                     'chunk_index' => $chunkIndex,
                     'rows_in_batch' => $chunk->count(),
                     'current_stats' => $this->stats,
-                    'trace' => substr($e->getTraceAsString(), 0, 500)
+                    'trace' => substr($e->getTraceAsString(), 0, 500),
                 ]);
 
                 // If too many consecutive failures, abort the import
                 if ($consecutiveFailures >= $maxConsecutiveFailures) {
-                    Log::critical("Too many consecutive batch failures, aborting import", [
+                    Log::critical('Too many consecutive batch failures, aborting import', [
                         'consecutive_failures' => $consecutiveFailures,
                         'max_allowed' => $maxConsecutiveFailures,
-                        'final_stats' => $this->stats
+                        'final_stats' => $this->stats,
                     ]);
 
                     $this->updateProgress([
                         'status' => 'aborted',
                         'reason' => 'Too many consecutive failures',
-                        'final_stats' => $this->stats
+                        'final_stats' => $this->stats,
                     ]);
 
                     throw new \Exception("Import aborted due to {$consecutiveFailures} consecutive batch failures");
@@ -695,7 +701,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
                     'current_batch' => $batchNumber,
                     'status' => 'batch_failed_' . $batchNumber,
                     'last_error' => $e->getMessage(),
-                    'consecutive_failures' => $consecutiveFailures
+                    'consecutive_failures' => $consecutiveFailures,
                 ]);
 
                 continue; // Continue with next batch
@@ -707,16 +713,15 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
 
         Log::info('Import processing completed', [
             'total_batches_processed' => $batchNumber,
-            'final_stats' => $this->stats
+            'final_stats' => $this->stats,
         ]);
 
         $this->updateProgress([
             'status' => 'completed',
             'final_stats' => $this->stats,
-            'completion_percentage' => 100
+            'completion_percentage' => 100,
         ]);
     }
-
 
     private function processBatch(Collection $batch, int $batchNumber): void
     {
@@ -731,17 +736,17 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
         $insertedCount = 0;
 
         // CRITICAL DEBUG: Log batch structure
-        Log::info("🔍 BATCH DEBUG INFO", [
+        Log::info('🔍 BATCH DEBUG INFO', [
             'batch' => $batchNumber,
             'rows' => $batch->count(),
             'first_row_keys' => $batch->first() ? array_keys($batch->first()->toArray()) : [],
             'first_row_sample' => $batch->first() ? array_slice($batch->first()->toArray(), 0, 5, true) : [],
-            'memory_usage_mb' => round(memory_get_usage(true) / 1024 / 1024, 2)
+            'memory_usage_mb' => round(memory_get_usage(true) / 1024 / 1024, 2),
         ]);
 
         DB::beginTransaction();
         try {
-            DB::statement("SET TRANSACTION ISOLATION LEVEL READ COMMITTED");
+            DB::statement('SET TRANSACTION ISOLATION LEVEL READ COMMITTED');
             $this->preloadData($batch);
 
             // REMOVED: User system associations array
@@ -754,12 +759,12 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
 
                 // CRITICAL DEBUG: Log first row processing attempt
                 if ($rowIndex === 0) {
-                    Log::info("🔍 PROCESSING FIRST ROW", [
+                    Log::info('🔍 PROCESSING FIRST ROW', [
                         'batch' => $batchNumber,
                         'normalized_keys' => array_keys($normalizedRow),
                         'has_username' => isset($normalizedRow['username']),
                         'has_date' => isset($normalizedRow['date_utc']) || isset($normalizedRow['date (utc)']),
-                        'username_value' => $normalizedRow['username'] ?? 'MISSING'
+                        'username_value' => $normalizedRow['username'] ?? 'MISSING',
                     ]);
                 }
 
@@ -770,7 +775,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
                     $duplicateCheckData[] = [
                         'username' => $result['signin_log']['username'],
                         'date_utc' => $result['signin_log']['date_utc'],
-                        'request_id' => $result['signin_log']['request_id']
+                        'request_id' => $result['signin_log']['request_id'],
                     ];
                     $processedRowsInBatch++;
                 } else {
@@ -785,12 +790,12 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
                 $this->stats['processed']++;
             }
 
-            Log::info("📊 BATCH PROCESSING SUMMARY", [
+            Log::info('📊 BATCH PROCESSING SUMMARY', [
                 'batch' => $batchNumber,
                 'total_rows' => $batch->count(),
                 'processed_successfully' => $processedRowsInBatch,
                 'skipped' => $skippedRowsInBatch,
-                'signin_logs_ready_for_insert' => count($signinLogsToInsert)
+                'signin_logs_ready_for_insert' => count($signinLogsToInsert),
             ]);
 
             if (!empty($signinLogsToInsert)) {
@@ -801,11 +806,11 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
                 // REMOVED: User system associations bulk insert
                 // $this->bulkInsertUserSystemAssociations($userSystemAssociations);
             } else {
-                Log::warning("⚠️ NO SIGNIN LOGS TO INSERT", [
+                Log::warning('⚠️ NO SIGNIN LOGS TO INSERT', [
                     'batch' => $batchNumber,
                     'rows_in_batch' => $batch->count(),
                     'processed_count' => $processedRowsInBatch,
-                    'skipped_count' => $skippedRowsInBatch
+                    'skipped_count' => $skippedRowsInBatch,
                 ]);
             }
 
@@ -815,14 +820,14 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
             Log::info("Batch {$batchNumber} completed", [
                 'signin_logs_processed' => count($signinLogsToInsert),
                 'signin_logs_inserted' => $insertedCount,
-                'duration_seconds' => round($duration, 2)
+                'duration_seconds' => round($duration, 2),
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error("Batch {$batchNumber} failed", [
                 'error' => $e->getMessage(),
                 'trace' => substr($e->getTraceAsString(), 0, 500),
-                'stats' => $this->stats
+                'stats' => $this->stats,
             ]);
             $this->stats['errors'] += $batch->count();
             return;
@@ -831,7 +836,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
         $this->updateProgress([
             'processed' => $this->stats['processed'],
             'inserted' => $this->stats['inserted'],
-            'current_batch' => $batchNumber
+            'current_batch' => $batchNumber,
         ]);
     }
 
@@ -839,26 +844,26 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
     {
         // CRITICAL FIX 1: Log the actual row data for first few rows
         if ($rowIndex < 3) {
-            Log::debug("🔍 RAW ROW DATA", [
+            Log::debug('🔍 RAW ROW DATA', [
                 'batch' => $batchNumber,
                 'row' => $rowIndex,
                 'raw_keys' => array_keys($row),
                 'sample_values' => array_map(function ($v) {
                     return is_string($v) ? substr($v, 0, 50) : $v;
-                }, array_slice($row, 0, 10, true))
+                }, array_slice($row, 0, 10, true)),
             ]);
         }
 
-        $userPrincipalName = trim($row['username'] ?? $row['user_principal_name'] ?? '');
-        $userDisplayName = trim($row['user'] ?? $row['display_name'] ?? '');
-        $userIdFromCsv = trim($row['user id'] ?? $row['user_id'] ?? $row['userid'] ?? '');
+        $userPrincipalName = trim($row['username'] ?? ($row['user_principal_name'] ?? ''));
+        $userDisplayName = trim($row['user'] ?? ($row['display_name'] ?? ''));
+        $userIdFromCsv = trim($row['user id'] ?? ($row['user_id'] ?? ($row['userid'] ?? '')));
 
         if (empty($userPrincipalName) || strlen($userPrincipalName) > 255) {
             Log::warning('Invalid username in row', [
                 'batch' => $batchNumber,
                 'row' => $rowIndex,
                 'username' => substr($userPrincipalName, 0, 50),
-                'length' => strlen($userPrincipalName)
+                'length' => strlen($userPrincipalName),
             ]);
             $this->stats['skipped']++;
             return ['signin_log' => null, 'user_system' => null];
@@ -872,7 +877,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
             Log::warning('⚠️ User has NULL ID, attempting to fix', [
                 'batch' => $batchNumber,
                 'row' => $rowIndex,
-                'username' => $userPrincipalName
+                'username' => $userPrincipalName,
             ]);
 
             $user = $this->fixUserNullId($user);
@@ -885,7 +890,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
                 'row' => $rowIndex,
                 'username' => $userPrincipalName,
                 'user_exists' => $user !== null,
-                'user_has_id' => $user ? !empty($user->id) : false
+                'user_has_id' => $user ? !empty($user->id) : false,
             ]);
             $this->stats['skipped']++;
             return ['signin_log' => null, 'user_system' => null];
@@ -899,7 +904,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
         $dateUtc = $this->extractDateUtc($row);
         if (!$dateUtc) {
             // Try common variations
-            $dateUtc = $row['Date (UTC)'] ?? $row['Date'] ?? $row['date'] ?? null;
+            $dateUtc = $row['Date (UTC)'] ?? ($row['Date'] ?? ($row['date'] ?? null));
 
             Log::warning('⚠️ Date field not found with standard keys', [
                 'batch' => $batchNumber,
@@ -908,7 +913,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
                 'available_keys' => array_keys($row),
                 'keys_containing_date' => array_filter(array_keys($row), function ($k) {
                     return stripos($k, 'date') !== false;
-                })
+                }),
             ]);
         }
 
@@ -923,15 +928,16 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
                 'batch' => $batchNumber,
                 'row' => $rowIndex,
                 'username' => $userPrincipalName,
-                'raw_date' => substr($dateUtc, 0, 50)
+                'raw_date' => substr($dateUtc, 0, 50),
             ]);
             $this->stats['skipped']++;
             return ['signin_log' => null, 'user_system' => null];
         }
 
         // CRITICAL FIX 6: More flexible request_id extraction
-        $requestId = $row['request_id'] ?? $row['request id'] ?? $row['requestid'] ??
-            $row['Request ID'] ?? $row['RequestId'] ?? null;
+        $requestId =
+            $row['request_id'] ??
+            ($row['request id'] ?? ($row['requestid'] ?? ($row['Request ID'] ?? ($row['RequestId'] ?? null))));
 
         if (empty($requestId)) {
             $requestId = 'IMPORT-' . uniqid() . '-' . $batchNumber . '-' . $rowIndex;
@@ -950,7 +956,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
                     'username' => $userPrincipalName,
                     'user_id' => $user->id,
                     'date' => $parsedDate,
-                    'request_id' => $requestId
+                    'request_id' => $requestId,
                 ]);
             }
 
@@ -958,7 +964,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
                 Log::debug('Duplicate signin log detected', [
                     'batch' => $batchNumber,
                     'row' => $rowIndex,
-                    'username' => $userPrincipalName
+                    'username' => $userPrincipalName,
                 ]);
                 $this->stats['skipped']++;
                 return ['signin_log' => null, 'user_system' => null];
@@ -980,7 +986,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
 
             return [
                 'signin_log' => $signinLogData,
-                'user_system' => null  // No longer creating system associations
+                'user_system' => null, // No longer creating system associations
             ];
         } catch (\Exception $e) {
             Log::error('❌ Error preparing signin log data', [
@@ -988,14 +994,12 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
                 'row' => $rowIndex,
                 'username' => $userPrincipalName,
                 'error' => $e->getMessage(),
-                'trace' => substr($e->getTraceAsString(), 0, 300)
+                'trace' => substr($e->getTraceAsString(), 0, 300),
             ]);
             $this->stats['errors']++;
             return ['signin_log' => null, 'user_system' => null];
         }
     }
-
-
 
     /**
      * CRITICAL NEW METHOD: Proactively fix all users with null IDs during preload
@@ -1006,8 +1010,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
             // Find users with null IDs
             $usersWithNullIds = AzureUser::whereIn('userPrincipalName', $usernames)
                 ->where(function ($query) {
-                    $query->whereNull('id')
-                        ->orWhere('id', '=', '');
+                    $query->whereNull('id')->orWhere('id', '=', '');
                 })
                 ->get();
 
@@ -1017,7 +1020,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
             }
 
             Log::warning('⚠️ Found users with null IDs, fixing them', [
-                'count' => $usersWithNullIds->count()
+                'count' => $usersWithNullIds->count(),
             ]);
 
             foreach ($usersWithNullIds as $user) {
@@ -1038,185 +1041,25 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
 
                     Log::info('✅ Fixed null ID for user', [
                         'username' => $user->userPrincipalName,
-                        'new_id' => $newId
+                        'new_id' => $newId,
                     ]);
                 } catch (\Exception $e) {
                     Log::error('❌ Failed to fix null ID for user', [
                         'username' => $user->userPrincipalName,
-                        'error' => $e->getMessage()
+                        'error' => $e->getMessage(),
                     ]);
                 }
             }
 
             Log::info('✅ Completed fixing null user IDs', [
-                'fixed_count' => $this->stats['users_id_generated']
+                'fixed_count' => $this->stats['users_id_generated'],
             ]);
         } catch (\Exception $e) {
             Log::error('❌ Critical error in fixNullUserIds', [
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
         }
     }
-
-    // private function processRow(array $row, int $batchNumber = 0, int $rowIndex = 0)
-    // {
-    //     // CRITICAL FIX 1: Log the actual row data for first few rows
-    //     if ($rowIndex < 3) {
-    //         Log::debug("🔍 RAW ROW DATA", [
-    //             'batch' => $batchNumber,
-    //             'row' => $rowIndex,
-    //             'raw_keys' => array_keys($row),
-    //             'sample_values' => array_map(function($v) {
-    //                 return is_string($v) ? substr($v, 0, 50) : $v;
-    //             }, array_slice($row, 0, 10, true))
-    //         ]);
-    //     }
-
-    //     $userPrincipalName = trim($row['username'] ?? $row['user_principal_name'] ?? '');
-    //     $userDisplayName = trim($row['user'] ?? $row['display_name'] ?? '');
-    //     $userIdFromCsv = trim($row['user id'] ?? $row['user_id'] ?? $row['userid'] ?? '');
-
-    //     if (empty($userPrincipalName) || strlen($userPrincipalName) > 255) {
-    //         Log::warning('Invalid username in row', [
-    //             'batch' => $batchNumber,
-    //             'row' => $rowIndex,
-    //             'username' => substr($userPrincipalName, 0, 50),
-    //             'length' => strlen($userPrincipalName)
-    //         ]);
-    //         $this->stats['skipped']++;
-    //         return ['signin_log' => null, 'user_system' => null];
-    //     }
-
-    //     // CRITICAL FIX 2: Get user and FIX null ID immediately
-    //     $user = $this->getUserFromCacheOrCreate($userPrincipalName, $userDisplayName, $userIdFromCsv);
-
-    //     // CRITICAL FIX 3: If user exists but has null ID, fix it NOW
-    //     if ($user && empty($user->id)) {
-    //         Log::warning('⚠️ User has NULL ID, attempting to fix', [
-    //             'batch' => $batchNumber,
-    //             'row' => $rowIndex,
-    //             'username' => $userPrincipalName
-    //         ]);
-
-    //         $user = $this->fixUserNullId($user);
-    //     }
-
-    //     // CRITICAL FIX 4: Only skip if user is completely unavailable
-    //     if (!$user || empty($user->id)) {
-    //         Log::error('❌ No valid user after all attempts', [
-    //             'batch' => $batchNumber,
-    //             'row' => $rowIndex,
-    //             'username' => $userPrincipalName,
-    //             'user_exists' => $user !== null,
-    //             'user_has_id' => $user ? !empty($user->id) : false
-    //         ]);
-    //         $this->stats['skipped']++;
-    //         return ['signin_log' => null, 'user_system' => null];
-    //     }
-
-    //     $application = $row['application'] ?? $row['app'] ?? null;
-    //     $system = $this->mapApplicationToSystem($application);
-
-    //     // CRITICAL FIX 5: More flexible date extraction
-    //     $dateUtc = $this->extractDateUtc($row);
-    //     if (!$dateUtc) {
-    //         // Try common variations
-    //         $dateUtc = $row['Date (UTC)'] ?? $row['Date'] ?? $row['date'] ?? null;
-
-    //         Log::warning('⚠️ Date field not found with standard keys', [
-    //             'batch' => $batchNumber,
-    //             'row' => $rowIndex,
-    //             'username' => $userPrincipalName,
-    //             'available_keys' => array_keys($row),
-    //             'keys_containing_date' => array_filter(array_keys($row), function($k) {
-    //                 return stripos($k, 'date') !== false;
-    //             })
-    //         ]);
-    //     }
-
-    //     if (!$dateUtc) {
-    //         $this->stats['skipped']++;
-    //         return ['signin_log' => null, 'user_system' => null];
-    //     }
-
-    //     $parsedDate = $this->validateAndParseDate($dateUtc, $userPrincipalName);
-    //     if (!$parsedDate) {
-    //         Log::warning('Failed to parse date', [
-    //             'batch' => $batchNumber,
-    //             'row' => $rowIndex,
-    //             'username' => $userPrincipalName,
-    //             'raw_date' => substr($dateUtc, 0, 50)
-    //         ]);
-    //         $this->stats['skipped']++;
-    //         return ['signin_log' => null, 'user_system' => null];
-    //     }
-
-    //     // CRITICAL FIX 6: More flexible request_id extraction
-    //     $requestId = $row['request_id'] ?? $row['request id'] ?? $row['requestid'] ??
-    //                  $row['Request ID'] ?? $row['RequestId'] ?? null;
-
-    //     if (empty($requestId)) {
-    //         $requestId = 'IMPORT-' . uniqid() . '-' . $batchNumber . '-' . $rowIndex;
-    //     }
-
-    //     try {
-    //         $signinLogData = $this->prepareSigninLogData($row, $user, $system, $parsedDate, $userIdFromCsv);
-    //         $signinLogData['request_id'] = $requestId;
-
-    //         // CRITICAL FIX 7: Log successful preparation
-    //         if ($rowIndex < 3) {
-    //             Log::info('✅ Row prepared successfully', [
-    //                 'batch' => $batchNumber,
-    //                 'row' => $rowIndex,
-    //                 'username' => $userPrincipalName,
-    //                 'user_id' => $user->id,
-    //                 'date' => $parsedDate,
-    //                 'request_id' => $requestId
-    //             ]);
-    //         }
-
-    //         if ($this->isDuplicateInDatabase($signinLogData)) {
-    //             Log::debug('Duplicate signin log detected', [
-    //                 'batch' => $batchNumber,
-    //                 'row' => $rowIndex,
-    //                 'username' => $userPrincipalName
-    //             ]);
-    //             $this->stats['skipped']++;
-    //             return ['signin_log' => null, 'user_system' => null];
-    //         }
-
-    //         if (!$this->validateSigninLogData($signinLogData, $batchNumber, $rowIndex)) {
-    //             $this->stats['skipped']++;
-    //             return ['signin_log' => null, 'user_system' => null];
-    //         }
-
-    //         $userSystemAssociation = null;
-    //         if ($system !== 'Unknown' && isset($this->systemCache[$system])) {
-    //             $userSystemAssociation = [
-    //                 'user_id' => $user->id,
-    //                 'application_id' => (string) $this->systemCache[$system]->id,
-    //             ];
-    //         }
-
-    //         return [
-    //             'signin_log' => $signinLogData,
-    //             'user_system' => $userSystemAssociation
-    //         ];
-
-    //     } catch (\Exception $e) {
-    //         Log::error('❌ Error preparing signin log data', [
-    //             'batch' => $batchNumber,
-    //             'row' => $rowIndex,
-    //             'username' => $userPrincipalName,
-    //             'error' => $e->getMessage(),
-    //             'trace' => substr($e->getTraceAsString(), 0, 300)
-    //         ]);
-    //         $this->stats['errors']++;
-    //         return ['signin_log' => null, 'user_system' => null];
-    //     }
-    // }
-
-
 
     private function invalidateDashboardCache(): void
     {
@@ -1237,12 +1080,12 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
             Log::info('Dashboard cache invalidated after signin import', [
                 'imported_records' => $this->stats['inserted'],
                 'users_created' => $this->stats['users_created'],
-                'users_found' => $this->stats['users_found']
+                'users_found' => $this->stats['users_found'],
             ]);
         } catch (\Exception $e) {
             Log::error('Failed to invalidate dashboard cache', [
                 'error' => $e->getMessage(),
-                'stats' => $this->stats
+                'stats' => $this->stats,
             ]);
         }
     }
@@ -1266,7 +1109,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
                 'error' => $e->getMessage(),
                 'user_id' => $signinLogData['user_id'] ?? 'unknown',
                 'date_utc' => $signinLogData['date_utc'] ?? 'unknown',
-                'request_id' => $signinLogData['request_id'] ?? 'unknown'
+                'request_id' => $signinLogData['request_id'] ?? 'unknown',
             ]);
             // Return false to allow processing - better to attempt insert than skip incorrectly
             return false;
@@ -1283,20 +1126,9 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
         return round($bytes, 2) . ' ' . $units[$pow];
     }
 
-    // private function preloadSystemCache(): void
-    // {
-    //     $systems = System::all()->keyBy('name');
-    //     $this->systemCache = $systems->toArray();
-    //     Log::info('Preloaded system cache', ['count' => count($this->systemCache)]);
-    // }
-
     private function cleanupCaches(): void
     {
-        if (
-            $this->stats['processed'] > 0 &&
-            $this->stats['processed'] % $this->cacheCleanupInterval === 0
-        ) {
-
+        if ($this->stats['processed'] > 0 && $this->stats['processed'] % $this->cacheCleanupInterval === 0) {
             $start = microtime(true);
             $memoryBefore = memory_get_usage(true);
 
@@ -1306,8 +1138,8 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
                 'cache_sizes' => [
                     'users' => count($this->userCache),
                     // 'systems' => count($this->systemCache),
-                    'existing_logs' => count($this->existingLogs)
-                ]
+                    'existing_logs' => count($this->existingLogs),
+                ],
             ]);
 
             $this->userCache = array_slice($this->userCache, -500, null, true);
@@ -1322,7 +1154,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
             Log::info('Cache cleanup completed', [
                 'memory_after_mb' => round($memoryAfter / 1024 / 1024, 2),
                 'memory_delta_mb' => round(($memoryAfter - $memoryBefore) / 1024 / 1024, 2),
-                'duration_seconds' => $duration
+                'duration_seconds' => $duration,
             ]);
         }
     }
@@ -1350,7 +1182,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
         Cache::forget(self::$progressKey);
 
         Log::info('Import lock released', [
-            'final_stats' => $this->stats
+            'final_stats' => $this->stats,
         ]);
     }
 
@@ -1359,7 +1191,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
         return [
             'source' => 'signin_logs',
             'timestamp' => now()->toDateTimeString(),
-            'user_id' => auth()->id() ?? 'system'
+            'user_id' => auth()->id() ?? 'system',
         ];
     }
 
@@ -1382,7 +1214,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
             Log::info('Table structure initialized', [
                 'total_columns' => count($this->tableColumns),
                 'required_columns' => count($this->requiredColumns),
-                'required_fields' => array_keys($this->requiredColumns)
+                'required_fields' => array_keys($this->requiredColumns),
             ]);
         } catch (\Exception $e) {
             Log::error('Failed to initialize table structure: ' . $e->getMessage());
@@ -1399,13 +1231,13 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
                 SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE, COLUMN_DEFAULT
                 FROM INFORMATION_SCHEMA.COLUMNS
                 WHERE TABLE_NAME = 'Azure_LoginDetails'
-                  AND IS_NULLABLE = 'NO'
+                    AND IS_NULLABLE = 'NO'
             ");
 
             foreach ($columnInfo as $column) {
                 $required[strtolower($column->COLUMN_NAME)] = [
                     'type' => $column->DATA_TYPE,
-                    'default' => $column->COLUMN_DEFAULT
+                    'default' => $column->COLUMN_DEFAULT,
                 ];
             }
         } catch (\Exception $e) {
@@ -1414,7 +1246,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
                 'date_utc' => ['type' => 'datetime', 'default' => null],
                 'request_id' => ['type' => 'varchar', 'default' => null],
                 'user_id' => ['type' => 'varchar', 'default' => null],
-                'system' => ['type' => 'varchar', 'default' => null]
+                'system' => ['type' => 'varchar', 'default' => null],
             ];
         }
 
@@ -1428,7 +1260,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
 
         if ($columnCount === 0) {
             Log::warning('Column count unavailable, using fallback chunk size', [
-                'memory_usage_mb' => $memoryUsageMb
+                'memory_usage_mb' => $memoryUsageMb,
             ]);
             return $this->fallbackChunkSize ?? 5;
         }
@@ -1447,7 +1279,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
             $maxChunkByColumn = max(1, floor($maxChunkByColumn / 2));
             Log::info('Memory usage high, reducing chunk size', [
                 'memory_usage_mb' => $memoryUsageMb,
-                'adjusted_max_chunk' => $maxChunkByColumn
+                'adjusted_max_chunk' => $maxChunkByColumn,
             ]);
         }
 
@@ -1458,7 +1290,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
             'column_count' => $columnCount,
             'safe_size' => $safeSize,
             'final_chunk_size' => $finalSize,
-            'memory_usage_mb' => $memoryUsageMb
+            'memory_usage_mb' => $memoryUsageMb,
         ]);
 
         return $finalSize;
@@ -1473,12 +1305,12 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
         $columnCount = count($signinLogs[0]);
         $rowCount = count($signinLogs);
 
-        Log::debug("Insert strategy analysis", [
+        Log::debug('Insert strategy analysis', [
             'batch' => $batchNumber,
             'rows' => $rowCount,
             'columns' => $columnCount,
             'bulk_threshold' => $this->bulkThreshold,
-            'use_bulk_insert' => $this->useBulkInsert
+            'use_bulk_insert' => $this->useBulkInsert,
         ]);
 
         if ($this->useBulkInsert && $columnCount >= $this->bulkThreshold && $rowCount >= 10) {
@@ -1491,7 +1323,6 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
 
         return $this->executeSingleRowInserts($signinLogs, $batchNumber);
     }
-    
 
     private function executeBulkInsert(array $signinLogs, int $batchNumber): int
     {
@@ -1524,9 +1355,15 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
             }
             fclose($handle);
 
-            $columnList = '(' . implode(', ', array_map(function ($col) {
-                return '[' . str_replace(']', ']]', $col) . ']';
-            }, $columns)) . ')';
+            $columnList =
+                '(' .
+                implode(
+                    ', ',
+                    array_map(function ($col) {
+                        return '[' . str_replace(']', ']]', $col) . ']';
+                    }, $columns),
+                ) .
+                ')';
 
             $sql = "
                 BULK INSERT Azure_LoginDetails {$columnList}
@@ -1544,11 +1381,11 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
 
             $insertedCount = count($signinLogs);
 
-            Log::info("BULK INSERT completed successfully", [
+            Log::info('BULK INSERT completed successfully', [
                 'batch' => $batchNumber,
                 'rows' => $insertedCount,
                 'columns' => count($columns),
-                'temp_file' => $csvFile
+                'temp_file' => $csvFile,
             ]);
 
             unlink($csvFile);
@@ -1558,15 +1395,14 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
                 unlink($csvFile);
             }
 
-            Log::warning("BULK INSERT failed, falling back to batch insert", [
+            Log::warning('BULK INSERT failed, falling back to batch insert', [
                 'batch' => $batchNumber,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
 
             return $this->executeChunkedBatchInsert($signinLogs, $batchNumber);
         }
     }
-
 
     private function executeChunkedBatchInsert(array $signinLogs, int $batchNumber): int
     {
@@ -1583,12 +1419,12 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
             default => min($theoreticalChunkSize, 8),
         };
 
-        Log::debug("Chunked batch insert strategy", [
+        Log::debug('Chunked batch insert strategy', [
             'batch' => $batchNumber,
             'total_rows' => count($signinLogs),
             'columns_per_row' => $columnCount,
             'theoretical_chunk_size' => $theoreticalChunkSize,
-            'safe_chunk_size' => $safeChunkSize
+            'safe_chunk_size' => $safeChunkSize,
         ]);
 
         $insertedCount = 0;
@@ -1597,11 +1433,11 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
             $paramCount = count($chunk) * $columnCount;
 
             if ($paramCount >= $availableParams || $paramCount > 1800) {
-                Log::warning("Parameter count exceeded safety threshold", [
+                Log::warning('Parameter count exceeded safety threshold', [
                     'batch' => $batchNumber,
                     'chunk' => $chunkIndex + 1,
                     'param_count' => $paramCount,
-                    'safety_threshold' => $availableParams
+                    'safety_threshold' => $availableParams,
                 ]);
 
                 $insertedCount += $this->executeSingleRowInserts($chunk, $batchNumber);
@@ -1618,26 +1454,30 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
                 DB::table('Azure_LoginDetails')->insert($cleanChunk);
                 $insertedCount += count($cleanChunk);
 
-                Log::debug("Batch chunk inserted successfully", [
+                Log::debug('Batch chunk inserted successfully', [
                     'batch' => $batchNumber,
                     'chunk' => $chunkIndex + 1,
                     'rows' => count($cleanChunk),
-                    'params' => $paramCount
+                    'params' => $paramCount,
                 ]);
             } catch (\Exception $e) {
-                $isParamLimitError = str_contains($e->getMessage(), '2100') ||
+                $isParamLimitError =
+                    str_contains($e->getMessage(), '2100') ||
                     str_contains($e->getMessage(), 'parameter number') ||
                     str_contains($e->getMessage(), 'maximum of') ||
                     str_contains($e->getMessage(), 'IMSSP');
 
-                Log::error($isParamLimitError
-                    ? "Parameter limit error - using single-row fallback"
-                    : "Batch chunk failed - trying single inserts", [
-                    'batch' => $batchNumber,
-                    'chunk' => $chunkIndex + 1,
-                    'param_count' => $paramCount,
-                    'error_snippet' => substr($e->getMessage(), 0, 200)
-                ]);
+                Log::error(
+                    $isParamLimitError
+                        ? 'Parameter limit error - using single-row fallback'
+                        : 'Batch chunk failed - trying single inserts',
+                    [
+                        'batch' => $batchNumber,
+                        'chunk' => $chunkIndex + 1,
+                        'param_count' => $paramCount,
+                        'error_snippet' => substr($e->getMessage(), 0, 200),
+                    ],
+                );
 
                 $insertedCount += $this->executeSingleRowInserts($chunk, $batchNumber);
             }
@@ -1646,15 +1486,14 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
         return $insertedCount;
     }
 
-
     /**
      * FIXED: Use proper UPSERT with correct SQL syntax
      */
     private function executeSingleRowInserts(array $signinLogs, int $batchNumber): int
     {
-        Log::info("Using single-row UPSERT mode", [
+        Log::info('Using single-row UPSERT mode', [
             'batch' => $batchNumber,
-            'rows' => count($signinLogs)
+            'rows' => count($signinLogs),
         ]);
 
         $insertedCount = 0;
@@ -1683,10 +1522,10 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
                         ]);
 
                     if ($updated) {
-                        Log::debug("Updated existing record", [
+                        Log::debug('Updated existing record', [
                             'batch' => $batchNumber,
                             'index' => $index,
-                            'username' => $signinLog['username'] ?? 'unknown'
+                            'username' => $signinLog['username'] ?? 'unknown',
                         ]);
                         $this->stats['skipped']++; // Count as skipped since we didn't insert
                     }
@@ -1695,10 +1534,10 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
                     DB::table('Azure_LoginDetails')->insert($signinLog);
                     $insertedCount++;
 
-                    Log::debug("Inserted new record", [
+                    Log::debug('Inserted new record', [
                         'batch' => $batchNumber,
                         'index' => $index,
-                        'username' => $signinLog['username'] ?? 'unknown'
+                        'username' => $signinLog['username'] ?? 'unknown',
                     ]);
                 }
             } catch (\Exception $e) {
@@ -1710,40 +1549,36 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
                     str_contains($errorMessage, 'PRIMARY KEY') ||
                     str_contains($errorMessage, 'UNIQUE constraint')
                 ) {
-
-                    Log::info("Duplicate record handled gracefully", [
+                    Log::info('Duplicate record handled gracefully', [
                         'batch' => $batchNumber,
                         'index' => $index,
                         'username' => $signinLog['username'] ?? 'unknown',
-                        'error_type' => 'duplicate'
+                        'error_type' => 'duplicate',
                     ]);
                     $this->stats['skipped']++;
                 } else {
-                    Log::error("Single signin log operation failed", [
+                    Log::error('Single signin log operation failed', [
                         'batch' => $batchNumber,
                         'index' => $index,
                         'error' => $errorMessage,
                         'username' => $signinLog['username'] ?? 'unknown',
-                        'error_type' => 'database_error'
+                        'error_type' => 'database_error',
                     ]);
                     $this->stats['errors']++;
                 }
             }
         }
 
-        Log::info("UPSERT insertion completed", [
+        Log::info('UPSERT insertion completed', [
             'batch' => $batchNumber,
             'inserted' => $insertedCount,
             'total' => count($signinLogs),
-            'success_rate' => count($signinLogs) > 0 ? round(($insertedCount / count($signinLogs)) * 100, 2) . '%' : '0%'
+            'success_rate' =>
+                count($signinLogs) > 0 ? round(($insertedCount / count($signinLogs)) * 100, 2) . '%' : '0%',
         ]);
 
         return $insertedCount;
     }
-
-
-
-
 
     private function preloadData(Collection $batch)
     {
@@ -1764,7 +1599,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
                         $duplicateCheckData[] = [
                             'username' => $username,
                             'date_utc' => $parsedDate,
-                            'request_id' => $row['request id'] ?? null
+                            'request_id' => $row['request id'] ?? null,
                         ];
                     }
                 }
@@ -1777,12 +1612,12 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
 
     private function preloadUsers(array $usernames)
     {
-        if (empty($usernames)) return;
+        if (empty($usernames)) {
+            return;
+        }
 
         foreach (array_chunk($usernames, 500) as $chunk) {
-            $existingUsers = AzureUser::whereIn('userPrincipalName', $chunk)
-                ->get()
-                ->keyBy('userPrincipalName');
+            $existingUsers = AzureUser::whereIn('userPrincipalName', $chunk)->get()->keyBy('userPrincipalName');
 
             foreach ($existingUsers as $user) {
                 $this->userCache[$user->userPrincipalName] = $user;
@@ -1791,7 +1626,6 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
 
         Log::info('Preloaded users', ['count' => count($this->userCache)]);
     }
-
 
     /**
      * ENHANCED: More comprehensive preloadExistingLogs with better coverage
@@ -1812,7 +1646,8 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
         foreach ($duplicateCheckData as $data) {
             if (isset($this->userCache[$data['username']])) {
                 $user = $this->userCache[$data['username']];
-                if (!empty($user->id)) { // CRITICAL: Only use users with valid IDs
+                if (!empty($user->id)) {
+                    // CRITICAL: Only use users with valid IDs
                     $userIds[] = $user->id;
                     if (!empty($data['date_utc'])) {
                         $dates[] = $data['date_utc'];
@@ -1837,7 +1672,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
         Log::info('Starting comprehensive preload of existing logs', [
             'unique_users' => count($uniqueUserIds),
             'unique_dates' => count($uniqueDates),
-            'unique_request_ids' => count($uniqueRequestIds)
+            'unique_request_ids' => count($uniqueRequestIds),
         ]);
 
         try {
@@ -1903,22 +1738,21 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
             Log::info('Enhanced preload completed', [
                 'total_preloaded' => $totalPreloaded,
                 'unique_keys' => count($this->existingLogs),
-                'memory_usage_mb' => round(memory_get_usage(true) / 1024 / 1024, 2)
+                'memory_usage_mb' => round(memory_get_usage(true) / 1024 / 1024, 2),
             ]);
         } catch (\Exception $e) {
             Log::error('Error during comprehensive preload of existing logs', [
                 'error' => $e->getMessage(),
                 'preloaded_so_far' => $totalPreloaded,
-                'trace' => substr($e->getTraceAsString(), 0, 300)
+                'trace' => substr($e->getTraceAsString(), 0, 300),
             ]);
 
             // Continue with whatever we managed to preload
             Log::info('Continuing with partial preload', [
-                'partial_count' => count($this->existingLogs)
+                'partial_count' => count($this->existingLogs),
             ]);
         }
     }
-
 
     private function prepareSigninLogData(array $row, $user, string $parsedDate, ?string $userIdFromCsv = null): array
     {
@@ -1957,25 +1791,20 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
         ];
     }
 
-
     private function getValueOrDefault($value, $default)
     {
-        return ($value === null || $value === '') ? $default : $value;
+        return $value === null || $value === '' ? $default : $value;
     }
 
     private function validateRequiredFields(array $data, int $batchNumber, int $rowIndex): bool
     {
         foreach ($this->requiredColumns as $column => $info) {
-            if (
-                !array_key_exists($column, $data) ||
-                ($data[$column] === null && $info['default'] === null)
-            ) {
-
-                Log::warning("Required field missing or null", [
+            if (!array_key_exists($column, $data) || ($data[$column] === null && $info['default'] === null)) {
+                Log::warning('Required field missing or null', [
                     'batch' => $batchNumber,
                     'row' => $rowIndex,
                     'field' => $column,
-                    'user_id' => $data['user_id'] ?? 'unknown'
+                    'user_id' => $data['user_id'] ?? 'unknown',
                 ]);
 
                 return false;
@@ -1998,28 +1827,6 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
         $stringValue = (string) $value;
         return strlen($stringValue) > $maxLength ? substr($stringValue, 0, $maxLength) : $stringValue;
     }
-
-    // private function mapApplicationToSystem($application)
-    // {
-    //     if (empty($application)) {
-    //         return 'Unknown';
-    //     }
-
-    //     $normalizedApp = strtolower(trim($application));
-    //     $systemMapping = config('systemmap', []);
-    //     $system = $systemMapping[$normalizedApp] ?? null;
-
-    //     if (!$system) {
-    //         foreach ($systemMapping as $appKey => $systemName) {
-    //             if (strpos($normalizedApp, $appKey) !== false || strpos($appKey, $normalizedApp) !== false) {
-    //                 $system = $systemName;
-    //                 break;
-    //             }
-    //         }
-    //     }
-
-    //     return $system ?? 'Unknown';
-    // }
 
     private function convertBitField($value)
     {
@@ -2047,160 +1854,6 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
         return 0;
     }
 
-
-    // private function bulkInsertUserSystemAssociations(array $associations)
-    // {
-    //     if (empty($associations)) {
-    //         Log::debug('No user-system associations to process');
-    //         return;
-    //     }
-
-    //     // Deduplicate associations
-    //     $uniqueAssociations = [];
-    //     foreach ($associations as $assoc) {
-    //         if (!isset($assoc['user_id'], $assoc['application_id'])) {
-    //             Log::warning('Invalid association data', ['association' => $assoc]);
-    //             continue;
-    //         }
-
-    //         $key = $assoc['user_id'] . '|' . $assoc['application_id'];
-    //         if (!isset($uniqueAssociations[$key])) {
-    //             $uniqueAssociations[$key] = [
-    //                 'user_id' => $assoc['user_id'],
-    //                 'application_id' => (string) $assoc['application_id'],
-    //             ];
-    //         }
-    //     }
-
-    //     if (empty($uniqueAssociations)) {
-    //         Log::debug('No valid associations after deduplication');
-    //         return;
-    //     }
-
-    //     Log::info('Processing user-system associations', [
-    //         'original_count' => count($associations),
-    //         'unique_count' => count($uniqueAssociations)
-    //     ]);
-
-    //     // Get the current max ID to generate new IDs
-    //     $maxId = DB::table('Azure_Application_UserMapping')->max('Id') ?? 0;
-    //     $nextId = $maxId + 1;
-
-    //     // Process in chunks of 50 (smaller chunks for safer insertion)
-    //     foreach (array_chunk(array_values($uniqueAssociations), 50) as $chunkIndex => $chunk) {
-    //         try {
-    //             $userIds = array_column($chunk, 'user_id');
-    //             $applicationIds = array_column($chunk, 'application_id');
-
-    //             // Check for existing associations
-    //             $existingPairs = DB::table('Azure_Application_UserMapping')
-    //                 ->whereIn('user_id', $userIds)
-    //                 ->whereIn('application_id', $applicationIds)
-    //                 ->select('user_id', 'application_id')
-    //                 ->get()
-    //                 ->mapWithKeys(fn($row) => [$row->user_id . '|' . $row->application_id => true])
-    //                 ->all();
-
-    //             // Filter out existing associations and add explicit IDs
-    //             $newAssociations = [];
-    //             foreach ($chunk as $assoc) {
-    //                 $key = $assoc['user_id'] . '|' . $assoc['application_id'];
-    //                 if (!isset($existingPairs[$key])) {
-    //                     $newAssociations[] = [
-    //                         'Id' => $nextId++,  // CRITICAL FIX: Explicit ID
-    //                         'user_id' => $assoc['user_id'],
-    //                         'application_id' => $assoc['application_id']
-    //                     ];
-    //                 }
-    //             }
-
-    //             if (!empty($newAssociations)) {
-    //                 // Try batch insert first
-    //                 try {
-    //                     DB::table('Azure_Application_UserMapping')->insert($newAssociations);
-
-    //                     Log::info('Inserted user-application associations chunk', [
-    //                         'chunk_index' => $chunkIndex + 1,
-    //                         'new_associations' => count($newAssociations),
-    //                         'skipped_existing' => count($chunk) - count($newAssociations)
-    //                     ]);
-    //                 } catch (\Exception $e) {
-    //                     Log::warning('Batch association insert failed, trying individual inserts', [
-    //                         'chunk_index' => $chunkIndex + 1,
-    //                         'chunk_size' => count($newAssociations),
-    //                         'error' => $e->getMessage()
-    //                     ]);
-
-    //                     $this->insertUserSystemAssociationsIndividually($newAssociations);
-    //                 }
-    //             }
-
-    //         } catch (\Exception $e) {
-    //             Log::error('Critical error in association processing', [
-    //                 'chunk_index' => $chunkIndex + 1,
-    //                 'error' => $e->getMessage()
-    //             ]);
-
-    //             // Continue with next chunk instead of failing entirely
-    //             continue;
-    //         }
-    //     }
-    // }
-
-    // private function bulkInsertUserSystemAssociations(array $associations)
-    // {
-    //     $insertedCount = 0;
-    //     $skippedCount = 0;
-
-    //     foreach ($associations as $assoc) {
-    //         try {
-    //             $exists = DB::table('Azure_Application_UserMapping')
-    //                 ->where('user_id', $assoc['user_id'])
-    //                 ->where('application_id', $assoc['application_id'])
-    //                 ->exists();
-
-    //             if (!$exists) {
-    //                 // Get fresh max ID for each insert to avoid conflicts
-    //                 $maxId = DB::table('Azure_Application_UserMapping')->max('Id') ?? 0;
-
-    //                 DB::table('Azure_Application_UserMapping')->insert([
-    //                     'Id' => $maxId + 1,  // CRITICAL FIX: Explicit ID
-    //                     'user_id' => $assoc['user_id'],
-    //                     'application_id' => $assoc['application_id']
-    //                 ]);
-    //                 $insertedCount++;
-    //             } else {
-    //                 $skippedCount++;
-    //             }
-
-    //         } catch (\Exception $e) {
-    //             if (str_contains($e->getMessage(), 'duplicate') ||
-    //                 str_contains($e->getMessage(), 'UNIQUE constraint') ||
-    //                 str_contains($e->getMessage(), 'PRIMARY KEY constraint')) {
-    //                 $skippedCount++;
-    //                 Log::debug('Duplicate user-application association skipped', [
-    //                     'user_id' => $assoc['user_id'],
-    //                     'application_id' => $assoc['application_id']
-    //                 ]);
-    //             } else {
-    //                 Log::error('Failed to insert individual user-application association', [
-    //                     'user_id' => $assoc['user_id'],
-    //                     'application_id' => $assoc['application_id'],
-    //                     'error' => $e->getMessage()
-    //                 ]);
-    //             }
-    //         }
-    //     }
-
-    //     if ($insertedCount > 0 || $skippedCount > 0) {
-    //         Log::info('Individual user-application associations completed', [
-    //             'inserted' => $insertedCount,
-    //             'skipped' => $skippedCount
-    //         ]);
-    //     }
-    // }
-
-
     private function extractDateUtc($row)
     {
         $dateFields = [
@@ -2211,7 +1864,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
             'created_date',
             'timestamp',
             'signin_date',
-            'login_date'
+            'login_date',
         ];
 
         foreach ($dateFields as $field) {
@@ -2242,7 +1895,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
                 'm/d/Y',
                 'd/m/Y',
                 'c',
-                'r'
+                'r',
             ];
 
             foreach ($formats as $format) {
@@ -2264,7 +1917,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
             Log::warning('Failed to parse date', [
                 'username' => $username,
                 'date_string' => substr($dateString, 0, 100),
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
         }
 
@@ -2292,7 +1945,6 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
         return (int) $numericId;
     }
 
-
     public function getStats(): array
     {
         $baseStats = [
@@ -2304,22 +1956,25 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
             'users_found' => $this->stats['users_found'],
             'users_id_generated' => $this->stats['users_id_generated'] ?? 0, // ADD THIS LINE
             'bulk_operations' => $this->stats['bulk_operations'],
-            'single_row_fallbacks' => $this->stats['single_row_fallbacks']
+            'single_row_fallbacks' => $this->stats['single_row_fallbacks'],
         ];
 
         $calculatedStats = [
-            'success_rate' => $this->stats['processed'] > 0
-                ? round(($this->stats['inserted'] / $this->stats['processed']) * 100, 2)
-                : 0,
-            'error_rate' => $this->stats['processed'] > 0
-                ? round(($this->stats['errors'] / $this->stats['processed']) * 100, 2)
-                : 0,
-            'skip_rate' => $this->stats['processed'] > 0
-                ? round(($this->stats['skipped'] / $this->stats['processed']) * 100, 2)
-                : 0,
+            'success_rate' =>
+                $this->stats['processed'] > 0
+                    ? round(($this->stats['inserted'] / $this->stats['processed']) * 100, 2)
+                    : 0,
+            'error_rate' =>
+                $this->stats['processed'] > 0
+                    ? round(($this->stats['errors'] / $this->stats['processed']) * 100, 2)
+                    : 0,
+            'skip_rate' =>
+                $this->stats['processed'] > 0
+                    ? round(($this->stats['skipped'] / $this->stats['processed']) * 100, 2)
+                    : 0,
             'memory_peak_mb' => round(memory_get_peak_usage(true) / 1024 / 1024, 2),
             'user_match_strategies' => $this->stats['users_matched_by_strategy'] ?? [],
-            'error_breakdown' => $this->stats['error_types'] ?? []
+            'error_breakdown' => $this->stats['error_types'] ?? [],
         ];
 
         return array_merge($baseStats, $calculatedStats);
@@ -2334,7 +1989,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
             'is_running' => Cache::has(self::$lockKey),
             'lock_data' => $lockData,
             'progress' => $progressData,
-            'can_start_new' => !Cache::has(self::$lockKey)
+            'can_start_new' => !Cache::has(self::$lockKey),
         ];
     }
 
@@ -2345,7 +2000,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
 
         Log::warning('Import lock force cleared', [
             'lock_cleared' => $cleared,
-            'progress_cleared' => $progressCleared
+            'progress_cleared' => $progressCleared,
         ]);
 
         return $cleared;
@@ -2361,7 +2016,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
             ) {
                 Log::warning('Found stale import lock, clearing it', [
                     'lock_data' => $lockData,
-                    'lock_age_minutes' => Carbon::parse($lockData['started_at'])->diffInMinutes()
+                    'lock_age_minutes' => Carbon::parse($lockData['started_at'])->diffInMinutes(),
                 ]);
                 Cache::forget(self::$lockKey);
                 Cache::forget(self::$progressKey);
@@ -2374,7 +2029,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
             'started_at' => now()->toISOString(),
             'process_id' => getmypid(),
             'server' => gethostname(),
-            'process' => getmypid() ?: 'unknown'
+            'process' => getmypid() ?: 'unknown',
         ];
 
         Cache::put(self::$lockKey, $lockData, self::$lockTimeout);
@@ -2400,14 +2055,14 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
             // Categorize the error for better debugging
             $errorType = $this->categorizeError($e);
 
-            Log::error("Row processing failed", [
+            Log::error('Row processing failed', [
                 'batch' => $batchNumber,
                 'row' => $rowIndex,
                 'error_type' => $errorType,
                 'error' => $e->getMessage(),
                 'username' => $row['username'] ?? 'unknown',
                 'row_sample' => array_slice($row, 0, 3), // First 3 fields only
-                'trace' => substr($e->getTraceAsString(), 0, 200)
+                'trace' => substr($e->getTraceAsString(), 0, 200),
             ]);
 
             $this->stats['errors']++;
@@ -2449,33 +2104,33 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
                 'skipped_records' => $finalStats['skipped'],
                 'total_errors' => $finalStats['errors'],
                 'success_rate' => $finalStats['success_rate'] . '%',
-                'error_rate' => $finalStats['error_rate'] . '%'
+                'error_rate' => $finalStats['error_rate'] . '%',
             ],
             'user_management' => [
                 'users_created' => $finalStats['users_created'],
                 'users_found' => $finalStats['users_found'],
-                'match_strategies' => $finalStats['user_match_strategies']
+                'match_strategies' => $finalStats['user_match_strategies'],
             ],
             'performance' => [
                 'bulk_operations' => $finalStats['bulk_operations'],
                 'single_row_fallbacks' => $finalStats['single_row_fallbacks'],
-                'peak_memory_mb' => $finalStats['memory_peak_mb']
+                'peak_memory_mb' => $finalStats['memory_peak_mb'],
             ],
-            'error_analysis' => $finalStats['error_breakdown']
+            'error_analysis' => $finalStats['error_breakdown'],
         ]);
 
         // Log warnings for concerning statistics
         if ($finalStats['error_rate'] > 10) {
             Log::warning('High error rate detected', [
                 'error_rate' => $finalStats['error_rate'] . '%',
-                'recommendation' => 'Review error logs and consider data quality improvements'
+                'recommendation' => 'Review error logs and consider data quality improvements',
             ]);
         }
 
         if ($finalStats['skip_rate'] > 20) {
             Log::warning('High skip rate detected', [
                 'skip_rate' => $finalStats['skip_rate'] . '%',
-                'recommendation' => 'Review data format and validation rules'
+                'recommendation' => 'Review data format and validation rules',
             ]);
         }
     }
@@ -2496,7 +2151,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
 
         // Validate field lengths
         if (isset($data['username']) && strlen($data['username']) > 255) {
-            $errors[] = "Username too long: " . strlen($data['username']) . " chars";
+            $errors[] = 'Username too long: ' . strlen($data['username']) . ' chars';
         }
 
         if (isset($data['user_agent']) && strlen($data['user_agent']) > 500) {
@@ -2507,7 +2162,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
             try {
                 Carbon::parse($data['date_utc']);
             } catch (\Exception $e) {
-                $errors[] = "Invalid date format: " . $data['date_utc'];
+                $errors[] = 'Invalid date format: ' . $data['date_utc'];
             }
         }
 
@@ -2519,14 +2174,14 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
                 'row' => $rowIndex,
                 'errors' => $errors,
                 'data_sample' => array_slice($data, 0, 5, true),
-                'username' => $data['username'] ?? 'unknown'
+                'username' => $data['username'] ?? 'unknown',
             ];
 
             Log::warning('Data validation failed', [
                 'batch' => $batchNumber,
                 'row' => $rowIndex,
                 'errors' => $errors,
-                'data_sample' => array_slice($data, 0, 5, true)
+                'data_sample' => array_slice($data, 0, 5, true),
             ]);
             return false;
         }
@@ -2551,7 +2206,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
                 ->get()
                 ->toArray();
 
-            Log::warning("User lookup failed - no match found", [
+            Log::warning('User lookup failed - no match found', [
                 'search_term' => $searchTerm,
                 'user_id_from_csv' => $userIdFromCsv,
                 'failure_count' => $failureCount,
@@ -2559,10 +2214,10 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
                 'total_users_in_db' => AzureUser::count(),
                 'search_term_length' => strlen($searchTerm),
                 'contains_at_symbol' => str_contains($searchTerm, '@'),
-                'is_email_format' => filter_var($searchTerm, FILTER_VALIDATE_EMAIL) ? 'yes' : 'no'
+                'is_email_format' => filter_var($searchTerm, FILTER_VALIDATE_EMAIL) ? 'yes' : 'no',
             ]);
-        } else if ($failureCount == 6) {
-            Log::info("Suppressing detailed user lookup failure logs after 5 failures");
+        } elseif ($failureCount == 6) {
+            Log::info('Suppressing detailed user lookup failure logs after 5 failures');
         }
     }
 
@@ -2577,15 +2232,17 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
             'validation_errors' => [
                 'total_validation_failures' => count($this->validationErrors),
                 'error_details' => array_slice($this->validationErrors, 0, 10), // First 10 errors only
-                'common_error_types' => $this->analyzeCommonErrors()
+                'common_error_types' => $this->analyzeCommonErrors(),
             ],
             'user_lookup_analysis' => [
                 'total_lookup_attempts' => array_sum($this->stats['users_matched_by_strategy']),
-                'successful_strategies' => array_filter($this->stats['users_matched_by_strategy'], fn($count) => $count > 0)
-            ]
+                'successful_strategies' => array_filter(
+                    $this->stats['users_matched_by_strategy'],
+                    fn($count) => $count > 0,
+                ),
+            ],
         ]);
     }
-
 
     /**
      * Analyze common validation error patterns
@@ -2603,7 +2260,6 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
 
         return $errorTypes;
     }
-
 
     /**
      * Categorize validation errors for better reporting
@@ -2638,7 +2294,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
                     'date_utc' => $signinLogData['date_utc'],
                     'request_id' => $signinLogData['request_id'],
                     'user_id' => $signinLogData['user_id'],
-                    'username' => $signinLogData['username'] ?? 'unknown'
+                    'username' => $signinLogData['username'] ?? 'unknown',
                 ]);
                 return true;
             }
@@ -2647,13 +2303,12 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
         } catch (\Exception $e) {
             Log::error('Error checking for duplicate record', [
                 'error' => $e->getMessage(),
-                'data' => $signinLogData
+                'data' => $signinLogData,
             ]);
             // Return false to allow processing - better to attempt insert than skip incorrectly
             return false;
         }
     }
-
 
     /**
      * CRITICAL FIX: Comprehensive user lookup with validation
@@ -2663,14 +2318,14 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
         try {
             // Strategy 1: Direct username match with ID validation
             $user = AzureUser::whereRaw('LOWER(RTRIM(LTRIM(userPrincipalName))) = LOWER(?)', [trim($userPrincipalName)])
-                ->whereNotNull('id')  // This alone is sufficient
+                ->whereNotNull('id') // This alone is sufficient
                 ->first(); // Remove the ->where('id', '!=', '') line
 
             if ($user) {
                 Log::debug('User found via username with valid ID', [
                     'username' => $userPrincipalName,
                     'found_username' => $user->userPrincipalName,
-                    'user_id' => $user->id
+                    'user_id' => $user->id,
                 ]);
                 $this->stats['users_matched_by_strategy']['username']++;
                 return $user;
@@ -2682,7 +2337,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
                 if ($user) {
                     Log::debug('User found via exact ID', [
                         'username' => $userPrincipalName,
-                        'user_id' => $user->id
+                        'user_id' => $user->id,
                     ]);
                     $this->stats['users_matched_by_strategy']['exact_id']++;
                     return $user;
@@ -2692,13 +2347,13 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
             // Strategy 3: Email field match
             if (filter_var($userPrincipalName, FILTER_VALIDATE_EMAIL)) {
                 $user = AzureUser::whereRaw('LOWER(RTRIM(LTRIM(mail))) = LOWER(?)', [trim($userPrincipalName)])
-                    ->whereNotNull('id')  // This alone is sufficient
+                    ->whereNotNull('id') // This alone is sufficient
                     ->first(); // Remove the ->where('id', '!=', '') line
 
                 if ($user) {
                     Log::debug('User found via email with valid ID', [
                         'username' => $userPrincipalName,
-                        'user_id' => $user->id
+                        'user_id' => $user->id,
                     ]);
                     $this->stats['users_matched_by_strategy']['email']++;
                     return $user;
@@ -2707,7 +2362,7 @@ class SigninLogsImport implements ToCollection, WithHeadingRow, WithChunkReading
         } catch (\Exception $e) {
             Log::error('Error in user lookup', [
                 'username' => $userPrincipalName,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
         }
 

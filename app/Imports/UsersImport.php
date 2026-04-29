@@ -86,8 +86,6 @@ class UsersImport implements ToCollection, WithHeadingRow
         }
     }
 
-
-
     /**
      * Validates user data before database operations to prevent empty records
      */
@@ -272,8 +270,6 @@ class UsersImport implements ToCollection, WithHeadingRow
         ];
     }
 
-
-
     /**
      * Check if display name is generic or problematic
      */
@@ -294,7 +290,6 @@ class UsersImport implements ToCollection, WithHeadingRow
 
         return in_array(trim($displayName), $genericNames);
     }
-
 
     /**
      * Extract display name from email

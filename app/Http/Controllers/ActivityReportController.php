@@ -69,20 +69,19 @@ class ActivityReportController extends Controller
         }
 
         $query = AzureUser::valid() // Use the valid scope to exclude system users
-            ->select([
-                'Azure_Users.id',
-                'Azure_Users.displayName',
-                'Azure_Users.userPrincipalName',
-                'Azure_Users.mail'
+            ->select(['Azure_Users.id', 'Azure_Users.displayName', 'Azure_Users.userPrincipalName', 'Azure_Users.mail'])
+            ->withCount([
+                'signIns as login_count' => function ($q) use ($startDate, $endDate) {
+                    $q->whereBetween('date_utc', [$startDate, $endDate]);
+                },
             ])
-            ->withCount(['signIns as login_count' => function ($q) use ($startDate, $endDate) {
-                $q->whereBetween('date_utc', [$startDate, $endDate]);
-            }])
-            ->with(['signIns' => function ($q) use ($startDate, $endDate) {
-                $q->whereBetween('date_utc', [$startDate, $endDate])
-                    ->select('user_id', 'date_utc')
-                    ->orderBy('date_utc');
-            }]);
+            ->with([
+                'signIns' => function ($q) use ($startDate, $endDate) {
+                    $q->whereBetween('date_utc', [$startDate, $endDate])
+                        ->select('user_id', 'date_utc')
+                        ->orderBy('date_utc');
+                },
+            ]);
 
         // Apply search filter if provided
         if ($request->filled('search')) {
@@ -101,7 +100,7 @@ class ActivityReportController extends Controller
         $activity = $users->getCollection()->map(function ($user) {
             $signIns = $user->signIns;
 
-            return (object)[
+            return (object) [
                 'id' => $user->id,
                 'displayName' => $user->displayName,
                 'userPrincipalName' => $user->userPrincipalName,
@@ -118,7 +117,7 @@ class ActivityReportController extends Controller
         return view('logintracker.activity_report.index', [
             'activity' => $users,
             'startDate' => $startDate,
-            'endDate' => $endDate
+            'endDate' => $endDate,
         ]);
     }
 
@@ -172,7 +171,7 @@ class ActivityReportController extends Controller
             AND ald.date_utc BETWEEN ? AND ?
         )
         WHERE au.displayName NOT LIKE 'User-%'
-    ";
+        ";
 
         $params = [$startDate, $endDate];
 
@@ -190,7 +189,7 @@ class ActivityReportController extends Controller
         $sql .= "
         GROUP BY au.id, au.displayName, au.userPrincipalName, au.mail
         ORDER BY login_count DESC
-    ";
+        ";
 
         // Execute query
         $results = DB::select($sql, $params);
@@ -206,13 +205,13 @@ class ActivityReportController extends Controller
             $collection->count(),
             $perPage,
             $currentPage,
-            ['path' => request()->url(), 'query' => request()->query()]
+            ['path' => request()->url(), 'query' => request()->query()],
         );
 
         return view('logintracker.activity_report.index', [
             'activity' => $activity,
             'startDate' => $startDate,
-            'endDate' => $endDate
+            'endDate' => $endDate,
         ]);
     }
 }

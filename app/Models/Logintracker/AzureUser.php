@@ -105,7 +105,8 @@ class AzureUser extends Authenticatable
 
         if (empty($userData['userPrincipalName'])) {
             $errors[] = 'userPrincipalName is required';
-        } elseif (strlen($userData['userPrincipalName']) > 72) { // schema varchar(72)
+        } elseif (strlen($userData['userPrincipalName']) > 72) {
+            // schema varchar(72)
             $errors[] = 'userPrincipalName too long (max 72 chars)';
         }
 
@@ -128,16 +129,13 @@ class AzureUser extends Authenticatable
 
     public function systems(): BelongsToMany
     {
-        return $this->belongsToMany(System::class, 'application_user', 'user_id', 'application_id')
-            ->withPivot('id');
+        return $this->belongsToMany(System::class, 'application_user', 'user_id', 'application_id')->withPivot('id');
     }
 
     // Domain logic
     public function isLoggedIn(int $days = 30): bool
     {
-        return $this->signIns()
-            ->where('date_utc', '>=', now()->subDays($days))
-            ->exists();
+        return $this->signIns()->where('date_utc', '>=', now()->subDays($days))->exists();
     }
 
     public static function findByIdentifier(string $identifier): ?self
@@ -151,13 +149,12 @@ class AzureUser extends Authenticatable
 
         // Primary match
         $user = self::whereRaw('LOWER([userPrincipalName]) = ?', [$identifier])->first();
-        if ($user) return $user;
+        if ($user) {
+            return $user;
+        }
 
         // Only use columns that actually exist in your table based on fillable array
-        $fallbackFields = [
-            'mail',
-            'alternateEmailAddress',
-        ];
+        $fallbackFields = ['mail', 'alternateEmailAddress'];
 
         foreach ($fallbackFields as $field) {
             $user = self::whereRaw("LOWER($field) = ?", [$identifier])->first();
@@ -180,10 +177,9 @@ class AzureUser extends Authenticatable
         return null;
     }
 
-
     /**
      * Fix duplicate display names by using email username
-     * 
+     *
      * @param string|null $duplicateName The display name to fix (default: 'Marilign Anawte')
      * @return int Number of users updated
      */
@@ -224,21 +220,24 @@ class AzureUser extends Authenticatable
                     'id' => $user->id,
                     'old' => $duplicateName,
                     'new' => $newDisplayName,
-                    'email' => $user->userPrincipalName
+                    'email' => $user->userPrincipalName,
                 ]);
             }
         }
 
         Log::info('Fixed duplicate display names', [
             'duplicate_name' => $duplicateName,
-            'updated' => $updated
+            'updated' => $updated,
         ]);
 
         return $updated;
     }
 
-    public static function findOrCreateUser(string $userPrincipalName, ?string $displayName = null, ?string $userIdFromCsv = null): ?self
-    {
+    public static function findOrCreateUser(
+        string $userPrincipalName,
+        ?string $displayName = null,
+        ?string $userIdFromCsv = null,
+    ): ?self {
         try {
             $sanitizedDisplayName = self::sanitizeDisplayName($displayName, $userPrincipalName);
 
@@ -279,10 +278,7 @@ class AzureUser extends Authenticatable
                 return null;
             }
 
-            return self::updateOrCreate(
-                ['userPrincipalName' => $userPrincipalName],
-                $userData
-            );
+            return self::updateOrCreate(['userPrincipalName' => $userPrincipalName], $userData);
         } catch (\Exception $e) {
             Log::error('Failed to find or create user', [
                 'userPrincipalName' => $userPrincipalName,
@@ -294,7 +290,6 @@ class AzureUser extends Authenticatable
         }
     }
 
-
     public function testFindByIdentifierResolvesViaFallback()
     {
         $user = AzureUser::factory()->create([
@@ -305,10 +300,10 @@ class AzureUser extends Authenticatable
         $this->assertEquals($user->id, $resolved->id);
     }
 
-
     public function scopeValid($query)
     {
-        return $query->whereNotNull('displayName')
+        return $query
+            ->whereNotNull('displayName')
             ->where('displayName', '!=', '')
             ->whereRaw("displayName NOT LIKE 'User-%'")
             ->whereNotNull('userPrincipalName')
@@ -318,7 +313,7 @@ class AzureUser extends Authenticatable
 
     /**
      * Get comprehensive user activity summary with calendar month calculations
-     * 
+     *
      * @return array
      */
     public static function getUserSummary(): array
@@ -327,27 +322,29 @@ class AzureUser extends Authenticatable
 
         return Cache::remember($cacheKey, 600, function () {
             $statsService = app(\App\Services\DashboardStatsService::class);
-            $actualRange  = $statsService->getActualDateRange();
+            $actualRange = $statsService->getActualDateRange();
 
             if (!$actualRange['has_data']) {
                 $totalUsers = self::valid()->count();
                 return [
-                    'total_users'       => $totalUsers,
+                    'total_users' => $totalUsers,
                     'active_this_month' => 0,
                     'active_last_month' => 0,
-                    'inactive_users'    => $totalUsers,
+                    'inactive_users' => $totalUsers,
                 ];
             }
 
             $currentMonthStart = now()->startOfMonth();
-            $currentMonthEnd   = now()->endOfMonth();
-            $lastMonthStart    = now()->subMonth()->startOfMonth();
-            $lastMonthEnd      = now()->subMonth()->endOfMonth();
-            $threeMonthsAgo    = now()->subMonths(3)->startOfDay();
+            $currentMonthEnd = now()->endOfMonth();
+            $lastMonthStart = now()->subMonth()->startOfMonth();
+            $lastMonthEnd = now()->subMonth()->endOfMonth();
+            $threeMonthsAgo = now()->subMonths(3)->startOfDay();
 
             $totalUsers = self::valid()->count();
 
-            $activeThisMonth = DB::select("
+            $activeThisMonth =
+                DB::select(
+                    "
             SELECT COUNT(DISTINCT au.id) as count
             FROM Azure_Users au
             WHERE au.displayName IS NOT NULL
@@ -361,9 +358,13 @@ class AzureUser extends Authenticatable
                     WHERE LOWER(ald.username) = LOWER(au.userPrincipalName)
                         AND ald.date_utc BETWEEN ? AND ?
                 )
-        ", [$currentMonthStart, $currentMonthEnd])[0]->count ?? 0;
+        ",
+                    [$currentMonthStart, $currentMonthEnd],
+                )[0]->count ?? 0;
 
-            $activeLastMonth = DB::select("
+            $activeLastMonth =
+                DB::select(
+                    "
             SELECT COUNT(DISTINCT au.id) as count
             FROM Azure_Users au
             WHERE au.displayName IS NOT NULL
@@ -377,9 +378,13 @@ class AzureUser extends Authenticatable
                     WHERE LOWER(ald.username) = LOWER(au.userPrincipalName)
                         AND ald.date_utc BETWEEN ? AND ?
                 )
-        ", [$lastMonthStart, $lastMonthEnd])[0]->count ?? 0;
+        ",
+                    [$lastMonthStart, $lastMonthEnd],
+                )[0]->count ?? 0;
 
-            $inactiveUsers = DB::select("
+            $inactiveUsers =
+                DB::select(
+                    "
             SELECT COUNT(*) as count
             FROM Azure_Users au
             WHERE au.displayName IS NOT NULL
@@ -393,13 +398,15 @@ class AzureUser extends Authenticatable
                     WHERE LOWER(ald.username) = LOWER(au.userPrincipalName)
                         AND ald.date_utc >= ?
                 )
-        ", [$threeMonthsAgo])[0]->count ?? 0;
+        ",
+                    [$threeMonthsAgo],
+                )[0]->count ?? 0;
 
             return [
-                'total_users'       => $totalUsers,
+                'total_users' => $totalUsers,
                 'active_this_month' => $activeThisMonth,
                 'active_last_month' => $activeLastMonth,
-                'inactive_users'    => $inactiveUsers,
+                'inactive_users' => $inactiveUsers,
             ];
         });
     }
