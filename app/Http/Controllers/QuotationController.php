@@ -4611,7 +4611,7 @@ class QuotationController extends Controller
             );
         }
     }
-    
+
     /**
      * Load T&C templates via sp_Quote_CommunicationDetail_List.
      * The SP filters by Service+Process+OfficeCode resolved from the QuoteNo internally,
@@ -8618,6 +8618,7 @@ class QuotationController extends Controller
             'quotation_id' => 'required|string',
             'sales_person_code' => 'required|string',
             'sales_person_email' => 'required|email',
+            'quotation_currency' => 'required|string|size:3', // ADD
         ]);
 
         $submittedBy = auth()->user()->displayName ?? (auth()->user()->Email ?? 'system');
@@ -8627,9 +8628,10 @@ class QuotationController extends Controller
             'SubmittedDatetime' => now()->format('YmdHis'),
             'SubmittedBy' => $submittedBy,
             'Action' => 'Update',
-            'QuotationID' => $request->quotation_id, // ← GUID directly
+            'QuotationID' => $request->quotation_id,
             'SalesPersonCode' => $request->sales_person_code,
             'SalesPersonEmail' => $request->sales_person_email,
+            'QuotationCurrency' => $request->quotation_currency, // ADD
         ]);
 
         try {
@@ -8646,6 +8648,103 @@ class QuotationController extends Controller
         } catch (\Throwable $e) {
             Log::error('saveInquiryDetails error: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function bulkDeleteCharges(Request $request): JsonResponse
+    {
+        $quotationId = $request->input('quotation_id');
+        $chargeIds = $request->input('charge_ids', []);
+
+        if (empty($quotationId) || empty($chargeIds)) {
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => 'Missing required fields',
+                ],
+                400,
+            );
+        }
+
+        $submittedBy = Auth::user()->displayName ?? (Auth::user()->Email ?? 'system');
+
+        $inputJson = json_encode([
+            'OperationType' => 'BulkDeleteCharges',
+            'SubmittedDatetime' => now()->format('YmdHis'),
+            'SubmittedBy' => $submittedBy,
+            'Action' => 'Delete',
+            'QuotationID' => $quotationId,
+            'ChargeIDs' => array_values($chargeIds),
+        ]);
+
+        try {
+            // Use the same pattern as saveCharge() - execute SP and fetch OutputJson
+            $pdo = DB::connection()->getPdo();
+            $stmt = $pdo->prepare("
+                SET NOCOUNT ON;
+                DECLARE @OutputJson VARCHAR(2000);
+                EXEC dbo.sp_Quote_DetailsUpdate ?, @OutputJson = @OutputJson OUTPUT;
+                SELECT @OutputJson AS OutputJson
+            ");
+            $stmt->execute([$inputJson]);
+
+            $result = null;
+            do {
+                try {
+                    $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+                    if (!empty($rows) && isset($rows[0]->OutputJson)) {
+                        $outputJson = $rows[0]->OutputJson;
+                        $result = json_decode($outputJson, true);
+                        break;
+                    }
+                } catch (\PDOException $e) {
+                    continue;
+                }
+            } while ($stmt->nextRowset());
+
+            if (!$result) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No response from stored procedure',
+                ]);
+            }
+
+            if (($result['Status'] ?? '') === 'Success') {
+                Log::info('bulkDeleteCharges - Success', [
+                    'quotation_id' => $quotationId,
+                    'deleted_count' => count($chargeIds),
+                    'charge_ids' => $chargeIds,
+                    'user' => Auth::user()->email ?? 'system',
+                ]);
+                return response()->json([
+                    'success' => true,
+                    'message' => $result['Remarks'][0]['Remark'] ?? 'Charges deleted successfully',
+                ]);
+            }
+
+            $remarks = collect($result['Remarks'] ?? [])
+                ->pluck('Remark')
+                ->implode(', ');
+
+            return response()->json([
+                'success' => false,
+                'message' => $remarks ?: 'Failed to delete charges',
+            ]);
+        } catch (\Exception $e) {
+            Log::error('bulkDeleteCharges failed', [
+                'quotation_id' => $quotationId,
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => 'Server error: ' . $e->getMessage(),
+                ],
+                500,
+            );
         }
     }
 
@@ -8854,17 +8953,17 @@ class QuotationController extends Controller
             $pdo = DB::getPdo();
             $sql = "
             DECLARE @Status  VARCHAR(25)
-            DECLARE @Remark  VARCHAR(200)
-            DECLARE @QuoteNo VARCHAR(50)
-            EXEC dbo.sp_Quote_QuotationCopy ?,
-                @Status  = @Status  OUTPUT,
-                @Remark  = @Remark  OUTPUT,
-                @QuoteNo = @QuoteNo OUTPUT
-            SELECT @Status AS Status, @Remark AS Remark, @QuoteNo AS QuoteNo
-            ";
+                DECLARE @Remark  VARCHAR(200)
+                DECLARE @QuoteNo VARCHAR(50)
+                EXEC dbo.sp_Quote_QuotationCopy ?, ?,
+                    @Status  = @Status  OUTPUT,
+                    @Remark  = @Remark  OUTPUT,
+                    @QuoteNo = @QuoteNo OUTPUT
+                SELECT @Status AS Status, @Remark AS Remark, @QuoteNo AS QuoteNo
+                ";
 
             $stmt = $pdo->prepare($sql);
-            $stmt->execute([$quotationId]);
+            $stmt->execute([$quotationId, $submittedBy]);
 
             $result = null;
             do {

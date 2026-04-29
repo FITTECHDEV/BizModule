@@ -89,6 +89,17 @@
                                     value="{{ $quotation->SalesPersonEmail ?? '' }}" readonly>
                             </div>
                         </div>
+
+                        <div class="form-group row">
+                            <label class="col-sm-5 col-form-label">Currency <span class="text-danger">*</span></label>
+                            <div class="col-sm-7">
+                                <input type="text" class="form-control form-control-sm" id="quotationCurrencyDisplay"
+                                    value="{{ $quotation->QuoteCurr ?? 'USD' }}" readonly>
+                                <select class="form-control form-control-sm d-none" id="quotationCurrencySelect">
+                                    <option value="">-- Select --</option>
+                                </select>
+                            </div>
+                        </div>
                         @if (!$isBookingCreated)
                             <div class="row mt-3 pt-2" style="border-top: 1px solid #dee2e6;">
                                 <div class="col-md-12 text-right">
@@ -167,7 +178,7 @@
                             <div class="col-sm-7">
                                 <input type="text" class="form-control form-control-sm" id="incoTermDisplay"
                                     value="{{ $quotation->incoterm ?? '' }}" readonly>
-                                            <input type="hidden" id="incoTermCode" value="{{ $quotation->incoterm ?? '' }}">
+                                <input type="hidden" id="incoTermCode" value="{{ $quotation->incoterm ?? '' }}">
 
                                 <select class="form-control form-control-sm d-none" id="incoTermSelect" disabled>
                                     <option value="">-- Select --</option>
@@ -369,7 +380,7 @@
 
                                     {{-- Preview + Apply button --}}
                                     <div id="termsDescriptionWrapper" style="display:none; margin-top: 6px;">
-                                       <iframe id="termsDescriptionPreview"
+                                        <iframe id="termsDescriptionPreview"
                                             style="width:100%; height:200px; border:1px solid #ced4da; border-radius:4px; background:#fff; display:block;">
                                         </iframe>
                                         <button type="button" class="btn btn-primary btn-sm btn-block mt-2"
@@ -685,6 +696,8 @@
                             <table class="table table-bordered table-sm table-hover">
                                 <thead class="thead-light">
                                     <tr>
+                                        <th style="width:32px; display:none;" class="bulk-delete-col"><input
+                                                type="checkbox" id="revenueSelectAll" title="Select all"></th>
                                         <th>Charge Name</th>
                                         <th>Rate</th>
                                         <th class="col-extra">Quantity</th>
@@ -707,7 +720,6 @@
 
                 <!-- Cost Section -->
                 <div class="card card-danger">
-                    <!-- AFTER -->
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <div class="d-flex align-items-center">
                             <h3 class="card-title mb-0 mr-1">Cost</h3>
@@ -726,6 +738,8 @@
                             <table class="table table-bordered table-sm table-hover">
                                 <thead class="thead-light">
                                     <tr>
+                                        <th style="width:32px; display:none;" class="bulk-delete-col"><input
+                                                type="checkbox" id="costSelectAll" title="Select all"></th>
                                         <th>Charge Name</th>
                                         <th>Rate</th>
                                         <th class="col-extra">Quantity</th>
@@ -799,7 +813,21 @@
                                 <button type="button" class="btn btn-primary" id="openChargesModal">
                                     <i class="fas fa-plus"></i> Add Charges
                                 </button>
+
+                                <button type="button" class="btn btn-secondary ml-2" id="openCopyChargesBtn">
+                                    <i class="fas fa-copy"></i> Copy Charges
+                                </button>
+                                <button type="button" class="btn btn-danger ml-2" id="openBulkDeleteBtn">
+                                    <i class="fas fa-trash"></i> Delete Charges
+                                </button>
+                                <button type="button" class="btn btn-success ml-2 d-none" id="confirmBulkDeleteBtn">
+                                    <i class="fas fa-check"></i> Confirm Delete
+                                </button>
+                                <button type="button" class="btn btn-secondary ml-2 d-none" id="cancelBulkDeleteBtn">
+                                    <i class="fas fa-times"></i> Cancel
+                                </button>
                                 <a href="{{ route('quotation.index') }}" class="btn btn-link">Close</a>
+
 
                                 <div class="float-right d-flex align-items-center">
                                     <div class="btn-group" id="quoteActionDropdown"> <button type="button"
@@ -1284,6 +1312,36 @@
             </div>
         </div>
 
+        {{-- BULK DELETE CONFIRM MODAL --}}
+        <div class="modal fade" id="bulkDeleteConfirmModal" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog modal-sm" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2 class="modal-title">
+                            <i class="fas fa-trash text-danger mr-2"></i>Delete Charges
+                        </h2>
+                        <button type="button" class="close" data-dismiss="modal">
+                            <span>&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body text-center">
+                        <p class="mb-1">You are about to delete</p>
+                        <h4 class="text-danger font-weight-bold" id="bulkDeleteCount">0</h4>
+                        <p class="mb-0">charge(s). This cannot be undone.</p>
+                    </div>
+                    <div class="modal-footer justify-content-center">
+                        <button type="button" class="btn btn-danger" id="bulkDeleteProceedBtn">
+                            <i class="fas fa-trash mr-1"></i> Delete
+                        </button>
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
         {{-- WON MODAL --}}
         <div class="modal fade" id="wonModal" tabindex="-1" role="dialog" aria-hidden="true">
             <div class="modal-dialog" role="document">
@@ -1336,8 +1394,8 @@
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary d-none"
-                            id="wonProcessCloseBtn" data-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-secondary d-none" id="wonProcessCloseBtn"
+                            data-dismiss="modal">Close</button>
                     </div>
                 </div>
             </div>
@@ -1447,7 +1505,7 @@
         <div class="modal fade" id="copyChargesModal" tabindex="-1" role="dialog" aria-hidden="true">
             <div class="modal-dialog modal-xl cc-modal-dialog" role="document">
                 <div class="modal-content cc-modal-content">
-         
+
                     {{-- ── Header ─────────────────────────────────────────── --}}
                     <div class="cc-modal-header">
                         <span class="cc-modal-title">Copy Charges</span>
@@ -1455,10 +1513,10 @@
                             &times;
                         </button>
                     </div>
-         
+
                     {{-- ── Body ──────────────────────────────────────────── --}}
                     <div class="cc-modal-body">
-         
+
                         {{-- ── 2-column info grid ──────────────────────────── --}}
                         <div class="cc-info-grid">
                             {{-- LEFT COLUMN --}}
@@ -1470,11 +1528,8 @@
                                 <div class="cc-info-row">
                                     <span class="cc-lbl cc-lbl-required">*&nbsp;Job No</span>
                                     <div class="cc-input-group">
-                                        <input type="text"
-                                               class="cc-input cc-input-highlight"
-                                               id="ccJobNo"
-                                               placeholder="Enter Job No…"
-                                               autocomplete="off">
+                                        <input type="text" class="cc-input cc-input-highlight" id="ccJobNo"
+                                            placeholder="Enter Job No…" autocomplete="off">
                                         <button type="button" class="cc-search-icon-btn" id="ccJobNoSearchBtn">
                                             <i class="fas fa-search"></i>
                                         </button>
@@ -1493,7 +1548,7 @@
                                     <span class="cc-val" id="ccPortOfLoading"></span>
                                 </div>
                             </div>
-         
+
                             {{-- RIGHT COLUMN --}}
                             <div class="cc-info-col">
                                 <div class="cc-info-row">
@@ -1513,25 +1568,25 @@
                             </div>
                         </div>
                         {{-- END info grid --}}
-         
+
                         {{-- ── REVENUE CHARGES TABLE ───────────────────────── --}}
                         <div class="cc-section" id="ccJobDetails" style="display:none;">
-         
+
                             <div class="cc-section-header">
                                 <strong>Revenue Charges</strong>
                                 <span class="cc-section-summary" id="ccRevenueSummary">
                                     [ Total Record(s): 0 &nbsp; Total Amount: 0 KES ]
                                 </span>
                             </div>
-         
+
                             <div class="cc-view-toggle-bar">
-                                <a href="#" class="cc-view-toggle cc-view-active"
-                                   data-tbody="ccRevenueBody" data-mode="all">View: <strong>All</strong></a>
+                                <a href="#" class="cc-view-toggle cc-view-active" data-tbody="ccRevenueBody"
+                                    data-mode="all">View: <strong>All</strong></a>
                                 <span class="cc-view-sep">|</span>
-                                <a href="#" class="cc-view-toggle"
-                                   data-tbody="ccRevenueBody" data-mode="selected">Selected</a>
+                                <a href="#" class="cc-view-toggle" data-tbody="ccRevenueBody"
+                                    data-mode="selected">Selected</a>
                             </div>
-         
+
                             <div class="cc-table-wrap">
                                 <table class="cc-table" id="ccRevenueTable">
                                     <thead>
@@ -1558,24 +1613,24 @@
                                     </tbody>
                                 </table>
                             </div>
-         
+
                             {{-- Revenue pagination --}}
                             <div class="cc-pagination" data-tbody="ccRevenueBody">
                                 <div class="cc-pag-controls">
                                     <button type="button" class="cc-pag-btn cc-tbl-page-btn"
-                                            data-tbody="ccRevenueBody" data-action="first">|&lt;</button>
+                                        data-tbody="ccRevenueBody" data-action="first">|&lt;</button>
                                     <button type="button" class="cc-pag-btn cc-tbl-page-btn"
-                                            data-tbody="ccRevenueBody" data-action="prev">&lt;&lt;</button>
+                                        data-tbody="ccRevenueBody" data-action="prev">&lt;&lt;</button>
                                     <span class="cc-pag-label">Page</span>
                                     <input type="number" class="cc-pag-input cc-tbl-page-input"
-                                           data-tbody="ccRevenueBody" value="1" min="1">
+                                        data-tbody="ccRevenueBody" value="1" min="1">
                                     <span class="cc-pag-label">of
                                         <strong class="cc-tbl-total-pages" data-tbody="ccRevenueBody">1</strong>
                                     </span>
                                     <button type="button" class="cc-pag-btn cc-tbl-page-btn"
-                                            data-tbody="ccRevenueBody" data-action="next">&gt;&gt;</button>
+                                        data-tbody="ccRevenueBody" data-action="next">&gt;&gt;</button>
                                     <button type="button" class="cc-pag-btn cc-tbl-page-btn"
-                                            data-tbody="ccRevenueBody" data-action="last">&gt;|</button>
+                                        data-tbody="ccRevenueBody" data-action="last">&gt;|</button>
                                     <select class="cc-pag-size cc-tbl-page-size" data-tbody="ccRevenueBody">
                                         <option value="10" selected>10</option>
                                         <option value="25">25</option>
@@ -1586,27 +1641,27 @@
                                     View 1 - 0 of 0
                                 </span>
                             </div>
-         
+
                         </div>{{-- /revenue section --}}
-         
+
                         {{-- ── COST CHARGES TABLE ──────────────────────────── --}}
                         <div class="cc-section cc-section--cost" id="ccJobDetailsCost" style="display:none;">
-         
+
                             <div class="cc-section-header">
                                 <strong>Cost Charges</strong>
                                 <span class="cc-section-summary" id="ccCostSummary">
                                     [ Total Record(s): 0 &nbsp; Total Amount: 0 KES ]
                                 </span>
                             </div>
-         
+
                             <div class="cc-view-toggle-bar">
-                                <a href="#" class="cc-view-toggle cc-view-active"
-                                   data-tbody="ccCostBody" data-mode="all">View: <strong>All</strong></a>
+                                <a href="#" class="cc-view-toggle cc-view-active" data-tbody="ccCostBody"
+                                    data-mode="all">View: <strong>All</strong></a>
                                 <span class="cc-view-sep">|</span>
-                                <a href="#" class="cc-view-toggle"
-                                   data-tbody="ccCostBody" data-mode="selected">Selected</a>
+                                <a href="#" class="cc-view-toggle" data-tbody="ccCostBody"
+                                    data-mode="selected">Selected</a>
                             </div>
-         
+
                             <div class="cc-table-wrap">
                                 <table class="cc-table" id="ccCostTable">
                                     <thead>
@@ -1616,7 +1671,7 @@
                                             </th>
                                             <th class="cc-col-service">Service</th>
                                             <th class="cc-col-activity">Activity</th>
-                                            <th class="cc-col-party">Vendor</th>  {{-- Vendor, not Debtor --}}
+                                            <th class="cc-col-party">Vendor</th> {{-- Vendor, not Debtor --}}
                                             <th class="cc-col-code">Charge Code</th>
                                             <th class="cc-col-desc">Charge Description</th>
                                             <th class="cc-col-qty">Quantity</th>
@@ -1633,24 +1688,24 @@
                                     </tbody>
                                 </table>
                             </div>
-         
+
                             {{-- Cost pagination --}}
                             <div class="cc-pagination" data-tbody="ccCostBody">
                                 <div class="cc-pag-controls">
-                                    <button type="button" class="cc-pag-btn cc-tbl-page-btn"
-                                            data-tbody="ccCostBody" data-action="first">|&lt;</button>
-                                    <button type="button" class="cc-pag-btn cc-tbl-page-btn"
-                                            data-tbody="ccCostBody" data-action="prev">&lt;&lt;</button>
+                                    <button type="button" class="cc-pag-btn cc-tbl-page-btn" data-tbody="ccCostBody"
+                                        data-action="first">|&lt;</button>
+                                    <button type="button" class="cc-pag-btn cc-tbl-page-btn" data-tbody="ccCostBody"
+                                        data-action="prev">&lt;&lt;</button>
                                     <span class="cc-pag-label">Page</span>
                                     <input type="number" class="cc-pag-input cc-tbl-page-input"
-                                           data-tbody="ccCostBody" value="1" min="1">
+                                        data-tbody="ccCostBody" value="1" min="1">
                                     <span class="cc-pag-label">of
                                         <strong class="cc-tbl-total-pages" data-tbody="ccCostBody">1</strong>
                                     </span>
-                                    <button type="button" class="cc-pag-btn cc-tbl-page-btn"
-                                            data-tbody="ccCostBody" data-action="next">&gt;&gt;</button>
-                                    <button type="button" class="cc-pag-btn cc-tbl-page-btn"
-                                            data-tbody="ccCostBody" data-action="last">&gt;|</button>
+                                    <button type="button" class="cc-pag-btn cc-tbl-page-btn" data-tbody="ccCostBody"
+                                        data-action="next">&gt;&gt;</button>
+                                    <button type="button" class="cc-pag-btn cc-tbl-page-btn" data-tbody="ccCostBody"
+                                        data-action="last">&gt;|</button>
                                     <select class="cc-pag-size cc-tbl-page-size" data-tbody="ccCostBody">
                                         <option value="10" selected>10</option>
                                         <option value="25">25</option>
@@ -1661,11 +1716,11 @@
                                     View 1 - 0 of 0
                                 </span>
                             </div>
-         
+
                         </div>{{-- /cost section --}}
-         
+
                     </div>{{-- /cc-modal-body --}}
-         
+
                     {{-- ── Footer ─────────────────────────────────────────── --}}
                     <div class="cc-modal-footer">
                         <button type="button" class="cc-btn-save" id="ccSaveBtn" disabled>
@@ -1674,44 +1729,44 @@
                         <span class="cc-footer-or">or</span>
                         <a href="#" class="cc-btn-cancel" id="ccCancelBtn" data-dismiss="modal">Cancel</a>
                     </div>
-         
+
                 </div>{{-- /modal-content --}}
             </div>{{-- /modal-dialog --}}
         </div>
-     
- 
+
+
         {{-- ============================================================
             COPY CHARGES — JOB SEARCH MODAL
             Sits above the main modal (z-index: 1060 > 1050)
         ============================================================ --}}
         <div class="modal fade" id="ccSearchModal" tabindex="-1" role="dialog" aria-hidden="true"
-             style="z-index: 1060;">
+            style="z-index: 1060;">
             <div class="modal-dialog cc-search-dialog" role="document">
                 <div class="modal-content cc-modal-content">
-         
+
                     <div class="cc-modal-header">
                         <span class="cc-modal-title">Search</span>
                         <button type="button" class="cc-modal-close" id="ccSearchModalClose">&times;</button>
                     </div>
-         
+
                     <div class="cc-modal-body">
-         
+
                         {{-- Advanced search row --}}
                         <div class="cc-search-controls">
                             <span class="cc-lbl" style="white-space:nowrap;">Advanced Search</span>
-                           <select class="cc-select" id="ccSearchField" style="width:140px;">
+                            <select class="cc-select" id="ccSearchField" style="width:140px;">
                                 <option value="">Select</option>
                                 <option value="quote_no">Quote No</option>
                                 <option value="customer">Customer</option>
                                 <option value="origin">Origin Country</option>
                                 <option value="destination">Destination Country</option>
                             </select>
-                            <input type="text" class="cc-input" id="ccSearchValue"
-                                   style="width:200px;" placeholder="">
+                            <input type="text" class="cc-input" id="ccSearchValue" style="width:200px;"
+                                placeholder="">
                             <button type="button" class="cc-btn-search-go" id="ccSearchGoBtn">Search</button>
                             <button type="button" class="cc-btn-add-filter" id="ccAddFilterBtn">Add filter</button>
                         </div>
-         
+
                         {{-- Search results table --}}
                         <div class="cc-table-wrap" style="margin-top:8px;">
                             <table class="cc-table" id="ccSearchResultsTable">
@@ -1731,17 +1786,22 @@
                                 </tbody>
                             </table>
                         </div>
-         
+
                         {{-- Pagination --}}
                         <div class="cc-pagination" style="margin-top:6px;">
                             <div class="cc-pag-controls">
-                                <button type="button" class="cc-pag-btn cc-page-btn" data-action="first">|&lt;</button>
-                                <button type="button" class="cc-pag-btn cc-page-btn" data-action="prev">&lt;&lt;</button>
+                                <button type="button" class="cc-pag-btn cc-page-btn"
+                                    data-action="first">|&lt;</button>
+                                <button type="button" class="cc-pag-btn cc-page-btn"
+                                    data-action="prev">&lt;&lt;</button>
                                 <span class="cc-pag-label">Page</span>
-                                <input type="number" id="ccPageInput" class="cc-pag-input" value="1" min="1">
+                                <input type="number" id="ccPageInput" class="cc-pag-input" value="1"
+                                    min="1">
                                 <span class="cc-pag-label">of <strong id="ccTotalPages">1</strong></span>
-                                <button type="button" class="cc-pag-btn cc-page-btn" data-action="next">&gt;&gt;</button>
-                                <button type="button" class="cc-pag-btn cc-page-btn" data-action="last">&gt;|</button>
+                                <button type="button" class="cc-pag-btn cc-page-btn"
+                                    data-action="next">&gt;&gt;</button>
+                                <button type="button" class="cc-pag-btn cc-page-btn"
+                                    data-action="last">&gt;|</button>
                                 <select class="cc-pag-size" id="ccPageSize">
                                     <option value="10" selected>10</option>
                                     <option value="25">25</option>
@@ -1750,19 +1810,19 @@
                             </div>
                             <span class="cc-pag-range" id="ccViewRange">View 1 - 0 of 0</span>
                         </div>
-         
+
                     </div>
-         
+
                     <div class="cc-modal-footer">
                         <button type="button" class="cc-btn-save" id="ccSearchOkBtn" disabled>Ok</button>
                         <span class="cc-footer-or">or</span>
                         <a href="#" class="cc-btn-cancel" id="ccSearchCancelBtn">Cancel</a>
                     </div>
-         
+
                 </div>
             </div>
         </div>
-    
+
     </form>
 @stop
 
@@ -1770,9 +1830,9 @@
 @section('css')
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
-        /* ============================================= 
-         MODAL STYLING — matched to FitExpress UI  
-        ============================================= */
+        /* =============================================
+                             MODAL STYLING — matched to FitExpress UI
+                            ============================================= */
         .modal-header {
             background-color: #fff !important;
             color: #000 !important;
@@ -2214,9 +2274,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -2359,22 +2419,25 @@
 
         /* ── Modal shell ─────────────────────────────────────────────── */
         .cc-modal-dialog {
-            max-width: 900px;   /* matches screenshot width ~860px */
+            max-width: 900px;
+            /* matches screenshot width ~860px */
             margin: 30px auto;
         }
+
         .cc-search-dialog {
             max-width: 560px;
             margin: 40px auto;
         }
+
         .cc-modal-content {
             border-radius: 0;
             border: 1px solid #aaa;
-            box-shadow: 2px 4px 12px rgba(0,0,0,.25);
+            box-shadow: 2px 4px 12px rgba(0, 0, 0, .25);
             font-size: 12px;
             font-family: Arial, sans-serif;
             color: #222;
         }
-         
+
         /* ── Header ──────────────────────────────────────────────────── */
         .cc-modal-header {
             display: flex;
@@ -2384,11 +2447,13 @@
             border-bottom: 1px solid #ccc;
             padding: 7px 12px;
         }
+
         .cc-modal-title {
             font-size: 14px;
             font-weight: 700;
             color: #222;
         }
+
         .cc-modal-close {
             background: none;
             border: 1px solid #bbb;
@@ -2399,14 +2464,17 @@
             color: #555;
             border-radius: 2px;
         }
-        .cc-modal-close:hover { background: #e0e0e0; }
-         
+
+        .cc-modal-close:hover {
+            background: #e0e0e0;
+        }
+
         /* ── Body ────────────────────────────────────────────────────── */
         .cc-modal-body {
             padding: 10px 14px;
             background: #fff;
         }
-         
+
         /* ── 2-column info grid ──────────────────────────────────────── */
         .cc-info-grid {
             display: grid;
@@ -2414,23 +2482,29 @@
             gap: 0 24px;
             margin-bottom: 10px;
         }
+
         .cc-info-col {
             display: flex;
             flex-direction: column;
             gap: 3px;
         }
+
         .cc-info-row {
             display: flex;
             align-items: center;
             min-height: 22px;
             gap: 4px;
         }
+
         /* Spacer row keeps right column vertically aligned with left's Job No row */
         .cc-info-row-spacer {
-            min-height: 26px; /* matches the input row height */
+            min-height: 26px;
+            /* matches the input row height */
         }
+
         .cc-lbl {
-            min-width: 120px;   /* fixed label width → values always start at same x */
+            min-width: 120px;
+            /* fixed label width → values always start at same x */
             font-size: 12px;
             color: #555;
             text-align: right;
@@ -2438,22 +2512,25 @@
             white-space: nowrap;
             flex-shrink: 0;
         }
+
         .cc-lbl-required {
             color: #c00;
             font-weight: 600;
         }
+
         .cc-val {
             font-size: 12px;
             color: #111;
             font-weight: 400;
         }
-         
+
         /* Job No input + search button row */
         .cc-input-group {
             display: flex;
             align-items: center;
             gap: 3px;
         }
+
         .cc-input {
             height: 24px;
             padding: 2px 5px;
@@ -2464,15 +2541,19 @@
             color: #222;
             background: #fff;
         }
-        .cc-input:focus { border-color: #6699cc; box-shadow: none; }
-         
+
+        .cc-input:focus {
+            border-color: #6699cc;
+            box-shadow: none;
+        }
+
         /* Highlighted Job No field — yellow border like in screenshot */
         .cc-input-highlight {
             border-color: #d4a800;
             background: #fffde6;
             width: 160px;
         }
-         
+
         .cc-search-icon-btn {
             height: 24px;
             width: 24px;
@@ -2487,12 +2568,16 @@
             align-items: center;
             justify-content: center;
         }
-        .cc-search-icon-btn:hover { background: #ddd; }
-         
+
+        .cc-search-icon-btn:hover {
+            background: #ddd;
+        }
+
         /* ── Section header (blue band) ─────────────────────────────── */
         .cc-section {
             margin-top: 10px;
         }
+
         .cc-section-header {
             display: flex;
             align-items: center;
@@ -2504,16 +2589,18 @@
             color: #222;
             gap: 8px;
         }
+
         .cc-section-header strong {
             font-size: 12px;
             font-weight: 700;
         }
+
         .cc-section-summary {
             font-size: 11px;
             color: #555;
             font-weight: 400;
         }
-         
+
         /* ── View All / Selected toggle bar ─────────────────────────── */
         .cc-view-toggle-bar {
             display: flex;
@@ -2525,40 +2612,77 @@
             background: #fff;
             font-size: 11px;
         }
+
         .cc-view-toggle {
             color: #1a6dbf;
             text-decoration: none;
             font-size: 11px;
         }
-        .cc-view-toggle:hover { text-decoration: underline; }
-        .cc-view-sep { color: #aaa; }
-         
+
+        .cc-view-toggle:hover {
+            text-decoration: underline;
+        }
+
+        .cc-view-sep {
+            color: #aaa;
+        }
+
         /* ── Table ───────────────────────────────────────────────────── */
         .cc-table-wrap {
             overflow-x: auto;
             border: 1px solid #b8d4ea;
         }
+
         .cc-table {
             width: 100%;
             border-collapse: collapse;
-            table-layout: fixed;   /* fixed layout — column widths are explicit */
+            table-layout: fixed;
+            /* fixed layout — column widths are explicit */
             font-size: 12px;
         }
-         
+
         /* Column widths — match screenshot proportions exactly */
-        .cc-col-chk     { width: 28px; }
-        .cc-col-service { width: 75px; }
-        .cc-col-activity{ width: 110px; }
-        .cc-col-party   { width: 115px; }
-        .cc-col-code    { width: 95px; }
-        .cc-col-desc    { width: auto; }   /* takes remaining space */
-        .cc-col-qty     { width: 58px; }
-        .cc-col-basedon { width: 90px; }
-        .cc-col-uom     { width: 45px; }
-         
+        .cc-col-chk {
+            width: 28px;
+        }
+
+        .cc-col-service {
+            width: 75px;
+        }
+
+        .cc-col-activity {
+            width: 110px;
+        }
+
+        .cc-col-party {
+            width: 115px;
+        }
+
+        .cc-col-code {
+            width: 95px;
+        }
+
+        .cc-col-desc {
+            width: auto;
+        }
+
+        /* takes remaining space */
+        .cc-col-qty {
+            width: 58px;
+        }
+
+        .cc-col-basedon {
+            width: 90px;
+        }
+
+        .cc-col-uom {
+            width: 45px;
+        }
+
         .cc-table thead tr {
             background: #e8edf2;
         }
+
         .cc-table thead th {
             padding: 4px 5px;
             font-size: 11px;
@@ -2570,9 +2694,11 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
+
         .cc-table thead th:first-child {
             text-align: center;
         }
+
         .cc-table tbody td {
             padding: 3px 4px;
             border: 1px solid #dde3ea;
@@ -2583,14 +2709,16 @@
             font-size: 12px;
             color: #222;
         }
+
         .cc-table tbody tr:hover {
             background: #f0f5fb;
             cursor: pointer;
         }
+
         .cc-table tbody td:first-child {
             text-align: center;
         }
-         
+
         /* Compact inline inputs inside table cells */
         .cc-table .cc-cell-input {
             width: 100%;
@@ -2603,6 +2731,7 @@
             color: #222;
             box-sizing: border-box;
         }
+
         .cc-table .cc-cell-select {
             width: 100%;
             height: 22px;
@@ -2614,12 +2743,14 @@
             color: #222;
             box-sizing: border-box;
         }
+
         /* Inline search button beside inputs in cells */
         .cc-table .cc-cell-group {
             display: flex;
             align-items: center;
             gap: 2px;
         }
+
         .cc-table .cc-cell-search-btn {
             height: 22px;
             width: 20px;
@@ -2635,8 +2766,11 @@
             align-items: center;
             justify-content: center;
         }
-        .cc-table .cc-cell-search-btn:hover { background: #ddd; }
-         
+
+        .cc-table .cc-cell-search-btn:hover {
+            background: #ddd;
+        }
+
         /* Empty state message in table */
         .cc-empty-msg {
             text-align: center;
@@ -2645,7 +2779,7 @@
             font-size: 11px;
             padding: 8px 4px !important;
         }
-         
+
         /* ── Pagination ──────────────────────────────────────────────── */
         .cc-pagination {
             display: flex;
@@ -2658,11 +2792,13 @@
             font-size: 11px;
             color: #444;
         }
+
         .cc-pag-controls {
             display: flex;
             align-items: center;
             gap: 3px;
         }
+
         .cc-pag-btn {
             height: 22px;
             min-width: 22px;
@@ -2675,12 +2811,17 @@
             color: #444;
             line-height: 1;
         }
-        .cc-pag-btn:hover { background: #ddd; }
+
+        .cc-pag-btn:hover {
+            background: #ddd;
+        }
+
         .cc-pag-label {
             font-size: 11px;
             color: #555;
             white-space: nowrap;
         }
+
         .cc-pag-input {
             width: 38px;
             height: 22px;
@@ -2690,6 +2831,7 @@
             border-radius: 2px;
             padding: 0 2px;
         }
+
         .cc-pag-size {
             height: 22px;
             font-size: 11px;
@@ -2700,12 +2842,13 @@
             margin-left: 4px;
             width: 52px;
         }
+
         .cc-pag-range {
             font-size: 11px;
             color: #666;
             white-space: nowrap;
         }
-         
+
         /* ── Footer ──────────────────────────────────────────────────── */
         .cc-modal-footer {
             display: flex;
@@ -2715,6 +2858,7 @@
             background: #fff;
             border-top: 1px solid #ccc;
         }
+
         /* Save — olive/yellow-green to match system palette */
         .cc-btn-save {
             height: 26px;
@@ -2727,25 +2871,35 @@
             border-radius: 2px;
             cursor: pointer;
         }
-        .cc-btn-save:hover:not(:disabled) { background: #8a9400; }
+
+        .cc-btn-save:hover:not(:disabled) {
+            background: #8a9400;
+        }
+
         .cc-btn-save:disabled {
             background: #c8cc80;
             border-color: #b0b870;
             cursor: not-allowed;
             color: #eee;
         }
+
         .cc-footer-or {
             font-size: 12px;
             color: #777;
         }
+
         .cc-btn-cancel {
             font-size: 12px;
             color: #1a6dbf;
             text-decoration: none;
             font-weight: 500;
         }
-        .cc-btn-cancel:hover { text-decoration: underline; color: #0d4d9c; }
-         
+
+        .cc-btn-cancel:hover {
+            text-decoration: underline;
+            color: #0d4d9c;
+        }
+
         /* ── Search modal controls ───────────────────────────────────── */
         .cc-search-controls {
             display: flex;
@@ -2753,6 +2907,7 @@
             gap: 6px;
             flex-wrap: wrap;
         }
+
         .cc-select {
             height: 24px;
             font-size: 12px;
@@ -2762,6 +2917,7 @@
             background: #fff;
             color: #222;
         }
+
         .cc-btn-search-go {
             height: 24px;
             padding: 0 12px;
@@ -2774,7 +2930,11 @@
             cursor: pointer;
             white-space: nowrap;
         }
-        .cc-btn-search-go:hover { background: #8a9400; }
+
+        .cc-btn-search-go:hover {
+            background: #8a9400;
+        }
+
         .cc-btn-add-filter {
             height: 24px;
             padding: 0 10px;
@@ -2785,17 +2945,20 @@
             border-radius: 2px;
             cursor: pointer;
         }
-        .cc-btn-add-filter:hover { background: #ddd; }
-         
+
+        .cc-btn-add-filter:hover {
+            background: #ddd;
+        }
+
         /* Search results table radio column */
         #ccSearchResultsTable td:first-child,
         #ccSearchResultsTable th:first-child {
             text-align: center;
             width: 40px;
         }
-         
+
         /* ── Backdrop fix: search modal needs its own backdrop layer ─── */
-        #ccSearchModal.modal.show ~ .modal-backdrop {
+        #ccSearchModal.modal.show~.modal-backdrop {
             z-index: 1055;
         }
     </style>
@@ -2911,8 +3074,8 @@
             $('input[data-field="companyname"]').closest('.form-group').find('.col-sm-8')
                 .append('<input type="hidden" id="selectedClientId" value="">')
                 .append('<input type="hidden" id="selectedClientCode" value="">');
-                $('#selectedClientCode').val('{{ $quotation->pri_id ?? '' }}');
-                $('#selectedClientId').val('{{ $quotation->ClientIDINSCM ?? '' }}');
+            $('#selectedClientCode').val('{{ $quotation->pri_id ?? '' }}');
+            $('#selectedClientId').val('{{ $quotation->ClientIDINSCM ?? '' }}');
 
 
 
@@ -2956,6 +3119,66 @@
                 });
             }
 
+            function loadInquiryCurrencies(callback) {
+                const $select = $('#quotationCurrencySelect');
+
+                // Already populated — just set saved value and continue
+                if ($select.data('populated')) {
+                    if (typeof callback === 'function') callback();
+                    return;
+                }
+
+                if (!officeId) {
+                    console.error('loadInquiryCurrencies: officeId not available');
+                    return;
+                }
+
+                $.ajax({
+                    url: '/quotation/currencies',
+                    type: 'GET',
+                    data: {
+                        office_id: officeId
+                    },
+                    beforeSend: function() {
+                        $select.prop('disabled', true)
+                            .empty()
+                            .append('<option value="">Loading...</option>');
+                    },
+                    success: function(response) {
+                        $select.empty().append('<option value="">-- Select --</option>');
+
+                        if (response.success && response.currencies.length > 0) {
+                            response.currencies.forEach(function(currency) {
+                                $select.append(
+                                    `<option value="${currency.CurrencyCode}">${currency.CurrencyCode}</option>`
+                                );
+                            });
+
+                            // Default: saved value → USD → first option
+                            const saved = $('#quotationCurrencyDisplay').val() || 'USD';
+                            if ($select.find(`option[value="${saved}"]`).length) {
+                                $select.val(saved);
+                            } else {
+                                $select.val($select.find('option:eq(1)').val());
+                            }
+
+                            $select.data('populated', true).prop('disabled', false);
+                        } else {
+                            $select.append(
+                                '<option value="" disabled>No currencies available</option>');
+                        }
+                    },
+                    error: function(xhr) {
+                        console.error('loadInquiryCurrencies failed:', xhr);
+                        $select.empty().append('<option value="" disabled>Failed to load</option>');
+                    },
+                    complete: function() {
+                        if (typeof callback === 'function') callback();
+                    }
+                });
+            }
+
+
             // ============================================
             // TRANSPORT MODE DROPDOWN
             // sp_TransportMode returns: Id, Code, Name
@@ -2982,7 +3205,7 @@
                         }
                     },
                     error: function(xhr) {
-                        
+
                         console.error('loadTransportModes failed:', xhr);
                         $('#transportModeSelect')
                             .empty()
@@ -3028,18 +3251,18 @@
                     },
                     success: function(data) {
                         const list = Array.isArray(data) ? data : [];
-            
-                    const $sel = $('#serviceClassSelect').empty()
-                        .append('<option value="">-- Select --</option>');
-                    list.forEach(function(item) {
-                        const code = (item.Code || item.ServiceClass || '').trim();
-                        const name = (item.Name || item.Description || code).trim();
-                        $sel.append(`<option value="${code}">${name}</option>`);
-                    });
-                    // Pre-select after options are rendered — savedCode is from PHP at definition time,
-                    // but we also check the current display value in case it was updated mid-session
-                    const currentCode = $('#serviceClassDisplay').val() || savedCode;
-                    if (currentCode) $sel.val(currentCode);
+
+                        const $sel = $('#serviceClassSelect').empty()
+                            .append('<option value="">-- Select --</option>');
+                        list.forEach(function(item) {
+                            const code = (item.Code || item.ServiceClass || '').trim();
+                            const name = (item.Name || item.Description || code).trim();
+                            $sel.append(`<option value="${code}">${name}</option>`);
+                        });
+                        // Pre-select after options are rendered — savedCode is from PHP at definition time,
+                        // but we also check the current display value in case it was updated mid-session
+                        const currentCode = $('#serviceClassDisplay').val() || savedCode;
+                        if (currentCode) $sel.val(currentCode);
                         serviceClassesLoaded = true;
                     },
                     complete: function() {
@@ -3088,24 +3311,25 @@
             $('#editShipmentDetailsBtn').on('click', function() {
                 originalShipmentMode = $('#shipmentModeSelect').val();
                 originalTransportMode = $('#transportModeSelect').val();
-            
+
                 // Sync IncoTerm display → select before snapshotting
-            const $incoSel = $('#incoTermSelect');
-            const currentInco = $('#incoTermCode').val() || $('#incoTermDisplay').val();
-            
-            if (incoTermsLoaded && currentInco) {
-                // Options are available — always sync select to the current display value
-                $incoSel.val(currentInco);
-            }
-            // First edit (incoTermsLoaded = false): AJAX pre-selection handles it
-            originalIncoTerm = currentInco;
-            
+                const $incoSel = $('#incoTermSelect');
+                const currentInco = $('#incoTermCode').val() || $('#incoTermDisplay').val();
+
+                if (incoTermsLoaded && currentInco) {
+                    // Options are available — always sync select to the current display value
+                    $incoSel.val(currentInco);
+                }
+                // First edit (incoTermsLoaded = false): AJAX pre-selection handles it
+                originalIncoTerm = currentInco;
+
                 // Sync origin country display → select before snapshotting
                 const $origSel = $('#originCountrySelect');
                 if (!$origSel.val()) {
                     const displayedOrigin = $('#originCountryDisplay').val();
-                    $origSel.find('option').each(function () {
-                        if ($(this).data('name') === displayedOrigin || $(this).text().trim() === displayedOrigin) {
+                    $origSel.find('option').each(function() {
+                        if ($(this).data('name') === displayedOrigin || $(this).text().trim() ===
+                            displayedOrigin) {
                             $origSel.val($(this).val());
                             return false;
                         }
@@ -3113,13 +3337,14 @@
                 }
                 originalOriginCountry = $origSel.val() || '';
                 originalOriginCountryName = $('#originCountryDisplay').val();
-            
+
                 // Sync destination country display → select before snapshotting
                 const $destSel = $('#destCountrySelect');
                 if (!$destSel.val()) {
                     const displayedDest = $('#destCountryDisplay').val();
-                    $destSel.find('option').each(function () {
-                        if ($(this).data('name') === displayedDest || $(this).text().trim() === displayedDest) {
+                    $destSel.find('option').each(function() {
+                        if ($(this).data('name') === displayedDest || $(this).text().trim() ===
+                            displayedDest) {
                             $destSel.val($(this).val());
                             return false;
                         }
@@ -3127,90 +3352,95 @@
                 }
                 originalDestCountry = $destSel.val() || '';
                 originalDestCountryName = $('#destCountryDisplay').val();
-                            $('#shipmentModeSelect, #transportModeSelect').prop('disabled', false);
-            
-            
-            if (!incoTermsLoaded) {
-                const savedIncoTerm = $('#incoTermCode').val();
-                $.ajax({
-                    url: '{{ route('quotation.inco-terms') }}',
-                    type: 'GET',
-                    success: function(r) {
-                    const $sel = $('#incoTermSelect').empty().append(
-                        '<option value="">-- Select --</option>');
-                    (r.success ? r.data : []).forEach(function(item) {
-                        const code = item.IncoTermCode || '';
-                        $sel.append(`<option value="${code}">${code} — ${item.Name}</option>`);
-                    });
-                       incoTermsLoaded = true;
-                    console.log('IncoTerm savedIncoTerm:', savedIncoTerm);
-                    console.log('IncoTerm options available:', $sel.find('option').map(function() { return $(this).val(); }).get());
-                    if (savedIncoTerm) {
-                        $sel.val(savedIncoTerm);
-                        if (!$sel.val()) {
-                            // Fallback: match by option text (handles case where DB stores name not code)
-                            $sel.find('option').each(function () {
-                            const optVal  = $(this).val();
-                            const optText = $(this).text();
-                            if (optVal === savedIncoTerm ||
-                                optText.indexOf(savedIncoTerm) !== -1 ||
-                                savedIncoTerm.indexOf(optVal) === 0) {
-                                $sel.val(optVal);
-                                return false;
+                $('#shipmentModeSelect, #transportModeSelect').prop('disabled', false);
+
+
+                if (!incoTermsLoaded) {
+                    const savedIncoTerm = $('#incoTermCode').val();
+                    $.ajax({
+                        url: '{{ route('quotation.inco-terms') }}',
+                        type: 'GET',
+                        success: function(r) {
+                            const $sel = $('#incoTermSelect').empty().append(
+                                '<option value="">-- Select --</option>');
+                            (r.success ? r.data : []).forEach(function(item) {
+                                const code = item.IncoTermCode || '';
+                                $sel.append(
+                                    `<option value="${code}">${code} — ${item.Name}</option>`
+                                );
+                            });
+                            incoTermsLoaded = true;
+                            console.log('IncoTerm savedIncoTerm:', savedIncoTerm);
+                            console.log('IncoTerm options available:', $sel.find('option').map(
+                                function() {
+                                    return $(this).val();
+                                }).get());
+                            if (savedIncoTerm) {
+                                $sel.val(savedIncoTerm);
+                                if (!$sel.val()) {
+                                    // Fallback: match by option text (handles case where DB stores name not code)
+                                    $sel.find('option').each(function() {
+                                        const optVal = $(this).val();
+                                        const optText = $(this).text();
+                                        if (optVal === savedIncoTerm ||
+                                            optText.indexOf(savedIncoTerm) !== -1 ||
+                                            savedIncoTerm.indexOf(optVal) === 0) {
+                                            $sel.val(optVal);
+                                            return false;
+                                        }
+                                    });
+                                }
                             }
-                    });
-                }
-            }
-            
-            $('#incoTermDisplay').addClass('d-none');
-            $sel.removeClass('d-none').prop('disabled', false);
-                    }
-                });
-            } else {
-                const savedIncoTerm = $('#incoTermCode').val() || $('#incoTermDisplay').val();
-            if (savedIncoTerm) {
-                $('#incoTermSelect').val(savedIncoTerm);
-                if (!$('#incoTermSelect').val()) {
-                    // Fallback: match by option text (handles case where DB stores name not code)
-                    $('#incoTermSelect option').each(function () {
-                        const optVal  = $(this).val();
-                        const optText = $(this).text();
-                        if (optVal === savedIncoTerm ||
-                            optText.indexOf(savedIncoTerm) !== -1 ||
-                            savedIncoTerm.indexOf(optVal) === 0) {
-                            $('#incoTermSelect').val(optVal);
-                            return false;
+
+                            $('#incoTermDisplay').addClass('d-none');
+                            $sel.removeClass('d-none').prop('disabled', false);
                         }
                     });
+                } else {
+                    const savedIncoTerm = $('#incoTermCode').val() || $('#incoTermDisplay').val();
+                    if (savedIncoTerm) {
+                        $('#incoTermSelect').val(savedIncoTerm);
+                        if (!$('#incoTermSelect').val()) {
+                            // Fallback: match by option text (handles case where DB stores name not code)
+                            $('#incoTermSelect option').each(function() {
+                                const optVal = $(this).val();
+                                const optText = $(this).text();
+                                if (optVal === savedIncoTerm ||
+                                    optText.indexOf(savedIncoTerm) !== -1 ||
+                                    savedIncoTerm.indexOf(optVal) === 0) {
+                                    $('#incoTermSelect').val(optVal);
+                                    return false;
+                                }
+                            });
+                        }
+                    }
+
+                    $('#incoTermDisplay').addClass('d-none');
+                    $('#incoTermSelect').removeClass('d-none').prop('disabled', false);
                 }
-            }
-            
-                $('#incoTermDisplay').addClass('d-none');
-                $('#incoTermSelect').removeClass('d-none').prop('disabled', false);
-            }
-                  
-            // Snapshot display values before any async loads mutate the DOM
-            originalServiceClass = $('#serviceClassCode').val() || $('#serviceClassDisplay').val();
-            originalServiceClassDisplay = $('#serviceClassDisplay').val();
-            
-            loadShipmentCountries(function() {
-                $('#originCountryDisplay').hide();
-                $('#originCountryEditWrap').show();
-                $('#destCountryDisplay').hide();
-                $('#destCountryEditWrap').show();
-            });
-            
-            loadServiceClasses(function() {
-                // Pre-select using the snapshotted value — options are now rendered
-                if (originalServiceClass) {
-                    $('#serviceClassSelect').val(originalServiceClass);
-                }
-                $('#serviceClassDisplay').addClass('d-none');
-                $('#serviceClassSelect').removeClass('d-none').prop('disabled', false);
-            });
-            
-                    $(this).hide();
-                    $('#saveShipmentDetailsBtn, #cancelShipmentDetailsBtn').show();
+
+                // Snapshot display values before any async loads mutate the DOM
+                originalServiceClass = $('#serviceClassCode').val() || $('#serviceClassDisplay').val();
+                originalServiceClassDisplay = $('#serviceClassDisplay').val();
+
+                loadShipmentCountries(function() {
+                    $('#originCountryDisplay').hide();
+                    $('#originCountryEditWrap').show();
+                    $('#destCountryDisplay').hide();
+                    $('#destCountryEditWrap').show();
+                });
+
+                loadServiceClasses(function() {
+                    // Pre-select using the snapshotted value — options are now rendered
+                    if (originalServiceClass) {
+                        $('#serviceClassSelect').val(originalServiceClass);
+                    }
+                    $('#serviceClassDisplay').addClass('d-none');
+                    $('#serviceClassSelect').removeClass('d-none').prop('disabled', false);
+                });
+
+                $(this).hide();
+                $('#saveShipmentDetailsBtn, #cancelShipmentDetailsBtn').show();
             });
 
             $('#cancelShipmentDetailsBtn').on('click', function() {
@@ -3284,7 +3514,8 @@
 
                             $('#shipmentModeSelect, #transportModeSelect').prop('disabled',
                                 true);
-                            $('#incoTermSelect').val(incoTerm).addClass('d-none').prop('disabled', true);
+                            $('#incoTermSelect').val(incoTerm).addClass('d-none').prop(
+                                'disabled', true);
                             $('#incoTermDisplay').removeClass('d-none').val(incoTerm);
                             $('#incoTermCode').val(incoTerm);
                             originalIncoTerm = incoTerm;
@@ -3298,8 +3529,10 @@
                                 $('#destCountrySelect option:selected').data('name')
                             ).show();
 
-                            $('#serviceClassSelect').val(serviceClass).addClass('d-none').prop('disabled', true);
-                            $('#serviceClassDisplay').val(serviceClass).removeClass('d-none');  // code, same as page load
+                            $('#serviceClassSelect').val(serviceClass).addClass('d-none').prop(
+                                'disabled', true);
+                            $('#serviceClassDisplay').val(serviceClass).removeClass(
+                                'd-none'); // code, same as page load
                             originalServiceClass = serviceClass;
                             originalServiceClassDisplay = serviceClass;
 
@@ -3409,6 +3642,117 @@
             } else {
                 console.error('No booking number found!');
                 showNotification('Cannot load charges: No booking number', 'error');
+            }
+
+            // ============================================
+            // BULK DELETE — REVENUE & COST
+            // ============================================
+            const BULK_DELETE_URL = '{{ route('quotation.charges.bulk-delete') }}';
+            let bulkDeleteMode = false;
+
+            function enterBulkDeleteMode() {
+                bulkDeleteMode = true;
+                $('.bulk-delete-col').show();
+                $('#revenueSelectAll, #costSelectAll').prop('checked', false);
+                $('#openBulkDeleteBtn').addClass('d-none');
+                $('#confirmBulkDeleteBtn, #cancelBulkDeleteBtn').removeClass('d-none');
+            }
+
+            function exitBulkDeleteMode() {
+                bulkDeleteMode = false;
+                $('.bulk-delete-col').hide();
+                $('#revenueSelectAll, #costSelectAll').prop('checked', false);
+                $('.charge-row-check').prop('checked', false);
+                $('#confirmBulkDeleteBtn, #cancelBulkDeleteBtn').addClass('d-none');
+                $('#openBulkDeleteBtn').removeClass('d-none');
+            }
+
+            $('#openBulkDeleteBtn').on('click', function() {
+                const totalCharges = revenueCharges.length + costCharges.length;
+                if (!totalCharges) {
+                    showNotification('No charges to delete', 'warning');
+                    return;
+                }
+                enterBulkDeleteMode();
+            });
+
+            $('#cancelBulkDeleteBtn').on('click', function() {
+                exitBulkDeleteMode();
+            });
+
+            // Master checkbox — checks all revenue AND cost rows
+            $(document).on('change', '#revenueSelectAll', function() {
+                $('#revenueChargesTable .charge-row-check').prop('checked', $(this).is(':checked'));
+            });
+
+            $(document).on('change', '#costSelectAll', function() {
+                $('#costChargesTable .charge-row-check').prop('checked', $(this).is(':checked'));
+            });
+
+            $('#confirmBulkDeleteBtn').on('click', function() {
+                const ids = $('.charge-row-check:checked').map(function() {
+                    return $(this).data('id');
+                }).get();
+
+                if (!ids.length) {
+                    showNotification('No charges selected', 'warning');
+                    return;
+                }
+
+                $('#bulkDeleteCount').text(ids.length);
+                $('#bulkDeleteConfirmModal').modal('show');
+            });
+
+            $('#bulkDeleteProceedBtn').on('click', function() {
+                const ids = $('.charge-row-check:checked').map(function() {
+                    return $(this).data('id');
+                }).get();
+
+                $('#bulkDeleteConfirmModal').modal('hide');
+                executeBulkDelete(ids);
+            });
+
+            $('#bulkDeleteConfirmModal').on('hidden.bs.modal', function() {
+                $('#bulkDeleteCount').text(0);
+            });
+
+            $('#bulkDeleteConfirmModal .close, #bulkDeleteConfirmModal button[data-dismiss="modal"]').on('click',
+                function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    $('#bulkDeleteConfirmModal').modal('hide');
+                });
+
+            function executeBulkDelete(ids) {
+                $.ajax({
+                    url: BULK_DELETE_URL,
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        quotation_id: quotationId,
+                        charge_ids: ids,
+                    },
+                    beforeSend: function() {
+                        $('#confirmBulkDeleteBtn').prop('disabled', true)
+                            .html('<i class="fas fa-spinner fa-spin mr-1"></i> Deleting...');
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            showNotification(response.message, 'success');
+                            exitBulkDeleteMode();
+                            loadCharges();
+                        } else {
+                            showNotification(response.message || 'Failed to delete charges', 'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        showNotification(xhr.responseJSON?.message || 'Delete failed', 'error');
+                    },
+                    complete: function() {
+                        $('#confirmBulkDeleteBtn').prop('disabled', false)
+                            .html('<i class="fas fa-check mr-1"></i> Confirm Delete');
+                    }
+                });
             }
 
             function loadCharges() {
@@ -4850,26 +5194,30 @@
                         totalAmount += parseFloat(charge.amtInChgCurr || 0);
                         totalBaseAmount += parseFloat(charge.amtInBaseCurr || 0);
                         tbody.append(`
-                            <tr>
-                                <td>${charge.chargeName || charge.chargeCode || ''}</td>
-                                <td class="text-right">${parseFloat(charge.rate || 0).toFixed(2)}</td>
-                                <td class="text-right col-extra">${parseFloat(charge.quantity || 0).toFixed(2)}</td>
-                                <td class="col-extra">${charge.basedOnAndUOM || charge.basedOnUOM || ''}</td>
-                                <td class="col-extra">${charge.chgCurr || getBaseCurrency()}</td>
-                                <td class="text-right">${parseFloat(charge.amtInChgCurr  || 0).toFixed(2)}</td>
-                                <td class="text-right">${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
-                                <td class="text-center">
-                                    <button type="button" class="btn btn-warning btn-action edit-revenue-charge"
-                                        data-index="${index}" data-id="${charge.id}">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-danger btn-action delete-revenue-charge"
-                                        data-index="${index}" data-id="${charge.id}">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                        `);
+                        <tr>
+                        <td class="text-center bulk-delete-col" style="display:none;">
+                                <input type="checkbox" class="charge-row-check"
+                                    data-type="revenue" data-id="${charge.id}">
+                            </td>
+                            <td>${charge.chargeName || charge.chargeCode || ''}</td>
+                            <td class="text-right">${parseFloat(charge.rate || 0).toFixed(2)}</td>
+                            <td class="text-right col-extra">${parseFloat(charge.quantity || 0).toFixed(2)}</td>
+                            <td class="col-extra">${charge.basedOnAndUOM || charge.basedOnUOM || ''}</td>
+                            <td class="col-extra">${charge.chgCurr || getBaseCurrency()}</td>
+                            <td class="text-right">${parseFloat(charge.amtInChgCurr  || 0).toFixed(2)}</td>
+                            <td class="text-right">${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
+                            <td class="text-center">
+                                <button type="button" class="btn btn-warning btn-action edit-revenue-charge"
+                                    data-index="${index}" data-id="${charge.id}">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button type="button" class="btn btn-danger btn-action delete-revenue-charge"
+                                    data-index="${index}" data-id="${charge.id}">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `);
                     });
                 }
 
@@ -4897,6 +5245,10 @@
                         totalBaseAmount += parseFloat(charge.amtInBaseCurr || 0);
                         tbody.append(`
                             <tr>
+                            <td class="text-center bulk-delete-col" style="display:none;">
+                                <input type="checkbox" class="charge-row-check"
+                                    data-type="cost" data-id="${charge.id}">
+                            </td>
                                 <td>${charge.chargeName || charge.chargeCode || ''}</td>
                                 <td class="text-right">${parseFloat(charge.rate || 0).toFixed(2)}</td>
                                 <td class="text-right col-extra">${parseFloat(charge.quantity || 0).toFixed(2)}</td>
@@ -4975,14 +5327,14 @@
                 $('#wonRemarkInput').val('');
             });
 
-            $('#wonProcessModal').on('click', '.close, #wonProcessCloseBtn', function (e) {
+            $('#wonProcessModal').on('click', '.close, #wonProcessCloseBtn', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
                 $('#wonProcessModal').modal('hide');
             });
 
             // Prevent closing mid-process via backdrop click or ESC
-            $('#wonProcessModal').on('hide.bs.modal', function () {
+            $('#wonProcessModal').on('hide.bs.modal', function() {
                 if ($('#wonProcessCloseBtn').hasClass('d-none')) {
                     return false; // block close while processing
                 }
@@ -6097,8 +6449,9 @@
 
                         // Pre-select if we have saved industry
                         if (savedCustomerIndustry) {
-                            $sel.find('option').each(function () {
-                                if ($(this).data('name') === savedCustomerIndustry || $(this).text().trim() === savedCustomerIndustry) {
+                            $sel.find('option').each(function() {
+                                if ($(this).data('name') === savedCustomerIndustry || $(this)
+                                    .text().trim() === savedCustomerIndustry) {
                                     $(this).prop('selected', true);
                                     return false;
                                 }
@@ -6114,15 +6467,15 @@
                 originalAgentType = $('#agentTypeSelect').val();
 
                 // Capture with stable, explicit keys — never overwritten until next Edit click
-                  // Sync display → select before snapshotting, so Cancel has accurate values
+                // Sync display → select before snapshotting, so Cancel has accurate values
                 // to restore even if the selects were repopulated by a previous save cycle.
                 const $cSel = $('#customerCountrySelect');
                 const $iSel = $('#customerIndustrySelect');
-                
+
                 // If select has no match for the current display text, find it by text
                 if (!$cSel.val()) {
                     const displayedCountry = $('#customerCountryDisplay').val();
-                    $cSel.find('option').each(function () {
+                    $cSel.find('option').each(function() {
                         if ($(this).text().trim() === displayedCountry) {
                             $cSel.val($(this).val());
                             return false;
@@ -6131,14 +6484,15 @@
                 }
                 if (!$iSel.val()) {
                     const displayedIndustry = $('#customerIndustryDisplay').val();
-                    $iSel.find('option').each(function () {
-                        if ($(this).text().trim() === displayedIndustry || $(this).data('name') === displayedIndustry) {
+                    $iSel.find('option').each(function() {
+                        if ($(this).text().trim() === displayedIndustry || $(this).data('name') ===
+                            displayedIndustry) {
                             $iSel.val($(this).val());
                             return false;
                         }
                     });
                 }
-                
+
                 originalCustomerSnapshot = {
                     companyName: $('input[data-field="companyname"]').val(),
                     address1: $('input[data-field="pri_partner_steet"]').val(),
@@ -6397,7 +6751,8 @@
                     SubmittedBy: "{{ Auth::user()->username ?? 'system' }}",
                     Action: "Update",
                     QuotationID: quotationId,
-                    ClientCode: $('#selectedClientCode').val() || '{{ $quotation->pri_id ?? '' }}',
+                    ClientCode: $('#selectedClientCode').val() ||
+                        '{{ $quotation->pri_id ?? '' }}',
                     Company: companyName,
                     Address1: address1,
                     Address2: $('#customerAddress2Input').val()?.trim() || '',
@@ -6601,23 +6956,23 @@
             });
 
 
-           function loadTermsTemplates() {
-    console.log('DEBUG bookingNo:', bookingNo, '| tcAlreadyApplied:', tcAlreadyApplied);
-    const codeToUse = officeCode;
+            function loadTermsTemplates() {
+                console.log('DEBUG bookingNo:', bookingNo, '| tcAlreadyApplied:', tcAlreadyApplied);
+                const codeToUse = officeCode;
 
                 if (!codeToUse) {
                     setTimeout(loadTermsTemplates, 500);
                     return;
                 }
 
-               $.ajax({
-    url: '{{ route('quotation.terms-templates') }}',
-    type: 'GET',
-    dataType: 'json',          
-    data: {
-        quotation_id: quotationId
-    },
-    success: function(response)  {
+                $.ajax({
+                    url: '{{ route('quotation.terms-templates') }}',
+                    type: 'GET',
+                    dataType: 'json',
+                    data: {
+                        quotation_id: quotationId
+                    },
+                    success: function(response) {
                         const $select = $('#termsTemplateSelect');
                         $select.empty();
 
@@ -6635,54 +6990,62 @@
                                 // otherwise fall back to getCommunicationDescription
                                 const singleDesc = t.Description ? b64DecodeUnicode(t.Description) : '';
 
-                           if (singleDesc) {
-    (function () {
-        const iframe = document.getElementById('termsDescriptionPreview');
-        if (iframe.dataset.blobUrl) URL.revokeObjectURL(iframe.dataset.blobUrl);
-        const blob = new Blob([singleDesc], { type: 'text/html' });
-        const url  = URL.createObjectURL(blob);
-        iframe.dataset.blobUrl = url;
-        iframe.src = url;
-    })();
-    $('#termsDescriptionWrapper').show();
-    $('#applyTermsBtn').hide();
+                                if (singleDesc) {
+                                    (function() {
+                                        const iframe = document.getElementById(
+                                            'termsDescriptionPreview');
+                                        if (iframe.dataset.blobUrl) URL.revokeObjectURL(iframe
+                                            .dataset.blobUrl);
+                                        const blob = new Blob([singleDesc], {
+                                            type: 'text/html'
+                                        });
+                                        const url = URL.createObjectURL(blob);
+                                        iframe.dataset.blobUrl = url;
+                                        iframe.src = url;
+                                    })();
+                                    $('#termsDescriptionWrapper').show();
+                                    $('#applyTermsBtn').hide();
 
-    if (tcAlreadyApplied) {
-        termsState.applied = true;
-        setGenerateBtn();
-        return;
-    }
+                                    if (tcAlreadyApplied) {
+                                        termsState.applied = true;
+                                        setGenerateBtn();
+                                        return;
+                                    }
 
-    $.ajax({
-        url: '{{ route('quotation.communication.save-terms') }}',
-        type: 'POST',
-        data: {
-            _token:          '{{ csrf_token() }}',
-            booking_no:      bookingNo,
-            terms_condition: singleDesc,
-            template_name:   t.Name
-        },
-        success: function (saveResponse) {
-            if (saveResponse.success) {
-                termsState.applied = true;
-                setGenerateBtn();
-            } else {
-                // Save failed but description is loaded — show Apply button so
-                // user can retry manually rather than being silently blocked
-                $('#applyTermsBtn').show();
-                showNotification(
-                    'Auto-apply T&C failed: ' + (saveResponse.message || 'Unknown error'),
-                    'warning'
-                );
-                setGenerateBtn();
-            }
-        },
-        error: function () {
-            $('#applyTermsBtn').show();
-            showNotification('Auto-apply T&C failed — click Apply Terms to retry', 'warning');
-            setGenerateBtn();
-        }
-    });
+                                    $.ajax({
+                                        url: '{{ route('quotation.communication.save-terms') }}',
+                                        type: 'POST',
+                                        data: {
+                                            _token: '{{ csrf_token() }}',
+                                            booking_no: bookingNo,
+                                            terms_condition: singleDesc,
+                                            template_name: t.Name
+                                        },
+                                        success: function(saveResponse) {
+                                            if (saveResponse.success) {
+                                                termsState.applied = true;
+                                                setGenerateBtn();
+                                            } else {
+                                                // Save failed but description is loaded — show Apply button so
+                                                // user can retry manually rather than being silently blocked
+                                                $('#applyTermsBtn').show();
+                                                showNotification(
+                                                    'Auto-apply T&C failed: ' + (
+                                                        saveResponse.message ||
+                                                        'Unknown error'),
+                                                    'warning'
+                                                );
+                                                setGenerateBtn();
+                                            }
+                                        },
+                                        error: function() {
+                                            $('#applyTermsBtn').show();
+                                            showNotification(
+                                                'Auto-apply T&C failed — click Apply Terms to retry',
+                                                'warning');
+                                            setGenerateBtn();
+                                        }
+                                    });
 
                                 } else {
                                     // SP did not return description — fetch it
@@ -6766,7 +7129,8 @@
                             // Cache descriptions returned by the SP — keyed by template name
                             response.templates.forEach(function(t) {
                                 if (t.Description) {
-                                    termsDescriptionCache[t.Name] = b64DecodeUnicode(t.Description);
+                                    termsDescriptionCache[t.Name] = b64DecodeUnicode(t
+                                        .Description);
                                 }
                             });
 
@@ -6831,19 +7195,23 @@
                                 if (matchedName) {
                                     $('#termsTemplateSelect').val(matchedName);
                                     if (tcAlreadyApplied) {
-                                       const savedDesc = @json($quotation->terms_condition ?? '');
+                                        const savedDesc = @json($quotation->terms_condition ?? '');
 
-                                 if (savedDesc) {
-                                    (function() {
-                                        const iframe = document.getElementById('termsDescriptionPreview');
-                                        if (iframe.dataset.blobUrl) URL.revokeObjectURL(iframe.dataset.blobUrl);
-                                        const blob = new Blob([savedDesc], { type: 'text/html' });
-                                        const url  = URL.createObjectURL(blob);
-                                        iframe.dataset.blobUrl = url;
-                                        iframe.src = url;
-                                    })();
-                                    $('#termsDescriptionWrapper').show();
-                                }
+                                        if (savedDesc) {
+                                            (function() {
+                                                const iframe = document.getElementById(
+                                                    'termsDescriptionPreview');
+                                                if (iframe.dataset.blobUrl) URL.revokeObjectURL(
+                                                    iframe.dataset.blobUrl);
+                                                const blob = new Blob([savedDesc], {
+                                                    type: 'text/html'
+                                                });
+                                                const url = URL.createObjectURL(blob);
+                                                iframe.dataset.blobUrl = url;
+                                                iframe.src = url;
+                                            })();
+                                            $('#termsDescriptionWrapper').show();
+                                        }
                                         termsState.applied = true;
                                         setGenerateBtn();
                                     } else {
@@ -6851,19 +7219,23 @@
                                     }
                                 } else {
                                     if (tcAlreadyApplied) {
-                               const savedDesc = @json($quotation->terms_condition ?? '');
+                                        const savedDesc = @json($quotation->terms_condition ?? '');
 
-                                    if (savedDesc) {
-                                    (function() {
-                                        const iframe = document.getElementById('termsDescriptionPreview');
-                                        if (iframe.dataset.blobUrl) URL.revokeObjectURL(iframe.dataset.blobUrl);
-                                        const blob = new Blob([savedDesc], { type: 'text/html' });
-                                        const url  = URL.createObjectURL(blob);
-                                        iframe.dataset.blobUrl = url;
-                                        iframe.src = url;
-                                    })();
-                                    $('#termsDescriptionWrapper').show();
-                                }
+                                        if (savedDesc) {
+                                            (function() {
+                                                const iframe = document.getElementById(
+                                                    'termsDescriptionPreview');
+                                                if (iframe.dataset.blobUrl) URL.revokeObjectURL(
+                                                    iframe.dataset.blobUrl);
+                                                const blob = new Blob([savedDesc], {
+                                                    type: 'text/html'
+                                                });
+                                                const url = URL.createObjectURL(blob);
+                                                iframe.dataset.blobUrl = url;
+                                                iframe.src = url;
+                                            })();
+                                            $('#termsDescriptionWrapper').show();
+                                        }
                                         termsState.applied = true;
                                         setGenerateBtn();
                                     }
@@ -6874,17 +7246,21 @@
                                 if (tcAlreadyApplied) {
                                     const savedDesc = @json($quotation->terms_condition ?? '');
 
-                                 if (savedDesc) {
-                                (function() {
-                                    const iframe = document.getElementById('termsDescriptionPreview');
-                                    if (iframe.dataset.blobUrl) URL.revokeObjectURL(iframe.dataset.blobUrl);
-                                    const blob = new Blob([savedDesc], { type: 'text/html' });
-                                    const url  = URL.createObjectURL(blob);
-                                    iframe.dataset.blobUrl = url;
-                                    iframe.src = url;
-                                })();
-                                $('#termsDescriptionWrapper').show();
-                            }
+                                    if (savedDesc) {
+                                        (function() {
+                                            const iframe = document.getElementById(
+                                                'termsDescriptionPreview');
+                                            if (iframe.dataset.blobUrl) URL.revokeObjectURL(iframe
+                                                .dataset.blobUrl);
+                                            const blob = new Blob([savedDesc], {
+                                                type: 'text/html'
+                                            });
+                                            const url = URL.createObjectURL(blob);
+                                            iframe.dataset.blobUrl = url;
+                                            iframe.src = url;
+                                        })();
+                                        $('#termsDescriptionWrapper').show();
+                                    }
                                     termsState.applied = true;
                                     setGenerateBtn();
                                 }
@@ -6931,16 +7307,18 @@
             }
             // HELPER — called from both the cache path and the fetch fallback path
             function _applyTermsDescription(templateName, description) {
-            // Render HTML in iframe — avoids raw markup showing as plain text in a textarea
-            const iframe = document.getElementById('termsDescriptionPreview');
-            if (iframe.dataset.blobUrl) URL.revokeObjectURL(iframe.dataset.blobUrl);
-            const blob = new Blob([description], { type: 'text/html' });
-            const url  = URL.createObjectURL(blob);
-            iframe.dataset.blobUrl = url;
-            iframe.src = url;
-        
-            $('#termsDescriptionWrapper').show();
-            $('#applyTermsBtn').prop('disabled', false);
+                // Render HTML in iframe — avoids raw markup showing as plain text in a textarea
+                const iframe = document.getElementById('termsDescriptionPreview');
+                if (iframe.dataset.blobUrl) URL.revokeObjectURL(iframe.dataset.blobUrl);
+                const blob = new Blob([description], {
+                    type: 'text/html'
+                });
+                const url = URL.createObjectURL(blob);
+                iframe.dataset.blobUrl = url;
+                iframe.src = url;
+
+                $('#termsDescriptionWrapper').show();
+                $('#applyTermsBtn').prop('disabled', false);
 
                 $.ajax({
                     url: '{{ route('quotation.communication.save-terms') }}',
@@ -7020,11 +7398,11 @@
                 });
             });
 
-           $('#applyTermsBtn').on('click', function() {
-            const iframe = document.getElementById('termsDescriptionPreview');
-            const description = iframe.dataset.blobUrl
-                ? (iframe.contentDocument || iframe.contentWindow.document).body.innerHTML
-                : '';
+            $('#applyTermsBtn').on('click', function() {
+                const iframe = document.getElementById('termsDescriptionPreview');
+                const description = iframe.dataset.blobUrl ?
+                    (iframe.contentDocument || iframe.contentWindow.document).body.innerHTML :
+                    '';
 
                 if (!description || description === 'Loading...') {
                     showNotification('No Terms & Conditions to apply', 'warning');
@@ -7422,9 +7800,16 @@
                     display: $('#salesPersonDisplay').val(),
                     code: $('#salesPersonCode').val(),
                     email: $('#salesPersonEmail').val(),
+                    currency: $('#quotationCurrencyDisplay').val(),
                 };
                 $('#salesPersonDisplay').removeAttr('readonly');
                 $('#salesPersonEmail').removeAttr('readonly');
+                $('#quotationCurrencyDisplay').addClass('d-none');
+                loadInquiryCurrencies(function() {
+                    $('#quotationCurrencySelect').removeClass('d-none');
+                });
+
+
                 $('#editInquiryBtn').addClass('d-none');
                 $('#saveInquiryBtn, #cancelInquiryBtn').removeClass('d-none');
 
@@ -7437,6 +7822,9 @@
                 $('#salesPersonDisplay').val(inquirySnapshot.display).attr('readonly', true);
                 $('#salesPersonCode').val(inquirySnapshot.code);
                 $('#salesPersonEmail').val(inquirySnapshot.email);
+                $('#quotationCurrencySelect').addClass('d-none');
+                $('#quotationCurrencyDisplay').val(inquirySnapshot.currency).removeClass('d-none');
+
                 $('#editInquiryBtn').removeClass('d-none');
                 $('#saveInquiryBtn, #cancelInquiryBtn').addClass('d-none');
 
@@ -7445,6 +7833,7 @@
                 const $sp = $('#salesPersonDisplay');
                 if ($sp.hasClass('ui-autocomplete-input')) $sp.autocomplete('destroy');
             });
+
 
             $('#saveInquiryBtn').on('click', function() {
                 var code = $('#salesPersonCode').val().trim();
@@ -7470,6 +7859,8 @@
                         quotation_id: quotationId,
                         sales_person_code: code,
                         sales_person_email: email,
+                            quotation_currency: currency 
+
                     },
                     success: function(res) {
                         if (res.success) {
@@ -7771,69 +8162,77 @@
                 });
             }
 
-                        // ── Won process — 2-step modal (Client Creation → Mark as Won) ─────────────
-                        function runWonProcess(bookingNo, reasonRemark) {
-                        
-                            const WON_STEPS = [
-                                { step: 1, label: 'Client Creation' },
-                                { step: 2, label: 'Mark as Won' },
-                            ];
-            
+            // ── Won process — 2-step modal (Client Creation → Mark as Won) ─────────────
+            function runWonProcess(bookingNo, reasonRemark) {
+
+                const WON_STEPS = [{
+                        step: 1,
+                        label: 'Client Creation'
+                    },
+                    {
+                        step: 2,
+                        label: 'Mark as Won'
+                    },
+                ];
+
                 function renderWonSteps(completedSteps, activeStep) {
                     var $list = $('#wonStepList').empty();
                     WON_STEPS.forEach(function(def) {
-                        var done = completedSteps.find(function(s) { return s.step === def.step; });
+                        var done = completedSteps.find(function(s) {
+                            return s.step === def.step;
+                        });
                         var iconClass, badgeClass, statusText, remarkHtml = '';
                         var isActive = (activeStep !== undefined && def.step === activeStep);
-            
+
                         if (isActive) {
-                            iconClass  = 'fas fa-spinner fa-spin text-primary';
+                            iconClass = 'fas fa-spinner fa-spin text-primary';
                             badgeClass = 'badge-primary';
                             statusText = 'Processing...';
                         } else if (!done) {
-                            iconClass  = 'fas fa-circle text-secondary';
+                            iconClass = 'fas fa-circle text-secondary';
                             badgeClass = 'badge-secondary';
                             statusText = 'Pending';
                         } else if (done.status === 'Success') {
-                            iconClass  = 'fas fa-check-circle text-success';
+                            iconClass = 'fas fa-check-circle text-success';
                             badgeClass = 'badge-success';
                             statusText = 'Success';
                             if (done.remark)
-                                remarkHtml = '<small class="text-muted d-block mt-1">' + done.remark + '</small>';
+                                remarkHtml = '<small class="text-muted d-block mt-1">' + done.remark +
+                                '</small>';
                         } else {
-                            iconClass  = 'fas fa-times-circle text-danger';
+                            iconClass = 'fas fa-times-circle text-danger';
                             badgeClass = 'badge-danger';
                             statusText = 'Failed';
                             // remark shown once in the error alert below — not duplicated here
                         }
-            
+
                         $list.append(
-                            '<div class="list-group-item py-2">'
-                            + '<div class="d-flex align-items-center justify-content-between">'
-                            + '<div><i class="' + iconClass + ' mr-2"></i>'
-                            + '<strong>Step ' + def.step + ':</strong> ' + def.label
-                            + remarkHtml + '</div>'
-                            + '<span class="badge ' + badgeClass + '">' + statusText + '</span>'
-                            + '</div></div>'
+                            '<div class="list-group-item py-2">' +
+                            '<div class="d-flex align-items-center justify-content-between">' +
+                            '<div><i class="' + iconClass + ' mr-2"></i>' +
+                            '<strong>Step ' + def.step + ':</strong> ' + def.label +
+                            remarkHtml + '</div>' +
+                            '<span class="badge ' + badgeClass + '">' + statusText + '</span>' +
+                            '</div></div>'
                         );
                     });
                 }
-            
+
                 $('#wonModal').modal('hide');
                 $('#wonProgressError, #wonProgressSuccess').addClass('d-none');
                 $('#wonProcessCloseBtn').addClass('d-none');
                 renderWonSteps([], 1);
                 $('#wonProcessModal').modal('show');
-            
+
                 $.ajax({
-                    url:  '{{ route("quotation.process-won") }}',
+                    url: '{{ route('quotation.process-won') }}',
                     type: 'POST',
                     data: {
-                        _token:        '{{ csrf_token() }}',
-                        booking_no:    bookingNo,
-                        quotation_id:  quotationId,   
+                        _token: '{{ csrf_token() }}',
+                        booking_no: bookingNo,
+                        quotation_id: quotationId,
                         reason_remark: reasonRemark || '',
-                        source:        'edit',
+                        source: 'edit',
                     },
                     success: function(res) {
                         renderWonSteps(res.steps || []);
@@ -7841,23 +8240,31 @@
                             $('#wonProgressSuccess').removeClass('d-none');
                             $('#wonProcessCloseBtn').removeClass('d-none');
                             setTimeout(function() {
-                                window.location.href = '{{ route("quotation.index") }}';
+                                window.location.href = '{{ route('quotation.index') }}';
                             }, 1500);
-                    } else {
-                    var failedStep  = (res.steps || []).find(function(s) { return s.status === 'Failed'; });
-                    var rawMsg      = (failedStep && failedStep.remark) ? failedStep.remark : (res.message || 'Unknown error');
-                    var errorLines  = rawMsg.split('|').map(function(s) { return s.trim(); }).filter(Boolean);
-                    var bulletHtml  = '<ul class="mb-0 pl-3">' + errorLines.map(function(l) { return '<li>' + l + '</li>'; }).join('') + '</ul>';
-                    $('#wonProgressError')
-                        .html('<strong>' + (res.failed_label || 'Step') + ' failed:</strong>' + bulletHtml)
-                        .removeClass('d-none');
-                        $('#wonProcessCloseBtn').removeClass('d-none');
-                    }
+                        } else {
+                            var failedStep = (res.steps || []).find(function(s) {
+                                return s.status === 'Failed';
+                            });
+                            var rawMsg = (failedStep && failedStep.remark) ? failedStep.remark : (res
+                                .message || 'Unknown error');
+                            var errorLines = rawMsg.split('|').map(function(s) {
+                                return s.trim();
+                            }).filter(Boolean);
+                            var bulletHtml = '<ul class="mb-0 pl-3">' + errorLines.map(function(l) {
+                                return '<li>' + l + '</li>';
+                            }).join('') + '</ul>';
+                            $('#wonProgressError')
+                                .html('<strong>' + (res.failed_label || 'Step') + ' failed:</strong>' +
+                                    bulletHtml)
+                                .removeClass('d-none');
+                            $('#wonProcessCloseBtn').removeClass('d-none');
+                        }
                     },
                     error: function(xhr) {
-                        var msg = (xhr.responseJSON && xhr.responseJSON.message)
-                            ? xhr.responseJSON.message
-                            : 'An unexpected error occurred.';
+                        var msg = (xhr.responseJSON && xhr.responseJSON.message) ?
+                            xhr.responseJSON.message :
+                            'An unexpected error occurred.';
                         $('#wonProgressError').html(msg).removeClass('d-none');
                         $('#wonProcessCloseBtn').removeClass('d-none');
                     }

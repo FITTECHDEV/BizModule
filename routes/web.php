@@ -1152,6 +1152,10 @@ Route::post('/quotation/booking/create', [App\Http\Controllers\QuotationControll
         ->name('quotation.process-won');
         Route::get('/quotation/create-booking/existing-data', [App\Http\Controllers\QuotationController::class, 'getBookingFormData'])
     ->name('quotation.booking.existing-data');
+      Route::post('/quotation/charges/bulk-delete', [
+        App\Http\Controllers\QuotationController::class,
+        'bulkDeleteCharges',
+    ])->name('quotation.charges.bulk-delete');
 
 
     // ============================================
