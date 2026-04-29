@@ -45,7 +45,7 @@ class AzureGraphService
 
     /**
      * Validate that all required Azure configuration is present
-     * 
+     *
      * @throws Exception
      */
     private function validateConfiguration(): void
@@ -64,9 +64,7 @@ class AzureGraphService
         }
 
         if (!empty($missing)) {
-            throw new Exception(
-                'Missing required Azure configuration: ' . implode(', ', $missing)
-            );
+            throw new Exception('Missing required Azure configuration: ' . implode(', ', $missing));
         }
     }
 
@@ -82,7 +80,7 @@ class AzureGraphService
 
     /**
      * Make HTTP request with retry logic and exponential backoff
-     * 
+     *
      * @param string $method HTTP method (GET, POST, PATCH, DELETE)
      * @param string $url Full URL to call
      * @param array|null $data Request body data
@@ -105,7 +103,7 @@ class AzureGraphService
                     'POST' => $request->post($url, $data ?? []),
                     'PATCH' => $request->patch($url, $data ?? []),
                     'DELETE' => $request->delete($url),
-                    default => throw new Exception("Unsupported HTTP method: {$method}")
+                    default => throw new Exception("Unsupported HTTP method: {$method}"),
                 };
 
                 // Success - return response
@@ -114,7 +112,7 @@ class AzureGraphService
                         Log::channel('azure')->info('Request succeeded after retry', [
                             'method' => $method,
                             'url' => $url,
-                            'attempts' => $attempt + 1
+                            'attempts' => $attempt + 1,
                         ]);
                     }
                     return $response;
@@ -122,16 +120,16 @@ class AzureGraphService
 
                 // Rate limited (429) - wait and retry
                 if ($response->status() === 429) {
-                    $retryAfter = $response->header('Retry-After') ?? (2 ** $attempt);
+                    $retryAfter = $response->header('Retry-After') ?? 2 ** $attempt;
 
                     Log::channel('azure')->warning('Rate limited, retrying', [
                         'method' => $method,
                         'url' => $url,
                         'attempt' => $attempt + 1,
-                        'retry_after' => $retryAfter
+                        'retry_after' => $retryAfter,
                     ]);
 
-                    sleep((int)$retryAfter);
+                    sleep((int) $retryAfter);
                     $attempt++;
                     continue;
                 }
@@ -148,7 +146,7 @@ class AzureGraphService
                             'url' => $url,
                             'status' => $response->status(),
                             'attempt' => $attempt,
-                            'backoff_seconds' => $backoffSeconds
+                            'backoff_seconds' => $backoffSeconds,
                         ]);
 
                         sleep($backoffSeconds);
@@ -175,7 +173,7 @@ class AzureGraphService
                         'url' => $url,
                         'attempt' => $attempt,
                         'error' => $e->getMessage(),
-                        'backoff_seconds' => $backoffSeconds
+                        'backoff_seconds' => $backoffSeconds,
                     ]);
 
                     sleep($backoffSeconds);
@@ -184,7 +182,7 @@ class AzureGraphService
                         'method' => $method,
                         'url' => $url,
                         'attempts' => $maxRetries,
-                        'error' => $e->getMessage()
+                        'error' => $e->getMessage(),
                     ]);
                 }
             }
@@ -195,7 +193,7 @@ class AzureGraphService
 
     /**
      * Get access token from Azure AD (with caching)
-     * 
+     *
      * @return string
      * @throws Exception
      */
@@ -221,9 +219,7 @@ class AzureGraphService
             ]);
 
             if (!$response->successful()) {
-                throw new Exception(
-                    'Failed to obtain access token: ' . $response->body()
-                );
+                throw new Exception('Failed to obtain access token: ' . $response->body());
             }
 
             $data = $response->json();
@@ -237,12 +233,11 @@ class AzureGraphService
             return $accessToken;
         } catch (Exception $e) {
             Log::channel('azure')->error('Failed to get access token', [
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
             throw $e;
         }
     }
-
 
     /**
      * Find a user in Azure AD by User Principal Name (UPN / email).
@@ -260,7 +255,7 @@ class AzureGraphService
                 'GET',
                 $this->graphApiBaseUrl . '/users/' . urlencode($upn),
                 null,
-                1  // ← CHANGED: Only 1 retry (down from 3)
+                1, // ← CHANGED: Only 1 retry (down from 3)
             );
 
             if ($response->successful()) {
@@ -268,7 +263,7 @@ class AzureGraphService
 
                 Log::channel('azure')->info('User found in Azure AD', [
                     'upn' => $upn,
-                    'azure_id' => $userData['id']
+                    'azure_id' => $userData['id'],
                 ]);
 
                 return [
@@ -291,7 +286,7 @@ class AzureGraphService
 
             Log::channel('azure')->error('Failed to find user by UPN', [
                 'upn' => $upn,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
 
             throw $e;
@@ -301,7 +296,7 @@ class AzureGraphService
     /**
      * Get a user from Azure AD by ID
      * WITH AUDIT LOGGING
-     * 
+     *
      * @param string $azureUserId Azure AD user ID
      * @return array User data
      * @throws Exception
@@ -320,15 +315,10 @@ class AzureGraphService
             //     ]
             // );
 
-            $response = $this->makeRequestWithRetry(
-                'GET',
-                $this->graphApiBaseUrl . "/users/{$azureUserId}"
-            );
+            $response = $this->makeRequestWithRetry('GET', $this->graphApiBaseUrl . "/users/{$azureUserId}");
 
             if (!$response->successful()) {
-                throw new Exception(
-                    'Failed to retrieve user from Azure AD: ' . $response->body()
-                );
+                throw new Exception('Failed to retrieve user from Azure AD: ' . $response->body());
             }
 
             $userData = $response->json();
@@ -368,17 +358,17 @@ class AzureGraphService
 
             Log::channel('azure')->error('Failed to get Azure AD user', [
                 'azure_id' => $azureUserId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
 
-            throw new Exception("Failed to retrieve user from Azure AD: " . $e->getMessage());
+            throw new Exception('Failed to retrieve user from Azure AD: ' . $e->getMessage());
         }
     }
 
     /**
      * Create a new user in Azure AD (with duplicate check)
      * WITH AUDIT LOGGING
-     * 
+     *
      * @param array $userData
      * @return array
      * @throws Exception
@@ -390,17 +380,17 @@ class AzureGraphService
             $upn = $this->generateUPN($userData);
 
             // Support both 'name' and 'displayName' keys for logging
-            $userName = $userData['name'] ?? $userData['displayName'] ?? 'unknown';
+            $userName = $userData['name'] ?? ($userData['displayName'] ?? 'unknown');
 
             Log::channel('azure')->debug('Generated UPN for user creation', [
                 'generated_upn' => $upn,
                 'user_name' => $userName,
-                'user_data' => $userData
+                'user_data' => $userData,
             ]);
 
             // Check if user already exists in Azure
             Log::channel('azure')->info('Checking if user exists in Azure AD', [
-                'upn' => $upn
+                'upn' => $upn,
             ]);
 
             $existingUser = $this->findUserByUPN($upn);
@@ -408,7 +398,7 @@ class AzureGraphService
             if ($existingUser) {
                 Log::channel('azure')->warning('User already exists in Azure AD, returning existing user', [
                     'upn' => $upn,
-                    'azure_id' => $existingUser['id']
+                    'azure_id' => $existingUser['id'],
                 ]);
 
                 // Return existing user data instead of failing
@@ -422,7 +412,7 @@ class AzureGraphService
 
             // User doesn't exist, proceed with creation
             Log::channel('azure')->info('User not found in Azure, creating new user', [
-                'upn' => $upn
+                'upn' => $upn,
             ]);
 
             // Generate temporary password
@@ -456,23 +446,17 @@ class AzureGraphService
                 $requestBody['employeeId'] = $userData['employee_id'] ?? $userData['employeeId'];
             }
 
-            $response = $this->makeRequestWithRetry(
-                'POST',
-                $this->graphApiBaseUrl . '/users',
-                $requestBody
-            );
+            $response = $this->makeRequestWithRetry('POST', $this->graphApiBaseUrl . '/users', $requestBody);
 
             if (!$response->successful()) {
-                throw new Exception(
-                    'Failed to create user in Azure AD: ' . $response->body()
-                );
+                throw new Exception('Failed to create user in Azure AD: ' . $response->body());
             }
 
             $azureUser = $response->json();
 
             Log::channel('azure')->info('User created in Azure AD', [
                 'azure_id' => $azureUser['id'],
-                'upn' => $azureUser['userPrincipalName']
+                'upn' => $azureUser['userPrincipalName'],
             ]);
 
             return [
@@ -484,7 +468,7 @@ class AzureGraphService
         } catch (Exception $e) {
             Log::channel('azure')->error('Failed to create user', [
                 'userData' => $userData,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
             throw $e;
         }
@@ -493,7 +477,7 @@ class AzureGraphService
     /**
      * Update an existing user in Azure AD
      * WITH AUDIT LOGGING
-     * 
+     *
      * @param string $azureId
      * @param array $updateData
      * @return bool
@@ -536,13 +520,11 @@ class AzureGraphService
             $response = $this->makeRequestWithRetry(
                 'PATCH',
                 $this->graphApiBaseUrl . "/users/{$azureId}",
-                $requestBody
+                $requestBody,
             );
 
             if (!$response->successful()) {
-                throw new Exception(
-                    'Failed to update user in Azure AD: ' . $response->body()
-                );
+                throw new Exception('Failed to update user in Azure AD: ' . $response->body());
             }
 
             // 🎯 AUDIT: Log successful update
@@ -558,7 +540,7 @@ class AzureGraphService
             // );
 
             Log::channel('azure')->info('User updated in Azure AD', [
-                'azure_id' => $azureId
+                'azure_id' => $azureId,
             ]);
 
             $this->throttleRequest();
@@ -578,19 +560,16 @@ class AzureGraphService
 
             Log::channel('azure')->error('Failed to update user', [
                 'azure_id' => $azureId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
             throw $e;
         }
     }
 
-
-
-
     /**
      * Disable a user in Azure AD
      * WITH AUDIT LOGGING AND REDUCED RETRIES
-     * 
+     *
      * @param string $azureId
      * @return bool
      * @throws Exception
@@ -599,7 +578,7 @@ class AzureGraphService
     {
         try {
             Log::channel('azure')->info('Disabling user in Azure AD', [
-                'azure_id' => $azureId
+                'azure_id' => $azureId,
             ]);
 
             // ✅ REDUCED RETRIES: Only 1 retry instead of 3
@@ -607,17 +586,15 @@ class AzureGraphService
                 'PATCH',
                 $this->graphApiBaseUrl . "/users/{$azureId}",
                 ['accountEnabled' => false],
-                1  // ← CHANGED: Only 1 retry (down from 3)
+                1, // ← CHANGED: Only 1 retry (down from 3)
             );
 
             if (!$response->successful()) {
-                throw new Exception(
-                    'Failed to disable user in Azure AD: ' . $response->body()
-                );
+                throw new Exception('Failed to disable user in Azure AD: ' . $response->body());
             }
 
             Log::channel('azure')->info('User disabled in Azure AD', [
-                'azure_id' => $azureId
+                'azure_id' => $azureId,
             ]);
 
             $this->throttleRequest();
@@ -625,7 +602,7 @@ class AzureGraphService
         } catch (Exception $e) {
             Log::channel('azure')->error('Failed to disable user', [
                 'azure_id' => $azureId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
             throw $e;
         }
@@ -634,7 +611,7 @@ class AzureGraphService
     /**
      * Enable a user in Azure AD
      * WITH AUDIT LOGGING AND REDUCED RETRIES
-     * 
+     *
      * @param string $azureId
      * @return bool
      * @throws Exception
@@ -643,7 +620,7 @@ class AzureGraphService
     {
         try {
             Log::channel('azure')->info('Enabling user in Azure AD', [
-                'azure_id' => $azureId
+                'azure_id' => $azureId,
             ]);
 
             // ✅ REDUCED RETRIES: Only 1 retry instead of 3
@@ -651,17 +628,15 @@ class AzureGraphService
                 'PATCH',
                 $this->graphApiBaseUrl . "/users/{$azureId}",
                 ['accountEnabled' => true],
-                1  // ← CHANGED: Only 1 retry (down from 3)
+                1, // ← CHANGED: Only 1 retry (down from 3)
             );
 
             if (!$response->successful()) {
-                throw new Exception(
-                    'Failed to enable user in Azure AD: ' . $response->body()
-                );
+                throw new Exception('Failed to enable user in Azure AD: ' . $response->body());
             }
 
             Log::channel('azure')->info('User enabled in Azure AD', [
-                'azure_id' => $azureId
+                'azure_id' => $azureId,
             ]);
 
             $this->throttleRequest();
@@ -669,17 +644,16 @@ class AzureGraphService
         } catch (Exception $e) {
             Log::channel('azure')->error('Failed to enable user', [
                 'azure_id' => $azureId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
             throw $e;
         }
     }
 
-
     /**
      * Delete a user from Azure AD
      * WITH AUDIT LOGGING
-     * 
+     *
      * @param string $azureId
      * @return bool
      * @throws Exception
@@ -699,15 +673,10 @@ class AzureGraphService
             //     ]
             // );
 
-            $response = $this->makeRequestWithRetry(
-                'DELETE',
-                $this->graphApiBaseUrl . "/users/{$azureId}"
-            );
+            $response = $this->makeRequestWithRetry('DELETE', $this->graphApiBaseUrl . "/users/{$azureId}");
 
             if (!$response->successful() && $response->status() !== 404) {
-                throw new Exception(
-                    'Failed to delete user from Azure AD: ' . $response->body()
-                );
+                throw new Exception('Failed to delete user from Azure AD: ' . $response->body());
             }
 
             // 🎯 AUDIT: Log successful delete
@@ -722,7 +691,7 @@ class AzureGraphService
             // );
 
             Log::channel('azure')->info('User deleted from Azure AD', [
-                'azure_id' => $azureId
+                'azure_id' => $azureId,
             ]);
 
             $this->throttleRequest();
@@ -757,7 +726,7 @@ class AzureGraphService
 
             Log::channel('azure')->error('Failed to delete user', [
                 'azure_id' => $azureId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
             throw $e;
         }
@@ -765,7 +734,7 @@ class AzureGraphService
 
     /**
      * Generate User Principal Name (UPN)
-     * 
+     *
      * @param array $userData
      * @return string
      */
@@ -774,7 +743,7 @@ class AzureGraphService
         $strategy = config('azure.upn_strategy', 'name_based');
 
         if ($strategy === 'name_based') {
-            $name = $userData['name'] ?? $userData['displayName'] ?? 'user';
+            $name = $userData['name'] ?? ($userData['displayName'] ?? 'user');
 
             // firstname.initial@domain.com
             $nameParts = explode(' ', strtolower($name));
@@ -785,20 +754,20 @@ class AzureGraphService
         }
 
         // employee_id based: employeeID@domain.com
-        $employeeId = $userData['employee_id'] ?? $userData['employeeId'] ?? 'user';
+        $employeeId = $userData['employee_id'] ?? ($userData['employeeId'] ?? 'user');
         return strtolower($employeeId) . "@{$this->defaultDomain}";
     }
 
     /**
      * Generate mail nickname from name
-     * 
+     *
      * @param array $userData
      * @return string
      */
     private function generateMailNickname(array $userData): string
     {
         // Support both 'name' and 'displayName' keys
-        $name = $userData['name'] ?? $userData['displayName'] ?? 'user';
+        $name = $userData['name'] ?? ($userData['displayName'] ?? 'user');
 
         $nameParts = explode(' ', strtolower($name));
         $firstName = $nameParts[0] ?? 'user';
@@ -809,7 +778,7 @@ class AzureGraphService
 
     /**
      * Generate a secure random password
-     * 
+     *
      * @return string
      */
     private function generateSecurePassword(): string
@@ -838,7 +807,7 @@ class AzureGraphService
     /**
      * Add user to Azure AD Group
      * WITH AUDIT LOGGING
-     * 
+     *
      * @param string $azureUserId
      * @param string $groupId
      * @return bool
@@ -862,7 +831,7 @@ class AzureGraphService
             $response = $this->makeRequestWithRetry(
                 'POST',
                 $this->graphApiBaseUrl . "/groups/{$groupId}/members/\$ref",
-                ['@odata.id' => $this->graphApiBaseUrl . "/directoryObjects/{$azureUserId}"]
+                ['@odata.id' => $this->graphApiBaseUrl . "/directoryObjects/{$azureUserId}"],
             );
 
             // 204 = success, 400 with "already exists" = also OK
@@ -882,16 +851,14 @@ class AzureGraphService
 
                 Log::channel('azure')->info('User added to group', [
                     'azure_user_id' => $azureUserId,
-                    'group_id' => $groupId
+                    'group_id' => $groupId,
                 ]);
 
                 $this->throttleRequest();
                 return true;
             }
 
-            throw new Exception(
-                'Failed to add user to group: ' . $response->body()
-            );
+            throw new Exception('Failed to add user to group: ' . $response->body());
         } catch (Exception $e) {
             // Check if user is already a member
             if (str_contains($e->getMessage(), 'already exist')) {
@@ -910,7 +877,7 @@ class AzureGraphService
 
                 Log::channel('azure')->info('User already in group', [
                     'azure_user_id' => $azureUserId,
-                    'group_id' => $groupId
+                    'group_id' => $groupId,
                 ]);
 
                 $this->throttleRequest();
@@ -932,7 +899,7 @@ class AzureGraphService
             Log::channel('azure')->error('Failed to add user to group', [
                 'azure_user_id' => $azureUserId,
                 'group_id' => $groupId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
             throw $e;
         }
@@ -940,7 +907,7 @@ class AzureGraphService
     /**
      * Remove user from Azure AD Group
      * WITH AUDIT LOGGING
-     * 
+     *
      * @param string $azureUserId
      * @param string $groupId
      * @return bool
@@ -963,7 +930,7 @@ class AzureGraphService
 
             $response = $this->makeRequestWithRetry(
                 'DELETE',
-                $this->graphApiBaseUrl . "/groups/{$groupId}/members/{$azureUserId}/\$ref"
+                $this->graphApiBaseUrl . "/groups/{$groupId}/members/{$azureUserId}/\$ref",
             );
 
             if ($response->successful() || $response->status() === 204 || $response->status() === 404) {
@@ -982,16 +949,14 @@ class AzureGraphService
 
                 Log::channel('azure')->info('User removed from group', [
                     'azure_user_id' => $azureUserId,
-                    'group_id' => $groupId
+                    'group_id' => $groupId,
                 ]);
 
                 $this->throttleRequest();
                 return true;
             }
 
-            throw new Exception(
-                'Failed to remove user from group: ' . $response->body()
-            );
+            throw new Exception('Failed to remove user from group: ' . $response->body());
         } catch (Exception $e) {
             // 404 is acceptable - user already removed
             if (str_contains($e->getMessage(), 'HTTP 404')) {
@@ -1025,14 +990,14 @@ class AzureGraphService
             Log::channel('azure')->error('Failed to remove user from group', [
                 'azure_user_id' => $azureUserId,
                 'group_id' => $groupId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
             throw $e;
         }
     }
     /**
      * Add user to Azure AD Group with role-based mapping
-     * 
+     *
      * @param string $azureUserId Azure AD user object ID
      * @param string $groupId Azure AD group object ID
      * @param string $groupName Human-readable group name (for logging)
@@ -1045,13 +1010,13 @@ class AzureGraphService
             Log::channel('azure')->info('Attempting to add user to group', [
                 'azure_user_id' => $azureUserId,
                 'group_id' => $groupId,
-                'group_name' => $groupName
+                'group_name' => $groupName,
             ]);
 
             $response = $this->makeRequestWithRetry(
                 'POST',
                 $this->graphApiBaseUrl . "/groups/{$groupId}/members/\$ref",
-                ['@odata.id' => $this->graphApiBaseUrl . "/directoryObjects/{$azureUserId}"]
+                ['@odata.id' => $this->graphApiBaseUrl . "/directoryObjects/{$azureUserId}"],
             );
 
             // 204 = success, 400 with "already exists" = also OK
@@ -1059,7 +1024,7 @@ class AzureGraphService
                 Log::channel('azure')->info('User added to group successfully', [
                     'azure_user_id' => $azureUserId,
                     'group_id' => $groupId,
-                    'group_name' => $groupName
+                    'group_name' => $groupName,
                 ]);
 
                 $this->throttleRequest();
@@ -1067,7 +1032,7 @@ class AzureGraphService
                     'success' => true,
                     'status' => 'assigned',
                     'group_name' => $groupName,
-                    'group_id' => $groupId
+                    'group_id' => $groupId,
                 ];
             }
 
@@ -1082,31 +1047,26 @@ class AzureGraphService
                     Log::channel('azure')->info('User already member of group', [
                         'azure_user_id' => $azureUserId,
                         'group_id' => $groupId,
-                        'group_name' => $groupName
+                        'group_name' => $groupName,
                     ]);
 
                     return [
                         'success' => true,
                         'status' => 'already_member',
                         'group_name' => $groupName,
-                        'group_id' => $groupId
+                        'group_id' => $groupId,
                     ];
                 }
             }
 
-            throw new Exception(
-                "Failed to add user to group '{$groupName}': " . $response->body()
-            );
+            throw new Exception("Failed to add user to group '{$groupName}': " . $response->body());
         } catch (Exception $e) {
             // Check if already member error
-            if (
-                str_contains($e->getMessage(), 'already exist') ||
-                str_contains($e->getMessage(), 'already a member')
-            ) {
+            if (str_contains($e->getMessage(), 'already exist') || str_contains($e->getMessage(), 'already a member')) {
                 Log::channel('azure')->info('User already member of group (exception)', [
                     'azure_user_id' => $azureUserId,
                     'group_id' => $groupId,
-                    'group_name' => $groupName
+                    'group_name' => $groupName,
                 ]);
 
                 $this->throttleRequest();
@@ -1114,7 +1074,7 @@ class AzureGraphService
                     'success' => true,
                     'status' => 'already_member',
                     'group_name' => $groupName,
-                    'group_id' => $groupId
+                    'group_id' => $groupId,
                 ];
             }
 
@@ -1122,20 +1082,19 @@ class AzureGraphService
                 'azure_user_id' => $azureUserId,
                 'group_id' => $groupId,
                 'group_name' => $groupName,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
-
 
             return [
                 'success' => false,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ];
         }
     }
 
     /**
      * Remove user from Azure AD Group by group ID
-     * 
+     *
      * @param string $azureUserId Azure AD user object ID
      * @param string $groupId Azure AD group object ID
      * @param string|null $groupName Human-readable group name (for logging)
@@ -1148,41 +1107,32 @@ class AzureGraphService
             Log::channel('azure')->info('Attempting to remove user from group', [
                 'azure_user_id' => $azureUserId,
                 'group_id' => $groupId,
-                'group_name' => $groupName
+                'group_name' => $groupName,
             ]);
 
             $response = $this->makeRequestWithRetry(
                 'DELETE',
-                $this->graphApiBaseUrl . "/groups/{$groupId}/members/{$azureUserId}/\$ref"
+                $this->graphApiBaseUrl . "/groups/{$groupId}/members/{$azureUserId}/\$ref",
             );
 
             // Success codes: 204 (deleted), 404 (not found = already removed)
-            if (
-                $response->successful() ||
-                $response->status() === 204 ||
-                $response->status() === 404
-            ) {
+            if ($response->successful() || $response->status() === 204 || $response->status() === 404) {
                 Log::channel('azure')->info('User removed from group', [
                     'azure_user_id' => $azureUserId,
                     'group_id' => $groupId,
-                    'group_name' => $groupName
+                    'group_name' => $groupName,
                 ]);
 
                 return ['success' => true, 'status' => 'removed'];
             }
 
-            throw new Exception(
-                "Failed to remove user from group: " . $response->body()
-            );
+            throw new Exception('Failed to remove user from group: ' . $response->body());
         } catch (Exception $e) {
             // 404 is acceptable - user already removed
-            if (
-                str_contains($e->getMessage(), 'HTTP 404') ||
-                str_contains($e->getMessage(), 'not found')
-            ) {
+            if (str_contains($e->getMessage(), 'HTTP 404') || str_contains($e->getMessage(), 'not found')) {
                 Log::channel('azure')->info('User not in group (404 - acceptable)', [
                     'azure_user_id' => $azureUserId,
-                    'group_id' => $groupId
+                    'group_id' => $groupId,
                 ]);
                 return ['success' => true, 'status' => 'not_found'];
             }
@@ -1190,7 +1140,7 @@ class AzureGraphService
             Log::channel('azure')->error('Failed to remove user from group', [
                 'azure_user_id' => $azureUserId,
                 'group_id' => $groupId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
 
             return ['success' => false, 'error' => $e->getMessage()];
@@ -1199,7 +1149,7 @@ class AzureGraphService
 
     /**
      * Get service principal (enterprise app) details including app roles
-     * 
+     *
      * @param string $servicePrincipalId Azure AD service principal object ID
      * @return array Service principal data
      * @throws Exception
@@ -1209,20 +1159,18 @@ class AzureGraphService
         try {
             $response = $this->makeRequestWithRetry(
                 'GET',
-                $this->graphApiBaseUrl . "/servicePrincipals/{$servicePrincipalId}"
+                $this->graphApiBaseUrl . "/servicePrincipals/{$servicePrincipalId}",
             );
 
             if (!$response->successful()) {
-                throw new Exception(
-                    "Failed to fetch service principal: " . $response->body()
-                );
+                throw new Exception('Failed to fetch service principal: ' . $response->body());
             }
 
             return $response->json();
         } catch (Exception $e) {
             Log::channel('azure')->error('Failed to get service principal', [
                 'service_principal_id' => $servicePrincipalId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
             throw $e;
         }
@@ -1230,7 +1178,7 @@ class AzureGraphService
 
     /**
      * Assign app role to user
-     * 
+     *
      * @param string $azureUserId Azure AD user object ID
      * @param string $servicePrincipalId Service principal (enterprise app) ID
      * @param string $appRoleId App role UUID
@@ -1243,7 +1191,7 @@ class AzureGraphService
             Log::channel('azure')->info('Assigning app role to user', [
                 'azure_user_id' => $azureUserId,
                 'service_principal_id' => $servicePrincipalId,
-                'app_role_id' => $appRoleId
+                'app_role_id' => $appRoleId,
             ]);
 
             $response = $this->makeRequestWithRetry(
@@ -1252,8 +1200,8 @@ class AzureGraphService
                 [
                     'principalId' => $azureUserId,
                     'resourceId' => $servicePrincipalId,
-                    'appRoleId' => $appRoleId
-                ]
+                    'appRoleId' => $appRoleId,
+                ],
             );
 
             if (!$response->successful()) {
@@ -1266,21 +1214,19 @@ class AzureGraphService
                     ) {
                         Log::channel('azure')->info('App role already assigned', [
                             'azure_user_id' => $azureUserId,
-                            'app_role_id' => $appRoleId
+                            'app_role_id' => $appRoleId,
                         ]);
                         return ['success' => true, 'status' => 'already_assigned'];
                     }
                 }
 
-                throw new Exception(
-                    "Failed to assign app role: " . $response->body()
-                );
+                throw new Exception('Failed to assign app role: ' . $response->body());
             }
 
             Log::channel('azure')->info('App role assigned successfully', [
                 'azure_user_id' => $azureUserId,
                 'service_principal_id' => $servicePrincipalId,
-                'app_role_id' => $appRoleId
+                'app_role_id' => $appRoleId,
             ]);
 
             $this->throttleRequest();
@@ -1289,7 +1235,7 @@ class AzureGraphService
             Log::channel('azure')->error('Failed to assign app role', [
                 'azure_user_id' => $azureUserId,
                 'service_principal_id' => $servicePrincipalId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
 
             return ['success' => false, 'error' => $e->getMessage()];
@@ -1298,7 +1244,7 @@ class AzureGraphService
 
     /**
      * Get user's app role assignments
-     * 
+     *
      * @param string $azureUserId Azure AD user object ID
      * @return array List of app role assignments
      * @throws Exception
@@ -1308,20 +1254,18 @@ class AzureGraphService
         try {
             $response = $this->makeRequestWithRetry(
                 'GET',
-                $this->graphApiBaseUrl . "/users/{$azureUserId}/appRoleAssignments"
+                $this->graphApiBaseUrl . "/users/{$azureUserId}/appRoleAssignments",
             );
 
             if (!$response->successful()) {
-                throw new Exception(
-                    "Failed to retrieve app role assignments: " . $response->body()
-                );
+                throw new Exception('Failed to retrieve app role assignments: ' . $response->body());
             }
 
             return $response->json()['value'] ?? [];
         } catch (Exception $e) {
             Log::channel('azure')->error('Failed to get user app role assignments', [
                 'azure_user_id' => $azureUserId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
             throw $e;
         }
@@ -1329,7 +1273,7 @@ class AzureGraphService
 
     /**
      * Remove app role assignment
-     * 
+     *
      * @param string $azureUserId Azure AD user object ID
      * @param string $assignmentId App role assignment ID
      * @return array Result with success status
@@ -1340,31 +1284,25 @@ class AzureGraphService
         try {
             Log::channel('azure')->info('Removing app role assignment', [
                 'azure_user_id' => $azureUserId,
-                'assignment_id' => $assignmentId
+                'assignment_id' => $assignmentId,
             ]);
 
             $response = $this->makeRequestWithRetry(
                 'DELETE',
-                $this->graphApiBaseUrl . "/users/{$azureUserId}/appRoleAssignments/{$assignmentId}"
+                $this->graphApiBaseUrl . "/users/{$azureUserId}/appRoleAssignments/{$assignmentId}",
             );
 
-            if (
-                $response->successful() ||
-                $response->status() === 204 ||
-                $response->status() === 404
-            ) {
+            if ($response->successful() || $response->status() === 204 || $response->status() === 404) {
                 Log::channel('azure')->info('App role assignment removed', [
                     'azure_user_id' => $azureUserId,
-                    'assignment_id' => $assignmentId
+                    'assignment_id' => $assignmentId,
                 ]);
 
                 $this->throttleRequest();
                 return ['success' => true, 'status' => 'removed'];
             }
 
-            throw new Exception(
-                "Failed to remove app role assignment: " . $response->body()
-            );
+            throw new Exception('Failed to remove app role assignment: ' . $response->body());
         } catch (Exception $e) {
             // 404 is acceptable
             if (str_contains($e->getMessage(), 'HTTP 404')) {
@@ -1374,7 +1312,7 @@ class AzureGraphService
             Log::channel('azure')->error('Failed to remove app role assignment', [
                 'azure_user_id' => $azureUserId,
                 'assignment_id' => $assignmentId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
 
             return ['success' => false, 'error' => $e->getMessage()];
@@ -1393,33 +1331,27 @@ class AzureGraphService
     {
         try {
             Log::channel('azure')->info('Disabling user account in Azure AD', [
-                'azure_user_id' => $azureUserId
+                'azure_user_id' => $azureUserId,
             ]);
 
-            $response = $this->makeRequestWithRetry(
-                'PATCH',
-                $this->graphApiBaseUrl . "/users/{$azureUserId}",
-                [
-                    'accountEnabled' => false
-                ]
-            );
+            $response = $this->makeRequestWithRetry('PATCH', $this->graphApiBaseUrl . "/users/{$azureUserId}", [
+                'accountEnabled' => false,
+            ]);
 
             if ($response->successful()) {
                 Log::channel('azure')->info('User account disabled successfully', [
-                    'azure_user_id' => $azureUserId
+                    'azure_user_id' => $azureUserId,
                 ]);
 
                 $this->throttleRequest();
                 return true;
             }
 
-            throw new Exception(
-                "Failed to disable user account: " . $response->body()
-            );
+            throw new Exception('Failed to disable user account: ' . $response->body());
         } catch (Exception $e) {
             Log::channel('azure')->error('Failed to disable user account', [
                 'azure_user_id' => $azureUserId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
             throw $e;
         }
@@ -1437,33 +1369,27 @@ class AzureGraphService
     {
         try {
             Log::channel('azure')->info('Enabling user account in Azure AD', [
-                'azure_user_id' => $azureUserId
+                'azure_user_id' => $azureUserId,
             ]);
 
-            $response = $this->makeRequestWithRetry(
-                'PATCH',
-                $this->graphApiBaseUrl . "/users/{$azureUserId}",
-                [
-                    'accountEnabled' => true
-                ]
-            );
+            $response = $this->makeRequestWithRetry('PATCH', $this->graphApiBaseUrl . "/users/{$azureUserId}", [
+                'accountEnabled' => true,
+            ]);
 
             if ($response->successful()) {
                 Log::channel('azure')->info('User account enabled successfully', [
-                    'azure_user_id' => $azureUserId
+                    'azure_user_id' => $azureUserId,
                 ]);
 
                 $this->throttleRequest();
                 return true;
             }
 
-            throw new Exception(
-                "Failed to enable user account: " . $response->body()
-            );
+            throw new Exception('Failed to enable user account: ' . $response->body());
         } catch (Exception $e) {
             Log::channel('azure')->error('Failed to enable user account', [
                 'azure_user_id' => $azureUserId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
             throw $e;
         }
@@ -1486,9 +1412,9 @@ class AzureGraphService
                 $this->graphApiBaseUrl . "/servicePrincipals/{$servicePrincipalId}/appRoleAssignments",
                 [
                     'principalId' => $azureUserId,
-                    'resourceId'  => $servicePrincipalId,
-                    'appRoleId'   => $appRoleId,
-                ]
+                    'resourceId' => $servicePrincipalId,
+                    'appRoleId' => $appRoleId,
+                ],
             );
 
             if (!$response->successful()) {
@@ -1498,38 +1424,41 @@ class AzureGraphService
 
                     if (str_contains($message, 'already exists')) {
                         Log::channel('azure')->info('User already assigned to app', [
-                            'azure_user_id'        => $azureUserId,
+                            'azure_user_id' => $azureUserId,
                             'service_principal_id' => $servicePrincipalId,
                         ]);
                         return ['success' => true, 'status' => 'already_assigned'];
                     }
 
                     if (str_contains($message, 'Permission being assigned was not found')) {
-                        Log::channel('azure')->warning('No assignable app role on this SP — skipping direct assignment', [
-                            'azure_user_id'        => $azureUserId,
-                            'service_principal_id' => $servicePrincipalId,
-                            'app_role_id'          => $appRoleId,
-                        ]);
+                        Log::channel('azure')->warning(
+                            'No assignable app role on this SP — skipping direct assignment',
+                            [
+                                'azure_user_id' => $azureUserId,
+                                'service_principal_id' => $servicePrincipalId,
+                                'app_role_id' => $appRoleId,
+                            ],
+                        );
                         // Not a failure — user may already have access via group
                         return ['success' => true, 'status' => 'no_assignable_role_skipped'];
                     }
                 }
 
-                throw new \Exception("Failed: " . $response->body());
+                throw new \Exception('Failed: ' . $response->body());
             }
 
             Log::channel('azure')->info('User assigned to application successfully', [
-                'azure_user_id'        => $azureUserId,
+                'azure_user_id' => $azureUserId,
                 'service_principal_id' => $servicePrincipalId,
-                'app_role_id'          => $appRoleId,
+                'app_role_id' => $appRoleId,
             ]);
 
             return ['success' => true, 'status' => 'assigned'];
         } catch (\Exception $e) {
             Log::channel('azure')->error('Failed to assign user to app', [
-                'azure_user_id'        => $azureUserId,
+                'azure_user_id' => $azureUserId,
                 'service_principal_id' => $servicePrincipalId,
-                'error'                => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
             return ['success' => false, 'error' => $e->getMessage()];
         }
@@ -1537,7 +1466,7 @@ class AzureGraphService
 
     /**
      * Resolve the correct default app role ID for a service principal.
-     * 
+     *
      * Some SPs expose the null GUID as a default role (e.g. D365, BIZ).
      * Others (like OPS/SCM) use assignment-required groups and have no
      * directly-assignable app role — in that case, return null GUID as
@@ -1553,7 +1482,7 @@ class AzureGraphService
             try {
                 $response = $this->makeRequestWithRetry(
                     'GET',
-                    $this->graphApiBaseUrl . "/servicePrincipals/{$servicePrincipalId}?\$select=appRoles"
+                    $this->graphApiBaseUrl . "/servicePrincipals/{$servicePrincipalId}?\$select=appRoles",
                 );
 
                 if (!$response->successful()) {
@@ -1576,7 +1505,7 @@ class AzureGraphService
             } catch (\Exception $e) {
                 Log::channel('azure')->warning('Could not fetch app roles for SP — using null GUID', [
                     'service_principal_id' => $servicePrincipalId,
-                    'error'                => $e->getMessage(),
+                    'error' => $e->getMessage(),
                 ]);
             }
 
@@ -1593,14 +1522,15 @@ class AzureGraphService
             // Check 1: Direct assignment
             $response = $this->makeRequestWithRetry(
                 'GET',
-                $this->graphApiBaseUrl . "/servicePrincipals/{$servicePrincipalId}/appRoleAssignedTo?\$filter=principalId eq '{$azureUserId}'"
+                $this->graphApiBaseUrl .
+                    "/servicePrincipals/{$servicePrincipalId}/appRoleAssignedTo?\$filter=principalId eq '{$azureUserId}'",
             );
 
             if ($response->successful()) {
                 $direct = $response->json()['value'] ?? [];
                 if (count($direct) > 0) {
                     Log::channel('azure')->info('User has direct assignment to app', [
-                        'azure_user_id'        => $azureUserId,
+                        'azure_user_id' => $azureUserId,
                         'service_principal_id' => $servicePrincipalId,
                     ]);
                     return true;
@@ -1611,14 +1541,16 @@ class AzureGraphService
             // Get all groups the user belongs to (transitive)
             $groupsResponse = $this->makeRequestWithRetry(
                 'GET',
-                $this->graphApiBaseUrl . "/users/{$azureUserId}/transitiveMemberOf?\$select=id"
+                $this->graphApiBaseUrl . "/users/{$azureUserId}/transitiveMemberOf?\$select=id",
             );
 
             if (!$groupsResponse->successful()) {
                 return false;
             }
 
-            $userGroupIds = collect($groupsResponse->json()['value'] ?? [])->pluck('id')->toArray();
+            $userGroupIds = collect($groupsResponse->json()['value'] ?? [])
+                ->pluck('id')
+                ->toArray();
 
             if (empty($userGroupIds)) {
                 return false;
@@ -1627,20 +1559,23 @@ class AzureGraphService
             // Get all group assignments on this service principal
             $spGroupsResponse = $this->makeRequestWithRetry(
                 'GET',
-                $this->graphApiBaseUrl . "/servicePrincipals/{$servicePrincipalId}/appRoleAssignedTo?\$filter=principalType eq 'Group'"
+                $this->graphApiBaseUrl .
+                    "/servicePrincipals/{$servicePrincipalId}/appRoleAssignedTo?\$filter=principalType eq 'Group'",
             );
 
             if (!$spGroupsResponse->successful()) {
                 return false;
             }
 
-            $assignedGroupIds = collect($spGroupsResponse->json()['value'] ?? [])->pluck('principalId')->toArray();
+            $assignedGroupIds = collect($spGroupsResponse->json()['value'] ?? [])
+                ->pluck('principalId')
+                ->toArray();
 
             $hasGroupAccess = count(array_intersect($userGroupIds, $assignedGroupIds)) > 0;
 
             if ($hasGroupAccess) {
                 Log::channel('azure')->info('User has group-based assignment to app - skipping direct assignment', [
-                    'azure_user_id'        => $azureUserId,
+                    'azure_user_id' => $azureUserId,
                     'service_principal_id' => $servicePrincipalId,
                 ]);
             }
@@ -1648,9 +1583,9 @@ class AzureGraphService
             return $hasGroupAccess;
         } catch (\Exception $e) {
             Log::channel('azure')->warning('Could not check app assignment status - defaulting to false', [
-                'azure_user_id'        => $azureUserId,
+                'azure_user_id' => $azureUserId,
                 'service_principal_id' => $servicePrincipalId,
-                'error'                => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
             return false;
         }
@@ -1659,33 +1594,36 @@ class AzureGraphService
     /**
      * Ensure user is assigned to application - assign if missing
      */
-    public function ensureUserAssignedToApplication(string $azureUserId, string $servicePrincipalId, string $appName = ''): array
-    {
+    public function ensureUserAssignedToApplication(
+        string $azureUserId,
+        string $servicePrincipalId,
+        string $appName = '',
+    ): array {
         try {
             $alreadyAssigned = $this->isUserAssignedToApplication($azureUserId, $servicePrincipalId);
 
             if ($alreadyAssigned) {
                 Log::channel('azure')->info('User already assigned to application - skipping', [
-                    'azure_user_id'       => $azureUserId,
+                    'azure_user_id' => $azureUserId,
                     'service_principal_id' => $servicePrincipalId,
-                    'app_name'            => $appName,
+                    'app_name' => $appName,
                 ]);
                 return ['success' => true, 'status' => 'already_assigned'];
             }
 
             Log::channel('azure')->info('User not assigned to application - assigning now', [
-                'azure_user_id'       => $azureUserId,
+                'azure_user_id' => $azureUserId,
                 'service_principal_id' => $servicePrincipalId,
-                'app_name'            => $appName,
+                'app_name' => $appName,
             ]);
 
             return $this->assignUserToApplication($azureUserId, $servicePrincipalId);
         } catch (\Exception $e) {
             Log::channel('azure')->error('ensureUserAssignedToApplication failed', [
-                'azure_user_id'       => $azureUserId,
+                'azure_user_id' => $azureUserId,
                 'service_principal_id' => $servicePrincipalId,
-                'app_name'            => $appName,
-                'error'               => $e->getMessage(),
+                'app_name' => $appName,
+                'error' => $e->getMessage(),
             ]);
             return ['success' => false, 'error' => $e->getMessage()];
         }

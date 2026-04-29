@@ -135,7 +135,7 @@ class OdooSyncController extends Controller
                             $existingUser = DB::connection('sqlsrv')
                                 ->table('Azure_Users')
                                 ->where('userPrincipalName', $userData['userPrincipalName'])
-                                ->whereNull('OdooUserId')  // Only match if not yet linked to Odoo
+                                ->whereNull('OdooUserId') // Only match if not yet linked to Odoo
                                 ->first();
 
                             // If found by UPN but missing OdooUserId, link them
@@ -163,7 +163,7 @@ class OdooSyncController extends Controller
                             $existingUser = DB::connection('sqlsrv')
                                 ->table('Azure_Users')
                                 ->where('userPrincipalName', $user->odoo_original_email)
-                                ->whereNull('OdooUserId')  // Only match if not yet linked to Odoo
+                                ->whereNull('OdooUserId') // Only match if not yet linked to Odoo
                                 ->first();
 
                             // If found by old email format, update UPN and link to Odoo
@@ -209,7 +209,7 @@ class OdooSyncController extends Controller
                                     'INSERT',
                                     '✅ Provisioned',
                                     true,
-                                    'Created in Azure AD + DB (Pending)'
+                                    'Created in Azure AD + DB (Pending)',
                                 );
                             } else {
                                 // ✅ FIXED: Do NOT insert - skip this user entirely
@@ -218,7 +218,9 @@ class OdooSyncController extends Controller
                                 $stats['errors'][] = [
                                     'user' => $userData['userPrincipalName'],
                                     'operation' => 'Azure Provisioning (Required)',
-                                    'error' => 'User NOT created - Azure provisioning failed: ' . $azureProvisioningResult['error'],
+                                    'error' =>
+                                        'User NOT created - Azure provisioning failed: ' .
+                                        $azureProvisioningResult['error'],
                                 ];
 
                                 $this->outputRow(
@@ -229,7 +231,8 @@ class OdooSyncController extends Controller
                                     'SKIPPED',
                                     '❌ Failed',
                                     false,
-                                    'Azure provisioning failed - user NOT created: ' . substr($azureProvisioningResult['error'], 0, 50)
+                                    'Azure provisioning failed - user NOT created: ' .
+                                        substr($azureProvisioningResult['error'], 0, 50),
                                 );
 
                                 // Skip to next user
@@ -274,7 +277,7 @@ class OdooSyncController extends Controller
                                         'UPDATE',
                                         '✅ Provisioned',
                                         true,
-                                        'Updated + Azure AD provisioned (Active)'
+                                        'Updated + Azure AD provisioned (Active)',
                                     );
                                 } else {
                                     $stats['azure_failed']++;
@@ -291,15 +294,16 @@ class OdooSyncController extends Controller
                                         'UPDATE',
                                         '❌ Failed',
                                         true,
-                                        'Updated, Azure failed: ' . substr($azureProvisioningResult['error'], 0, 50)
+                                        'Updated, Azure failed: ' . substr($azureProvisioningResult['error'], 0, 50),
                                     );
                                 }
                             } else {
                                 $stats['azure_skipped']++;
 
-                                $statusNote = $previousStatus === 'Pending'
-                                    ? 'Updated from Pending to Active'
-                                    : 'Data refreshed, Status: Active';
+                                $statusNote =
+                                    $previousStatus === 'Pending'
+                                        ? 'Updated from Pending to Active'
+                                        : 'Data refreshed, Status: Active';
 
                                 $this->outputRow(
                                     $rowNumber,
@@ -309,7 +313,7 @@ class OdooSyncController extends Controller
                                     'UPDATE',
                                     '⊘ Exists',
                                     true,
-                                    $statusNote
+                                    $statusNote,
                                 );
                             }
                         }
@@ -329,7 +333,7 @@ class OdooSyncController extends Controller
                             'FAILED',
                             '❌ Error',
                             false,
-                            $e->getMessage()
+                            $e->getMessage(),
                         );
                         flush();
                     }
@@ -370,10 +374,7 @@ class OdooSyncController extends Controller
             ];
 
             // Fetch users from Odoo view (TODAY'S changes only)
-            $odooUsers = DB::connection('pgsql')
-                ->table('vw_getuserdetails')
-                ->get()
-                ->toArray();
+            $odooUsers = DB::connection('pgsql')->table('vw_getuserdetails')->get()->toArray();
 
             // Convert stdClass objects to match expected format
             $odooUsers = array_map(function ($user) {
@@ -382,14 +383,17 @@ class OdooSyncController extends Controller
 
             Log::info('ODOO USERS FETCHED FROM VIEW', [
                 'count' => count($odooUsers),
-                'date_filter' => 'TODAY only (from vw_getuserdetails)'
+                'date_filter' => 'TODAY only (from vw_getuserdetails)',
             ]);
 
             if (empty($odooUsers)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No users created/modified today in Odoo',
-                ], 404);
+                return response()->json(
+                    [
+                        'success' => false,
+                        'message' => 'No users created/modified today in Odoo',
+                    ],
+                    404,
+                );
             }
 
             // Get Azure service instance
@@ -415,7 +419,7 @@ class OdooSyncController extends Controller
                             $existingUser = DB::connection('sqlsrv')
                                 ->table('Azure_Users')
                                 ->where('userPrincipalName', $userData['userPrincipalName'])
-                                ->whereNull('OdooUserId')  // Only match if not yet linked to Odoo
+                                ->whereNull('OdooUserId') // Only match if not yet linked to Odoo
                                 ->first();
 
                             // If found by email but missing OdooUserId, link them
@@ -462,7 +466,9 @@ class OdooSyncController extends Controller
                                 $stats['errors'][] = [
                                     'user' => $userData['userPrincipalName'],
                                     'operation' => 'Azure Provisioning (Required)',
-                                    'error' => 'User NOT created - Azure provisioning failed: ' . $azureProvisioningResult['error'],
+                                    'error' =>
+                                        'User NOT created - Azure provisioning failed: ' .
+                                        $azureProvisioningResult['error'],
                                 ];
 
                                 Log::warning('⚠️ User creation skipped - Azure provisioning failed', [
@@ -506,7 +512,11 @@ class OdooSyncController extends Controller
                                 }
                             } else {
                                 // User has AzureId - UPDATE Azure AD profile
-                                $azureUpdateResult = $this->updateAzureADUser($existingUser->AzureId, $userData, $azureService);
+                                $azureUpdateResult = $this->updateAzureADUser(
+                                    $existingUser->AzureId,
+                                    $userData,
+                                    $azureService,
+                                );
 
                                 if ($azureUpdateResult['success']) {
                                     $stats['azure_updated']++;
@@ -553,16 +563,19 @@ class OdooSyncController extends Controller
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Sync failed: ' . $e->getMessage(),
-            ], 500);
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => 'Sync failed: ' . $e->getMessage(),
+                ],
+                500,
+            );
         }
     }
 
     /**
      * Provision user to Azure AD
-     * 
+     *
      * @param array $userData Normalized user data
      * @param \App\Services\AzureGraphService $azureService
      * @return array ['success' => bool, 'azure_id' => string|null, 'error' => string|null]
@@ -577,7 +590,7 @@ class OdooSyncController extends Controller
             // Split name into first and last name
             $nameParts = explode(' ', trim($userData['displayName'] ?? ''), 2);
             $givenName = $nameParts[0] ?? 'Unknown';
-            $surname = $nameParts[1] ?? $nameParts[0] ?? 'User';
+            $surname = $nameParts[1] ?? ($nameParts[0] ?? 'User');
 
             // Build Azure user payload
             $azureUserData = [
@@ -643,7 +656,7 @@ class OdooSyncController extends Controller
 
     /**
      * Update existing user in Azure AD with latest Odoo data
-     * 
+     *
      * @param string $azureId Azure AD user ID
      * @param array $userData Normalized user data from Odoo
      * @param \App\Services\AzureGraphService $azureService
@@ -748,7 +761,7 @@ class OdooSyncController extends Controller
      * - Only alphanumeric characters, periods, hyphens, and underscores
      * - Cannot start or end with a period
      * - Maximum 64 characters
-     * 
+     *
      * @param string $nickname Raw nickname (typically username part of email)
      * @return string Sanitized nickname
      */
@@ -780,11 +793,7 @@ class OdooSyncController extends Controller
      */
     private function buildAjaxSummaryMessage(array $stats): string
     {
-        $parts = [
-            "Processed: {$stats['processed']}",
-            "Inserted: {$stats['inserted']}",
-            "Updated: {$stats['updated']}",
-        ];
+        $parts = ["Processed: {$stats['processed']}", "Inserted: {$stats['inserted']}", "Updated: {$stats['updated']}"];
 
         if ($stats['azure_provisioned'] > 0) {
             $parts[] = "Azure Provisioned: {$stats['azure_provisioned']}";
@@ -869,7 +878,8 @@ class OdooSyncController extends Controller
      */
     private function insertUserImproved(array $data): void
     {
-        DB::connection('sqlsrv')->insert("
+        DB::connection('sqlsrv')->insert(
+            "
             INSERT INTO Azure_Users (
                 Id, userPrincipalName, displayName, surname, mail, givenName,
                 AzureId, userType, jobTitle, department, accountEnabled,
@@ -892,7 +902,9 @@ class OdooSyncController extends Controller
                 ?, ?, ?, ?,
                 'Pending', GETDATE()
             )
-        ", array_values($data));
+        ",
+            array_values($data),
+        );
     }
 
     /**
@@ -931,7 +943,7 @@ class OdooSyncController extends Controller
         // Add WHERE clause value
         $values[] = $odooUserId;
 
-        $sql = "UPDATE Azure_Users SET " . implode(', ', $setClauses) . " WHERE OdooUserId = ?";
+        $sql = 'UPDATE Azure_Users SET ' . implode(', ', $setClauses) . ' WHERE OdooUserId = ?';
 
         DB::connection('sqlsrv')->update($sql, $values);
 
@@ -974,7 +986,6 @@ class OdooSyncController extends Controller
         echo '</div><hr>';
     }
 
-
     private function outputRow($num, $upn, $odooEmail, $type, $action, $azureStatus, $success, $note = null): void
     {
         $actionClass = $action === 'INSERT' ? 'success' : ($action === 'UPDATE' ? 'info' : 'error');
@@ -989,10 +1000,9 @@ class OdooSyncController extends Controller
         echo "<td><span class='{$actionClass}'>{$action}</span></td>";
         echo "<td>{$azureStatus}</td>";
         echo "<td><span class='{$statusClass}'>{$statusIcon}</span></td>";
-        echo "<td>" . substr($note ?? '-', 0, 80) . "</td>";
+        echo '<td>' . substr($note ?? '-', 0, 80) . '</td>';
         echo '</tr>';
     }
-
 
     private function outputSummary($startTime, $stats): void
     {
@@ -1015,10 +1025,10 @@ class OdooSyncController extends Controller
         echo '</div>';
 
         if (count($stats['errors']) > 0) {
-            echo "<h3 class='error'>❌ Errors (" . count($stats['errors']) . "):</h3><table>";
+            echo "<h3 class='error'>❌ Errors (" . count($stats['errors']) . '):</h3><table>';
             echo '<tr><th>User</th><th>Error</th></tr>';
             foreach ($stats['errors'] as $error) {
-                echo "<tr><td>{$error['user']}</td><td>" . substr($error['error'], 0, 150) . "</td></tr>";
+                echo "<tr><td>{$error['user']}</td><td>" . substr($error['error'], 0, 150) . '</td></tr>';
             }
             echo '</table>';
         }
@@ -1026,12 +1036,12 @@ class OdooSyncController extends Controller
         // Show next steps
         if ($stats['azure_failed'] > 0) {
             echo "<div class='stat-box' style='background: #fff3cd; border: 2px solid #ffc107;'>";
-            echo "<strong>⚠️ Next Steps:</strong><br>";
+            echo '<strong>⚠️ Next Steps:</strong><br>';
             echo "• {$stats['azure_failed']} user(s) failed Azure AD provisioning<br>";
             echo "• These users are in the database with Status = 'Pending'<br>";
-            echo "• You can retry Azure provisioning from the user management page<br>";
+            echo '• You can retry Azure provisioning from the user management page<br>';
             echo "• Or use the 'Activate Pending Users' button to batch retry";
-            echo "</div>";
+            echo '</div>';
         }
     }
 

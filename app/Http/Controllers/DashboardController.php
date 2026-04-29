@@ -25,7 +25,6 @@ class DashboardController extends Controller
         $this->statsService = $statsService;
     }
 
-
     private $excludedSystems = [
         //         'Import-Unknown',
         //         'Unknown',
@@ -38,7 +37,6 @@ class DashboardController extends Controller
         //         'Mobile/Desktop Client'
         //         // 'all'
     ];
-
 
     private function getAvailableSystems()
     {
@@ -59,13 +57,13 @@ class DashboardController extends Controller
                 Log::info('Systems loaded from System model', [
                     'count' => count($systemNames),
                     'systems' => $systemNames,
-                    'excluded' => $this->excludedSystems
+                    'excluded' => $this->excludedSystems,
                 ]);
 
                 return $systemNames;
             } catch (\Exception $e) {
                 Log::error('Failed to load systems from System model, falling back to database query', [
-                    'error' => $e->getMessage()
+                    'error' => $e->getMessage(),
                 ]);
 
                 // Fallback to direct database query if System model fails
@@ -91,14 +89,13 @@ class DashboardController extends Controller
 
                 Log::info('Systems loaded from fallback query', [
                     'count' => count($systems),
-                    'systems' => $systems
+                    'systems' => $systems,
                 ]);
 
                 return $systems;
             }
         });
     }
-
 
     /**
      * Enhanced system name normalization using systemmap.php
@@ -129,7 +126,6 @@ class DashboardController extends Controller
         return $normalized;
     }
 
-
     /**
      * Helper function to get raw system names from config
      */
@@ -142,10 +138,7 @@ class DashboardController extends Controller
             return [$cleanSystemName]; // Return the clean name as fallback
         }
 
-        $rawNames = collect($systemMap)
-            ->filter(fn($mappedName) => $mappedName === $cleanSystemName)
-            ->keys()
-            ->toArray();
+        $rawNames = collect($systemMap)->filter(fn($mappedName) => $mappedName === $cleanSystemName)->keys()->toArray();
 
         // If no mappings found, return the clean system name itself
         if (empty($rawNames)) {
@@ -154,7 +147,6 @@ class DashboardController extends Controller
 
         return $rawNames;
     }
-
 
     public function index(Request $request)
     {
@@ -170,7 +162,7 @@ class DashboardController extends Controller
                 'page' => $currentPage,
                 'search' => $search,
                 'filter' => $filter,
-                'is_ajax' => $request->ajax()
+                'is_ajax' => $request->ajax(),
             ]);
 
             $summary = $this->getUserSummaryDirect();
@@ -181,31 +173,31 @@ class DashboardController extends Controller
             Log::info('Dashboard loaded with filters', [
                 'summary' => $summary,
                 'users_count' => $loginList->count(),
-                'filter' => $filter
+                'filter' => $filter,
             ]);
 
             // Paginate the results
             $total = $loginList->count();
             $pagedData = $loginList->slice(($currentPage - 1) * $perPage, $perPage)->values();
 
-            $users = new \Illuminate\Pagination\LengthAwarePaginator(
-                $pagedData,
-                $total,
-                $perPage,
-                $currentPage,
-                ['path' => $request->url(), 'query' => $request->query()]
-            );
+            $users = new \Illuminate\Pagination\LengthAwarePaginator($pagedData, $total, $perPage, $currentPage, [
+                'path' => $request->url(),
+                'query' => $request->query(),
+            ]);
 
             if ($request->ajax()) {
-                return response()->json([
-                    'total_users' => $summary['total_users'],
-                    'active_this_month' => $summary['active_this_month'],
-                    'active_last_month' => $summary['active_last_month'],
-                    'inactive_users' => $summary['inactive_users'],
-                    'users' => $pagedData->toArray(),
-                    'total' => $total,
-                    'pagination' => $users->links()->toHtml(),
-                ], 200);
+                return response()->json(
+                    [
+                        'total_users' => $summary['total_users'],
+                        'active_this_month' => $summary['active_this_month'],
+                        'active_last_month' => $summary['active_last_month'],
+                        'inactive_users' => $summary['inactive_users'],
+                        'users' => $pagedData->toArray(),
+                        'total' => $total,
+                        'pagination' => $users->links()->toHtml(),
+                    ],
+                    200,
+                );
             }
 
             return view('logintracker.dashboard', [
@@ -239,7 +231,6 @@ class DashboardController extends Controller
             return response()->view('errors.500', [], 500);
         }
     }
-
 
     private function getFilteredLoginList($filter, $search)
     {
@@ -323,13 +314,13 @@ class DashboardController extends Controller
 
             if (!empty($search)) {
                 $searchLower = strtolower(trim($search));
-                $sql .= " AND (au.displayName LIKE ? OR au.userPrincipalName LIKE ?)";
+                $sql .= ' AND (au.displayName LIKE ? OR au.userPrincipalName LIKE ?)';
                 $searchParam = "%{$searchLower}%";
                 $params[] = $searchParam;
                 $params[] = $searchParam;
             }
 
-            $sql .= " ORDER BY au.displayName";
+            $sql .= ' ORDER BY au.displayName';
 
             $results = DB::select($sql, $params);
 
@@ -344,7 +335,6 @@ class DashboardController extends Controller
             });
         });
     }
-
 
     /**
      * Apply enhanced system filter - FIXED boolean logic
@@ -363,8 +353,11 @@ class DashboardController extends Controller
 
             // Add all raw system variations as OR conditions
             foreach ($rawSystemNames as $rawSystem) {
-                $q->orWhere(DB::raw('LOWER(system)'), strtolower($rawSystem))
-                    ->orWhere('application', 'LIKE', "%{$rawSystem}%");
+                $q->orWhere(DB::raw('LOWER(system)'), strtolower($rawSystem))->orWhere(
+                    'application',
+                    'LIKE',
+                    "%{$rawSystem}%",
+                );
             }
 
             // Also try direct application field match for the clean name
@@ -372,14 +365,20 @@ class DashboardController extends Controller
         });
     }
 
-
     private function getSystemVariations($systemName)
     {
         $variations = [$systemName]; // Include the original
 
         // Define known variations for each system
         $systemVariationsMap = [
-            'Fit Express' => ['Fit Express', ' Fit Express', 'FIT Express', ' FIT Express', 'fit express', ' fit express'],
+            'Fit Express' => [
+                'Fit Express',
+                ' Fit Express',
+                'FIT Express',
+                ' FIT Express',
+                'fit express',
+                ' fit express',
+            ],
             'Fit Express UAT' => ['Fit Express UAT', ' Fit Express UAT', 'FIT Express UAT', ' FIT Express UAT'],
             'FIT ERP' => ['FIT ERP', ' FIT ERP', 'fit erp', ' fit erp'],
             'FIT ERP UAT' => ['FIT ERP UAT', 'FITERPUAT', ' FITERPUAT'],
@@ -402,14 +401,14 @@ class DashboardController extends Controller
         return array_unique($variations);
     }
 
-
     /**
      * IMPROVED: System-filtered stats calculation showing only users who use the selected system
      */
 
     private function calculateStats($startDate, $endDate, $system)
     {
-        $cacheKey = 'dashboard_stats_fixed_v3_' . md5($startDate->format('Y-m-d') . $endDate->format('Y-m-d') . $system);
+        $cacheKey =
+            'dashboard_stats_fixed_v3_' . md5($startDate->format('Y-m-d') . $endDate->format('Y-m-d') . $system);
 
         return Cache::remember($cacheKey, 1800, function () use ($startDate, $endDate, $system) {
             $queryStartTime = microtime(true);
@@ -417,34 +416,40 @@ class DashboardController extends Controller
             try {
                 if ($system && $system !== 'all') {
                     // For specific system: count users who have used that system in the period
-                    $loggedInQuery = AzureUser::valid()
-                        ->whereHas('signIns', function ($q) use ($startDate, $endDate, $system) {
-                            $q->whereBetween('date_utc', [$startDate, $endDate]);
-                            $this->applySystemFilter($q, $system);
-                            $q->whereNotIn('system', $this->excludedSystems);
-                        });
+                    $loggedInQuery = AzureUser::valid()->whereHas('signIns', function ($q) use (
+                        $startDate,
+                        $endDate,
+                        $system,
+                    ) {
+                        $q->whereBetween('date_utc', [$startDate, $endDate]);
+                        $this->applySystemFilter($q, $system);
+                        $q->whereNotIn('system', $this->excludedSystems);
+                    });
 
                     $loggedInCount = $loggedInQuery->count();
 
                     // Total users who have ever used this system
-                    $totalSystemUsersQuery = AzureUser::valid()
-                        ->whereHas('signIns', function ($q) use ($system) {
-                            $this->applySystemFilter($q, $system);
-                            $q->whereNotIn('system', $this->excludedSystems);
-                        });
+                    $totalSystemUsersQuery = AzureUser::valid()->whereHas('signIns', function ($q) use ($system) {
+                        $this->applySystemFilter($q, $system);
+                        $q->whereNotIn('system', $this->excludedSystems);
+                    });
 
                     $totalUsers = $totalSystemUsersQuery->count();
 
                     // Total logins for this system in the period
-                    $totalLoginsQuery = SigninLog::whereBetween('date_utc', [$startDate, $endDate])
-                        ->whereNotIn('system', $this->excludedSystems);
+                    $totalLoginsQuery = SigninLog::whereBetween('date_utc', [$startDate, $endDate])->whereNotIn(
+                        'system',
+                        $this->excludedSystems,
+                    );
 
                     $this->applySystemFilter($totalLoginsQuery, $system);
                     $totalLogins = $totalLoginsQuery->count();
 
                     // Last login for this system
-                    $lastLoginQuery = SigninLog::whereBetween('date_utc', [$startDate, $endDate])
-                        ->whereNotIn('system', $this->excludedSystems);
+                    $lastLoginQuery = SigninLog::whereBetween('date_utc', [$startDate, $endDate])->whereNotIn(
+                        'system',
+                        $this->excludedSystems,
+                    );
 
                     $this->applySystemFilter($lastLoginQuery, $system);
                     $lastLogin = $lastLoginQuery->max('date_utc');
@@ -486,12 +491,12 @@ class DashboardController extends Controller
                     ->get();
 
                 $signIns = $signInsRaw->map(function ($item) {
-                    return (object)[
+                    return (object) [
                         'id' => $item->request_id,
                         'system' => $this->normalizeSystemName($item->system),
                         'date_utc' => \Carbon\Carbon::parse($item->date_utc),
                         'application' => $item->application ?? 'N/A',
-                        'username' => $item->username ?? 'N/A'
+                        'username' => $item->username ?? 'N/A',
                     ];
                 });
 
@@ -506,7 +511,7 @@ class DashboardController extends Controller
                     'excluded_systems' => $this->excludedSystems,
                     'query_time_ms' => round($totalQueryTime * 1000, 2),
                     'date_range' => [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')],
-                    'system_specific' => ($system !== 'all')
+                    'system_specific' => $system !== 'all',
                 ]);
 
                 return [
@@ -522,7 +527,7 @@ class DashboardController extends Controller
                 Log::error('Fixed system stats calculation failed v3', [
                     'error' => $e->getMessage(),
                     'system' => $system,
-                    'excluded_systems' => $this->excludedSystems
+                    'excluded_systems' => $this->excludedSystems,
                 ]);
 
                 return [
@@ -533,12 +538,11 @@ class DashboardController extends Controller
                     'lastLogin' => null,
                     'signIns' => collect(),
                     'totalDays' => $startDate->diffInDays($endDate) + 1,
-                    'error' => true
+                    'error' => true,
                 ];
             }
         });
     }
-
 
     public function debugSystemMapping(Request $request)
     {
@@ -565,18 +569,26 @@ class DashboardController extends Controller
             $matchingCounts[$rawSystem] = $count;
         }
 
-        return response()->json([
-            'selected_system' => $system,
-            'raw_system_names_for_selection' => $rawSystemNames,
-            'system_mapping_from_config' => config('systemmap'),
-            'actual_systems_in_db' => $actualSystems,
-            'matching_counts' => $matchingCounts,
-            'excluded_systems' => $this->excludedSystems,
-            'available_systems_after_filtering' => $this->getAvailableSystems(),
-            'recommendation' => $this->generateSystemMappingRecommendation($system, $actualSystems, $matchingCounts)
-        ], 200, [], JSON_PRETTY_PRINT);
+        return response()->json(
+            [
+                'selected_system' => $system,
+                'raw_system_names_for_selection' => $rawSystemNames,
+                'system_mapping_from_config' => config('systemmap'),
+                'actual_systems_in_db' => $actualSystems,
+                'matching_counts' => $matchingCounts,
+                'excluded_systems' => $this->excludedSystems,
+                'available_systems_after_filtering' => $this->getAvailableSystems(),
+                'recommendation' => $this->generateSystemMappingRecommendation(
+                    $system,
+                    $actualSystems,
+                    $matchingCounts,
+                ),
+            ],
+            200,
+            [],
+            JSON_PRETTY_PRINT,
+        );
     }
-
 
     private function generateSystemMappingRecommendation($system, $actualSystems, $matchingCounts)
     {
@@ -592,15 +604,14 @@ class DashboardController extends Controller
             });
 
             if ($similarSystems->count() > 0) {
-                $recommendations[] = "Similar systems found: " . $similarSystems->pluck('system')->implode(', ');
+                $recommendations[] = 'Similar systems found: ' . $similarSystems->pluck('system')->implode(', ');
             }
         } else {
-            $recommendations[] = "Found " . array_sum($matchingCounts) . " total records across mapped systems.";
+            $recommendations[] = 'Found ' . array_sum($matchingCounts) . ' total records across mapped systems.';
         }
 
         return $recommendations;
     }
-
 
     /**
      * IMPROVED: Clean date range calculation excluding unwanted systems
@@ -620,17 +631,16 @@ class DashboardController extends Controller
                 'min_date' => $minDate->toDateString(),
                 'max_date' => $maxDate->toDateString(),
                 'has_data' => $hasData,
-                'excluded_systems' => $this->excludedSystems
+                'excluded_systems' => $this->excludedSystems,
             ]);
 
             return [
                 'min_date' => $minDate,
                 'max_date' => $maxDate,
-                'has_data' => $hasData
+                'has_data' => $hasData,
             ];
         });
     }
-
 
     /**
      * IMPROVED: Optimized logged-in users count with simplified query
@@ -640,7 +650,7 @@ class DashboardController extends Controller
         Log::info('getLoggedInUsersCount called (optimized version)', [
             'startDate' => $startDate->toDateString(),
             'endDate' => $endDate->toDateString(),
-            'system' => $system
+            'system' => $system,
         ]);
 
         // Much simpler query - just count distinct usernames (no complex joins)
@@ -653,11 +663,7 @@ class DashboardController extends Controller
             AND username != ''
         ";
 
-        $params = [
-            $system,
-            $startDate->format('Y-m-d H:i:s'),
-            $endDate->format('Y-m-d H:i:s')
-        ];
+        $params = [$system, $startDate->format('Y-m-d H:i:s'), $endDate->format('Y-m-d H:i:s')];
 
         try {
             $startTime = microtime(true);
@@ -670,7 +676,7 @@ class DashboardController extends Controller
                 'count' => $count,
                 'system' => $system,
                 'query_time_ms' => round($queryTime * 1000, 2),
-                'date_range' => [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')]
+                'date_range' => [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')],
             ]);
 
             return $count;
@@ -678,12 +684,11 @@ class DashboardController extends Controller
             Log::error('Optimized username count failed', [
                 'sql' => $sql,
                 'params' => $params,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
             return 0;
         }
     }
-
 
     /**
      * Clear dashboard-related caches (can be called after imports)
@@ -696,13 +701,12 @@ class DashboardController extends Controller
             'actual_date_range_clean_v2',
             'available_systems',
             'available_systems_clean',
-            'available_systems_clean_v2'
+            'available_systems_clean_v2',
         ];
 
         foreach ($cacheKeys as $key) {
             Cache::forget($key);
         }
-
 
         // Clear pattern-based cache keys
         try {
@@ -715,7 +719,7 @@ class DashboardController extends Controller
 
         return response()->json([
             'message' => 'Dashboard cache cleared successfully v2',
-            'excluded_systems' => $this->excludedSystems
+            'excluded_systems' => $this->excludedSystems,
         ]);
     }
 
@@ -729,14 +733,13 @@ class DashboardController extends Controller
         if (!in_array($system, $availableSystems)) {
             Log::warning('Invalid system selection fixed v3', [
                 'requested_system' => $system,
-                'available_systems' => $availableSystems
+                'available_systems' => $availableSystems,
             ]);
             return 'all'; // Fallback to all
         }
 
         return $system;
     }
-
 
     /**
      * Debug endpoint to verify system filtering
@@ -778,13 +781,12 @@ class DashboardController extends Controller
                 'sample_records' => \DB::table('Azure_LoginDetails')
                     ->where('system', $system)
                     ->limit(3)
-                    ->get(['user_id', 'username', 'system', 'date_utc'])
+                    ->get(['user_id', 'username', 'system', 'date_utc']),
             ];
         }
 
         return response()->json($analysis, 200, [], JSON_PRETTY_PRINT);
     }
-
 
     public function debugData(Request $request)
     {
@@ -830,12 +832,12 @@ class DashboardController extends Controller
                 'intended_end_date' => $intendedEndDate->toDateString(),
                 'actual_start_date' => $startDate->toDateString(),
                 'actual_end_date' => $endDate->toDateString(),
-                'date_range_adjusted' => ($startDate != $intendedStartDate || $endDate != $intendedEndDate),
+                'date_range_adjusted' => $startDate != $intendedStartDate || $endDate != $intendedEndDate,
                 'actual_data_range' => [
                     'min_date' => $actualDateRange['min_date']->toDateString(),
                     'max_date' => $actualDateRange['max_date']->toDateString(),
-                    'has_data' => $actualDateRange['has_data']
-                ]
+                    'has_data' => $actualDateRange['has_data'],
+                ],
             ],
             'table_info' => [
                 'signin_table_name' => (new SigninLog())->getTable(),
@@ -847,7 +849,8 @@ class DashboardController extends Controller
                 'signin_logs_in_date_range' => SigninLog::whereBetween('date_utc', [$startDate, $endDate])->count(),
                 'signin_logs_with_system' => SigninLog::where('system', $system)->count(),
                 'signin_logs_system_and_date' => SigninLog::whereBetween('date_utc', [$startDate, $endDate])
-                    ->where('system', $system)->count(),
+                    ->where('system', $system)
+                    ->count(),
                 'signin_logs_with_valid_users' => SigninLog::whereHas('user')->count(),
             ],
             'system_analysis' => [
@@ -866,12 +869,16 @@ class DashboardController extends Controller
                 'signin_logs_without_user_id' => SigninLog::whereNull('user_id')->count(),
                 'users_referenced_in_signin_logs' => SigninLog::distinct('user_id')->count(),
                 'signin_logs_with_valid_user_relationship' => SigninLog::whereHas('user')->count(),
-                'case_insensitive_matches' => \DB::select("
+                'case_insensitive_matches' =>
+                    \DB::select(
+                        "
                 SELECT COUNT(DISTINCT au.id) as count
                 FROM Azure_Users au
                 INNER JOIN Azure_LoginDetails ald ON LOWER(au.userPrincipalName) = LOWER(ald.username)
                 WHERE ald.system = ? AND ald.date_utc BETWEEN ? AND ?
-            ", [$system, $startDate, $endDate])[0]->count ?? 0,
+            ",
+                        [$system, $startDate, $endDate],
+                    )[0]->count ?? 0,
             ],
             'sample_data' => [
                 'signin_logs' => SigninLog::with('user')
@@ -890,11 +897,13 @@ class DashboardController extends Controller
                             'date_utc' => $log->date_utc->toIso8601String(),
                             'user_found' => $log->user ? 'YES' : 'NO',
                         ];
-                    })->toArray(),
-                'users_with_signins' => AzureUser::withCount(['signIns' => function ($q) use ($startDate, $endDate, $system) {
-                    $q->whereBetween('date_utc', [$startDate, $endDate])
-                        ->where('system', $system);
-                }])
+                    })
+                    ->toArray(),
+                'users_with_signins' => AzureUser::withCount([
+                    'signIns' => function ($q) use ($startDate, $endDate, $system) {
+                        $q->whereBetween('date_utc', [$startDate, $endDate])->where('system', $system);
+                    },
+                ])
                     ->limit(5)
                     ->get()
                     ->map(function ($user) {
@@ -905,13 +914,13 @@ class DashboardController extends Controller
                             'mail' => $user->mail ?? 'N/A',
                             'signin_count' => $user->sign_ins_count,
                         ];
-                    })->toArray(),
+                    })
+                    ->toArray(),
             ],
         ];
 
         return response()->json($debug, 200, [], JSON_PRETTY_PRINT);
     }
-
 
     public function diagnoseDataRelationships(Request $request)
     {
@@ -936,7 +945,8 @@ class DashboardController extends Controller
 
         $diagnostics = [];
 
-        $diagnostics['sample_login_data'] = \DB::select("
+        $diagnostics['sample_login_data'] = \DB::select(
+            "
             SELECT TOP 10
                 user_id,
                 username,
@@ -954,7 +964,9 @@ class DashboardController extends Controller
             WHERE system = ?
             AND date_utc BETWEEN ? AND ?
             ORDER BY date_utc DESC
-        ", [$system, $startDate, $endDate]);
+        ",
+            [$system, $startDate, $endDate],
+        );
 
         $diagnostics['sample_user_data'] = \DB::select("
             SELECT TOP 10
@@ -967,7 +979,8 @@ class DashboardController extends Controller
             ORDER BY userPrincipalName
         ");
 
-        $diagnostics['matching_analysis'] = \DB::select("
+        $diagnostics['matching_analysis'] = \DB::select(
+            "
             SELECT
                 'exact_id_match' as match_type,
                 COUNT(DISTINCT au.id) as matches
@@ -1002,31 +1015,38 @@ class DashboardController extends Controller
             INNER JOIN Azure_LoginDetails ald ON LOWER(au.mail) = LOWER(ald.username)
             WHERE ald.system = ? AND ald.date_utc BETWEEN ? AND ?
             AND au.mail IS NOT NULL
-        ", [
-            $system,
-            $startDate,
-            $endDate,
-            $system,
-            $startDate,
-            $endDate,
-            $system,
-            $startDate,
-            $endDate,
-            $system,
-            $startDate,
-            $endDate
-        ]);
+        ",
+            [
+                $system,
+                $startDate,
+                $endDate,
+                $system,
+                $startDate,
+                $endDate,
+                $system,
+                $startDate,
+                $endDate,
+                $system,
+                $startDate,
+                $endDate,
+            ],
+        );
 
-        $diagnostics['orphaned_logins'] = \DB::select("
+        $diagnostics['orphaned_logins'] =
+            \DB::select(
+                "
             SELECT COUNT(*) as orphaned_count
             FROM Azure_LoginDetails ald
             LEFT JOIN Azure_Users au ON au.id = ald.user_id
             WHERE au.id IS NULL
             AND ald.system = ?
             AND ald.date_utc BETWEEN ? AND ?
-        ", [$system, $startDate, $endDate])[0]->orphaned_count ?? 0;
+        ",
+                [$system, $startDate, $endDate],
+            )[0]->orphaned_count ?? 0;
 
-        $diagnostics['user_id_quality'] = \DB::select("
+        $diagnostics['user_id_quality'] = \DB::select(
+            "
             SELECT
                 COUNT(*) as total_records,
                 COUNT(CASE WHEN user_id IS NULL THEN 1 END) as null_user_id,
@@ -1036,27 +1056,35 @@ class DashboardController extends Controller
             FROM Azure_LoginDetails
             WHERE system = ?
             AND date_utc BETWEEN ? AND ?
-        ", [$system, $startDate, $endDate])[0];
+        ",
+            [$system, $startDate, $endDate],
+        )[0];
 
-        $diagnostics['matching_recommendations'] = $this->generateMatchingRecommendations($diagnostics['matching_analysis']);
+        $diagnostics['matching_recommendations'] = $this->generateMatchingRecommendations(
+            $diagnostics['matching_analysis'],
+        );
 
-        return response()->json([
-            'system' => $system,
-            'date_range' => [$startDate?->toDateString(), $endDate?->toDateString()],
-            'diagnostics' => $diagnostics,
-            'summary' => [
-                'total_logins_in_period' => SigninLog::where('system', $system)
-                    ->whereBetween('date_utc', [$startDate, $endDate])
-                    ->count(),
-                'total_users' => AzureUser::count(),
-                'valid_user_relationships' => SigninLog::whereHas('user')
-                    ->where('system', $system)
-                    ->whereBetween('date_utc', [$startDate, $endDate])
-                    ->count(),
-            ]
-        ], 200, [], JSON_PRETTY_PRINT);
+        return response()->json(
+            [
+                'system' => $system,
+                'date_range' => [$startDate?->toDateString(), $endDate?->toDateString()],
+                'diagnostics' => $diagnostics,
+                'summary' => [
+                    'total_logins_in_period' => SigninLog::where('system', $system)
+                        ->whereBetween('date_utc', [$startDate, $endDate])
+                        ->count(),
+                    'total_users' => AzureUser::count(),
+                    'valid_user_relationships' => SigninLog::whereHas('user')
+                        ->where('system', $system)
+                        ->whereBetween('date_utc', [$startDate, $endDate])
+                        ->count(),
+                ],
+            ],
+            200,
+            [],
+            JSON_PRETTY_PRINT,
+        );
     }
-
 
     private function generateMatchingRecommendations($matchingAnalysis)
     {
@@ -1071,14 +1099,14 @@ class DashboardController extends Controller
         }
 
         if (!$hasMatches) {
-            $recommendations[] = "No matches found. Consider: \n1. Data cleaning\n2. Import process review\n3. Manual user ID mapping";
+            $recommendations[] =
+                "No matches found. Consider: \n1. Data cleaning\n2. Import process review\n3. Manual user ID mapping";
         } else {
-            $recommendations[] = "Optimize matching by prioritizing successful strategies";
+            $recommendations[] = 'Optimize matching by prioritizing successful strategies';
         }
 
         return $recommendations;
     }
-
 
     /**
      * Invalidate dashboard cache
@@ -1096,7 +1124,7 @@ class DashboardController extends Controller
                 'available_systems',
                 'available_systems_clean',
                 'available_systems_clean_v2',
-                'available_systems_clean_v3'
+                'available_systems_clean_v3',
             ];
 
             foreach ($cacheKeys as $key) {
@@ -1115,11 +1143,10 @@ class DashboardController extends Controller
             Log::info('Dashboard cache invalidated successfully');
         } catch (\Exception $e) {
             Log::error('Failed to invalidate dashboard cache', [
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
         }
     }
-
 
     /**
      * Get user summary from stored procedure - FIXED with actual column names
@@ -1128,7 +1155,7 @@ class DashboardController extends Controller
     {
         try {
             $pdo = DB::connection()->getPdo();
-            $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC dbo.sp_Azure_UserSummary;");
+            $stmt = $pdo->prepare('SET NOCOUNT ON; EXEC dbo.sp_Azure_UserSummary;');
             $stmt->execute();
 
             $results = $stmt->fetchAll(\PDO::FETCH_OBJ);
@@ -1166,7 +1193,7 @@ class DashboardController extends Controller
             Log::error('Failed to get user summary from SP', [
                 'error' => $e->getMessage(),
                 'line' => $e->getLine(),
-                'trace' => substr($e->getTraceAsString(), 0, 500)
+                'trace' => substr($e->getTraceAsString(), 0, 500),
             ]);
 
             return [
@@ -1178,7 +1205,6 @@ class DashboardController extends Controller
         }
     }
 
-
     /**
      * Get login view list from stored procedure - FIXED with day-based counting
      */
@@ -1186,7 +1212,7 @@ class DashboardController extends Controller
     {
         try {
             $pdo = DB::connection()->getPdo();
-            $stmt = $pdo->prepare("SET NOCOUNT ON; EXEC dbo.sp_Azure_LoginViewList;");
+            $stmt = $pdo->prepare('SET NOCOUNT ON; EXEC dbo.sp_Azure_LoginViewList;');
             $stmt->execute();
 
             $results = $stmt->fetchAll(\PDO::FETCH_OBJ);
@@ -1220,7 +1246,7 @@ class DashboardController extends Controller
 
                 // Convert to integer if it's numeric
                 if (is_numeric($loginsLastMonth)) {
-                    $loginsLastMonth = (int)$loginsLastMonth;
+                    $loginsLastMonth = (int) $loginsLastMonth;
                 }
                 // Check for string representations
                 elseif (is_string($loginsLastMonth)) {
@@ -1232,16 +1258,16 @@ class DashboardController extends Controller
                         Log::info('Asterisk value replaced with actual day count', [
                             'user' => $item->Name ?? 'N/A',
                             'login_id' => $item->LoginID ?? 'N/A',
-                            'actual_days' => $loginsLastMonth
+                            'actual_days' => $loginsLastMonth,
                         ]);
                     } elseif ($trimmed === 'Never Logged In' || $trimmed === 'Never' || $trimmed === '') {
                         $loginsLastMonth = 0;
                     } elseif (is_numeric($trimmed)) {
-                        $loginsLastMonth = (int)$trimmed;
+                        $loginsLastMonth = (int) $trimmed;
                     } else {
                         Log::warning('Unexpected logins value format', [
                             'user' => $item->Name ?? 'N/A',
-                            'value' => $loginsLastMonth
+                            'value' => $loginsLastMonth,
                         ]);
                         $loginsLastMonth = 0;
                     }
@@ -1262,173 +1288,17 @@ class DashboardController extends Controller
             Log::error('Failed to get login view list from SP', [
                 'error' => $e->getMessage(),
                 'line' => $e->getLine(),
-                'trace' => substr($e->getTraceAsString(), 0, 500)
+                'trace' => substr($e->getTraceAsString(), 0, 500),
             ]);
 
             return collect();
         }
     }
 
-
-    /**
-     * Get user summary using direct queries (bypasses SP to use actual data range)
-     * FIXED: Uses case-insensitive user_id matching for SQL Server
-     */
-
-    // private function getUserSummaryDirect()
-    // {
-    //     try {
-    //         // Get actual date range from imported data
-    //         $actualRange = $this->statsService->getActualDateRange();
-
-    //         if (!$actualRange['has_data']) {
-    //             Log::warning('No signin data found in database');
-    //             return [
-    //                 'total_users' => AzureUser::valid()->count(),
-    //                 'active_this_month' => 0,
-    //                 'active_last_month' => 0,
-    //                 'inactive_users' => AzureUser::valid()->count(),
-    //             ];
-    //         }
-
-    //         $dataMin = $actualRange['min'];
-    //         $dataMax = $actualRange['max'];
-
-    //         // CHANGED: Use current calendar month instead of "last 30 days"
-    //         $currentMonthStart = now()->startOfMonth();  // Jan 1, 2026
-    //         $currentMonthEnd = now()->endOfMonth();      // Jan 31, 2026
-
-    //         // Constrain to available data (don't query beyond what we have)
-    //         // $currentMonthStart = max($currentMonthStart, $dataMin);
-    //         // $currentMonthEnd = min($currentMonthEnd, $dataMax);
-
-    //         // "Active Last Month" = entire imported period (or you could use previous calendar month)
-    //         $lastMonthStart = now()->subMonth()->startOfMonth();  // Dec 1, 2025
-    //         $lastMonthEnd = now()->subMonth()->endOfMonth();
-
-    //         Log::info('📅 Calendar month ranges calculated', [
-    //             'current_calendar_month' => [
-    //                 now()->startOfMonth()->format('Y-m-d'),
-    //                 now()->endOfMonth()->format('Y-m-d')
-    //             ],
-    //             'constrained_to_data' => [
-    //                 $currentMonthStart->format('Y-m-d'),
-    //                 $currentMonthEnd->format('Y-m-d')
-    //             ],
-    //             'data_available_until' => $dataMax->format('Y-m-d'),
-    //         ]);
-
-    //         // Total users
-    //         $totalUsers = AzureUser::valid()->count();
-
-    //         // Active this month (current calendar month with available data)
-    //         $activeThisMonth = DB::select("
-    //             SELECT COUNT(DISTINCT au.id) as count
-    //             FROM Azure_Users au
-    //             WHERE au.displayName IS NOT NULL 
-    //                 AND au.displayName != ''
-    //                 AND au.displayName NOT LIKE 'User-%'
-    //                 AND au.userPrincipalName IS NOT NULL
-    //                 AND au.userPrincipalName != ''
-    //                 AND au.userPrincipalName NOT LIKE 'User-%'
-    //                 AND EXISTS (
-    //                     SELECT 1 
-    //                     FROM Azure_LoginDetails ald 
-    //                     WHERE LOWER(ald.username) = LOWER(au.userPrincipalName)
-    //                         AND ald.date_utc BETWEEN ? AND ?
-    //                 )
-    //             ", [$currentMonthStart, $currentMonthEnd])[0]->count ?? 0;
-
-    //         // Active last month (entire imported period)
-    //         $activeLastMonth = DB::select("
-    //         SELECT COUNT(DISTINCT au.id) as count
-    //         FROM Azure_Users au
-    //         WHERE au.displayName IS NOT NULL 
-    //             AND au.displayName != ''
-    //             AND au.displayName NOT LIKE 'User-%'
-    //             AND au.userPrincipalName IS NOT NULL
-    //             AND au.userPrincipalName != ''
-    //             AND au.userPrincipalName NOT LIKE 'User-%'
-    //             AND EXISTS (
-    //                 SELECT 1 
-    //                 FROM Azure_LoginDetails ald 
-    //                 WHERE LOWER(ald.username) = LOWER(au.userPrincipalName)
-    //                     AND ald.date_utc BETWEEN ? AND ?
-    //             )
-    //     ", [$lastMonthStart, $lastMonthEnd])[0]->count ?? 0;
-
-    //         // Inactive for 3+ months (users who haven't logged in for the past 3 months)
-    //         $threeMonthsAgo = now()->subMonths(3)->startOfDay();
-    //         $inactiveThreeMonths = DB::select("
-    //             SELECT COUNT(*) as count
-    //             FROM Azure_Users au
-    //             WHERE au.displayName IS NOT NULL 
-    //                 AND au.displayName != ''
-    //                 AND au.displayName NOT LIKE 'User-%'
-    //                 AND au.userPrincipalName IS NOT NULL
-    //                 AND au.userPrincipalName != ''
-    //                 AND au.userPrincipalName NOT LIKE 'User-%'
-    //                 AND NOT EXISTS (
-    //                     SELECT 1 
-    //                     FROM Azure_LoginDetails ald 
-    //                     WHERE LOWER(ald.username) = LOWER(au.userPrincipalName)
-    //                         AND ald.date_utc >= ?
-    //                 )
-    //             ", [$threeMonthsAgo])[0]->count ?? 0;
-    //         // Inactive users (never logged in)
-    //         $inactiveUsers = DB::select("
-    //         SELECT COUNT(*) as count
-    //         FROM Azure_Users au
-    //         WHERE au.displayName IS NOT NULL 
-    //             AND au.displayName != ''
-    //             AND au.displayName NOT LIKE 'User-%'
-    //             AND au.userPrincipalName IS NOT NULL
-    //             AND au.userPrincipalName != ''
-    //             AND au.userPrincipalName NOT LIKE 'User-%'
-    //             AND NOT EXISTS (
-    //                 SELECT 1 
-    //                 FROM Azure_LoginDetails ald 
-    //                 WHERE LOWER(ald.username) = LOWER(au.userPrincipalName)
-    //             )
-    //         ")[0]->count ?? 0;
-
-    //         Log::info('✅ Summary calculated with calendar month', [
-    //             'total_users' => $totalUsers,
-    //             'active_this_month' => $activeThisMonth,
-    //             'active_last_month' => $activeLastMonth,
-    //             'inactive_3_months' => $inactiveThreeMonths,
-    //             'never_logged_in' => $inactiveUsers,
-    //             'current_month' => now()->format('F Y'),
-    //         ]);
-
-    //         return [
-    //             'total_users' => $totalUsers,
-    //             'active_this_month' => $activeThisMonth,
-    //             'active_last_month' => $activeLastMonth,
-    //             // 'inactive_users' => $inactiveUsers,
-    //             'inactive_users' => $inactiveThreeMonths,
-    //             'never_logged_in' => $inactiveUsers,
-    //         ];
-    //     } catch (\Exception $e) {
-    //         Log::error('❌ Failed to get user summary via direct query', [
-    //             'error' => $e->getMessage(),
-    //             'trace' => substr($e->getTraceAsString(), 0, 500)
-    //         ]);
-
-    //         return [
-    //             'total_users' => 0,
-    //             'active_this_month' => 0,
-    //             'active_last_month' => 0,
-    //             'inactive_users' => 0,
-    //         ];
-    //     }
-    // }
-
     private function getUserSummaryDirect()
     {
         return \App\Models\Logintracker\AzureUser::getUserSummary();
     }
-
 
     /**
      * Get login view list using direct queries (bypasses SP to use actual data range)
@@ -1457,7 +1327,8 @@ class DashboardController extends Controller
             ]);
 
             // FIXED: Use INNER JOIN to only get users with logins, then LEFT JOIN to get all users
-            $usersWithLogins = DB::select("
+            $usersWithLogins = DB::select(
+                "
             SELECT 
                 au.id,
                 au.displayName as name,
@@ -1476,7 +1347,9 @@ class DashboardController extends Controller
                 AND au.userPrincipalName NOT LIKE 'User-%'
             GROUP BY au.id, au.displayName, au.userPrincipalName
             ORDER BY au.displayName
-        ", [$periodStart, $periodEnd]);
+        ",
+                [$periodStart, $periodEnd],
+            );
 
             // Get all valid users
             $allUsers = DB::select("
@@ -1519,13 +1392,12 @@ class DashboardController extends Controller
         } catch (\Exception $e) {
             Log::error('❌ Failed to get login view list via direct query', [
                 'error' => $e->getMessage(),
-                'trace' => substr($e->getTraceAsString(), 0, 500)
+                'trace' => substr($e->getTraceAsString(), 0, 500),
             ]);
 
             return collect();
         }
     }
-
 
     /**
      * Get actual login count for a user when stored procedure returns asterisk
@@ -1542,33 +1414,31 @@ class DashboardController extends Controller
 
             // Count distinct APPLICATION + DATE combinations
             // This counts each application once per day, regardless of how many times accessed
-            $count = DB::table('Azure_LoginDetails')
-                ->where('username', $loginId)
-                ->whereBetween('date_utc', [$lastMonthStart, $lastMonthEnd])
-                ->whereNotNull('application')
-                ->where('application', '!=', '')
-                ->selectRaw('COUNT(DISTINCT CONCAT(CAST(date_utc AS DATE), \'|\', application)) as unique_app_days')
-                ->first()
-                ->unique_app_days ?? 0;
+            $count =
+                DB::table('Azure_LoginDetails')
+                    ->where('username', $loginId)
+                    ->whereBetween('date_utc', [$lastMonthStart, $lastMonthEnd])
+                    ->whereNotNull('application')
+                    ->where('application', '!=', '')
+                    ->selectRaw('COUNT(DISTINCT CONCAT(CAST(date_utc AS DATE), \'|\', application)) as unique_app_days')
+                    ->first()->unique_app_days ?? 0;
 
             Log::info('Unique application-day combinations calculated', [
                 'login_id' => $loginId,
                 'unique_app_days' => $count,
                 'date_range' => [$lastMonthStart->toDateString(), $lastMonthEnd->toDateString()],
-                'count_logic' => 'Each application counts once per day'
+                'count_logic' => 'Each application counts once per day',
             ]);
 
             return $count;
         } catch (\Exception $e) {
             Log::error('Failed to get actual login count', [
                 'login_id' => $loginId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
             return 0;
         }
     }
-
-
 
     /**
      * Debug endpoint to verify login count for a specific user
@@ -1599,12 +1469,12 @@ class DashboardController extends Controller
                 ->count();
 
             // Get distinct days logged in last month
-            $distinctDaysLastMonth = DB::table('Azure_LoginDetails')
-                ->where('username', $loginId)
-                ->whereBetween('date_utc', [$lastMonthStart, $lastMonthEnd])
-                ->selectRaw('COUNT(DISTINCT CAST(date_utc AS DATE)) as distinct_days')
-                ->first()
-                ->distinct_days ?? 0;
+            $distinctDaysLastMonth =
+                DB::table('Azure_LoginDetails')
+                    ->where('username', $loginId)
+                    ->whereBetween('date_utc', [$lastMonthStart, $lastMonthEnd])
+                    ->selectRaw('COUNT(DISTINCT CAST(date_utc AS DATE)) as distinct_days')
+                    ->first()->distinct_days ?? 0;
 
             // Get breakdown by application (changed from system)
             $applicationBreakdown = DB::table('Azure_LoginDetails')
@@ -1651,9 +1521,7 @@ class DashboardController extends Controller
                 ->get();
 
             // Get all-time statistics
-            $allTimeCount = DB::table('Azure_LoginDetails')
-                ->where('username', $loginId)
-                ->count();
+            $allTimeCount = DB::table('Azure_LoginDetails')->where('username', $loginId)->count();
 
             $firstEverLogin = DB::table('Azure_LoginDetails')
                 ->where('username', $loginId)
@@ -1665,59 +1533,69 @@ class DashboardController extends Controller
                 ->orderBy('date_utc', 'desc')
                 ->first(['date_utc', 'application']);
 
-            return response()->json([
-                'user' => $loginId,
-                'date_ranges' => [
-                    'last_month' => [
-                        'start' => $lastMonthStart->toDateString(),
-                        'end' => $lastMonthEnd->toDateString(),
+            return response()->json(
+                [
+                    'user' => $loginId,
+                    'date_ranges' => [
+                        'last_month' => [
+                            'start' => $lastMonthStart->toDateString(),
+                            'end' => $lastMonthEnd->toDateString(),
+                        ],
+                        'current_month' => [
+                            'start' => $currentMonthStart->toDateString(),
+                            'end' => $currentMonthEnd->toDateString(),
+                        ],
                     ],
-                    'current_month' => [
-                        'start' => $currentMonthStart->toDateString(),
-                        'end' => $currentMonthEnd->toDateString(),
-                    ]
+                    'summary' => [
+                        'last_month_total_logins' => $lastMonthCount,
+                        'current_month_total_logins' => $currentMonthCount,
+                        'distinct_days_last_month' => $distinctDaysLastMonth,
+                        'average_logins_per_day_last_month' =>
+                            $distinctDaysLastMonth > 0 ? round($lastMonthCount / $distinctDaysLastMonth, 2) : 0,
+                        'all_time_logins' => $allTimeCount,
+                    ],
+                    'analysis' => [
+                        'is_count_suspicious' => $lastMonthCount > 500,
+                        'has_duplicates' => count($duplicateCheck) > 0,
+                        'applications_used' => count($applicationBreakdown),
+                        'interpretation' => $this->interpretLoginCount(
+                            $lastMonthCount,
+                            $distinctDaysLastMonth,
+                            count($duplicateCheck),
+                        ),
+                    ],
+                    'breakdown_by_application' => $applicationBreakdown,
+                    'daily_breakdown' => $dailyBreakdown,
+                    'duplicate_timestamps' => $duplicateCheck,
+                    'sample_logins' => [
+                        'first_10_last_month' => $firstLogins,
+                        'last_10_last_month' => $lastLogins,
+                    ],
+                    'historical' => [
+                        'first_ever_login' => $firstEverLogin,
+                        'last_ever_login' => $lastEverLogin,
+                    ],
                 ],
-                'summary' => [
-                    'last_month_total_logins' => $lastMonthCount,
-                    'current_month_total_logins' => $currentMonthCount,
-                    'distinct_days_last_month' => $distinctDaysLastMonth,
-                    'average_logins_per_day_last_month' => $distinctDaysLastMonth > 0
-                        ? round($lastMonthCount / $distinctDaysLastMonth, 2)
-                        : 0,
-                    'all_time_logins' => $allTimeCount,
-                ],
-                'analysis' => [
-                    'is_count_suspicious' => $lastMonthCount > 500,
-                    'has_duplicates' => count($duplicateCheck) > 0,
-                    'applications_used' => count($applicationBreakdown),
-                    'interpretation' => $this->interpretLoginCount($lastMonthCount, $distinctDaysLastMonth, count($duplicateCheck)),
-                ],
-                'breakdown_by_application' => $applicationBreakdown,
-                'daily_breakdown' => $dailyBreakdown,
-                'duplicate_timestamps' => $duplicateCheck,
-                'sample_logins' => [
-                    'first_10_last_month' => $firstLogins,
-                    'last_10_last_month' => $lastLogins,
-                ],
-                'historical' => [
-                    'first_ever_login' => $firstEverLogin,
-                    'last_ever_login' => $lastEverLogin,
-                ],
-            ], 200, [], JSON_PRETTY_PRINT);
+                200,
+                [],
+                JSON_PRETTY_PRINT,
+            );
         } catch (\Exception $e) {
             Log::error('Failed to debug user logins', [
                 'login_id' => $loginId,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
-            return response()->json([
-                'error' => 'Failed to retrieve login data',
-                'message' => $e->getMessage()
-            ], 500);
+            return response()->json(
+                [
+                    'error' => 'Failed to retrieve login data',
+                    'message' => $e->getMessage(),
+                ],
+                500,
+            );
         }
     }
-
 
     /**
      * Interpret login count and provide insights
@@ -1727,7 +1605,7 @@ class DashboardController extends Controller
         $insights = [];
 
         if ($totalLogins > 1000) {
-            $insights[] = "⚠️ Very high login count (>1000) - May indicate data duplication or automated processes";
+            $insights[] = '⚠️ Very high login count (>1000) - May indicate data duplication or automated processes';
         }
 
         if ($distinctDays > 0) {
@@ -1743,81 +1621,51 @@ class DashboardController extends Controller
         }
 
         if ($duplicateCount > 0) {
-            $insights[] = "⚠️ Duplicate timestamps detected - May indicate data import issues";
+            $insights[] = '⚠️ Duplicate timestamps detected - May indicate data import issues';
         }
 
         if (empty($insights)) {
-            $insights[] = "✅ Login count appears normal";
+            $insights[] = '✅ Login count appears normal';
         }
 
         return $insights;
     }
-
-
-    // private function applyCardFilter($loginList, $filter)
-    // {
-    //     $actualRange = $this->statsService->getActualDateRange();
-
-    //     if (!$actualRange['has_data']) {
-    //         return $loginList;
-    //     }
-
-    //     $dataMin = $actualRange['min'];
-    //     $dataMax = $actualRange['max'];
-
-    //     // "This month" = last 30 days of data
-    //     $thisMonthStart = max($dataMin, $dataMax->copy()->subDays(30));
-    //     $thisMonthEnd = $dataMax;
-
-    //     // Convert to timestamps once for comparison
-    //     $thisMonthStartTs = $thisMonthStart->timestamp;
-    //     $thisMonthEndTs = $thisMonthEnd->timestamp;
-    //     $lastMonthStartTs = $dataMin->timestamp;
-    //     $lastMonthEndTs = $dataMax->timestamp;
-
-    //     return match ($filter) {
-    //         'active_this_month' => $loginList->filter(function ($user) use ($thisMonthStartTs, $thisMonthEndTs) {
-    //             if (empty($user['last_login'])) return false;
-    //             $loginTs = strtotime($user['last_login']);
-    //             return $loginTs >= $thisMonthStartTs && $loginTs <= $thisMonthEndTs;
-    //         })->values(),
-
-    //         'active_last_month' => $loginList->filter(function ($user) use ($lastMonthStartTs, $lastMonthEndTs) {
-    //             if (empty($user['last_login'])) return false;
-    //             $loginTs = strtotime($user['last_login']);
-    //             return $loginTs >= $lastMonthStartTs && $loginTs <= $lastMonthEndTs;
-    //         })->values(),
-
-    //         'inactive' => $loginList->filter(function ($user) {
-    //             return empty($user['last_login']) || is_null($user['last_login']);
-    //         })->values(),
-
-    //         default => $loginList
-    //     };
-    // }
-
-
+    
     public function debugRelationships(Request $request)
     {
         $system = $request->input('system', 'SCM');
 
         // Check data existence
         $diagnostics = [
-            'total_users' => \DB::select("SELECT COUNT(*) as count FROM Azure_Users")[0]->count,
-            'total_logins' => \DB::select("SELECT COUNT(*) as count FROM Azure_LoginDetails")[0]->count,
-            'logins_with_user_id' => \DB::select("SELECT COUNT(*) as count FROM Azure_LoginDetails WHERE user_id IS NOT NULL")[0]->count,
-            'logins_with_username' => \DB::select("SELECT COUNT(*) as count FROM Azure_LoginDetails WHERE username IS NOT NULL")[0]->count,
-            'system_logins' => \DB::select("SELECT COUNT(*) as count FROM Azure_LoginDetails WHERE system = ?", [$system])[0]->count,
+            'total_users' => \DB::select('SELECT COUNT(*) as count FROM Azure_Users')[0]->count,
+            'total_logins' => \DB::select('SELECT COUNT(*) as count FROM Azure_LoginDetails')[0]->count,
+            'logins_with_user_id' => \DB::select(
+                'SELECT COUNT(*) as count FROM Azure_LoginDetails WHERE user_id IS NOT NULL',
+            )[0]->count,
+            'logins_with_username' => \DB::select(
+                'SELECT COUNT(*) as count FROM Azure_LoginDetails WHERE username IS NOT NULL',
+            )[0]->count,
+            'system_logins' => \DB::select('SELECT COUNT(*) as count FROM Azure_LoginDetails WHERE system = ?', [
+                $system,
+            ])[0]->count,
         ];
 
         // Sample data
-        $sampleLogins = \DB::select("SELECT TOP 5 user_id, username, system, date_utc FROM Azure_LoginDetails WHERE system = ? ORDER BY date_utc DESC", [$system]);
-        $sampleUsers = \DB::select("SELECT TOP 5 id, userPrincipalName, displayName FROM Azure_Users");
+        $sampleLogins = \DB::select(
+            'SELECT TOP 5 user_id, username, system, date_utc FROM Azure_LoginDetails WHERE system = ? ORDER BY date_utc DESC',
+            [$system],
+        );
+        $sampleUsers = \DB::select('SELECT TOP 5 id, userPrincipalName, displayName FROM Azure_Users');
 
-        return response()->json([
-            'diagnostics' => $diagnostics,
-            'sample_logins' => $sampleLogins,
-            'sample_users' => $sampleUsers
-        ], 200, [], JSON_PRETTY_PRINT);
+        return response()->json(
+            [
+                'diagnostics' => $diagnostics,
+                'sample_logins' => $sampleLogins,
+                'sample_users' => $sampleUsers,
+            ],
+            200,
+            [],
+            JSON_PRETTY_PRINT,
+        );
     }
 }

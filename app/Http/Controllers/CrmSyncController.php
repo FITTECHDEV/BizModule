@@ -37,7 +37,7 @@ class CrmSyncController extends Controller
         $limit = $request->input('limit') ? (int) $request->input('limit') : null;
         $bookingNo = $request->input('booking') ?: null;
 
-        $triggeredBy = Auth::user()->displayName ?? Auth::user()->Email ?? 'system';
+        $triggeredBy = Auth::user()->displayName ?? (Auth::user()->Email ?? 'system');
 
         \Illuminate\Support\Facades\Log::info('CRM Sync - Triggered via web', [
             'user' => $triggeredBy,

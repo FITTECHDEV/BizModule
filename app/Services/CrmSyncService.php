@@ -32,8 +32,12 @@ class CrmSyncService
      * @param  int|null    $limit     Max records to process
      * @param  string|null $bookingNo Sync a single booking number
      */
-    public function run(bool $dryRun = false, ?int $limit = null, ?string $bookingNo = null, string $triggeredBy = 'system'): array
-    {
+    public function run(
+        bool $dryRun = false,
+        ?int $limit = null,
+        ?string $bookingNo = null,
+        string $triggeredBy = 'system',
+    ): array {
         $inserted = 0;
         $updated = 0;
         $skipped = 0;
@@ -64,14 +68,14 @@ class CrmSyncService
                     'SELECT bookingno, bookingdetailsjson
                      FROM   crm_details
                      WHERE  bookingno = ?
-                     ORDER  BY bookingno ASC'
+                     ORDER  BY bookingno ASC',
                 );
                 $stmt->execute([$bookingNo]);
             } else {
                 $stmt = $pdo->query(
                     'SELECT bookingno, bookingdetailsjson
                      FROM   crm_details
-                     ORDER  BY bookingno ASC'
+                     ORDER  BY bookingno ASC',
                 );
             }
 
@@ -86,7 +90,7 @@ class CrmSyncService
             ]);
 
             return $this->result(0, 0, 0, 0, 0, [
-                ['bookingno' => null, 'error' => 'CRM setup failed: ' . $e->getMessage()]
+                ['bookingno' => null, 'error' => 'CRM setup failed: ' . $e->getMessage()],
             ]);
         }
 
@@ -100,7 +104,7 @@ class CrmSyncService
         if ($total === 0) {
             Log::warning('CRM Sync - No records returned from crm_details.');
             return $this->result(0, 0, 0, 0, 0, [
-                ['bookingno' => null, 'error' => 'No records returned from crm_details']
+                ['bookingno' => null, 'error' => 'No records returned from crm_details'],
             ]);
         }
 
@@ -158,7 +162,7 @@ class CrmSyncService
                     continue;
                 }
 
-                $stmt = $scmPdo->prepare("EXEC dbo.sp_Quote_QuotationCreate ?");
+                $stmt = $scmPdo->prepare('EXEC dbo.sp_Quote_QuotationCreate ?');
                 $stmt->execute([$row->bookingdetailsjson]);
 
                 $action = $existing ? 'updated' : 'inserted';
@@ -319,7 +323,7 @@ class CrmSyncService
 
             // ── Service details ──────────────────────────────────────
             'serviceverticalid' => $d['serviceverticalid'] ?? null,
-            'serviceverticalname' => $d['svname'] ?? $d['serviceverticalname'] ?? '',
+            'serviceverticalname' => $d['svname'] ?? ($d['serviceverticalname'] ?? ''),
             'ServiceVertical' => $d['servicevertical'] ?? null,
             'SVName' => $d['svname'] ?? '',
             'TransportMode' => $d['transportmode'] ?? '',
@@ -386,7 +390,8 @@ class CrmSyncService
 
             // Single booking path — return that one row in full
             if ($bookingNo) {
-                $row = $scm->table('Quote_QuotationInfo')
+                $row = $scm
+                    ->table('Quote_QuotationInfo')
                     ->where('bookingno', $bookingNo)
                     ->first([
                         'bookingno',
@@ -407,15 +412,15 @@ class CrmSyncService
 
             // Full sync path — scope to only the booking numbers
             // processed in this run, not ALL crm_sync rows ever written
-            $query = $scm->table('Quote_QuotationInfo')
-                ->where('LastModifiedBy', 'crm_sync');
+            $query = $scm->table('Quote_QuotationInfo')->where('LastModifiedBy', 'crm_sync');
 
             if (!empty($processedBookingNos)) {
                 $query->whereIn('bookingno', $processedBookingNos);
             }
 
             $total = $query->count();
-            $recent = $query->orderByDesc('Updatedon')
+            $recent = $query
+                ->orderByDesc('Updatedon')
                 ->get(['bookingno', 'companyname', 'teamname', 'QuoteStatus', 'Updatedon'])
                 ->toArray();
 
@@ -434,23 +439,27 @@ class CrmSyncService
         $won = strtolower(trim($wonStatus ?? ''));
         $st = strtolower(trim($status ?? ''));
 
-        if ($won === 'won' || $st === 'won')
+        if ($won === 'won' || $st === 'won') {
             return 'Won';
-        if ($won === 'lost' || $st === 'lost')
+        }
+        if ($won === 'lost' || $st === 'lost') {
             return 'Lost';
-        if ($won === 'cancel')
+        }
+        if ($won === 'cancel') {
             return 'Canceled';
-        if ($won === 'pending')
+        }
+        if ($won === 'pending') {
             return 'In Progress';
+        }
 
         return 'In Progress'; // default
     }
 
-
     private function parseDate(?string $value): ?string
     {
-        if (empty($value))
+        if (empty($value)) {
             return null;
+        }
         $ts = strtotime($value);
         return $ts !== false ? date('Y-m-d H:i:s', $ts) : null;
     }
@@ -463,7 +472,7 @@ class CrmSyncService
         int $failed,
         array $errors = [],
         ?array $verification = null,
-        array $records = []   // NEW — per-record outcomes; defaults to [] so early-return callers are unaffected
+        array $records = [], // NEW — per-record outcomes; defaults to [] so early-return callers are unaffected
     ): array {
         return compact('total', 'inserted', 'updated', 'skipped', 'failed', 'errors', 'verification', 'records');
     }
@@ -517,11 +526,7 @@ class CrmSyncService
         $path = storage_path('app/' . self::HISTORY_FILE);
 
         try {
-            file_put_contents(
-                $path,
-                json_encode($entry) . PHP_EOL,
-                FILE_APPEND | LOCK_EX
-            );
+            file_put_contents($path, json_encode($entry) . PHP_EOL, FILE_APPEND | LOCK_EX);
 
             // Rotate: keep only the last HISTORY_MAX_LINES entries
             $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
