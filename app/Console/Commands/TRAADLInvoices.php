@@ -101,22 +101,22 @@ class TRAADLInvoices extends Command
      *
      * @return bool
      */
-    protected function isApiAvailable()
-    {
-        $baseUrl = rtrim(env('TRA_BASE_URL'), '/');
-        $url = "{$baseUrl}/invoices";
+    // protected function isApiAvailable()
+    // {
+    //     $baseUrl = rtrim(env('TRA_BASE_URL'), '/');
+    //     $url = "{$baseUrl}/invoices";
 
-        try {
-            $response = Http::withBasicAuth(env('TRA_USERNAME'), env('TRA_PASSWORD'))
-                ->timeout(5)
-                ->get($url);
+    //     try {
+    //         $response = Http::withBasicAuth(env('TRA_USERNAME'), env('TRA_PASSWORD'))
+    //             ->timeout(5)
+    //             ->get($url);
 
-            return $response->ok();
-        } catch (\Exception $e) {
-            Log::error("API availability check failed: " . $e->getMessage());
-            return false;
-        }
-    }
+    //         return $response->ok();
+    //     } catch (\Exception $e) {
+    //         Log::error("API availability check failed: " . $e->getMessage());
+    //         return false;
+    //     }
+    // }
 
     /**
      * Fetch pending invoices and generate JSON using stored procedure.

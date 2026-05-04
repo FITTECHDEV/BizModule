@@ -7838,6 +7838,7 @@
             $('#saveInquiryBtn').on('click', function() {
                 var code = $('#salesPersonCode').val().trim();
                 var email = $('#salesPersonEmail').val().trim();
+                var currency = $('#quotationCurrencySelect').val().trim(); 
 
                 if (!code) {
                     showNotification('Please select a Sales Person.', 'error');
