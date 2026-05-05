@@ -18,9 +18,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Yajra\DataTables\Facades\DataTables;
-use App\Http\Controllers\ShipmentReportController;      
-
-
+use App\Http\Controllers\ShipmentReportController;
 
 class HomeController extends Controller
 {
@@ -100,7 +98,7 @@ class HomeController extends Controller
                 $tracker_stats = $this->getTrackerStats();
             } catch (\Exception $e) {
                 \Log::error('Tracker Stats Error: ' . $e->getMessage());
-                $tracker_stats = (object)[
+                $tracker_stats = (object) [
                     'Planned' => 0,
                     'in_progress' => 0,
                     'completed' => 0,
@@ -110,71 +108,70 @@ class HomeController extends Controller
 
             $active_this_month = $loginTrackerStats['active_this_month'];
             $active_last_month = $loginTrackerStats['active_last_month'];
-            $inactive_users    = $loginTrackerStats['inactive_users'];
-            $total_users       = $loginTrackerStats['total_users'];
+            $inactive_users = $loginTrackerStats['inactive_users'];
+            $total_users = $loginTrackerStats['total_users'];
 
             $shipment_reports_stats = ShipmentReportController::getHomeStats();
 
             $scm_profit_stats_obj = DB::table('CRM_SCMprofit_integration')
                 ->whereNotNull('clientid')
-                ->whereRaw("CAST(createdon as date) = CAST(GETDATE() as date)")
-                ->selectRaw("
+                ->whereRaw('CAST(createdon as date) = CAST(GETDATE() as date)')
+                ->selectRaw(
+                    "
                 COUNT(*) as total,
                 SUM(CASE WHEN LEN(ISNULL(SCMINTStatus,'')) <= 0 THEN 1 ELSE 0 END) as pending,
                 SUM(CASE WHEN CHARINDEX('success', LOWER(SCMINTStatus), 1) > 0 THEN 1 ELSE 0 END) as success,
                 SUM(CASE WHEN LEN(ISNULL(SCMINTStatus,'')) > 0 AND CHARINDEX('success', LOWER(SCMINTStatus), 1) = 0 THEN 1 ELSE 0 END) as failed
-            ")
+            ",
+                )
                 ->first();
 
             $scm_profit_stats = [
-                'total'   => $scm_profit_stats_obj->total   ?? 0,
+                'total' => $scm_profit_stats_obj->total ?? 0,
                 'pending' => $scm_profit_stats_obj->pending ?? 0,
                 'success' => $scm_profit_stats_obj->success ?? 0,
-                'failed'  => $scm_profit_stats_obj->failed  ?? 0,
+                'failed' => $scm_profit_stats_obj->failed ?? 0,
             ];
 
-         // ── Office switcher — resolve active office from session ──────────────
-$activeOfficeCode = session('active_office_code');
+            // ── Office switcher — resolve active office from session ──────────────
+            $activeOfficeCode = session('active_office_code');
 
-$baseOfficeData = $this->getAzureOfficeData(null);
-$baseOffice     = $baseOfficeData['baseOffice'];
-$otherOffices   = $baseOfficeData['otherOffices'];
-$hasAzure       = $baseOfficeData['hasAzure'];
+            $baseOfficeData = $this->getAzureOfficeData(null);
+            $baseOffice = $baseOfficeData['baseOffice'];
+            $otherOffices = $baseOfficeData['otherOffices'];
+            $hasAzure = $baseOfficeData['hasAzure'];
 
-if (!$activeOfficeCode && !empty($baseOffice)) {
-    $activeOfficeCode = $baseOffice;
-    session(['active_office_code' => $activeOfficeCode]);
-}
+            if (!$activeOfficeCode && !empty($baseOffice)) {
+                $activeOfficeCode = $baseOffice;
+                session(['active_office_code' => $activeOfficeCode]);
+            }
 
-$activeOfficeData = $this->getAzureOfficeData($activeOfficeCode);
-$activeModules    = $activeOfficeData['modules'];
+            $activeOfficeData = $this->getAzureOfficeData($activeOfficeCode);
+            $activeModules = $activeOfficeData['modules'];
 
-$officeGate = [
-    'tims'    => ['KE', 'UPS'],
-    'efris'   => ['UG'],
-    'tra_tz'  => ['AR'],
-    'tra_adl' => ['TZ'],
-    'rra'     => ['RW'],
-];
+            $officeGate = [
+                'tims' => ['KE', 'UPS'],
+                'efris' => ['UG'],
+                'tra_tz' => ['AR'],
+                'tra_adl' => ['TZ'],
+                'rra' => ['RW'],
+            ];
 
-$effectiveOffice = $activeOfficeCode ?? $baseOffice;
+            $effectiveOffice = $activeOfficeCode ?? $baseOffice;
 
-$canSeeAll = $hasAzure && (
-    in_array('ALL', $activeModules) ||
-    in_array(null, $activeModules)
-);
-// ─────────────────────────────────────────────────────────────────────
+            $canSeeAll = $hasAzure && (in_array('ALL', $activeModules) || in_array(null, $activeModules));
+            // ─────────────────────────────────────────────────────────────────────
 
-$canViewQuotationCard = \Illuminate\Support\Facades\Gate::allows('view-quotation');
+            $canViewQuotationCard = \Illuminate\Support\Facades\Gate::allows('view-quotation');
 
-try {
-    $quotation_stats = $canViewQuotationCard
-        ? \App\Http\Controllers\QuotationController::getHomeStats($effectiveOffice)
-        : ['total' => 0, 'in_progress' => 0, 'failed_int' => 0, 'failed_progress' => 0];
-} catch (\Exception $e) {
-    \Log::error('Quotation Stats Error: ' . $e->getMessage());
-    $quotation_stats = ['total' => 0, 'in_progress' => 0, 'failed_int' => 0, 'failed_progress' => 0];
-}
+            try {
+                $quotation_stats = $canViewQuotationCard
+                    ? \App\Http\Controllers\QuotationController::getHomeStats($effectiveOffice)
+                    : ['total' => 0, 'in_progress' => 0, 'failed_int' => 0, 'failed_progress' => 0];
+            } catch (\Exception $e) {
+                \Log::error('Quotation Stats Error: ' . $e->getMessage());
+                $quotation_stats = ['total' => 0, 'in_progress' => 0, 'failed_int' => 0, 'failed_progress' => 0];
+            }
 
             return view(
                 'dashboard.ticket',
@@ -196,8 +193,10 @@ try {
                     'shipment_reports_stats',
                     'scm_profit_stats',
                     'canViewQuotationCard',
-                    'quotation_stats'
-                )
+                    'quotation_stats',
+                    'effectiveOffice',
+                    'officeGate',
+                ),
             );
         } catch (\Exception $e) {
             \Log::error('Home Controller Error: ' . $e->getMessage());
@@ -207,7 +206,7 @@ try {
 
     /**
      * Get GPS Tracker statistics
-     * 
+     *
      * @return object
      */
     private function getTrackerStats()
@@ -221,38 +220,38 @@ try {
             };
 
             $stats = (object) [
-                'created'  => $baseQuery()->whereNull('StartDate')->count(),
-                'transit'  => $baseQuery()->whereNotNull('StartDate')->whereNull('EndDate')->count(),
+                'created' => $baseQuery()->whereNull('StartDate')->count(),
+                'transit' => $baseQuery()->whereNotNull('StartDate')->whereNull('EndDate')->count(),
                 'complete' => $baseQuery()->whereNotNull('EndDate')->count(),
-                'total'    => $baseQuery()->count(),
+                'total' => $baseQuery()->count(),
             ];
 
             \Log::info('Tracker Stats Retrieved', [
-                'created'  => $stats->created,
-                'transit'  => $stats->transit,
+                'created' => $stats->created,
+                'transit' => $stats->transit,
                 'complete' => $stats->complete,
-                'total'    => $stats->total,
+                'total' => $stats->total,
             ]);
 
             return $stats;
         } catch (\Exception $e) {
             \Log::error('Failed to get tracker stats in HomeController', [
                 'error' => $e->getMessage(),
-                'line'  => $e->getLine(),
+                'line' => $e->getLine(),
             ]);
 
             return (object) [
-                'created'  => 0,
-                'transit'  => 0,
+                'created' => 0,
+                'transit' => 0,
                 'complete' => 0,
-                'total'    => 0,
+                'total' => 0,
             ];
         }
     }
 
     /**
      * Get Login Tracker statistics from stored procedure
-     * 
+     *
      * @return array
      */
     private function getLoginTrackerStats()
@@ -263,18 +262,18 @@ try {
             if (!$actualRange['has_data']) {
                 $totalUsers = \App\Models\Logintracker\AzureUser::valid()->count();
                 return [
-                    'total_users'       => $totalUsers,
+                    'total_users' => $totalUsers,
                     'active_this_month' => 0,
                     'active_last_month' => 0,
-                    'inactive_users'    => $totalUsers,
+                    'inactive_users' => $totalUsers,
                 ];
             }
 
             $currentMonthStart = now()->startOfMonth();
-            $currentMonthEnd   = now()->endOfMonth();
-            $lastMonthStart    = now()->subMonth()->startOfMonth();
-            $lastMonthEnd      = now()->subMonth()->endOfMonth();
-            $threeMonthsAgo    = now()->subMonths(3)->startOfDay();
+            $currentMonthEnd = now()->endOfMonth();
+            $lastMonthStart = now()->subMonth()->startOfMonth();
+            $lastMonthEnd = now()->subMonth()->endOfMonth();
+            $threeMonthsAgo = now()->subMonths(3)->startOfDay();
 
             $validUserWhere = "
             au.displayName IS NOT NULL
@@ -285,7 +284,9 @@ try {
             AND au.userPrincipalName NOT LIKE 'User-%'
         ";
 
-            $active_this_month = DB::select("
+            $active_this_month =
+                DB::select(
+                    "
             SELECT COUNT(DISTINCT au.id) as count
             FROM Azure_Users au
             WHERE {$validUserWhere}
@@ -294,9 +295,13 @@ try {
                     WHERE LOWER(ald.username) = LOWER(au.userPrincipalName)
                         AND ald.date_utc BETWEEN ? AND ?
                 )
-        ", [$currentMonthStart, $currentMonthEnd])[0]->count ?? 0;
+        ",
+                    [$currentMonthStart, $currentMonthEnd],
+                )[0]->count ?? 0;
 
-            $active_last_month = DB::select("
+            $active_last_month =
+                DB::select(
+                    "
             SELECT COUNT(DISTINCT au.id) as count
             FROM Azure_Users au
             WHERE {$validUserWhere}
@@ -305,9 +310,13 @@ try {
                     WHERE LOWER(ald.username) = LOWER(au.userPrincipalName)
                         AND ald.date_utc BETWEEN ? AND ?
                 )
-        ", [$lastMonthStart, $lastMonthEnd])[0]->count ?? 0;
+        ",
+                    [$lastMonthStart, $lastMonthEnd],
+                )[0]->count ?? 0;
 
-            $inactive_users = DB::select("
+            $inactive_users =
+                DB::select(
+                    "
             SELECT COUNT(*) as count
             FROM Azure_Users au
             WHERE {$validUserWhere}
@@ -316,57 +325,69 @@ try {
                     WHERE LOWER(ald.username) = LOWER(au.userPrincipalName)
                         AND ald.date_utc >= ?
                 )
-        ", [$threeMonthsAgo])[0]->count ?? 0;
+        ",
+                    [$threeMonthsAgo],
+                )[0]->count ?? 0;
 
             $total_users = \App\Models\Logintracker\AzureUser::valid()->count();
 
             \Log::info('Login Tracker Stats Retrieved', [
-                'total_users'       => $total_users,
+                'total_users' => $total_users,
                 'active_this_month' => $active_this_month,
                 'active_last_month' => $active_last_month,
-                'inactive_users'    => $inactive_users,
-                'last_month_range'  => "{$lastMonthStart} → {$lastMonthEnd}",
-                'inactive_since'    => $threeMonthsAgo->toDateTimeString(),
+                'inactive_users' => $inactive_users,
+                'last_month_range' => "{$lastMonthStart} → {$lastMonthEnd}",
+                'inactive_since' => $threeMonthsAgo->toDateTimeString(),
             ]);
 
             return [
-                'total_users'       => $total_users,
+                'total_users' => $total_users,
                 'active_this_month' => $active_this_month,
                 'active_last_month' => $active_last_month,
-                'inactive_users'    => $inactive_users,
+                'inactive_users' => $inactive_users,
             ];
         } catch (\Exception $e) {
             \Log::error('Failed to get login tracker stats in HomeController', [
                 'error' => $e->getMessage(),
-                'line'  => $e->getLine(),
+                'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString(),
             ]);
 
             return [
-                'total_users'       => 0,
+                'total_users' => 0,
                 'active_this_month' => 0,
                 'active_last_month' => 0,
-                'inactive_users'    => 0,
+                'inactive_users' => 0,
             ];
         }
     }
 
     private function getAzureOfficeData(?string $officeCode = null): array
-{
-    try {
-        $identifier = Auth::user()->Email ?? Auth::user()->LoginID;
+    {
+        try {
+            $identifier = Auth::user()->Email ?? Auth::user()->LoginID;
 
-        $azureUser = DB::table('Azure_Users')
-            ->where('userPrincipalName', $identifier)
-            ->whereNotNull('AzureId')
-            ->first();
+            $azureUser = DB::table('Azure_Users')
+                ->where('userPrincipalName', $identifier)
+                ->whereNotNull('AzureId')
+                ->first();
 
-        $azureId    = $azureUser->AzureId;
-        $office     = $officeCode ?? '';
-        $outputJson = null;
+            if (!$azureUser) {
+                Log::warning('Azure user not found for identifier', ['identifier' => $identifier]);
+                return [
+                    'modules' => [],
+                    'otherOffices' => [],
+                    'baseOffice' => null,
+                    'hasAzure' => false,
+                ];
+            }
 
-        $pdo  = DB::connection()->getPdo();
-        $stmt = $pdo->prepare("
+            $azureId = $azureUser->AzureId;
+            $office = $officeCode ?? '';
+            $outputJson = null;
+
+            $pdo = DB::connection()->getPdo();
+            $stmt = $pdo->prepare("
             DECLARE @OutputJson NVARCHAR(MAX);
             EXEC sp_Azure_BIZOfficeandModuleList
                 @AzureID     = ?,
@@ -374,61 +395,65 @@ try {
                 @OutputJson  = @OutputJson OUTPUT;
             SELECT @OutputJson AS OutputJson;
         ");
-        $stmt->bindParam(1, $azureId, \PDO::PARAM_STR);
-        $stmt->bindParam(2, $office,  \PDO::PARAM_STR);
-        $stmt->execute();
+            $stmt->bindParam(1, $azureId, \PDO::PARAM_STR);
+            $stmt->bindParam(2, $office, \PDO::PARAM_STR);
+            $stmt->execute();
 
-        $outputJson = null;
-        do {
-            $row = $stmt->fetch(\PDO::FETCH_OBJ);
-            if ($row && isset($row->OutputJson)) {
-                $outputJson = $row->OutputJson;
-                break;
+            $outputJson = null;
+            do {
+                $row = $stmt->fetch(\PDO::FETCH_OBJ);
+                if ($row && isset($row->OutputJson)) {
+                    $outputJson = $row->OutputJson;
+                    break;
+                }
+            } while ($stmt->nextRowset());
+
+            if (empty($outputJson)) {
+                return [
+                    'modules' => [],
+                    'otherOffices' => [],
+                    'baseOffice' => $azureUser->BaseOfficeCode,
+                    'hasAzure' => true,
+                ];
             }
-        } while ($stmt->nextRowset());
 
-        if (empty($outputJson)) {
+            $data = json_decode($outputJson, true);
+
+            if (isset($data['Status']) && $data['Status'] === 'Failed') {
+                return [
+                    'modules' => [],
+                    'otherOffices' => [],
+                    'baseOffice' => $azureUser->BaseOfficeCode,
+                    'hasAzure' => true,
+                ];
+            }
+
             return [
-                'modules'      => [],
+                'modules' => collect($data['Module'] ?? [])
+                    ->pluck('ModuleName')
+                    ->toArray(),
+                'otherOffices' => $data['OtherOffices'] ?? [],
+                'baseOffice' => $data['Basedoffice'] ?? $azureUser->BaseOfficeCode,
+                'hasAzure' => true,
+            ];
+        } catch (\Exception $e) {
+            Log::error('getAzureOfficeData failed: ' . $e->getMessage());
+            return [
+                'modules' => [],
                 'otherOffices' => [],
-                'baseOffice'   => $azureUser->BaseOfficeCode,
-                'hasAzure'     => true,
+                'baseOffice' => null,
+                'hasAzure' => false,
             ];
         }
-
-        $data = json_decode($outputJson, true);
-
-        if (isset($data['Status']) && $data['Status'] === 'Failed') {
-            return [
-                'modules'      => [],
-                'otherOffices' => [],
-                'baseOffice'   => $azureUser->BaseOfficeCode,
-                'hasAzure'     => true,
-            ];
-        }
-
-        return [
-            'modules'      => collect($data['Module'] ?? [])->pluck('ModuleName')->toArray(),
-            'otherOffices' => $data['OtherOffices'] ?? [],
-            'baseOffice'   => $data['Basedoffice'] ?? $azureUser->BaseOfficeCode,
-            'hasAzure'     => true,
-        ];
-    } catch (\Exception $e) {
-        Log::error('getAzureOfficeData failed: ' . $e->getMessage());
-        return [
-            'modules'      => [],
-            'otherOffices' => [],
-            'baseOffice'   => null,
-            'hasAzure'     => false,
-        ];
     }
-}
 
     public function archive()
     {
         //priority
         $priorities = Category::select('ID', 'CategoryCode', 'CategoryName')
-            ->where('CategoryType', 'Priority')->orderBy('CategorySeq', 'desc')->get();
+            ->where('CategoryType', 'Priority')
+            ->orderBy('CategorySeq', 'desc')
+            ->get();
 
         return view('archive.index', compact('priorities'));
     }
@@ -474,25 +499,61 @@ try {
         }
         //add module
         if (isset($request->tat_assign)) {
-            if (($request->tat_assign) == 'tat_assign_range') {
-                $date_query = $date_query . " and isnull(DATEDIFF(HOUR,TI.AssignedOn,TI.CreatedOn),0) between '" . $request->tat_assign_v1 . "' and '" . $request->tat_assign_v2 . "'";
+            if ($request->tat_assign == 'tat_assign_range') {
+                $date_query =
+                    $date_query .
+                    " and isnull(DATEDIFF(HOUR,TI.AssignedOn,TI.CreatedOn),0) between '" .
+                    $request->tat_assign_v1 .
+                    "' and '" .
+                    $request->tat_assign_v2 .
+                    "'";
             } else {
-                $date_query = $date_query . " and isnull(DATEDIFF(HOUR,TI.AssignedOn,TI.CreatedOn),0) " . $request->tat_assign . " '" . $request->tat_assign_v2 . "' ";
+                $date_query =
+                    $date_query .
+                    ' and isnull(DATEDIFF(HOUR,TI.AssignedOn,TI.CreatedOn),0) ' .
+                    $request->tat_assign .
+                    " '" .
+                    $request->tat_assign_v2 .
+                    "' ";
             }
         }
 
         if (isset($request->tat_solve)) {
-            if (($request->tat_solve) == 'tat_solve_range') {
-                $date_query = $date_query . " and isnull(DATEDIFF(HOUR,TI.SolvedOn,TI.CreatedOn),0) between '" . $request->tat_solve_v1 . "' and '" . $request->tat_solve_v2 . "'";
+            if ($request->tat_solve == 'tat_solve_range') {
+                $date_query =
+                    $date_query .
+                    " and isnull(DATEDIFF(HOUR,TI.SolvedOn,TI.CreatedOn),0) between '" .
+                    $request->tat_solve_v1 .
+                    "' and '" .
+                    $request->tat_solve_v2 .
+                    "'";
             } else {
-                $date_query = $date_query . " and isnull(DATEDIFF(HOUR,TI.SolvedOn,TI.CreatedOn),0) " . $request->tat_solve . " '" . $request->tat_solve_v2 . "' ";
+                $date_query =
+                    $date_query .
+                    ' and isnull(DATEDIFF(HOUR,TI.SolvedOn,TI.CreatedOn),0) ' .
+                    $request->tat_solve .
+                    " '" .
+                    $request->tat_solve_v2 .
+                    "' ";
             }
         }
         if (isset($request->tat_close)) {
-            if (($request->tat_close) == 'tat_close_range') {
-                $date_query = $date_query . " and isnull(DATEDIFF(HOUR,TI.ClosedOn,TI.CreatedOn),0) between '" . $request->tat_close_v1 . "' and '" . $request->tat_close_v2 . "'";
+            if ($request->tat_close == 'tat_close_range') {
+                $date_query =
+                    $date_query .
+                    " and isnull(DATEDIFF(HOUR,TI.ClosedOn,TI.CreatedOn),0) between '" .
+                    $request->tat_close_v1 .
+                    "' and '" .
+                    $request->tat_close_v2 .
+                    "'";
             } else {
-                $date_query = $date_query . " and isnull(DATEDIFF(HOUR,TI.ClosedOn,TI.CreatedOn),0) " . $request->tat_close . " '" . $request->tat_close_v2 . "' ";
+                $date_query =
+                    $date_query .
+                    ' and isnull(DATEDIFF(HOUR,TI.ClosedOn,TI.CreatedOn),0) ' .
+                    $request->tat_close .
+                    " '" .
+                    $request->tat_close_v2 .
+                    "' ";
             }
         }
 
@@ -504,7 +565,7 @@ try {
                 Declare @Filter as nvarchar(max)
                 Exec sp_TicketReport
                 @Filter = ?",
-            ["$date_query"]
+            ["$date_query"],
         );
 
         return response()->json($data);
@@ -514,17 +575,17 @@ try {
     {
         $output = '';
 
-        if ($val == "Today") {
+        if ($val == 'Today') {
             $output = "cast(TicketDate as Date) = '" . Carbon::now()->format('d/M/Y') . "'";
-        } elseif ($val == "ThisMonth") {
+        } elseif ($val == 'ThisMonth') {
             $output = "Datepart(Month,TI.CreatedOn) = '" . Carbon::now()->month . "'";
-        } elseif ($val == "LastMonth") {
+        } elseif ($val == 'LastMonth') {
             $output = "Datepart(Month,TI.CreatedOn) = '" . Carbon::now()->subMonth()->month . "'";
-        } elseif ($val == "SpecificMonth") {
+        } elseif ($val == 'SpecificMonth') {
             $output = "Datepart(Month,TI.CreatedOn) = '" . $month . "' ";
-        } elseif ($val == "Range") {
-            $from = ($from == '') ? '' : $from;
-            $to = ($to == '') ? '' : $to;
+        } elseif ($val == 'Range') {
+            $from = $from == '' ? '' : $from;
+            $to = $to == '' ? '' : $to;
             $output = "cast(TicketDate as Date) between '" . $from . "' and '" . $to . "'";
         }
 
@@ -541,6 +602,7 @@ try {
             })
             ->editColumn('CreatedOn', function ($row) {
                 return $row->CreatedOn->format('Y-m-d H:m:s');
-            })->make();
+            })
+            ->make();
     }
 }

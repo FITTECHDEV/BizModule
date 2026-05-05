@@ -2,10 +2,8 @@
 
 @section('title', 'Home-Dashboard')
 
-@section('content_header')
-@stop
-
 @section('plugins.Datatables', true)
+
 @section('css')
     <style>
         .service-card {
@@ -19,7 +17,6 @@
         }
 
         .service-card:hover {
-            box-shadow: 4px 4px 4px rgba(58, 105, 243, 0.3);
             -webkit-transform: translate(0, -8px);
             -moz-transform: translate(0, -8px);
             -ms-transform: translate(0, -8px);
@@ -99,10 +96,12 @@
 @stop
 
 @section('content')
+
+    {{-- Cards grid — always rendered, independent of office switcher --}}
     <div class="container-fluid p-2 p-md-3">
         <div class="row">
 
-            <!-- Client Party System -->
+            <!-- Client Party System — visible to all -->
             <div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-3">
                 <a href="/client-party?my_request=true" style="text-decoration: none; color: inherit;">
                     <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
@@ -120,7 +119,8 @@
                                     <div class="col-4 border">
                                         <div class="description-block">
                                             <h5 class="description-header"><span
-                                                    class="badge badge-primary">{{ $entityStats->StatusCount }}</span></h5>
+                                                    class="badge badge-primary">{{ $entityStats->StatusCount }}</span>
+                                            </h5>
                                             <span class="description-text small">{{ $entityStats->StatusName }}</span>
                                         </div>
                                     </div>
@@ -132,7 +132,7 @@
             </div>
 
             <!-- TIMS Integration -->
-            @if (Auth::user()->can('tims-access'))
+            @if (Auth::user()->can('tims-access') && (!$effectiveOffice || in_array($effectiveOffice, $officeGate['tims'])))
                 <div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-3">
                     <a href="/tims" style="text-decoration: none; color: inherit;">
                         <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
@@ -164,7 +164,7 @@
             @endif
 
             <!-- EFRIS Integration -->
-            @if (Auth::user()->can('efris-access'))
+            @if (Auth::user()->can('efris-access') && (!$effectiveOffice || in_array($effectiveOffice, $officeGate['efris'])))
                 <div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-3">
                     <a href="/efris" style="text-decoration: none; color: inherit;">
                         <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
@@ -197,7 +197,7 @@
             @endif
 
             <!-- TRA Integration (Tanzania) -->
-            @if (Auth::user()->can('tra-tz-access'))
+            @if (Auth::user()->can('tra-tz-access') && in_array($effectiveOffice, $officeGate['tra_tz']))
                 <div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-3">
                     <a href="/tra" style="text-decoration: none; color: inherit;">
                         <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
@@ -230,7 +230,7 @@
             @endif
 
             <!-- TRA Integration (ADL) -->
-            @if (Auth::user()->can('tra-adl-access'))
+            @if (Auth::user()->can('tra-adl-access') && in_array($effectiveOffice, $officeGate['tra_adl']))
                 <div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-3">
                     <a href="/traADL" style="text-decoration: none; color: inherit;">
                         <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
@@ -262,7 +262,7 @@
             @endif
 
             <!-- RRA Integration -->
-            @if (Auth::user()->can('rra-access'))
+            @if (Auth::user()->can('rra-access') && (!$effectiveOffice || in_array($effectiveOffice, $officeGate['rra'])))
                 <div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-3">
                     <a href="/rra" style="text-decoration: none; color: inherit;">
                         <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
@@ -294,7 +294,7 @@
             @endif
 
             <!-- Log In Tracker -->
-            @if (Auth::user()->can('view-rate-calculator'))
+            @if (Auth::user()->can('approve-all-entity-request'))
                 <div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-3">
                     <a href="/dashboard" style="text-decoration: none; color: inherit;">
                         <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card login-tracker-card"
@@ -340,13 +340,13 @@
                 </div>
             @endif
 
-            <!-- GPS Tracker Card -->
+            <!-- Tracking Management Card -->
             @if (Auth::user()->can('view-rate-calculator'))
                 <div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-3">
                     <a href="{{ route('tracker.dashboard') }}" style="text-decoration: none; color: inherit;">
                         <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
                             <div class="widget-user-header bg-primary">
-                                <h3 class="widget-user-username">GPS TRACKER</h3>
+                                <h3 class="widget-user-username">Track Management System </h3>
                                 <h5 class="widget-user-desc">Track Vehicle Trips</h5>
                             </div>
                             <div class="widget-user-image">
@@ -389,13 +389,13 @@
             @endif
 
             <!-- Azure Management Card -->
-            @if (Auth::user()->can('view-rate-calculator'))
+            @if (Auth::user()->can('approve-all-entity-request'))
                 <div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-3">
                     <a href="{{ route('azure.dashboard.index') }}" style="text-decoration: none; color: inherit;">
                         <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card"
                             style="cursor: pointer;">
                             <div class="widget-user-header bg-purple">
-                                <h3 class="widget-user-username">AZURE MANAGEMENT</h3>
+                                <h3 class="widget-user-username">AZURE MANAGEMENT SYSTEM</h3>
                                 <h5 class="widget-user-desc">Azure Dashboard</h5>
                             </div>
                             <div class="widget-user-image">
@@ -436,7 +436,7 @@
             @endif
 
             <!-- Shipment Email Reports -->
-            @if (Auth::user()->can('view-rate-calculator'))
+            @if (Auth::user()->can('approve-all-entity-request'))
                 <div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-3">
                     <a href="{{ route('shipment-reports.index') }}" style="text-decoration: none; color: inherit;">
                         <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card shipment-reports-card"
@@ -482,54 +482,95 @@
                 </div>
             @endif
 
-            <!-- Quote Integration -->
-            @if ($canViewQuotationCard)
+            <!-- Quote Management System -->
+            {{-- @if ($canSeeAll || in_array('Quotation', $activeModules) || in_array('QMS', $activeModules)) --}}
+            <div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-3">
+                <a href="{{ route('quotation.index') }}" style="text-decoration: none; color: inherit;">
+                    <div class="card card-widget widget-user shadow service-card scm-profit-card">
+                        <div class="widget-user-header bg-info">
+                            <h3 class="widget-user-username">Quote Management System</h3>
+                            <h5 class="widget-user-desc">Integration Status</h5>
+                        </div>
+                        <div class="widget-user-image">
+                            <img class="img-circle elevation-2" src="{{ asset('img/supply-chain-management.png') }}"
+                                alt="SCM Icon" style="background: white; padding: 5px; width: 60px; height: 60px;">
+                        </div>
+                        <div class="card-footer">
+                            <div class="row">
+                                <div class="col-3 border-right">
+                                    <h5 class="text-primary">{{ $quotation_stats['total'] ?? 0 }}</h5>
+                                    <span>Total</span>
+                                </div>
+                                <div class="col-3 border-right">
+                                    <h5 class="text-warning">{{ $quotation_stats['in_progress'] ?? 0 }}</h5>
+                                    <span>In Progress</span>
+                                </div>
+                                <div class="col-3 border-right">
+                                    <h5 class="text-danger">{{ $quotation_stats['failed_int'] ?? 0 }}</h5>
+                                    <span>Failed</span>
+                                </div>
+                                <div class="col-3">
+                                    <h5 class="text-secondary">{{ $quotation_stats['failed_progress'] ?? 0 }}</h5>
+                                    <span>Failed In Progress</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            {{-- @endif --}}
+            {{-- END Quote Management System --}}
+
+            <!-- Revenue Authority Integration -->
+            @if (Auth::user()->can('approve-all-entity-request'))
                 <div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-3">
-                    <a href="{{ route('quotation.index') }}" style="text-decoration: none; color: inherit;">
-                        <div class="card card-widget widget-user shadow service-card scm-profit-card">
-
-                            <!-- Header -->
+                    <a href="{{ route('rra.index') }}" style="text-decoration: none; color: inherit;">
+                        <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card ra-integration-card"
+                            style="cursor: pointer;">
                             <div class="widget-user-header bg-info">
-                                <h3 class="widget-user-username">Quote Management System</h3>
-                                <h5 class="widget-user-desc">Integration Status</h5>
+                                <h3 class="widget-user-username">RA INTEGRATION</h3>
+                                <h5 class="widget-user-desc">Revenue Authority Processing</h5>
                             </div>
-
-                            <!-- Floating Icon (THIS is the key part) -->
                             <div class="widget-user-image">
-                                <img class="img-circle elevation-2" src="{{ asset('img/supply-chain-management.png') }}"
-                                    alt="SCM Icon" style="background: white; padding: 5px; width: 60px; height: 60px;">
+                                <img src="{{ asset('img/sheet.png') }}" alt="RA Integration"
+                                    class="img-circle elevation-2">
                             </div>
-
-                            <!-- Footer -->
                             <div class="card-footer">
                                 <div class="row">
-                                    <div class="col-3 border-right">
-                                        <h5 class="text-primary">{{ $quotation_stats['total'] ?? 0 }}</h5>
-                                        <span>Total</span>
+                                    <div class="col-4 border-right">
+                                        <div class="description-block">
+                                            <h5 class="description-header text-warning">
+                                                {{ $ra_metrics['ra_pending_d365'] ?? 0 }}
+                                            </h5>
+                                            <span class="description-text">Pending D365</span>
+                                        </div>
                                     </div>
-                                    <div class="col-3 border-right">
-                                        <h5 class="text-warning">{{ $quotation_stats['in_progress'] ?? 0 }}</h5>
-                                        <span>In Progress</span>
+                                    <div class="col-4 border-right">
+                                        <div class="description-block">
+                                            <h5 class="description-header text-danger">
+                                                {{ $ra_metrics['ra_total_failed'] ?? 0 }}
+                                            </h5>
+                                            <span class="description-text">Total Failed</span>
+                                        </div>
                                     </div>
-                                    <div class="col-3 border-right">
-                                        <h5 class="text-danger">{{ $quotation_stats['failed_int'] ?? 0 }}</h5>
-                                        <span>Failed</span>
-                                    </div>
-                                    <div class="col-3">
-                                        <h5 class="text-secondary">{{ $quotation_stats['failed_progress'] ?? 0 }}</h5>
-                                        <span>Failed In Progress</span>
+                                    <div class="col-4">
+                                        <div class="description-block">
+                                            <h5 class="description-header text-success">
+                                                {{ $ra_metrics['ra_success_today'] ?? 0 }}
+                                            </h5>
+                                            <span class="description-text">Success Today</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-
                         </div>
                     </a>
                 </div>
             @endif
 
-
         </div>
     </div>
+
 @stop
 
 @section('js')
