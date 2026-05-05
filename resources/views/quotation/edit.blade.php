@@ -655,6 +655,178 @@
                             </div>
                         </div>
 
+                        {{-- ── Quote Includes ── --}}
+                        <div class="row mt-3 pt-2" style="border-top: 1px solid #dee2e6;">
+                            <div class="col-12">
+                                <p class="text-uppercase font-weight-bold mb-2"
+                                    style="font-size: 0.75rem; letter-spacing: 0.08em; color: #003580;">
+                                    Quote Includes
+                                </p>
+                                <div class="d-flex flex-wrap" style="gap: 8px;">
+                                    <label
+                                        class="quote-includes-option d-flex align-items-center border rounded px-3 py-2 mb-0"
+                                        style="cursor:pointer; font-size:0.875rem; gap:8px; background:#fff;">
+                                        <input type="checkbox" id="quoteIncludesInsurance"
+                                            name="quote_includes_insurance">
+                                        Insurance
+                                    </label>
+                                    <label
+                                        class="quote-includes-option d-flex align-items-center border rounded px-3 py-2 mb-0"
+                                        style="cursor:pointer; font-size:0.875rem; gap:8px; background:#fff;">
+                                        <input type="checkbox" id="quoteIncludesLastMile"
+                                            name="quote_includes_last_mile">
+                                        Last Mile
+                                    </label>
+                                    <label
+                                        class="quote-includes-option d-flex align-items-center border rounded px-3 py-2 mb-0"
+                                        id="customDutyLabel"
+                                        style="cursor:pointer; font-size:0.875rem; gap:8px; background:#fff;">
+                                        <input type="checkbox" id="quoteIncludesCustomDuty"
+                                            name="quote_includes_custom_duty">
+                                        Custom Duty
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- ── Product Details (visible only when Custom Duty is checked) ── --}}
+                        <div class="row mt-3" id="productDetailsSection" style="display:none;">
+                            <div class="col-12">
+                                <p class="text-uppercase font-weight-bold mb-2"
+                                    style="font-size: 0.75rem; letter-spacing: 0.08em; color: #003580;">
+                                    Product Details
+                                </p>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-bordered mb-1" id="productDetailsTable">
+                                        <thead class="thead-light">
+                                            <tr>
+                                                <th style="min-width:160px; font-size:0.75rem;">Description</th>
+                                                <th style="width:100px; font-size:0.75rem;">Weight</th>
+                                                <th style="width:100px; font-size:0.75rem;">L×B×H <small
+                                                        class="text-muted">(m³)</small></th>
+                                                <th style="width:80px; font-size:0.75rem;">QTY</th>
+                                                <th style="width:120px; font-size:0.75rem;">Price</th>
+                                                <th style="width:36px;"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="productDetailsBody">
+                                            <tr class="product-details-row">
+                                                <td>
+                                                    <input type="text" class="form-control form-control-sm"
+                                                        name="product_description[]" placeholder="Description">
+                                                </td>
+                                                <td>
+                                                    <div class="input-group input-group-sm">
+                                                        <input type="number" class="form-control form-control-sm"
+                                                            name="product_weight[]" step="0.01" min="0">
+                                                        <div class="input-group-append">
+                                                            <span class="input-group-text"
+                                                                style="font-size:0.75rem;">kg</span>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="input-group input-group-sm">
+                                                        <input type="number" class="form-control form-control-sm"
+                                                            name="product_dimensions[]" step="0.01" min="0">
+                                                        <div class="input-group-append">
+                                                            <span class="input-group-text"
+                                                                style="font-size:0.75rem;">m³</span>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <input type="number" class="form-control form-control-sm"
+                                                        name="product_qty[]" placeholder="Qty" min="1"
+                                                        step="1">
+                                                </td>
+                                                <td>
+                                                    <div class="input-group input-group-sm">
+                                                        <div class="input-group-prepend">
+                                                            <span class="input-group-text"
+                                                                style="font-size:0.75rem;">USD</span>
+                                                        </div>
+                                                        <input type="number" class="form-control form-control-sm"
+                                                            name="product_price[]" step="0.01" min="0">
+                                                    </div>
+                                                </td>
+                                                <td class="text-center align-middle">
+                                                    <button type="button"
+                                                        class="btn btn-sm btn-outline-danger remove-product-row-btn"
+                                                        style="padding:1px 6px; line-height:1.4;"
+                                                        title="Remove row">&times;</button>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <button type="button" class="btn btn-outline-primary btn-sm" id="addProductRowBtn"
+                                    style="font-size:0.8rem;">
+                                    + Add Row
+                                </button>
+                            </div>
+                        </div>
+
+                        {{-- ── Quote Includes JS (UI only — no API calls) ── --}}
+                        <script>
+                            document.addEventListener('DOMContentLoaded', function() {
+                                const customDutyCheckbox = document.getElementById('quoteIncludesCustomDuty');
+                                const productDetailsSection = document.getElementById('productDetailsSection');
+                                const addProductRowBtn = document.getElementById('addProductRowBtn');
+                                const productDetailsBody = document.getElementById('productDetailsBody');
+
+                                if (!customDutyCheckbox || !productDetailsSection) return;
+
+                                // Highlight checked label to match the screenshot style
+                                document.querySelectorAll('.quote-includes-option input[type="checkbox"]')
+                                    .forEach(function(cb) {
+                                        cb.addEventListener('change', function() {
+                                            const label = this.closest('label');
+                                            if (!label) return;
+                                            if (this.checked) {
+                                                label.style.background = '#003580';
+                                                label.style.color = '#fff';
+                                                label.style.borderColor = '#003580';
+                                            } else {
+                                                label.style.background = '#fff';
+                                                label.style.color = '';
+                                                label.style.borderColor = '';
+                                            }
+                                        });
+                                    });
+
+                                // Show / hide Product Details when Custom Duty is toggled
+                                customDutyCheckbox.addEventListener('change', function() {
+                                    productDetailsSection.style.display = this.checked ? 'block' : 'none';
+                                });
+
+                                // Add a new blank product row
+                                addProductRowBtn.addEventListener('click', function() {
+                                    const firstRow = productDetailsBody.querySelector('.product-details-row');
+                                    if (!firstRow) return;
+                                    const newRow = firstRow.cloneNode(true);
+                                    newRow.querySelectorAll('input').forEach(function(input) {
+                                        input.value = '';
+                                    });
+                                    productDetailsBody.appendChild(newRow);
+                                });
+
+                                // Remove a product row via event delegation
+                                productDetailsBody.addEventListener('click', function(e) {
+                                    if (!e.target.classList.contains('remove-product-row-btn')) return;
+                                    const rows = productDetailsBody.querySelectorAll('.product-details-row');
+                                    if (rows.length > 1) {
+                                        e.target.closest('tr').remove();
+                                    } else {
+                                        // Keep at least one row — just clear the inputs
+                                        rows[0].querySelectorAll('input').forEach(function(input) {
+                                            input.value = '';
+                                        });
+                                    }
+                                });
+                            });
+                        </script>
+
                         {{-- ── Edit / Save / Cancel ── --}}
                         <div class="row mt-3 pt-2" style="border-top: 1px solid #dee2e6;">
                             <div class="col-md-12 text-right">
@@ -828,7 +1000,6 @@
                                 </button>
                                 <a href="{{ route('quotation.index') }}" class="btn btn-link">Close</a>
 
-
                                 <div class="float-right d-flex align-items-center">
                                     <div class="btn-group" id="quoteActionDropdown"> <button type="button"
                                             class="btn btn-secondary dropdown-toggle" data-toggle="dropdown"
@@ -858,7 +1029,11 @@
 
         </div>
         <!-- END ROW -->
-        <!-- ===========================================                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     MODAL       ============================================ -->
+
+        <!-- ============================================
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         MODALS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         ============================================ -->
+
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
             aria-labelledby="addRevenueModalLabel" aria-hidden="true">
@@ -1079,7 +1254,8 @@
                                             name="cost_charge_code" required>
                                     </div>
                                     <div class="mb-3">
-                                        <label for="cost_bill_to_party" class="form-label" id="costBillToPartyLabel">Bill
+                                        <label for="cost_bill_to_party" class="form-label"
+                                            id="costBillToPartyLabel">Bill
                                             to
                                             Party</label>
                                         <input type="text" class="form-control" id="cost_bill_to_party"
@@ -1090,8 +1266,8 @@
                                     <div class="mb-3">
                                         <label for="cost_based_on" class="form-label">
                                             <span class="text-danger">*</span> Based On</label>
-                                        <select class="form-select form-control" id="cost_based_on" name="cost_based_on"
-                                            required>
+                                        <select class="form-select form-control" id="cost_based_on"
+                                            name="cost_based_on" required>
                                             <option value="">Select</option>
                                         </select>
                                     </div>
@@ -1340,7 +1516,6 @@
                 </div>
             </div>
         </div>
-
 
         {{-- WON MODAL --}}
         <div class="modal fade" id="wonModal" tabindex="-1" role="dialog" aria-hidden="true">
@@ -1736,9 +1911,9 @@
 
 
         {{-- ============================================================
-            COPY CHARGES — JOB SEARCH MODAL
-            Sits above the main modal (z-index: 1060 > 1050)
-        ============================================================ --}}
+     COPY CHARGES — JOB SEARCH MODAL
+     Sits above the main modal (z-index: 1060 > 1050)
+     ============================================================ --}}
         <div class="modal fade" id="ccSearchModal" tabindex="-1" role="dialog" aria-hidden="true"
             style="z-index: 1060;">
             <div class="modal-dialog cc-search-dialog" role="document">
@@ -1823,6 +1998,100 @@
             </div>
         </div>
 
+
+        {{-- COPY CHARGES — JOB SEARCH MODAL --}}
+        <div class="modal fade" id="ccSearchModal" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2 class="modal-title">Search</h2>
+                        <button type="button" class="close" id="ccSearchModalClose">
+                            <span>&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        {{-- Advanced Search row --}}
+                        <div class="d-flex align-items-center mb-3" style="gap:8px;">
+                            <label class="mb-0 mr-2" style="font-size:0.875rem; white-space:nowrap;">Advanced
+                                Search</label>
+                            <select class="form-control form-control-sm" id="ccSearchField" style="max-width:160px;">
+                                <option value="">Select</option>
+                                <option value="quote_no">Quote No</option>
+                                <option value="customer">Customer</option>
+                                <option value="origin">Origin Country</option>
+                                <option value="destination">Destination Country</option>
+                            </select>
+                            <input type="text" class="form-control form-control-sm" id="ccSearchValue"
+                                placeholder="" style="max-width:220px;">
+                            <button type="button" class="btn btn-sm ml-1" id="ccSearchGoBtn"
+                                style="background:#a8b400; color:#fff; font-weight:600; min-width:70px;">
+                                Search
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="ccAddFilterBtn">
+                                Add filter
+                            </button>
+                        </div>
+
+                        {{-- Results table --}}
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered table-hover" id="ccSearchResultsTable">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th style="width:40px;">Select</th>
+                                        <th>Process Type <i class="fas fa-sort ml-1 text-muted"
+                                                style="font-size:0.7rem;"></i></th>
+                                        <th>Job No.</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ccSearchResultsBody">
+                                    <tr>
+                                        <td colspan="3" class="text-center text-muted" style="font-size:0.8rem;">
+                                            Click Search to find jobs
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {{-- Pagination --}}
+                        <div class="d-flex align-items-center justify-content-between mt-2">
+                            <div class="d-flex align-items-center" style="gap:4px; font-size:0.8rem;">
+                                <button type="button" class="btn btn-sm btn-outline-secondary cc-page-btn"
+                                    data-action="first" style="padding:1px 5px;">|&lt;</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary cc-page-btn"
+                                    data-action="prev" style="padding:1px 5px;">&lt;&lt;</button>
+                                <span class="mx-1">Page</span>
+                                <input type="number" id="ccPageInput"
+                                    class="form-control form-control-sm text-center" value="1" min="1"
+                                    style="width:46px; height:26px; font-size:0.8rem;">
+                                <span class="mx-1">of <strong id="ccTotalPages">1</strong></span>
+                                <button type="button" class="btn btn-sm btn-outline-secondary cc-page-btn"
+                                    data-action="next" style="padding:1px 5px;">&gt;&gt;</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary cc-page-btn"
+                                    data-action="last" style="padding:1px 5px;">&gt;|</button>
+                                <select class="form-control form-control-sm ml-2" id="ccPageSize"
+                                    style="width:58px; height:26px; font-size:0.8rem;">
+                                    <option value="10" selected>10</option>
+                                    <option value="25">25</option>
+                                    <option value="50">50</option>
+                                </select>
+                            </div>
+                            <span class="text-muted" style="font-size:0.8rem;" id="ccViewRange">View 1 - 0 of 0</span>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-sm" id="ccSearchOkBtn"
+                            style="background:#a8b400; color:#fff; font-weight:600; min-width:50px;" disabled>
+                            Ok
+                        </button>
+                        <span class="text-muted mx-2" style="font-size:0.85rem;">or</span>
+                        <a href="#" class="text-primary" id="ccSearchCancelBtn"
+                            style="font-size:0.875rem; font-weight:500;">Cancel</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </form>
 @stop
 
@@ -1831,8 +2100,9 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                             MODAL STYLING — matched to FitExpress UI
-                            ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ============================================= */
+
         .modal-header {
             background-color: #fff !important;
             color: #000 !important;
@@ -2274,9 +2544,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -3165,7 +3435,7 @@
                             $select.data('populated', true).prop('disabled', false);
                         } else {
                             $select.append(
-                                '<option value="" disabled>No currencies available</option>');
+                            '<option value="" disabled>No currencies available</option>');
                         }
                     },
                     error: function(xhr) {
@@ -3177,7 +3447,6 @@
                     }
                 });
             }
-
 
             // ============================================
             // TRANSPORT MODE DROPDOWN
@@ -3367,7 +3636,7 @@
                                 const code = item.IncoTermCode || '';
                                 $sel.append(
                                     `<option value="${code}">${code} — ${item.Name}</option>`
-                                );
+                                    );
                             });
                             incoTermsLoaded = true;
                             console.log('IncoTerm savedIncoTerm:', savedIncoTerm);
@@ -3514,6 +3783,7 @@
 
                             $('#shipmentModeSelect, #transportModeSelect').prop('disabled',
                                 true);
+
                             $('#incoTermSelect').val(incoTerm).addClass('d-none').prop(
                                 'disabled', true);
                             $('#incoTermDisplay').removeClass('d-none').val(incoTerm);
@@ -3529,10 +3799,11 @@
                                 $('#destCountrySelect option:selected').data('name')
                             ).show();
 
+
                             $('#serviceClassSelect').val(serviceClass).addClass('d-none').prop(
                                 'disabled', true);
                             $('#serviceClassDisplay').val(serviceClass).removeClass(
-                                'd-none'); // code, same as page load
+                            'd-none'); // code, same as page load
                             originalServiceClass = serviceClass;
                             originalServiceClassDisplay = serviceClass;
 
@@ -5195,7 +5466,7 @@
                         totalBaseAmount += parseFloat(charge.amtInBaseCurr || 0);
                         tbody.append(`
                         <tr>
-                        <td class="text-center bulk-delete-col" style="display:none;">
+                           <td class="text-center bulk-delete-col" style="display:none;">
                                 <input type="checkbox" class="charge-row-check"
                                     data-type="revenue" data-id="${charge.id}">
                             </td>
@@ -5245,9 +5516,9 @@
                         totalBaseAmount += parseFloat(charge.amtInBaseCurr || 0);
                         tbody.append(`
                             <tr>
-                            <td class="text-center bulk-delete-col" style="display:none;">
+                             <td class="text-center bulk-delete-col" style="display:none;">
                                 <input type="checkbox" class="charge-row-check"
-                                    data-type="cost" data-id="${charge.id}">
+                                       data-type="cost" data-id="${charge.id}">
                             </td>
                                 <td>${charge.chargeName || charge.chargeCode || ''}</td>
                                 <td class="text-right">${parseFloat(charge.rate || 0).toFixed(2)}</td>
@@ -5426,6 +5697,7 @@
                         $('#reasonRemark').addClass('is-invalid').focus();
                         return;
                     }
+
                     $('#reasonRemark').removeClass('is-invalid');
                     updateStatus(status, reasonCode, reasonRemark, bookingNo);
                 });
@@ -7834,11 +8106,10 @@
                 if ($sp.hasClass('ui-autocomplete-input')) $sp.autocomplete('destroy');
             });
 
-
             $('#saveInquiryBtn').on('click', function() {
                 var code = $('#salesPersonCode').val().trim();
                 var email = $('#salesPersonEmail').val().trim();
-                var currency = $('#quotationCurrencySelect').val().trim(); 
+                var currency = $('#quotationCurrencySelect').val();
 
                 if (!code) {
                     showNotification('Please select a Sales Person.', 'error');
@@ -7846,6 +8117,10 @@
                 }
                 if (!email) {
                     showNotification('Sales Person Email is required.', 'error');
+                    return;
+                }
+                if (!currency) {
+                    showNotification('Please select a Currency.', 'error');
                     return;
                 }
 
@@ -7860,25 +8135,23 @@
                         quotation_id: quotationId,
                         sales_person_code: code,
                         sales_person_email: email,
-                            quotation_currency: currency 
-
+                        quotation_currency: currency,
                     },
                     success: function(res) {
                         if (res.success) {
                             $('#salesPersonDisplay').attr('readonly', true);
                             $('#salesPersonEmail').attr('readonly', true);
+                            $('#quotationCurrencyDisplay').val(currency).removeClass('d-none');
+                            $('#quotationCurrencySelect').addClass('d-none');
                             $('#editInquiryBtn').removeClass('d-none');
-                            $('#saveInquiryBtn, #cancelInquiryBtn').addClass(
-                                'd-none');
+                            $('#saveInquiryBtn, #cancelInquiryBtn').addClass('d-none');
                             showNotification('Inquiry details saved.', 'success');
                         } else {
-                            showNotification(res.message || 'Save failed.',
-                                'error');
+                            showNotification(res.message || 'Save failed.', 'error');
                         }
                     },
                     error: function(xhr) {
-                        showNotification(xhr.responseJSON?.message ||
-                            'Server error.', 'error');
+                        showNotification(xhr.responseJSON?.message || 'Server error.', 'error');
                     },
                     complete: function() {
                         $btn.prop('disabled', false).html(
@@ -8172,6 +8445,10 @@
                     },
                     {
                         step: 2,
+                        label: 'Create Debtor'
+                    },
+                    {
+                        step: 3,
                         label: 'Mark as Won'
                     },
                 ];
@@ -8233,7 +8510,6 @@
                         booking_no: bookingNo,
                         quotation_id: quotationId,
                         reason_remark: reasonRemark || '',
-                        source: 'edit',
                     },
                     success: function(res) {
                         renderWonSteps(res.steps || []);
@@ -8244,6 +8520,7 @@
                                 window.location.href = '{{ route('quotation.index') }}';
                             }, 1500);
                         } else {
+
                             var failedStep = (res.steps || []).find(function(s) {
                                 return s.status === 'Failed';
                             });
@@ -8328,5 +8605,472 @@
                 });
             }, 3000);
         }
+
+        // ============================================
+        // COPY CHARGES
+        // ============================================
+        (function() {
+
+            const CC_SEARCH_URL = '{{ route('quotation.copy-charges.search') }}';
+            const CC_CHARGES_URL = '{{ route('quotation.copy-charges.charges') }}';
+            const CC_SAVE_URL = '{{ route('quotation.charge.save') }}';
+
+            let ccSearchResults = [];
+            let ccCurrentPage = 1;
+            let ccPageSize = 10;
+            let ccSelectedJobRow = null;
+
+            const ccTableState = {
+                ccRevenueBody: {
+                    rows: [],
+                    page: 1,
+                    pageSize: 10
+                },
+                ccCostBody: {
+                    rows: [],
+                    page: 1,
+                    pageSize: 10
+                },
+            };
+
+            // ── Open modal ────────────────────────────────────────────────────────────
+            $('#openCopyChargesBtn').on('click', function() {
+                resetCopyChargesModal();
+                $('#copyChargesModal').modal('show');
+            });
+
+            // ── Open job search ───────────────────────────────────────────────────────
+            $('#ccJobNoSearchBtn').on('click', function() {
+                ccSelectedJobRow = null;
+                $('#ccSearchOkBtn').prop('disabled', true);
+                resetSearchModal();
+                $('#ccSearchModal').css('z-index', 1060).modal('show');
+            });
+
+            // ── Search ────────────────────────────────────────────────────────────────
+            $('#ccSearchGoBtn').on('click', function() {
+                ccCurrentPage = 1;
+                runSearch();
+            });
+
+            $('#ccSearchValue').on('keypress', function(e) {
+                if (e.which === 13) $('#ccSearchGoBtn').trigger('click');
+            });
+
+            function runSearch() {
+                const filterField = $('#ccSearchField').val();
+                const filterValue = $('#ccSearchValue').val().trim();
+
+                $.ajax({
+                    url: CC_SEARCH_URL,
+                    type: 'GET',
+                    data: {
+                        office_code: officeCode,
+                        filter_field: filterField,
+                        filter_value: filterValue
+                    },
+                    beforeSend: function() {
+                        $('#ccSearchResultsBody').html(
+                            '<tr><td colspan="5" class="cc-empty-msg"><i class="fas fa-spinner fa-spin"></i> Searching...</td></tr>'
+                        );
+                    },
+                    success: function(response) {
+                        ccSearchResults = response.success ? (response.data || []) : [];
+                        ccCurrentPage = 1;
+                        renderSearchPage();
+                    },
+                    error: function() {
+                        ccSearchResults = [];
+                        renderSearchPage();
+                        showNotification('Search failed', 'error');
+                    }
+                });
+            }
+
+            // ── Search pagination ─────────────────────────────────────────────────────
+            $(document).on('click', '.cc-page-btn', function() {
+                const action = $(this).data('action');
+                const totalPages = Math.max(1, Math.ceil(ccSearchResults.length / ccPageSize));
+                if (action === 'first') ccCurrentPage = 1;
+                else if (action === 'prev') ccCurrentPage = Math.max(1, ccCurrentPage - 1);
+                else if (action === 'next') ccCurrentPage = Math.min(totalPages, ccCurrentPage + 1);
+                else if (action === 'last') ccCurrentPage = totalPages;
+                renderSearchPage();
+            });
+
+            $('#ccPageInput').on('change', function() {
+                const totalPages = Math.max(1, Math.ceil(ccSearchResults.length / ccPageSize));
+                ccCurrentPage = Math.min(totalPages, Math.max(1, parseInt($(this).val()) || 1));
+                renderSearchPage();
+            });
+
+            $('#ccPageSize').on('change', function() {
+                ccPageSize = parseInt($(this).val()) || 10;
+                ccCurrentPage = 1;
+                renderSearchPage();
+            });
+
+            function renderSearchPage() {
+                const $tbody = $('#ccSearchResultsBody');
+                const total = ccSearchResults.length;
+                const totalPages = Math.max(1, Math.ceil(total / ccPageSize));
+                ccCurrentPage = Math.min(ccCurrentPage, totalPages);
+                const start = (ccCurrentPage - 1) * ccPageSize;
+                const end = Math.min(start + ccPageSize, total);
+                const page = ccSearchResults.slice(start, end);
+
+                $('#ccPageInput').val(ccCurrentPage);
+                $('#ccTotalPages').text(totalPages);
+                $('#ccViewRange').text(total === 0 ? 'View 0 - 0 of 0' : `View ${start + 1} - ${end} of ${total}`);
+
+                $tbody.empty();
+
+                if (!page.length) {
+                    $tbody.html('<tr><td colspan="5" class="cc-empty-msg">No results found</td></tr>');
+                    return;
+                }
+
+                page.forEach(function(row, i) {
+                    const globalIdx = start + i;
+                    $tbody.append(`
+                    <tr style="cursor:pointer;" data-idx="${globalIdx}">
+                        <td class="text-center">
+                            <input type="radio" name="ccJobSearchRadio" class="cc-search-radio" value="${globalIdx}">
+                        </td>
+                        <td style="font-size:0.8rem;">${row.QuoteNo}</td>
+                        <td style="font-size:0.8rem;">${row.CompanyName}</td>
+                        <td style="font-size:0.8rem;">${row.Origin}</td>
+                        <td style="font-size:0.8rem;">${row.Destination}</td>
+                    </tr>
+                `);
+                });
+
+                $tbody.find('tr').on('click', function() {
+                    $(this).find('input[type="radio"]').prop('checked', true).trigger('change');
+                });
+            }
+
+            // ── Row selection ─────────────────────────────────────────────────────────
+            $(document).on('change', '.cc-search-radio', function() {
+                const idx = parseInt($(this).val(), 10);
+                ccSelectedJobRow = ccSearchResults[idx] || null;
+                $('#ccSearchOkBtn').prop('disabled', !ccSelectedJobRow);
+            });
+
+            // ── Search Ok ─────────────────────────────────────────────────────────────
+            $('#ccSearchOkBtn').on('click', function() {
+                if (!ccSelectedJobRow) return;
+                $('#ccJobNo').val(ccSelectedJobRow.QuoteNo);
+                $('#ccSearchModal').modal('hide');
+                loadJobCharges(ccSelectedJobRow);
+            });
+
+            // ── Search cancel / close ─────────────────────────────────────────────────
+            $('#ccSearchCancelBtn, #ccSearchModalClose').on('click', function(e) {
+                e.preventDefault();
+                $('#ccSearchModal').modal('hide');
+            });
+
+            // ── Load charges for selected quote ───────────────────────────────────────
+            function loadJobCharges(jobRow) {
+                if (!jobRow.id) {
+                    showNotification('Quotation ID not found for this quote', 'error');
+                    return;
+                }
+
+                $('#ccJobDetails, #ccJobDetailsCost').hide();
+                const emptyMsg =
+                    '<tr><td colspan="6" class="cc-empty-msg"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>';
+                $('#ccRevenueBody, #ccCostBody').html(emptyMsg);
+
+                $.ajax({
+                    url: CC_CHARGES_URL,
+                    type: 'GET',
+                    data: {
+                        quotation_id: jobRow.id
+                    },
+                    success: function(response) {
+                        if (!response.success) {
+                            showNotification(response.message || 'Failed to load charges', 'error');
+                            return;
+                        }
+
+                        var info = response.job_info || {};
+                        $('#ccClient').text(info.client || '');
+                        $('#ccShipper').text(info.shipper || '');
+                        $('#ccConsignee').text(info.consignee || '');
+                        $('#ccPortOfLoading').text(info.port_of_loading || '');
+                        $('#ccPortOfDischarge').text(info.port_of_discharge || '');
+                        $('#ccClientRow').toggle(!!info.client);
+                        $('#ccShipperRow').toggle(!!info.shipper);
+                        $('#ccConsigneeRow').toggle(!!info.consignee);
+                        $('#ccPolRow').toggle(!!info.port_of_loading);
+                        $('#ccPodRow').toggle(!!info.port_of_discharge);
+
+                        ccTableState.ccRevenueBody.rows = response.revenue || [];
+                        ccTableState.ccRevenueBody.page = 1;
+                        ccTableState.ccRevenueBody.pageSize = 10;
+
+                        ccTableState.ccCostBody.rows = response.cost || [];
+                        ccTableState.ccCostBody.page = 1;
+                        ccTableState.ccCostBody.pageSize = 10;
+
+                        const rev = response.revenue.length;
+                        const cost = response.cost.length;
+                        $('#ccRevenueSummary').text(`[ Total Record(s): ${rev} ]`);
+                        $('#ccCostSummary').text(`[ Total Record(s): ${cost} ]`);
+
+                        renderTablePage('ccRevenueBody');
+                        renderTablePage('ccCostBody');
+
+                        $('#ccJobDetails').show();
+                        $('#ccJobDetailsCost').show();
+                        updateSaveBtn();
+                    },
+                    error: function() {
+                        showNotification('Failed to load charges', 'error');
+                    }
+                });
+            }
+
+            // ── Per-table pagination ──────────────────────────────────────────────────
+            $(document).on('click', '.cc-tbl-page-btn', function() {
+                const tbodyId = $(this).data('tbody');
+                const action = $(this).data('action');
+                const s = ccTableState[tbodyId];
+                if (!s) return;
+                const totalPages = Math.max(1, Math.ceil(s.rows.length / s.pageSize));
+                if (action === 'first') s.page = 1;
+                else if (action === 'prev') s.page = Math.max(1, s.page - 1);
+                else if (action === 'next') s.page = Math.min(totalPages, s.page + 1);
+                else if (action === 'last') s.page = totalPages;
+                renderTablePage(tbodyId);
+            });
+
+            $(document).on('change', '.cc-tbl-page-input', function() {
+                const tbodyId = $(this).data('tbody');
+                const s = ccTableState[tbodyId];
+                if (!s) return;
+                const totalPages = Math.max(1, Math.ceil(s.rows.length / s.pageSize));
+                s.page = Math.min(totalPages, Math.max(1, parseInt($(this).val()) || 1));
+                renderTablePage(tbodyId);
+            });
+
+            $(document).on('change', '.cc-tbl-page-size', function() {
+                const tbodyId = $(this).data('tbody');
+                const s = ccTableState[tbodyId];
+                if (!s) return;
+                s.pageSize = parseInt($(this).val()) || 10;
+                s.page = 1;
+                renderTablePage(tbodyId);
+            });
+
+            // ── View All / Selected toggles ───────────────────────────────────────────
+            $(document).on('click', '.cc-view-toggle', function(e) {
+                e.preventDefault();
+                const tbodyId = $(this).data('tbody');
+                const mode = $(this).data('mode');
+                const $tbody = $('#' + tbodyId);
+
+                if (mode === 'selected') {
+                    $tbody.find('tr').each(function() {
+                        $(this).toggle($(this).find('input[type="checkbox"]').is(':checked'));
+                    });
+                } else {
+                    $tbody.find('tr').show();
+                }
+            });
+
+            // ── Select all ────────────────────────────────────────────────────────────
+            $('#ccRevenueSelectAll').on('change', function() {
+                $('#ccRevenueBody input[type="checkbox"]').prop('checked', $(this).is(':checked'));
+                updateSaveBtn();
+            });
+            $('#ccCostSelectAll').on('change', function() {
+                $('#ccCostBody input[type="checkbox"]').prop('checked', $(this).is(':checked'));
+                updateSaveBtn();
+            });
+            $(document).on('change', '#ccRevenueBody input[type="checkbox"], #ccCostBody input[type="checkbox"]',
+                function() {
+                    updateSaveBtn();
+                }
+            );
+
+            // ── Build charge row (6 columns) ─────────────────────────────────────────
+            function buildChargeRow(r, i, type) {
+                return `
+                <tr data-cc-row="${i}">
+                    <td class="text-center">
+                        <input type="checkbox" class="cc-charge-check" data-type="${type}" data-index="${i}">
+                    </td>
+                    <td style="font-size:0.8rem;">${r.chargeCode || ''}</td>
+                    <td style="font-size:0.8rem; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
+                        title="${r.chargeDesp || ''}">${r.chargeDesp || ''}</td>
+                    <td class="text-center" style="font-size:0.8rem;">${r.quantity || 0}</td>
+                    <td style="font-size:0.8rem;">${r.basedOn || ''}</td>
+                    <td style="font-size:0.8rem;">${r.uomCode || ''}</td>
+                </tr>
+            `;
+            }
+
+            function renderTablePage(tbodyId) {
+                const s = ccTableState[tbodyId];
+                const $tbody = $('#' + tbodyId);
+                const type = tbodyId === 'ccRevenueBody' ? 'revenue' : 'cost';
+                const total = s.rows.length;
+                const totalPages = Math.max(1, Math.ceil(total / s.pageSize));
+                s.page = Math.min(s.page, totalPages);
+                const start = (s.page - 1) * s.pageSize;
+                const end = Math.min(start + s.pageSize, total);
+                const page = s.rows.slice(start, end);
+
+                $tbody.empty();
+
+                if (!page.length) {
+                    const msg = total === 0 ? 'No charges on this quote' : 'No charges on this page';
+                    $tbody.html(`<tr><td colspan="6" class="cc-empty-msg">${msg}</td></tr>`);
+                } else {
+                    page.forEach(function(r, i) {
+                        $tbody.append(buildChargeRow(r, start + i, type));
+                    });
+                }
+
+                updateTablePagination(tbodyId);
+            }
+
+            function updateTablePagination(tbodyId) {
+                const s = ccTableState[tbodyId];
+                const total = s.rows.length;
+                const totalPages = Math.max(1, Math.ceil(total / s.pageSize));
+                const start = (s.page - 1) * s.pageSize;
+                const end = Math.min(start + s.pageSize, total);
+
+                $(`.cc-tbl-page-input[data-tbody="${tbodyId}"]`).val(s.page);
+                $(`.cc-tbl-total-pages[data-tbody="${tbodyId}"]`).text(totalPages);
+                $(`.cc-tbl-view-range[data-tbody="${tbodyId}"]`).text(
+                    total === 0 ? 'View 0 - 0 of 0' : `View ${start + 1} - ${end} of ${total}`
+                );
+            }
+
+            function updateSaveBtn() {
+                const any = $('#ccRevenueBody .cc-charge-check:checked, #ccCostBody .cc-charge-check:checked').length >
+                    0;
+                $('#ccSaveBtn').prop('disabled', !any);
+            }
+
+            // ── Save selected charges → reload page ───────────────────────────────────
+            $('#ccSaveBtn').on('click', function() {
+                const charges = [];
+
+                $('#ccRevenueBody .cc-charge-check:checked').each(function() {
+                    const row = ccTableState.ccRevenueBody.rows[$(this).data('index')];
+                    if (row) charges.push(row);
+                });
+                $('#ccCostBody .cc-charge-check:checked').each(function() {
+                    const row = ccTableState.ccCostBody.rows[$(this).data('index')];
+                    if (row) charges.push(row);
+                });
+
+                if (!charges.length) return;
+
+                const $btn = $(this).prop('disabled', true).text('Saving...');
+                let chain = Promise.resolve();
+                let failed = false;
+
+                charges.forEach(function(charge) {
+                    chain = chain.then(function() {
+                        if (failed) return;
+                        return $.ajax({
+                            url: CC_SAVE_URL,
+                            type: 'POST',
+                            data: {
+                                _token: '{{ csrf_token() }}',
+                                action: 'Add',
+                                quotation_id: quotationId,
+                                booking_no: bookingNo,
+                                office_code: officeCode,
+                                revenue_or_cost: charge.isRevenue ? 'Revenue' : 'Cost',
+                                charge_code: charge.chargeCode,
+                                quantity: charge.quantity,
+                                rate: charge.rate,
+                                amt_in_chg_curr: charge.amount,
+                                amt_in_base_curr: charge.baseAmount,
+                                exchange_rate: charge.exchangeRate,
+                                chg_curr: charge.currency,
+                                based_on_code: charge.basedOnCode,
+                                based_on_uom: charge.uomCode,
+                                charge_remark: '',
+                                to_be_added: 0,
+                                increase_by: 0,
+                                increase_type: 'Percentage',
+                                source_type: 'manual',
+                                quote_charge_id: '',
+                                party_code: '',
+                            }
+                        }).fail(function(xhr) {
+                            failed = true;
+                            showNotification(
+                                (xhr.responseJSON?.message || 'Failed to copy') +
+                                ': ' + charge.chargeCode,
+                                'error'
+                            );
+                        });
+                    });
+                });
+
+                chain.then(function() {
+                    if (!failed) {
+                        $('#copyChargesModal').modal('hide');
+                        window.location.reload();
+                    }
+                }).always(function() {
+                    $btn.prop('disabled', false).text('Save');
+                });
+            });
+
+            // ── Copy Charges modal close ──────────────────────────────────────────────
+            $('#copyChargesModal').on('hidden.bs.modal', resetCopyChargesModal);
+            $('#ccCancelBtn').on('click', function(e) {
+                e.preventDefault();
+                $('#copyChargesModal').modal('hide');
+            });
+
+            // ── Helpers ───────────────────────────────────────────────────────────────
+            function resetCopyChargesModal() {
+                $('#ccJobNo').val('');
+                $('#ccJobDetails, #ccJobDetailsCost').hide();
+                $('#ccClientRow, #ccShipperRow, #ccConsigneeRow, #ccPolRow, #ccPodRow').hide();
+                $('#ccClient, #ccShipper, #ccConsignee, #ccPortOfLoading, #ccPortOfDischarge').text('');
+                const empty = '<tr><td colspan="6" class="cc-empty-msg">Enter a Job No to load charges</td></tr>';
+                $('#ccRevenueBody, #ccCostBody').html(empty);
+                $('#ccRevenueSummary').text('[ Total Record(s): 0 ]');
+                $('#ccCostSummary').text('[ Total Record(s): 0 ]');
+                $('#ccRevenueSelectAll, #ccCostSelectAll').prop('checked', false);
+                $('#ccSaveBtn').prop('disabled', true);
+                ccTableState.ccRevenueBody = {
+                    rows: [],
+                    page: 1,
+                    pageSize: 10
+                };
+                ccTableState.ccCostBody = {
+                    rows: [],
+                    page: 1,
+                    pageSize: 10
+                };
+                updateTablePagination('ccRevenueBody');
+                updateTablePagination('ccCostBody');
+                ccSelectedJobRow = null;
+            }
+
+            function resetSearchModal() {
+                $('#ccSearchField').val('');
+                $('#ccSearchValue').val('');
+                ccSearchResults = [];
+                ccCurrentPage = 1;
+                ccPageSize = parseInt($('#ccPageSize').val()) || 10;
+                renderSearchPage();
+            }
+
+        })();
     </script>
 @stop

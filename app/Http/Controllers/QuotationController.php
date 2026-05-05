@@ -683,6 +683,19 @@ class QuotationController extends Controller
             // ── Date range — day filters ignored, SP only supports FromDate/ToDate ──
             ['from' => $spFromDate, 'to' => $spToDate] = $this->resolveDateRange($days, $startDate, $endDate);
 
+            // ── Determine which SP call(s) to make per card ───────────────────
+            // SP branches:
+            //   'Total'          → all records (no status filter)
+            //   'In Progress'    → all records (same branch as Total — filter in PHP)
+            //   'Won'            → all records (same branch — filter in PHP by SCMINTStatus IS NULL)
+            //   'Completed'      → all records (same branch — filter in PHP by SCMINTStatus=Success)
+            //   'Failed Int.'    → all records (same branch — filter in PHP by SCMINTStatus=Failed)
+            //   'Lost','Cancelled' → WHERE QuoteStatus IN ('Lost','Cancelled')
+            //   'Failed Progress'  → WHERE QuoteStatus = 'Failed Progress'
+            //
+            // We call SP with 'Total' for in_progress/won/completed/failed_int/total
+            // and with the exact status for lost_canceled/failed_progress
+
             $spStatus = match ($cardFilter) {
                 'lost_canceled' => 'Lost', // SP returns both Lost+Cancelled in one call
                 'failed_progress' => 'Failed Progress',
@@ -844,8 +857,8 @@ class QuotationController extends Controller
                 // Action buttons
                 $actionHtml = '<div class="action-buttons">';
                 if ($db) {
-                    $isWon = $quoteStatus === 'Won';
-                    $isFailedInt = in_array(strtolower($quoteStatus), ['failed int.', 'failed int']);
+                    $isWon = $quoteStatus === 'Won' && is_null($scmStatus);
+                    $isFailedInt = $quoteStatus === 'Won' && !is_null($scmStatus) && $scmStatus !== 'Success';
                     $isInProgress = $quoteStatus === 'In Progress';
 
                     $actionHtml .=
@@ -1941,9 +1954,9 @@ class QuotationController extends Controller
                 ISNULL(UOM.Code,          '')       AS UOMCode_UOM
             FROM Quote_Quotation_ChargeSheet QC WITH (NOLOCK)
             LEFT JOIN Cust_ChargecodeBasedOn          CB  WITH (NOLOCK) ON CB.Id  = QC.BasedOnId
-            LEFT JOIN [FITSCM].dbo.Cust_Party      CP  WITH (NOLOCK) ON CP.Id  = QC.PartyID
-            LEFT JOIN [FITSCM].dbo.Cust_Equipment  EQ  WITH (NOLOCK) ON EQ.Id  = QC.UOMId AND QC.UOMType = 'Equipment'
-            LEFT JOIN [FITSCM].dbo.Sys_UOM         UOM WITH (NOLOCK) ON UOM.Id = QC.UOMId AND QC.UOMType != 'Equipment'
+            LEFT JOIN [FITSCMUAT].dbo.Cust_Party      CP  WITH (NOLOCK) ON CP.Id  = QC.PartyID
+            LEFT JOIN [FITSCMUAT].dbo.Cust_Equipment  EQ  WITH (NOLOCK) ON EQ.Id  = QC.UOMId AND QC.UOMType = 'Equipment'
+            LEFT JOIN [FITSCMUAT].dbo.Sys_UOM         UOM WITH (NOLOCK) ON UOM.Id = QC.UOMId AND QC.UOMType != 'Equipment'
             WHERE QC.Id = ? AND QC.IsDeleted = 0
         ",
                 [$chargeId],
@@ -2666,11 +2679,11 @@ class QuotationController extends Controller
                 ISNULL(QC.ChargeType, 'manual') as SourceType
             FROM Quote_Quotation_ChargeSheet QC WITH (NOLOCK)
             INNER JOIN Quote_QuotationInfo QI WITH (NOLOCK) ON QI.id = QC.QuotationInfoID
-            LEFT JOIN [FITSCM].dbo.Bill_ChargeCode BC WITH (NOLOCK) ON BC.Id = QC.ChargeCodeId
-            LEFT JOIN [FITSCM].dbo.Cust_Currency CC WITH (NOLOCK) ON CC.Id = QC.EstChargeCurrencyId
+            LEFT JOIN [FITSCMUAT].dbo.Bill_ChargeCode BC WITH (NOLOCK) ON BC.Id = QC.ChargeCodeId
+            LEFT JOIN [FITSCMUAT].dbo.Cust_Currency CC WITH (NOLOCK) ON CC.Id = QC.EstChargeCurrencyId
             LEFT JOIN Cust_ChargecodeBasedOn CB WITH (NOLOCK) ON CB.Id = QC.BasedOnId
-            LEFT JOIN [FITSCM].dbo.Sys_UOM SU WITH (NOLOCK) ON SU.Id = QC.UOMId
-            LEFT JOIN [FITSCM].dbo.Cust_Party CP WITH (NOLOCK) ON CP.Id = QC.PartyID
+            LEFT JOIN [FITSCMUAT].dbo.Sys_UOM SU WITH (NOLOCK) ON SU.Id = QC.UOMId
+            LEFT JOIN [FITSCMUAT].dbo.Cust_Party CP WITH (NOLOCK) ON CP.Id = QC.PartyID
             WHERE QC.Id = ?
                 AND QC.IsDeleted = 0
             ",
@@ -3823,7 +3836,7 @@ class QuotationController extends Controller
 
     public function getReasons(Request $request)
     {
-        $module = $request->input('module', 'QuoteLogger');
+        $module = $request->input('module', 'Quotation');
         $reasonType = $request->input('reason_type');
         $filter = $request->input('filter', '');
 
@@ -4051,7 +4064,7 @@ class QuotationController extends Controller
     public function retrigger(Request $request)
     {
         $bookingNo = $request->input('booking_no');
-        $quotationId = $request->input('quotation_id');
+        $quotationId = $request->input('quotation_id'); // UUID from data-id
 
         if (!$bookingNo) {
             return response()->json(['success' => false, 'message' => 'Booking number is required'], 400);
@@ -4086,85 +4099,16 @@ class QuotationController extends Controller
             'user' => $submittedBy,
         ]);
 
-        // ── Step 2: Re-run if SCMBookingID is not set or not found in SCM ─────────
-        $forceStep2 = (bool) $request->input('force_step2', false);
-
-        $scmBookingExists = false;
-        if (!empty($quotation->SCMBookingID)) {
-            try {
-                $scmBookingExists = DB::table('FITSCM.dbo.Bkg_BookingInfo')
-                    ->where('Id', $quotation->SCMBookingID)
-                    ->exists();
-            } catch (\Exception $e) {
-                Log::error('retrigger - SCM existence check failed', [
-                    'booking_no' => $bookingNo,
-                    'scm_booking_id' => $quotation->SCMBookingID,
-                    'error' => $e->getMessage(),
-                ]);
-                $scmBookingExists = false;
-            }
-        }
-
-        // Only honour force_step2 if the booking is genuinely orphaned in SCM.
-        // If the booking EXISTS in SCM, ignore the flag — too dangerous to overwrite.
-        if ($forceStep2 && $scmBookingExists) {
-            Log::warning('retrigger - force_step2 requested but SCM booking EXISTS — ignoring force flag', [
-                'booking_no' => $bookingNo,
-                'scm_booking_id' => $quotation->SCMBookingID,
-            ]);
-            $forceStep2 = false;
-        }
-
-        Log::info('retrigger - SCM existence check', [
-            'booking_no' => $bookingNo,
-            'scm_booking_id' => $quotation->SCMBookingID ?? 'NULL',
-            'scm_book_exists' => $scmBookingExists,
-            'force_step2' => $forceStep2,
-        ]);
-
-        if (empty($quotation->SCMBookingID) || !$scmBookingExists || $forceStep2) {
-            // Force step 2: clear the orphaned SCMBookingID so the push
-            // creates a fresh booking instead of trying to update a ghost record.
-            if ($forceStep2 && !empty($quotation->SCMBookingID)) {
-                DB::table('Quote_QuotationInfo')
-                    ->where('ID', $quotation->ID)
-                    ->update([
-                        'SCMBookingID' => null,
-                        'SCMJobID' => null,
-                        'SCMBookingNo' => null,
-                        'SCMJobNo' => null,
-                    ]);
-
-                $quotation = DB::table('Quote_QuotationInfo')
-                    ->where('ID', $quotation->ID)
-                    ->first(['ID', 'QuoteNo', 'SCMBookingID', 'SCMBookingXML', 'ClientCreated', 'OfficeCode']);
-
-                Log::info('retrigger - force_step2: cleared orphaned SCMBookingID', [
-                    'booking_no' => $bookingNo,
-                    'quote_no' => $quoteNo,
-                ]);
-            } elseif (!empty($quotation->SCMBookingID) && !$scmBookingExists) {
-                // Original path: SCMBookingID set but not found in SCM — clear it
-                DB::table('Quote_QuotationInfo')
-                    ->where('ID', $quotation->ID)
-                    ->update([
-                        'SCMBookingID' => null,
-                        'SCMJobID' => null,
-                        'SCMBookingNo' => null,
-                        'SCMJobNo' => null,
-                    ]);
-
-                $quotation = DB::table('Quote_QuotationInfo')
-                    ->where('ID', $quotation->ID)
-                    ->first(['ID', 'QuoteNo', 'SCMBookingID', 'SCMBookingXML', 'ClientCreated', 'OfficeCode']);
-            }
-
-            Log::warning('retrigger - SCMBookingID missing or not found in SCM, re-running Step 2', [
+        // ── Step 2: Re-run if SCMBookingID is not set ─────────────────────────────
+        if (empty($quotation->SCMBookingID)) {
+            Log::warning('retrigger - SCMBookingID is NULL, re-running Step 2', [
                 'booking_no' => $bookingNo,
                 'quote_no' => $quoteNo,
-                'scm_booking_id' => $quotation->SCMBookingID ?? 'NULL',
             ]);
 
+            // FIX 1: was "$step2 = $this->runBookingProcessMain($quotation->ID, $stepDef['type'])"
+            // $stepDef is not in scope here. The correct process type for this branch is 'XML'.
+            // Also renamed to $result to be consistent with the read below.
             $result = $this->runBookingProcessMain($quotation->ID, 'XML');
 
             $steps[] = [
@@ -4195,8 +4139,6 @@ class QuotationController extends Controller
 
                 $this->markAsFailed($quotation->ID, 'Booking XML', $result['remark'], $submittedBy);
 
-                // Step 2 (XML generation) is a hard dependency — SCM Push and all
-                // subsequent steps require the XML to exist. Return early here only.
                 return response()->json([
                     'success' => false,
                     'failed_step' => 2,
@@ -4231,76 +4173,59 @@ class QuotationController extends Controller
                     $submittedBy,
                 );
 
-                // FIX 1: Record Step 2b as failed but do NOT return early.
-                // Steps 3 & 4 can still be attempted independently of the SCM push.
-                $steps[] = [
-                    'step' => '2b',
-                    'label' => 'SCM Push',
-                    'status' => 'Failed',
-                    'remark' => $pushResponse['message'] ?? 'SCM push failed',
-                ];
-
-                Log::error('retrigger - Step 2b (SCM Push) failed, continuing to Steps 3 & 4', [
-                    'booking_no' => $bookingNo,
-                    'quote_no' => $quoteNo,
+                return response()->json([
+                    'success' => false,
+                    'failed_step' => 2,
+                    'failed_label' => 'SCM Push',
+                    'steps' => $steps,
                     'message' => $pushResponse['message'] ?? 'SCM push failed',
                 ]);
-            } else {
-                $steps[] = [
-                    'step' => '2b',
-                    'label' => 'SCM Push',
-                    'status' => 'Success',
-                    'remark' => $pushResponse['message'] ?? 'Pushed to SCM successfully',
-                ];
+            }
 
-                // Re-fetch after successful push to get the updated SCMBookingID
-                $quotation = DB::table('Quote_QuotationInfo')
-                    ->where('ID', $quotation->ID)
-                    ->first(['ID', 'QuoteNo', 'SCMBookingID', 'SCMBookingXML', 'ClientCreated', 'OfficeCode']);
+            $steps[] = [
+                'step' => '2b',
+                'label' => 'SCM Push',
+                'status' => 'Success',
+                'remark' => $pushResponse['message'] ?? 'Pushed to SCM successfully',
+            ];
 
-                Log::info('retrigger - SCMBookingID after push', [
+            // Re-fetch after push
+            // AFTER:
+            $quotation = DB::table('Quote_QuotationInfo')
+                ->where('ID', $quotation->ID)
+                ->first(['ID', 'QuoteNo', 'SCMBookingID', 'SCMBookingXML', 'ClientCreated', 'OfficeCode']);
+
+            Log::info('retrigger - SCMBookingID after push', [
+                'booking_no' => $bookingNo,
+                'scm_booking_id' => $quotation->SCMBookingID ?? 'STILL NULL',
+            ]);
+
+            if (empty($quotation->SCMBookingID)) {
+                Log::error('retrigger - SCMBookingID still NULL after push', [
                     'booking_no' => $bookingNo,
-                    'scm_booking_id' => $quotation->SCMBookingID ?? 'STILL NULL',
+                    'quote_no' => $quoteNo,
                 ]);
 
-                if (empty($quotation->SCMBookingID)) {
-                    Log::error('retrigger - SCMBookingID still NULL after push', [
-                        'booking_no' => $bookingNo,
-                        'quote_no' => $quoteNo,
-                    ]);
-
-                    // SCMBookingID missing after a reported-successful push is a data
-                    // integrity issue — record it but still continue to Steps 3 & 4.
-                    $steps[] = [
-                        'step' => '2c',
-                        'label' => 'SCM Booking ID Verify',
-                        'status' => 'Failed',
-                        'remark' =>
-                            'SCMBookingID is NULL after push — SCM did not confirm the booking for QuoteNo: ' .
-                            $quoteNo,
-                    ];
-
-                    Log::warning('retrigger - Continuing to Steps 3 & 4 despite missing SCMBookingID', [
-                        'booking_no' => $bookingNo,
-                        'quote_no' => $quoteNo,
-                    ]);
-                }
+                return response()->json([
+                    'success' => false,
+                    'failed_step' => 2,
+                    'failed_label' => 'SCM Push',
+                    'steps' => $steps,
+                    'message' => 'SCMBookingID is NULL — SCM did not confirm the booking for QuoteNo: ' . $quoteNo,
+                ]);
             }
         }
 
-        // ── Steps 3 and 4: Charge and Document Transfer ───────────────────────────────
-        // FIX 2: Removed early return on step failure. Each step now runs independently.
-        // All failures are collected and reported together at the end.
+        // ── Steps 3 and 4: Charge and Document Transfer ───────────────────────────
         $retriggerSteps = [
             3 => ['type' => 'Charge', 'label' => 'Charge Transfer'],
             4 => ['type' => 'Document', 'label' => 'Document Transfer'],
         ];
 
-        $overallSuccess = true;
-        $firstFailedStepNo = null;
-        $firstFailedLabel = null;
-
         foreach ($retriggerSteps as $stepNo => $stepDef) {
+            // FIX 2: was "$step2 = $this->runBookingProcessMain($quotation->ID, 'XML')"
+            // Two problems: used $step2 (wrong name, leftover from outer branch) and
+            // hardcoded 'XML' instead of $stepDef['type'] (Charge / Document).
             $result = $this->runBookingProcessMain($quotation->ID, $stepDef['type']);
 
             $steps[] = [
@@ -4334,34 +4259,28 @@ class QuotationController extends Controller
 
                 $this->markAsFailed($quotation->ID, $stepDef['label'], $result['remark'], $submittedBy);
 
-                $overallSuccess = false;
-                $firstFailedStepNo = $firstFailedStepNo ?? $stepNo;
-                $firstFailedLabel = $firstFailedLabel ?? $stepDef['label'];
-                // Continue to next step — do NOT return early
+                foreach ($retriggerSteps as $remainingNo => $remainingDef) {
+                    if ($remainingNo > $stepNo) {
+                        $steps[] = [
+                            'step' => $remainingNo,
+                            'label' => $remainingDef['label'],
+                            'status' => 'Skipped',
+                            'remark' => 'Skipped due to previous step failure',
+                        ];
+                    }
+                }
+
+                return response()->json([
+                    'success' => false,
+                    'failed_step' => $stepNo,
+                    'failed_label' => $stepDef['label'],
+                    'steps' => $steps,
+                    'message' => $result['remark'],
+                ]);
             }
         }
 
-        // ── Also factor in any Step 2b / 2c failures recorded above ──────────────────
-        $step2bFailed = collect($steps)->contains(
-            fn($s) => in_array($s['step'], ['2b', '2c']) && $s['status'] === 'Failed',
-        );
-        if ($step2bFailed) {
-            $overallSuccess = false;
-        }
-
-        if (!$overallSuccess) {
-            $failedRemarks = collect($steps)->where('status', 'Failed')->pluck('remark')->filter()->implode(' | ');
-
-            return response()->json([
-                'success' => false,
-                'failed_step' => $firstFailedStepNo,
-                'failed_label' => $firstFailedLabel,
-                'steps' => $steps,
-                'message' => $failedRemarks,
-            ]);
-        }
-
-        // ── All steps passed ──────────────────────────────────────────────────────────
+        // ── All steps passed ──────────────────────────────────────────────────────
         DB::table('Quote_QuotationInfo')
             ->where('ID', $quotation->ID)
             ->update([
@@ -4370,6 +4289,7 @@ class QuotationController extends Controller
                 'LastModifiedBy' => $submittedBy,
                 'updatedon' => now(),
             ]);
+
         Log::info('retrigger - Completed successfully', [
             'booking_no' => $bookingNo,
             'quote_no' => $quoteNo,
@@ -5200,11 +5120,6 @@ class QuotationController extends Controller
             $storagePath = $folder . '/' . $fileName;
             $fullPath = \Storage::disk('public')->path($storagePath);
 
-            // Log::info('PDF Generation - Paths resolved', [
-            //     'storage_path' => $storagePath,
-            //     'existing_versions' => $existingVersions,
-            // ]);
-
             // ── Write PDF to local disk ───────────────────────────────────────────
             // $azureWarning initialized here so it is always in scope,
             // including the early-return inside the SP catch block below.
@@ -5247,13 +5162,13 @@ class QuotationController extends Controller
             try {
                 $pdoSp = DB::connection()->getPdo();
                 $stmtSp = $pdoSp->prepare("
-        SET NOCOUNT ON;
-        DECLARE @Status VARCHAR(25), @Remark VARCHAR(200);
-        EXEC dbo.sp_Quote_QuotationDocumentAdd ?, ?, ?,
-            @Status = @Status OUTPUT,
-            @Remark = @Remark OUTPUT;
-        SELECT @Status AS Status, @Remark AS Remark;
-    ");
+                    SET NOCOUNT ON;
+                    DECLARE @Status VARCHAR(25), @Remark VARCHAR(200);
+                    EXEC dbo.sp_Quote_QuotationDocumentAdd ?, ?, ?,
+                        @Status = @Status OUTPUT,
+                        @Remark = @Remark OUTPUT;
+                    SELECT @Status AS Status, @Remark AS Remark;
+                ");
                 $stmtSp->execute([
                     $quotation->ID, // @QuotationID
                     $submittedBy, // @Username (already trimmed to 50)
@@ -5407,11 +5322,6 @@ class QuotationController extends Controller
      */
     private function getQuotationHtml(string $quotationId): ?string
     {
-        // if (empty(trim($quoteNo))) {
-        //     Log::error('getQuotationHtml - quoteNo is empty');
-        //     return null;
-        // }
-
         if (empty(trim($quotationId))) {
             Log::error('getQuotationHtml - quotationId is empty');
             return null;
@@ -5729,6 +5639,132 @@ class QuotationController extends Controller
         );
     }
 
+    public function getCopyChargesSearch(Request $request): JsonResponse
+    {
+        $officeCode = trim($request->input('office_code', ''));
+        $filterField = $request->input('filter_field', '');
+        $filterValue = trim($request->input('filter_value', ''));
+
+        $rows = $this->callQuotationListSP('Total', '', '', $officeCode);
+
+        if ($filterValue !== '') {
+            $needle = strtolower($filterValue);
+            $rows = array_values(
+                array_filter($rows, function ($row) use ($filterField, $needle) {
+                    return match ($filterField) {
+                        'quote_no' => str_contains(strtolower($row->QuoteNo ?? ''), $needle),
+                        'customer' => str_contains(strtolower($row->CompanyName ?? ''), $needle),
+                        'origin' => str_contains(strtolower($row->OriginCountry ?? ''), $needle),
+                        'destination' => str_contains(strtolower($row->DestinationCountry ?? ''), $needle),
+                        default => str_contains(strtolower($row->QuoteNo ?? ''), $needle) ||
+                            str_contains(strtolower($row->CompanyName ?? ''), $needle),
+                    };
+                }),
+            );
+        }
+
+        $quoteNos = array_column($rows, 'QuoteNo');
+        $dbMap = collect();
+        if (!empty($quoteNos)) {
+            $dbMap = DB::table('Quote_QuotationInfo')->whereIn('QuoteNo', $quoteNos)->pluck('ID', 'QuoteNo');
+        }
+
+        $data = array_map(
+            fn($row) => [
+                'id' => $dbMap[$row->QuoteNo] ?? '',
+                'QuoteNo' => $row->QuoteNo ?? '',
+                'CompanyName' => $row->CompanyName ?? '',
+                'Origin' => $row->OriginCountry ?? '',
+                'Destination' => $row->DestinationCountry ?? '',
+            ],
+            $rows,
+        );
+
+        return response()->json(['success' => true, 'data' => $data]);
+    }
+
+    public function getCopyCharges(Request $request): JsonResponse
+    {
+        $quotationId = trim($request->input('quotation_id', ''));
+
+        if (!$quotationId) {
+            return response()->json(['success' => false, 'message' => 'quotation_id is required'], 400);
+        }
+
+        try {
+            $pdo = DB::connection()->getPdo();
+
+            $revenueRows = $this->fetchCopyChargeRows($pdo, $quotationId, 1);
+            $costRows = $this->fetchCopyChargeRows($pdo, $quotationId, 0);
+
+            $map = fn($row, $isRevenue) => [
+                'id' => $row['Id'],
+                'chargeCode' => $row['ChargeCode'] ?? '',
+                'chargeDesp' => $row['ChargeDesp'] ?? '',
+                'basedOnCode' => $row['BasedOn'] ?? '',
+                'basedOnAndUOM' => $row['BasedOnAndUOM'] ?? '',
+                'uomCode' => $row['UOMCode'] ?? '',
+                'quantity' => (float) ($row['Quantity'] ?? 0),
+                'rate' => (float) ($row['EstChargeRate'] ?? 0),
+                'currency' => $row['EstChargeCurrCode'] ?? '',
+                'currencyId' => $row['EstChargeCurrencyId'] ?? '',
+                'amount' => (float) ($row['EstChargeAmount'] ?? 0),
+                'baseAmount' => (float) ($row['EstBaseAmount'] ?? 0),
+                'exchangeRate' => (float) ($row['BaseExchRate'] ?? 1),
+                'isRevenue' => $isRevenue,
+            ];
+
+            $jobInfo = DB::table('Quote_QuotationInfo')
+                ->where('ID', $quotationId)
+                ->select(['companyname', 'origincountry', 'destinationcountry', 'pri_partnermaster_name', 'SCMJobNo'])
+                ->first();
+
+            return response()->json([
+                'success' => true,
+                'revenue' => array_map(fn($r) => $map($r, true), $revenueRows),
+                'cost' => array_map(fn($r) => $map($r, false), $costRows),
+                'job_info' => $jobInfo
+                    ? [
+                        'client' => $jobInfo->companyname ?? '',
+                        'shipper' => $jobInfo->pri_partnermaster_name ?? '',
+                        'consignee' => '',
+                        'port_of_loading' => $jobInfo->origincountry ?? '',
+                        'port_of_discharge' => $jobInfo->destinationcountry ?? '',
+                    ]
+                    : [],
+            ]);
+        } catch (\Exception $e) {
+            Log::error('getCopyCharges failed', ['quotation_id' => $quotationId, 'error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    private function fetchCopyChargeRows(\PDO $pdo, string $quotationId, int $isRevenue): array
+    {
+        $stmt = $pdo->prepare('SET NOCOUNT ON; EXEC dbo.sp_Quote_Quotation_ChargeList ?, ?, NULL');
+        $stmt->execute([$quotationId, $isRevenue]);
+
+        $rows = [];
+        do {
+            try {
+                $fetched = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+                if (empty($fetched)) {
+                    continue;
+                }
+                $firstVal = array_values($fetched[0])[0] ?? '';
+                if (is_string($firstVal) && str_starts_with($firstVal, 'Failed')) {
+                    break;
+                }
+                $rows = $fetched;
+                break;
+            } catch (\PDOException $e) {
+                continue;
+            }
+        } while ($stmt->nextRowset());
+
+        return $rows;
+    }
+
     public function getChargeCodes(Request $request)
     {
         $bookingNo = $request->input('booking_no');
@@ -5925,6 +5961,7 @@ class QuotationController extends Controller
     /**
      * Get currencies for office
      */
+
     public function getCurrencies(Request $request)
     {
         try {
@@ -6998,7 +7035,7 @@ class QuotationController extends Controller
         $stmt = $pdo->prepare("
             SET NOCOUNT ON;
             DECLARE @OutputJson VARCHAR(2000);
-            EXEC FITSYS.dbo.sp_Quote_CargoDetailsUpdate ?, @OutputRemarkJson = @OutputJson OUTPUT;
+            EXEC FITSYSUAT.dbo.sp_Quote_CargoDetailsUpdate ?, @OutputRemarkJson = @OutputJson OUTPUT;
             SELECT @OutputJson AS output
         ");
         $stmt->execute([$inputJson]);
@@ -8549,9 +8586,9 @@ class QuotationController extends Controller
 
         try {
             $query = DB::connection('sqlsrv')
-                ->table('FITSCM.dbo.Cust_Resource AS CR')
-                ->join('FITSCM.dbo.Cust_ResOfficeResFuncMap AS CRO', 'CRO.ResourceId', '=', 'CR.Id')
-                ->join('FITSCM.dbo.Sys_ResourceFunction AS RF', 'RF.Id', '=', 'CRO.ResourceFunctionId')
+                ->table('FITSCMUAT.dbo.Cust_Resource AS CR')
+                ->join('FITSCMUAT.dbo.Cust_ResOfficeResFuncMap AS CRO', 'CRO.ResourceId', '=', 'CR.Id')
+                ->join('FITSCMUAT.dbo.Sys_ResourceFunction AS RF', 'RF.Id', '=', 'CRO.ResourceFunctionId')
                 ->where('CR.IsActive', 1)
                 ->where('CR.IsDeleted', 0)
                 ->where('CRO.IsActive', 1)
@@ -8952,7 +8989,7 @@ class QuotationController extends Controller
 
             $pdo = DB::getPdo();
             $sql = "
-            DECLARE @Status  VARCHAR(25)
+                DECLARE @Status  VARCHAR(25)
                 DECLARE @Remark  VARCHAR(200)
                 DECLARE @QuoteNo VARCHAR(50)
                 EXEC dbo.sp_Quote_QuotationCopy ?, ?,
@@ -9108,19 +9145,19 @@ class QuotationController extends Controller
 
             $xml =
                 "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
-            <ArrayOfTransaction>
-                <Transaction>
-                    <ID>{$request->quote_no}</ID>
-                    <Status>{$request->status}</Status>
-                    <CutomerRefNo>" .
+                <ArrayOfTransaction>
+                    <Transaction>
+                        <ID>{$request->quote_no}</ID>
+                        <Status>{$request->status}</Status>
+                        <CutomerRefNo>" .
                 htmlspecialchars($request->customer_ref_no ?? '', ENT_XML1) .
                 "</CutomerRefNo>
-                    <TransactionId>" .
+                        <TransactionId>" .
                 htmlspecialchars($request->transaction_id ?? '', ENT_XML1) .
                 "</TransactionId>
-                    <Errors>{$errorsXml}</Errors>
-                </Transaction>
-            </ArrayOfTransaction>";
+                        <Errors>{$errorsXml}</Errors>
+                    </Transaction>
+                </ArrayOfTransaction>";
 
             $pdo = DB::getPdo();
             $stmt = $pdo->prepare('EXEC dbo.sp_Quote_BookingCreateInfoUpdate @InputXML = ?');
