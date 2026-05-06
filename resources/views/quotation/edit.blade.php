@@ -1909,11 +1909,10 @@
             </div>{{-- /modal-dialog --}}
         </div>
 
-
         {{-- ============================================================
-     COPY CHARGES — JOB SEARCH MODAL
-     Sits above the main modal (z-index: 1060 > 1050)
-     ============================================================ --}}
+        COPY CHARGES — JOB SEARCH MODAL
+        Sits above the main modal (z-index: 1060 > 1050)
+        ============================================================ --}}
         <div class="modal fade" id="ccSearchModal" tabindex="-1" role="dialog" aria-hidden="true"
             style="z-index: 1060;">
             <div class="modal-dialog cc-search-dialog" role="document">
@@ -1997,101 +1996,6 @@
                 </div>
             </div>
         </div>
-
-
-        {{-- COPY CHARGES — JOB SEARCH MODAL --}}
-        <div class="modal fade" id="ccSearchModal" tabindex="-1" role="dialog" aria-hidden="true">
-            <div class="modal-dialog modal-lg" role="document">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h2 class="modal-title">Search</h2>
-                        <button type="button" class="close" id="ccSearchModalClose">
-                            <span>&times;</span>
-                        </button>
-                    </div>
-                    <div class="modal-body">
-                        {{-- Advanced Search row --}}
-                        <div class="d-flex align-items-center mb-3" style="gap:8px;">
-                            <label class="mb-0 mr-2" style="font-size:0.875rem; white-space:nowrap;">Advanced
-                                Search</label>
-                            <select class="form-control form-control-sm" id="ccSearchField" style="max-width:160px;">
-                                <option value="">Select</option>
-                                <option value="quote_no">Quote No</option>
-                                <option value="customer">Customer</option>
-                                <option value="origin">Origin Country</option>
-                                <option value="destination">Destination Country</option>
-                            </select>
-                            <input type="text" class="form-control form-control-sm" id="ccSearchValue"
-                                placeholder="" style="max-width:220px;">
-                            <button type="button" class="btn btn-sm ml-1" id="ccSearchGoBtn"
-                                style="background:#a8b400; color:#fff; font-weight:600; min-width:70px;">
-                                Search
-                            </button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary" id="ccAddFilterBtn">
-                                Add filter
-                            </button>
-                        </div>
-
-                        {{-- Results table --}}
-                        <div class="table-responsive">
-                            <table class="table table-sm table-bordered table-hover" id="ccSearchResultsTable">
-                                <thead class="thead-light">
-                                    <tr>
-                                        <th style="width:40px;">Select</th>
-                                        <th>Process Type <i class="fas fa-sort ml-1 text-muted"
-                                                style="font-size:0.7rem;"></i></th>
-                                        <th>Job No.</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="ccSearchResultsBody">
-                                    <tr>
-                                        <td colspan="3" class="text-center text-muted" style="font-size:0.8rem;">
-                                            Click Search to find jobs
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        {{-- Pagination --}}
-                        <div class="d-flex align-items-center justify-content-between mt-2">
-                            <div class="d-flex align-items-center" style="gap:4px; font-size:0.8rem;">
-                                <button type="button" class="btn btn-sm btn-outline-secondary cc-page-btn"
-                                    data-action="first" style="padding:1px 5px;">|&lt;</button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary cc-page-btn"
-                                    data-action="prev" style="padding:1px 5px;">&lt;&lt;</button>
-                                <span class="mx-1">Page</span>
-                                <input type="number" id="ccPageInput"
-                                    class="form-control form-control-sm text-center" value="1" min="1"
-                                    style="width:46px; height:26px; font-size:0.8rem;">
-                                <span class="mx-1">of <strong id="ccTotalPages">1</strong></span>
-                                <button type="button" class="btn btn-sm btn-outline-secondary cc-page-btn"
-                                    data-action="next" style="padding:1px 5px;">&gt;&gt;</button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary cc-page-btn"
-                                    data-action="last" style="padding:1px 5px;">&gt;|</button>
-                                <select class="form-control form-control-sm ml-2" id="ccPageSize"
-                                    style="width:58px; height:26px; font-size:0.8rem;">
-                                    <option value="10" selected>10</option>
-                                    <option value="25">25</option>
-                                    <option value="50">50</option>
-                                </select>
-                            </div>
-                            <span class="text-muted" style="font-size:0.8rem;" id="ccViewRange">View 1 - 0 of 0</span>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-sm" id="ccSearchOkBtn"
-                            style="background:#a8b400; color:#fff; font-weight:600; min-width:50px;" disabled>
-                            Ok
-                        </button>
-                        <span class="text-muted mx-2" style="font-size:0.85rem;">or</span>
-                        <a href="#" class="text-primary" id="ccSearchCancelBtn"
-                            style="font-size:0.875rem; font-weight:500;">Cancel</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-
     </form>
 @stop
 
@@ -8549,9 +8453,6 @@
                 });
             }
 
-        }); // end document.ready
-
-
         function updateStatus(status, reasonCode, reasonRemark, bookingNo) {
             $.ajax({
                 url: '{{ route('quotation.status.update') }}',
@@ -8609,8 +8510,6 @@
         // ============================================
         // COPY CHARGES
         // ============================================
-        (function() {
-
             const CC_SEARCH_URL = '{{ route('quotation.copy-charges.search') }}';
             const CC_CHARGES_URL = '{{ route('quotation.copy-charges.charges') }}';
             const CC_SAVE_URL = '{{ route('quotation.charge.save') }}';
@@ -8898,11 +8797,15 @@
 
             // ── Build charge row (6 columns) ─────────────────────────────────────────
             function buildChargeRow(r, i, type) {
+                const partyLabel = r.isRevenue ? (r.debtor || '') : (r.vendor || '');
                 return `
                 <tr data-cc-row="${i}">
                     <td class="text-center">
                         <input type="checkbox" class="cc-charge-check" data-type="${type}" data-index="${i}">
                     </td>
+                    <td style="font-size:0.8rem;">${r.service || ''}</td>
+                    <td style="font-size:0.8rem;">${r.activity || ''}</td>
+                    <td style="font-size:0.8rem;">${partyLabel}</td>
                     <td style="font-size:0.8rem;">${r.chargeCode || ''}</td>
                     <td style="font-size:0.8rem; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
                         title="${r.chargeDesp || ''}">${r.chargeDesp || ''}</td>
@@ -9034,6 +8937,17 @@
                 e.preventDefault();
                 $('#copyChargesModal').modal('hide');
             });
+            
+             // Close button (X) in modal header
+            $(document).on('click', '.cc-modal-close', function() {
+                const $modal = $(this).closest('.modal');
+                if ($modal.length) {
+                    $modal.modal('hide');
+                } else {
+                    $('#copyChargesModal').modal('hide');
+                    $('#ccSearchModal').modal('hide');
+                }
+            });
 
             // ── Helpers ───────────────────────────────────────────────────────────────
             function resetCopyChargesModal() {
@@ -9071,6 +8985,6 @@
                 renderSearchPage();
             }
 
-        })();
+            }); // end document.ready
     </script>
 @stop

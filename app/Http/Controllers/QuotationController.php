@@ -5645,12 +5645,33 @@ class QuotationController extends Controller
         $filterField = $request->input('filter_field', '');
         $filterValue = trim($request->input('filter_value', ''));
 
-        $rows = $this->callQuotationListSP('Total', '', '', $officeCode);
+        Log::info('getCopyChargesSearch', [
+            'office_code'  => $officeCode,
+            'filter_field' => $filterField,
+            'filter_value' => $filterValue,
+        ]);
 
+        // 'Total' only returns In Progress + Won. For copy charges we also want Completed.
+        $statuses = ['Total', 'Completed'];
+        $allRows = [];
+        $seenQuoteNos = [];
+
+        foreach ($statuses as $status) {
+            $rows = $this->callQuotationListSP($status, '', '', $officeCode);
+            foreach ($rows as $row) {
+                $quoteNo = $row->QuoteNo ?? '';
+                if ($quoteNo && !isset($seenQuoteNos[$quoteNo])) {
+                    $seenQuoteNos[$quoteNo] = true;
+                    $allRows[] = $row;
+                }
+            }
+        }
+
+        // PHP-side filter (SP already filters by office — this narrows by search field)
         if ($filterValue !== '') {
             $needle = strtolower($filterValue);
-            $rows = array_values(
-                array_filter($rows, function ($row) use ($filterField, $needle) {
+            $allRows = array_values(
+                array_filter($allRows, function ($row) use ($filterField, $needle) {
                     return match ($filterField) {
                         'quote_no' => str_contains(strtolower($row->QuoteNo ?? ''), $needle),
                         'customer' => str_contains(strtolower($row->CompanyName ?? ''), $needle),
@@ -5663,8 +5684,10 @@ class QuotationController extends Controller
             );
         }
 
-        $quoteNos = array_column($rows, 'QuoteNo');
+        // Resolve DB IDs in one query instead of N+1
+        $quoteNos = array_column($allRows, 'QuoteNo');
         $dbMap = collect();
+
         if (!empty($quoteNos)) {
             $dbMap = DB::table('Quote_QuotationInfo')->whereIn('QuoteNo', $quoteNos)->pluck('ID', 'QuoteNo');
         }
@@ -5677,7 +5700,7 @@ class QuotationController extends Controller
                 'Origin' => $row->OriginCountry ?? '',
                 'Destination' => $row->DestinationCountry ?? '',
             ],
-            $rows,
+            $allRows,
         );
 
         return response()->json(['success' => true, 'data' => $data]);
