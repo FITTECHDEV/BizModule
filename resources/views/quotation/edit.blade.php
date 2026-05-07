@@ -1031,8 +1031,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         MODALS
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         ============================================ -->
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             MODALS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -2004,8 +2004,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -2448,9 +2448,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -3339,7 +3339,7 @@
                             $select.data('populated', true).prop('disabled', false);
                         } else {
                             $select.append(
-                            '<option value="" disabled>No currencies available</option>');
+                                '<option value="" disabled>No currencies available</option>');
                         }
                     },
                     error: function(xhr) {
@@ -3540,7 +3540,7 @@
                                 const code = item.IncoTermCode || '';
                                 $sel.append(
                                     `<option value="${code}">${code} — ${item.Name}</option>`
-                                    );
+                                );
                             });
                             incoTermsLoaded = true;
                             console.log('IncoTerm savedIncoTerm:', savedIncoTerm);
@@ -3707,7 +3707,7 @@
                             $('#serviceClassSelect').val(serviceClass).addClass('d-none').prop(
                                 'disabled', true);
                             $('#serviceClassDisplay').val(serviceClass).removeClass(
-                            'd-none'); // code, same as page load
+                                'd-none'); // code, same as page load
                             originalServiceClass = serviceClass;
                             originalServiceClassDisplay = serviceClass;
 
@@ -8453,44 +8453,44 @@
                 });
             }
 
-        function updateStatus(status, reasonCode, reasonRemark, bookingNo) {
-            $.ajax({
-                url: '{{ route('quotation.status.update') }}',
-                type: 'POST',
-                data: {
-                    _token: '{{ csrf_token() }}',
-                    booking_no: bookingNo,
-                    status: status,
-                    reason_code: reasonCode,
-                    reason_remark: reasonRemark
-                },
-                success: function(response) {
-                    if (response.success) {
-                        showNotification(response.message, 'success');
-                        $('#statusModal').modal('hide');
-                        $('#wonModal').modal('hide');
+            function updateStatus(status, reasonCode, reasonRemark, bookingNo) {
+                $.ajax({
+                    url: '{{ route('quotation.status.update') }}',
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        booking_no: bookingNo,
+                        status: status,
+                        reason_code: reasonCode,
+                        reason_remark: reasonRemark
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            showNotification(response.message, 'success');
+                            $('#statusModal').modal('hide');
+                            $('#wonModal').modal('hide');
 
-                        setTimeout(function() {
-                            window.location.href = '{{ route('quotation.index') }}';
-                        }, 1500);
-                    } else {
-                        showNotification(response.message, 'error');
+                            setTimeout(function() {
+                                window.location.href = '{{ route('quotation.index') }}';
+                            }, 1500);
+                        } else {
+                            showNotification(response.message, 'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        showNotification(xhr.responseJSON?.message || 'Failed to update status',
+                            'error');
                     }
-                },
-                error: function(xhr) {
-                    showNotification(xhr.responseJSON?.message || 'Failed to update status',
-                        'error');
-                }
-            });
-        }
+                });
+            }
 
 
-        function showNotification(message, type) {
-            const alertClass = type === 'success' ? 'alert-success' :
-                type === 'error' ? 'alert-danger' :
-                type === 'warning' ? 'alert-warning' : 'alert-info';
+            function showNotification(message, type) {
+                const alertClass = type === 'success' ? 'alert-success' :
+                    type === 'error' ? 'alert-danger' :
+                    type === 'warning' ? 'alert-warning' : 'alert-info';
 
-            $('body').append(`
+                $('body').append(`
                     <div class="alert ${alertClass} alert-dismissible fade show notification-toast" role="alert"
                         style="position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
                         <strong>${message}</strong>
@@ -8500,16 +8500,16 @@
                     </div>
                 `);
 
-            setTimeout(function() {
-                $('.notification-toast').fadeOut(function() {
-                    $(this).remove();
-                });
-            }, 3000);
-        }
+                setTimeout(function() {
+                    $('.notification-toast').fadeOut(function() {
+                        $(this).remove();
+                    });
+                }, 3000);
+            }
 
-        // ============================================
-        // COPY CHARGES
-        // ============================================
+            // ============================================
+            // COPY CHARGES
+            // ============================================
             const CC_SEARCH_URL = '{{ route('quotation.copy-charges.search') }}';
             const CC_CHARGES_URL = '{{ route('quotation.copy-charges.charges') }}';
             const CC_SAVE_URL = '{{ route('quotation.charge.save') }}';
@@ -8856,78 +8856,60 @@
             }
 
             function updateSaveBtn() {
-                const any = $('#ccRevenueBody .cc-charge-check:checked, #ccCostBody .cc-charge-check:checked').length >
+                const any = $('#ccRevenueBody .cc-charge-check:checked, #ccCostBody .cc-charge-check:checked')
+                    .length >
                     0;
                 $('#ccSaveBtn').prop('disabled', !any);
             }
 
             // ── Save selected charges → reload page ───────────────────────────────────
             $('#ccSaveBtn').on('click', function() {
-                const charges = [];
+                if (!ccSelectedJobRow || !ccSelectedJobRow.id) {
+                    showNotification('No source quotation selected', 'error');
+                    return;
+                }
 
+                const selectedIds = [];
                 $('#ccRevenueBody .cc-charge-check:checked').each(function() {
                     const row = ccTableState.ccRevenueBody.rows[$(this).data('index')];
-                    if (row) charges.push(row);
+                    if (row && row.id) selectedIds.push(row.id);
                 });
                 $('#ccCostBody .cc-charge-check:checked').each(function() {
                     const row = ccTableState.ccCostBody.rows[$(this).data('index')];
-                    if (row) charges.push(row);
+                    if (row && row.id) selectedIds.push(row.id);
                 });
 
-                if (!charges.length) return;
+                if (!selectedIds.length) {
+                    showNotification('No charges selected', 'warning');
+                    return;
+                }
 
-                const $btn = $(this).prop('disabled', true).text('Saving...');
-                let chain = Promise.resolve();
-                let failed = false;
+                const $btn = $(this).prop('disabled', true).text('Copying...');
 
-                charges.forEach(function(charge) {
-                    chain = chain.then(function() {
-                        if (failed) return;
-                        return $.ajax({
-                            url: CC_SAVE_URL,
-                            type: 'POST',
-                            data: {
-                                _token: '{{ csrf_token() }}',
-                                action: 'Add',
-                                quotation_id: quotationId,
-                                booking_no: bookingNo,
-                                office_code: officeCode,
-                                revenue_or_cost: charge.isRevenue ? 'Revenue' : 'Cost',
-                                charge_code: charge.chargeCode,
-                                quantity: charge.quantity,
-                                rate: charge.rate,
-                                amt_in_chg_curr: charge.amount,
-                                amt_in_base_curr: charge.baseAmount,
-                                exchange_rate: charge.exchangeRate,
-                                chg_curr: charge.currency,
-                                based_on_code: charge.basedOnCode,
-                                based_on_uom: charge.uomCode,
-                                charge_remark: '',
-                                to_be_added: 0,
-                                increase_by: 0,
-                                increase_type: 'Percentage',
-                                source_type: 'manual',
-                                quote_charge_id: '',
-                                party_code: '',
-                            }
-                        }).fail(function(xhr) {
-                            failed = true;
-                            showNotification(
-                                (xhr.responseJSON?.message || 'Failed to copy') +
-                                ': ' + charge.chargeCode,
-                                'error'
-                            );
-                        });
-                    });
-                });
-
-                chain.then(function() {
-                    if (!failed) {
-                        $('#copyChargesModal').modal('hide');
-                        window.location.reload();
+                $.ajax({
+                    url: '{{ route('quotation.copy-charges.bulk') }}',
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        source_quotation_id: ccSelectedJobRow.id,
+                        target_quotation_id: quotationId,
+                        charge_ids: selectedIds,
+                    },
+                    success: function(res) {
+                        if (res.success) {
+                            showNotification(res.message, 'success');
+                            $('#copyChargesModal').modal('hide');
+                            window.location.reload();
+                        } else {
+                            showNotification(res.message, 'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        showNotification(xhr.responseJSON?.message || 'Copy failed', 'error');
+                    },
+                    complete: function() {
+                        $btn.prop('disabled', false).text('Save');
                     }
-                }).always(function() {
-                    $btn.prop('disabled', false).text('Save');
                 });
             });
 
@@ -8937,8 +8919,8 @@
                 e.preventDefault();
                 $('#copyChargesModal').modal('hide');
             });
-            
-             // Close button (X) in modal header
+
+            // Close button (X) in modal header
             $(document).on('click', '.cc-modal-close', function() {
                 const $modal = $(this).closest('.modal');
                 if ($modal.length) {
@@ -8985,6 +8967,6 @@
                 renderSearchPage();
             }
 
-            }); // end document.ready
+        }); // end document.ready
     </script>
 @stop

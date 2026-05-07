@@ -266,7 +266,7 @@ Route::group(['middleware' => ['auth', 'HtmlMinifier']], function () {
     Route::post('/switch-office', [App\Http\Controllers\OfficeController::class, 'switchOffice'])->name(
         'home.switch-office',
     );
-    
+
     /**
      * MODULES
      */
@@ -1574,6 +1574,11 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
         'bulkDeleteCharges',
     ])->name('quotation.charges.bulk-delete');
 
+    Route::post('/quotation/copy-charges/bulk', [
+        App\Http\Controllers\QuotationController::class,
+        'copyChargesBulk',
+    ])->name('quotation.copy-charges.bulk');
+
     // ============================================
     // WILDCARD ROUTES — must be last
     // {id} in a GET route matches ANY path segment.
@@ -1620,6 +1625,8 @@ Route::post('/quotation/booking-integration-response', [
     App\Http\Controllers\QuotationController::class,
     'handleBookingIntegrationResponse',
 ])->name('quotation.bookingIntegrationResponse');
+
+Route::get('/weight-note', [App\Http\Controllers\WeightNoteController::class, 'index'])->name('weight-note.index');
 
 // ============================================================================
 // LOGIN TRACKER SYSTEM ROUTES (User Activity Monitoring)

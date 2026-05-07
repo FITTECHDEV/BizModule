@@ -5646,32 +5646,20 @@ class QuotationController extends Controller
         $filterValue = trim($request->input('filter_value', ''));
 
         Log::info('getCopyChargesSearch', [
-            'office_code'  => $officeCode,
+            'office_code' => $officeCode,
             'filter_field' => $filterField,
             'filter_value' => $filterValue,
         ]);
 
-        // 'Total' only returns In Progress + Won. For copy charges we also want Completed.
-        $statuses = ['Total', 'Completed'];
-        $allRows = [];
-        $seenQuoteNos = [];
+        // Use only 'Total' — it covers all non-deleted quotations for this office.
+        // 'Completed' is not a valid SP status and caused a PDO crash.
+        $rows = $this->callQuotationListSP('Total', '', '', $officeCode);
 
-        foreach ($statuses as $status) {
-            $rows = $this->callQuotationListSP($status, '', '', $officeCode);
-            foreach ($rows as $row) {
-                $quoteNo = $row->QuoteNo ?? '';
-                if ($quoteNo && !isset($seenQuoteNos[$quoteNo])) {
-                    $seenQuoteNos[$quoteNo] = true;
-                    $allRows[] = $row;
-                }
-            }
-        }
-
-        // PHP-side filter (SP already filters by office — this narrows by search field)
+        // PHP-side filter
         if ($filterValue !== '') {
             $needle = strtolower($filterValue);
-            $allRows = array_values(
-                array_filter($allRows, function ($row) use ($filterField, $needle) {
+            $rows = array_values(
+                array_filter($rows, function ($row) use ($filterField, $needle) {
                     return match ($filterField) {
                         'quote_no' => str_contains(strtolower($row->QuoteNo ?? ''), $needle),
                         'customer' => str_contains(strtolower($row->CompanyName ?? ''), $needle),
@@ -5684,8 +5672,8 @@ class QuotationController extends Controller
             );
         }
 
-        // Resolve DB IDs in one query instead of N+1
-        $quoteNos = array_column($allRows, 'QuoteNo');
+        // Resolve DB IDs in one query
+        $quoteNos = array_column((array) $rows, 'QuoteNo');
         $dbMap = collect();
 
         if (!empty($quoteNos)) {
@@ -5700,10 +5688,99 @@ class QuotationController extends Controller
                 'Origin' => $row->OriginCountry ?? '',
                 'Destination' => $row->DestinationCountry ?? '',
             ],
-            $allRows,
+            $rows,
         );
 
         return response()->json(['success' => true, 'data' => $data]);
+    }
+
+    public function copyChargesBulk(Request $request): JsonResponse
+    {
+        $request->validate([
+            'source_quotation_id' => 'required|string',
+            'target_quotation_id' => 'required|string',
+            'charge_ids' => 'required|array',
+            'charge_ids.*' => 'string',
+        ]);
+
+        $inputJson = json_encode([
+            'CopyFromQuoteID' => $request->source_quotation_id,
+            'CopyToQuoteID' => $request->target_quotation_id,
+            'ChargeList' => $request->charge_ids,
+        ]);
+
+        Log::info('copyChargesBulk input', ['json' => $inputJson]); // ← ADD
+
+        try {
+            $pdo = DB::getPdo();
+            $stmt = $pdo->prepare("
+            SET NOCOUNT ON;
+            DECLARE @OutputJson VARCHAR(2000);
+            EXEC dbo.sp_Quote_QuotationCopyCharges ?, @OutputJson = @OutputJson OUTPUT;
+            SELECT @OutputJson AS OutputJson
+        ");
+            $stmt->execute([$inputJson]);
+
+            $outputJson = null;
+
+            // Iterate ALL rowsets; catch nextRowset() errors too
+            while (true) {
+                try {
+                    $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+                    if (!empty($rows) && isset($rows[0]['OutputJson'])) {
+                        $outputJson = $rows[0]['OutputJson'];
+                        break;
+                    }
+                } catch (\PDOException $e) {
+                    Log::warning('copyChargesBulk fetchAll PDOException', ['error' => $e->getMessage()]);
+                }
+
+                try {
+                    if (!$stmt->nextRowset()) {
+                        break;
+                    }
+                } catch (\PDOException $e) {
+                    Log::warning('copyChargesBulk nextRowset PDOException', ['error' => $e->getMessage()]);
+                    break;
+                }
+            }
+
+            Log::info('copyChargesBulk outputJson', ['output' => $outputJson]); // ← ADD
+
+            if (!$outputJson) {
+                return response()->json(['success' => false, 'message' => 'No response from stored procedure']);
+            }
+
+            $result = json_decode($outputJson, true);
+
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                Log::error('copyChargesBulk json_decode failed', ['raw' => $outputJson]);
+                return response()->json(['success' => false, 'message' => 'Invalid SP response']);
+            }
+
+            $remark = collect($result['Remark'] ?? [])
+                ->pluck('Remark')
+                ->filter()
+                ->implode(', ');
+
+            if (($result['Status'] ?? '') === 'Success') {
+                return response()->json([
+                    'success' => true,
+                    'message' => $remark ?: 'Charges copied successfully',
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => $remark ?: 'Copy failed',
+            ]);
+        } catch (\Exception $e) {
+            Log::error('copyChargesBulk failed', [
+                'error' => $e->getMessage(),
+                'input' => $inputJson,
+            ]);
+            return response()->json(['success' => false, 'message' => 'Server error: ' . $e->getMessage()]);
+        }
     }
 
     public function getCopyCharges(Request $request): JsonResponse
@@ -9357,22 +9434,22 @@ class QuotationController extends Controller
                 'success' => true,
                 'client_id' => $result->Id ?? '',
                 'client_code' => $result->Code ?? '',
-                'company' => $result->Name ?? '',
-                'address1' => $result->Address1 ?? '',
-                'address2' => $result->Address2 ?? '',
-                'city' => $result->City ?? '',
-                'zip' => $result->Zip ?? '',
-                'state' => $result->State ?? '',
+                'company' => urldecode($result->Name ?? ''),
+                'address1' => urldecode($result->Address1 ?? ''),
+                'address2' => urldecode($result->Address2 ?? ''),
+                'city' => urldecode($result->City ?? ''),
+                'zip' => urldecode($result->Zip ?? ''),
+                'state' => urldecode($result->State ?? ''),
                 'country_id' => $result->Address_CountryId ?? '',
                 'country_code' => $result->CountryCode ?? '',
-                'country_name' => $result->CountryName ?? '',
-                'contact_person' => $result->ContactPerson ?? '',
-                'phone' => $result->PhoneNo ?? '',
-                'email' => $result->Email ?? '',
+                'country_name' => urldecode($result->CountryName ?? ''),
+                'contact_person' => urldecode($result->ContactPerson ?? ''),
+                'phone' => urldecode($result->PhoneNo ?? ''),
+                'email' => urldecode($result->Email ?? ''),
                 'industry_code' => $result->IndustryTypeCode ?? '',
-                'industry_name' => $result->IndustryType ?? '',
+                'industry_name' => urldecode($result->IndustryType ?? ''),
                 'agent_type_code' => $result->AgentTypeCode ?? '',
-                'agent_type_name' => $result->AgentType ?? '',
+                'agent_type_name' => urldecode($result->AgentType ?? ''),
             ]);
         } catch (\Exception $e) {
             \Log::error('getClientDetails - Failed', [
