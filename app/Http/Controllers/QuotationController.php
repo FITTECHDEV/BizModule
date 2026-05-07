@@ -5643,7 +5643,17 @@ class QuotationController extends Controller
     {
         $officeCode = trim($request->input('office_code', ''));
         $filterField = $request->input('filter_field', '');
-        $filterValue = trim($request->input('filter_value', ''));
+        $filterValue = urldecode(trim($request->input('filter_value', '')));
+
+        if (!$filterField || !$filterValue) {
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => 'Please select a filter and enter a search value',
+                ],
+                400,
+            );
+        }
 
         Log::info('getCopyChargesSearch', [
             'office_code' => $officeCode,
@@ -5653,23 +5663,56 @@ class QuotationController extends Controller
 
         // Use only 'Total' — it covers all non-deleted quotations for this office.
         // 'Completed' is not a valid SP status and caused a PDO crash.
-        $rows = $this->callQuotationListSP('Total', '', '', $officeCode);
+        $inputJson = json_encode(
+            [
+                'OfficeCode' => $officeCode,
+                'FromDate' => '',
+                'ToDate' => '',
+                'Customer' => $filterField === 'customer' ? $filterValue : '',
+                'Service' => '',
+                'Process' => '',
+                'OriginCountry' => $filterField === 'origin' ? $filterValue : '',
+                'DestinationCountry' => $filterField === 'destination' ? $filterValue : '',
+                'InCoTerm' => $filterField === 'incoterm' ? $filterValue : '',
+                'PlaceOfReceipt' => '',
+                'PlaceOfDelivery' => '',
+                'Status' => 'Total',
+            ],
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES,
+        );
 
-        // PHP-side filter
-        if ($filterValue !== '') {
-            $needle = strtolower($filterValue);
-            $rows = array_values(
-                array_filter($rows, function ($row) use ($filterField, $needle) {
-                    return match ($filterField) {
-                        'quote_no' => str_contains(strtolower($row->QuoteNo ?? ''), $needle),
-                        'customer' => str_contains(strtolower($row->CompanyName ?? ''), $needle),
-                        'origin' => str_contains(strtolower($row->OriginCountry ?? ''), $needle),
-                        'destination' => str_contains(strtolower($row->DestinationCountry ?? ''), $needle),
-                        default => str_contains(strtolower($row->QuoteNo ?? ''), $needle) ||
-                            str_contains(strtolower($row->CompanyName ?? ''), $needle),
-                    };
-                }),
-            );
+        try {
+            $pdo = DB::connection()->getPdo();
+            $stmt = $pdo->prepare('SET NOCOUNT ON; EXEC dbo.sp_Quote_QuotationList ?');
+            $stmt->execute([$inputJson]);
+
+            $rows = [];
+            do {
+                try {
+                    $fetched = $stmt->fetchAll(\PDO::FETCH_OBJ);
+                    if (empty($fetched)) {
+                        continue;
+                    }
+
+                    $firstVal = array_values((array) $fetched[0])[0] ?? '';
+                    if (is_string($firstVal) && str_starts_with(trim($firstVal), 'Failed')) {
+                        Log::error('getCopyChargesSearch - SP failure', ['message' => $firstVal]);
+                        break;
+                    }
+
+                    if (!isset($fetched[0]->QuoteNo)) {
+                        continue;
+                    }
+
+                    $rows = $fetched;
+                    break;
+                } catch (\PDOException $e) {
+                    continue;
+                }
+            } while ($stmt->nextRowset());
+        } catch (\Exception $e) {
+            Log::error('getCopyChargesSearch failed', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
 
         // Resolve DB IDs in one query
