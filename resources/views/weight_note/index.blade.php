@@ -3,20 +3,14 @@
 @section('title', 'Weight Note')
 
 @section('content_header')
-    <div id="pageHeaderDashboard">
-        <div class="d-flex justify-content-between align-items-center">
-            <div>
-                <h1><i class="fas fa-weight mr-2"></i> Weight Note</h1>
-                <p class="text-muted mb-0">Manage and track weight notes</p>
-            </div>
-        </div>
-    </div>
-
     <div id="pageHeaderForm" style="display:none;">
         <div class="d-flex justify-content-between align-items-center">
             <div>
-                <h1><i class="fas fa-file-alt mr-2"></i> New Weight Note — <span id="formJobTypeLabel" class="text-muted"
-                        style="font-size:1rem; font-weight:400;"></span></h1>
+                <h1>
+                    <i class="fas fa-file-alt mr-2"></i>
+                    Weight Note &mdash;
+                    <span id="formJobNoLabel" class="text-muted" style="font-size:1rem; font-weight:400;"></span>
+                </h1>
                 <p class="text-muted mb-0">Fill in the details below</p>
             </div>
             <div>
@@ -37,39 +31,47 @@
 
         {{-- Status Summary Cards --}}
         <div class="row mb-3">
-            <div class="col-6 col-sm-3">
-                <div class="info-box shadow-sm" style="cursor:pointer;" onclick="filterTable('In Progress')">
-                    <span class="info-box-icon bg-warning"><i class="fas fa-spinner"></i></span>
-                    <div class="info-box-content">
-                        <span class="info-box-text">In Progress</span>
-                        <span class="info-box-number" id="countInProgress">0</span>
+            <div class="col-6 col-sm-3 col-lg">
+                <div class="small-box bg-info" style="cursor:pointer;" onclick="filterTable('In Progress')">
+                    <div class="inner">
+                        <h3 id="countInProgress">0</h3>
+                        <p>In Progress</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-hourglass-half"></i>
                     </div>
                 </div>
             </div>
-            <div class="col-6 col-sm-3">
-                <div class="info-box shadow-sm" style="cursor:pointer;" onclick="filterTable('Submitted')">
-                    <span class="info-box-icon bg-success"><i class="fas fa-check-circle"></i></span>
-                    <div class="info-box-content">
-                        <span class="info-box-text">Submitted</span>
-                        <span class="info-box-number" id="countSubmitted">0</span>
+            <div class="col-6 col-sm-3 col-lg">
+                <div class="small-box bg-success" style="cursor:pointer;" onclick="filterTable('Submitted')">
+                    <div class="inner">
+                        <h3 id="countSubmitted">0</h3>
+                        <p>Submitted</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-check-circle"></i>
                     </div>
                 </div>
             </div>
-            <div class="col-6 col-sm-3">
-                <div class="info-box shadow-sm" style="cursor:pointer;" onclick="filterTable('Failed')">
-                    <span class="info-box-icon bg-danger"><i class="fas fa-times-circle"></i></span>
-                    <div class="info-box-content">
-                        <span class="info-box-text">Failed</span>
-                        <span class="info-box-number" id="countFailed">0</span>
+            <div class="col-6 col-sm-3 col-lg">
+                <div class="small-box bg-danger" style="cursor:pointer;" onclick="filterTable('Failed')">
+                    <div class="inner">
+                        <h3 id="countFailed">0</h3>
+                        <p>Failed</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-times-circle"></i>
                     </div>
                 </div>
             </div>
-            <div class="col-6 col-sm-3">
-                <div class="info-box shadow-sm" style="cursor:pointer;" onclick="filterTable('All')">
-                    <span class="info-box-icon" style="background-color:#4B49AC;"><i class="fas fa-list"></i></span>
-                    <div class="info-box-content">
-                        <span class="info-box-text">Total</span>
-                        <span class="info-box-number" id="countTotal">0</span>
+            <div class="col-6 col-sm-3 col-lg">
+                <div class="small-box bg-primary" style="cursor:pointer;" onclick="filterTable('All')">
+                    <div class="inner">
+                        <h3 id="countTotal">0</h3>
+                        <p>Total</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-list"></i>
                     </div>
                 </div>
             </div>
@@ -79,8 +81,7 @@
         <div class="card card-primary">
             <div class="card-header d-flex align-items-center">
                 <h3 class="card-title mb-0">
-                    <i class="fas fa-list mr-1"></i>
-                    Weight Notes
+                    <i class="fas fa-list mr-1"></i> Weight Notes
                     <span id="activeFilterBadge" class="badge badge-light ml-2" style="display:none;"></span>
                 </h3>
                 <div class="d-flex align-items-center ml-auto" style="gap:8px;">
@@ -89,7 +90,7 @@
                     <button class="btn btn-sm btn-outline-light" onclick="filterTable('All')" title="Clear filter">
                         <i class="fas fa-sync-alt"></i>
                     </button>
-                    <button class="btn btn-primary btn-sm" onclick="openForm('Single Job')">
+                    <button class="btn btn-primary btn-sm" onclick="openForm()">
                         <i class="fas fa-plus mr-1"></i> New
                     </button>
                 </div>
@@ -99,19 +100,19 @@
                     <table class="table table-bordered table-hover table-sm mb-0" id="weightNoteTable">
                         <thead class="thead-light">
                             <tr>
-                                <th>Job No</th>
-                                <th>Job Type</th>
-                                <th>Client</th>
-                                <th>Shipper</th>
-                                <th>POL</th>
-                                <th>POD</th>
-                                <th>Total Weight</th>
+                                <th>WN No</th>
+                                <th>Equipment Type</th>
+                                <th>Equipment No</th>
+                                <th class="text-right">Tare (kg)</th>
+                                <th class="text-right">Gross (kg)</th>
+                                <th class="text-right">Net (kg)</th>
+                                <th>Remark</th>
                                 <th>Status</th>
                                 <th class="text-center">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="weightNoteTableBody">
-                            <tr id="emptyRow">
+                            <tr>
                                 <td colspan="9" class="text-center text-muted py-4">
                                     <i class="fas fa-inbox fa-2x mb-2 d-block"></i>
                                     No weight notes found. Click <strong>New</strong> to create one.
@@ -129,168 +130,204 @@
     {{-- ================================================================ --}}
     <div id="formView" style="display:none;">
 
-        <div class="row">
-
-            {{-- LEFT COLUMN --}}
-            <div class="col-md-4">
-
-                {{-- Job Details Card --}}
-                <div class="card card-primary">
-                    <div class="card-header">
-                        <h3 class="card-title">Job Details</h3>
-                        <div class="card-tools">
-                            <button type="button" class="btn btn-tool" data-card-widget="collapse">
-                                <i class="fas fa-chevron-up"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="card-body">
+        {{-- ── WEIGHT NOTE SUMMARY ── --}}
+        <div class="card card-primary">
+            <div class="card-header d-flex align-items-center">
+                <h3 class="card-title mb-0">
+                    <i class="fas fa-clipboard-list mr-1"></i> Weight Note Summary
+                </h3>
+                <div class="card-tools ml-auto">
+                    <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                        <i class="fas fa-chevron-up"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {{-- Left column --}}
+                    <div class="col-md-6">
                         <div class="form-group row">
-                            <label class="col-sm-5 col-form-label">Job No</label>
-                            <div class="col-sm-7">
-                                <div class="input-group input-group-sm">
-                                    <input type="text" class="form-control form-control-sm" id="fldJobNo"
-                                        placeholder="Auto-generated">
-                                    <div class="input-group-append">
-                                        <button class="btn btn-outline-secondary btn-sm" type="button" title="Search">
-                                            <i class="fas fa-search"></i>
-                                        </button>
-                                    </div>
-                                </div>
+                            <label class="col-sm-4 col-form-label">Equipment Type</label>
+                            <div class="col-sm-8">
+                                <select class="form-control form-control-sm" id="fldEquipType">
+                                    <option value="">-- Select --</option>
+                                    <option value="20GP">20GP</option>
+                                    <option value="40GP">40GP</option>
+                                    <option value="40HC">40HC</option>
+                                    <option value="45HC">45HC</option>
+                                    <option value="20RF">20RF</option>
+                                    <option value="40RF">40RF</option>
+                                    <option value="20OT">20OT</option>
+                                    <option value="40OT">40OT</option>
+                                </select>
                             </div>
                         </div>
                         <div class="form-group row">
-                            <label class="col-sm-5 col-form-label">Client <span class="text-danger">*</span></label>
-                            <div class="col-sm-7">
-                                <div class="input-group input-group-sm">
-                                    <input type="text" class="form-control form-control-sm" id="fldClient"
-                                        placeholder="Search client..." oninput="onClientInput(this)">
-                                    <div class="input-group-append">
-                                        <button class="btn btn-outline-secondary btn-sm" type="button">
-                                            <i class="fas fa-search"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                                <div id="clientDropdown" class="list-group position-absolute shadow"
-                                    style="display:none; z-index:9999; width:calc(100% - 30px); max-height:150px; overflow-y:auto;">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="form-group row">
-                            <label class="col-sm-5 col-form-label">Shipper</label>
-                            <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm" id="fldShipper"
-                                    placeholder="Shipper name">
-                            </div>
-                        </div>
-                        <div class="form-group row">
-                            <label class="col-sm-5 col-form-label">Consignee</label>
-                            <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm" id="fldConsignee"
-                                    placeholder="Consignee name">
+                            <label class="col-sm-4 col-form-label">Equipment No</label>
+                            <div class="col-sm-8">
+                                <input type="text" class="form-control form-control-sm" id="fldEquipNo"
+                                    placeholder="Equipment number">
                             </div>
                         </div>
                         <div class="form-group row mb-0">
-                            <label class="col-sm-5 col-form-label">Forwarder</label>
-                            <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm" id="fldForwarder"
-                                    placeholder="Forwarder name">
+                            <label class="col-sm-4 col-form-label">Remark</label>
+                            <div class="col-sm-8">
+                                <input type="text" class="form-control form-control-sm" id="fldRemark"
+                                    placeholder="Remark">
                             </div>
                         </div>
                     </div>
-                </div>
 
-                {{-- Weight Summary Card --}}
-                <div class="card card-primary">
-                    <div class="card-header">
-                        <h3 class="card-title">Weight Summary</h3>
-                        <div class="card-tools">
-                            <button type="button" class="btn btn-tool" data-card-widget="collapse">
-                                <i class="fas fa-chevron-up"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="card-body">
+                    {{-- Right column --}}
+                    <div class="col-md-6">
                         <div class="form-group row">
-                            <label class="col-sm-5 col-form-label">Total Weight (kg)</label>
-                            <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm bg-light"
-                                    id="summaryTotalWeight" value="0.00" readonly>
-                            </div>
-                        </div>
-                        <div class="form-group row">
-                            <label class="col-sm-5 col-form-label">Tare (kg)</label>
-                            <div class="col-sm-7">
+                            <label class="col-sm-4 col-form-label">Tare Weight</label>
+                            <div class="col-sm-8">
                                 <input type="text" class="form-control form-control-sm bg-light" id="summaryTare"
                                     value="0.00" readonly>
                             </div>
                         </div>
+                        <div class="form-group row">
+                            <label class="col-sm-4 col-form-label">Gross Weight</label>
+                            <div class="col-sm-8">
+                                <input type="text" class="form-control form-control-sm bg-light" id="summaryGross"
+                                    value="0.00" readonly>
+                            </div>
+                        </div>
                         <div class="form-group row mb-0">
-                            <label class="col-sm-5 col-form-label">Net Weight (kg)</label>
-                            <div class="col-sm-7">
+                            <label class="col-sm-4 col-form-label">Net Weight</label>
+                            <div class="col-sm-8">
                                 <input type="text" class="form-control form-control-sm bg-light font-weight-bold"
-                                    id="summaryNetWeight" value="0.00" readonly>
+                                    id="summaryNet" value="0.00" readonly>
                             </div>
                         </div>
                     </div>
                 </div>
-
             </div>
+        </div>
 
-            {{-- RIGHT COLUMN --}}
-            <div class="col-md-8">
+        {{-- ── WEIGHT NOTE DETAILS (grid + inline form) ── --}}
+        <div class="card card-primary">
+            <div class="card-header d-flex align-items-center">
+                <h3 class="card-title mb-0">
+                    <i class="fas fa-table mr-1"></i> Weight Note Details
+                    <span class="badge badge-light ml-1" id="productCount">0</span>
+                </h3>
+                <div class="card-tools ml-auto d-flex align-items-center" style="gap:6px;">
+                    <button class="btn btn-success btn-sm" id="btnAddDetail" onclick="showDetailForm()">
+                        <i class="fas fa-plus mr-1"></i> Add
+                    </button>
+                    <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                        <i class="fas fa-chevron-up"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="card-body p-0">
 
-                {{-- Product Entry Card — hidden by default, toggled by "Add" button --}}
-                <div class="card card-primary" id="productEntryCard" style="display:none;">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h3 class="card-title mb-0">Product Details</h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group row">
-                                    <label class="col-sm-4 col-form-label">Product <span
-                                            class="text-danger">*</span></label>
-                                    <div class="col-sm-8 position-relative">
-                                        <div class="input-group input-group-sm">
-                                            <input type="text" class="form-control form-control-sm" id="fldProduct"
-                                                placeholder="Search product..." oninput="onProductInput(this)">
-                                            <div class="input-group-append">
-                                                <span class="input-group-text"><i class="fas fa-search"></i></span>
-                                            </div>
-                                        </div>
-                                        <div id="productDropdown" class="list-group position-absolute shadow"
-                                            style="display:none; z-index:9999; width:100%; max-height:150px; overflow-y:auto;">
-                                        </div>
+                {{-- Grid --}}
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm table-hover mb-0">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Job No</th>
+                                <th>Service</th>
+                                <th>Client</th>
+                                <th>Product</th>
+                                <th class="text-right">Tare</th>
+                                <th class="text-right">Gross Wt.</th>
+                                <th class="text-right">Net Wt.</th>
+                                <th class="text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detailGridBody">
+                            <tr id="detailGridEmpty">
+                                <td colspan="9" class="text-center text-muted py-3">
+                                    <i class="fas fa-box-open mr-1"></i> No details added yet
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                {{-- Inline detail entry form — hidden by default --}}
+                <div id="detailEntryPanel" style="display:none; border-top:2px solid #4B49AC;">
+                    <div class="p-3">
+
+                        {{-- Sr No + Client Name + Job No + Service --}}
+                        <div class="row mb-2">
+                            <div class="col-md-3">
+                                <div class="form-group row mb-1">
+                                    <label class="col-sm-5 col-form-label col-form-label-sm">Sr. No</label>
+                                    <div class="col-sm-7">
+                                        <input type="text" class="form-control form-control-sm bg-light"
+                                            id="fldSrNo" readonly>
                                     </div>
                                 </div>
-                                <div class="form-group row">
-                                    <label class="col-sm-4 col-form-label">Job No</label>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group row mb-1">
+                                    <label class="col-sm-5 col-form-label col-form-label-sm">Client Name</label>
+                                    <div class="col-sm-7">
+                                        <input type="text" class="form-control form-control-sm bg-light"
+                                            id="fldClientName" readonly placeholder="Auto-filled">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group row mb-1">
+                                    <label class="col-sm-4 col-form-label col-form-label-sm">Job No</label>
                                     <div class="col-sm-8">
-                                        <div class="input-group input-group-sm">
-                                            <input type="text" class="form-control form-control-sm"
-                                                id="fldProductJobNo" placeholder="Job no">
-                                            <div class="input-group-append">
-                                                <span class="input-group-text"><i class="fas fa-search"></i></span>
-                                            </div>
-                                        </div>
+                                        <select class="form-control form-control-sm" id="fldJobNo"
+                                            onchange="onJobNoChange(this)">
+                                            <option value="">-- Select --</option>
+                                            {{-- Populated via AJAX --}}
+                                        </select>
                                     </div>
                                 </div>
-                                <div class="form-group row">
-                                    <label class="col-sm-4 col-form-label">Description</label>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group row mb-1">
+                                    <label class="col-sm-4 col-form-label col-form-label-sm">Service</label>
+                                    <div class="col-sm-8">
+                                        <input type="text" class="form-control form-control-sm bg-light"
+                                            id="fldService" readonly placeholder="Auto-filled">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="my-2">
+
+                        {{-- Product + Description + Quantity + Dimension + Volume --}}
+                        <div class="row mb-2">
+                            <div class="col-md-6">
+                                <div class="form-group row mb-1">
+                                    <label class="col-sm-4 col-form-label col-form-label-sm">
+                                        Product <span class="text-danger">*</span>
+                                    </label>
+                                    <div class="col-sm-8">
+                                        <select class="form-control form-control-sm" id="fldProduct">
+                                            <option value="">-- Select --</option>
+                                            {{-- Populated via AJAX --}}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group row mb-1">
+                                    <label class="col-sm-4 col-form-label col-form-label-sm">Description</label>
                                     <div class="col-sm-8">
                                         <input type="text" class="form-control form-control-sm" id="fldDescription"
                                             placeholder="Description">
                                     </div>
                                 </div>
-                                <div class="form-group row">
-                                    <label class="col-sm-4 col-form-label">Quantity</label>
+                                <div class="form-group row mb-1">
+                                    <label class="col-sm-4 col-form-label col-form-label-sm">Quantity</label>
                                     <div class="col-sm-8">
                                         <div class="input-group input-group-sm">
-                                            <input type="number" class="form-control form-control-sm" id="fldProdQty"
+                                            <input type="number" class="form-control form-control-sm" id="fldQty"
                                                 placeholder="0" min="0">
                                             <div class="input-group-append">
-                                                <select class="form-control form-control-sm" id="fldProdUOM"
+                                                <select class="form-control form-control-sm" id="fldQtyUOM"
                                                     style="border-left:0;">
                                                     <option value="PCS">PCS</option>
                                                     <option value="KGS">KGS</option>
@@ -301,175 +338,163 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div class="form-group row mb-0">
-                                    <label class="col-sm-4 col-form-label">Dimensions</label>
+                                <div class="form-group row mb-1">
+                                    <label class="col-sm-4 col-form-label col-form-label-sm">Dimension</label>
                                     <div class="col-sm-8">
-                                        <div class="d-flex" style="gap:4px;">
+                                        <div class="d-flex align-items-center" style="gap:4px;">
                                             <input type="number" class="form-control form-control-sm" id="fldDimL"
-                                                placeholder="L" min="0" style="width:60px;">
+                                                placeholder="L" min="0" style="width:55px;"
+                                                oninput="recalcVolume()">
+                                            <span>x</span>
                                             <input type="number" class="form-control form-control-sm" id="fldDimW"
-                                                placeholder="W" min="0" style="width:60px;">
+                                                placeholder="W" min="0" style="width:55px;"
+                                                oninput="recalcVolume()">
+                                            <span>x</span>
                                             <input type="number" class="form-control form-control-sm" id="fldDimH"
-                                                placeholder="H" min="0" style="width:60px;">
-                                            <select class="form-control form-control-sm" id="fldDimUnit">
+                                                placeholder="H" min="0" style="width:55px;"
+                                                oninput="recalcVolume()">
+                                            <select class="form-control form-control-sm" id="fldDimUnit"
+                                                style="width:60px;" onchange="recalcVolume()">
                                                 <option value="cm">cm</option>
                                                 <option value="m">m</option>
                                                 <option value="in">in</option>
                                             </select>
+                                            <button class="btn btn-sm btn-outline-success" title="Add dimension row"
+                                                onclick="addDimensionRow()">
+                                                <i class="fas fa-plus"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger" title="Clear"
+                                                onclick="clearDimensions()">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-group row mb-0">
+                                    <label class="col-sm-4 col-form-label col-form-label-sm">Volume</label>
+                                    <div class="col-sm-8">
+                                        <div class="input-group input-group-sm">
+                                            <input type="text" class="form-control form-control-sm bg-light"
+                                                id="fldVolume" value="0.000" readonly>
+                                            <div class="input-group-append">
+                                                <select class="form-control form-control-sm" id="fldVolumeUnit"
+                                                    style="border-left:0;">
+                                                    <option value="CBM">CBM</option>
+                                                    <option value="CFT">CFT</option>
+                                                </select>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
                             <div class="col-md-6">
-                                <div class="form-group row">
-                                    <label class="col-sm-5 col-form-label">Equipment Type</label>
-                                    <div class="col-sm-7">
-                                        <select class="form-control form-control-sm" id="fldEquipType">
-                                            <option value="">-- Select --</option>
-                                            <option value="20GP">20GP</option>
-                                            <option value="40GP">40GP</option>
-                                            <option value="40HC">40HC</option>
-                                            <option value="45HC">45HC</option>
-                                            <option value="20RF">20RF</option>
-                                            <option value="40RF">40RF</option>
-                                            <option value="20OT">20OT</option>
-                                            <option value="40OT">40OT</option>
-                                        </select>
+                                <div class="form-group row mb-1">
+                                    <label class="col-sm-4 col-form-label col-form-label-sm">Tare Weight</label>
+                                    <div class="col-sm-8">
+                                        <div class="input-group input-group-sm">
+                                            <input type="text" class="form-control form-control-sm bg-light"
+                                                id="fldTareWeight" value="0.00" readonly>
+                                            <div class="input-group-append">
+                                                <select class="form-control form-control-sm" id="fldTareUnit"
+                                                    style="border-left:0;">
+                                                    <option value="KG">KG</option>
+                                                    <option value="LB">LB</option>
+                                                </select>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="form-group row">
-                                    <label class="col-sm-5 col-form-label">Equip No</label>
-                                    <div class="col-sm-7">
-                                        <input type="text" class="form-control form-control-sm" id="fldEquipNo"
-                                            placeholder="Equipment number">
-                                    </div>
-                                </div>
-                                <div class="form-group row">
-                                    <label class="col-sm-5 col-form-label">Tare Weight (kg)</label>
-                                    <div class="col-sm-7">
-                                        <input type="number" class="form-control form-control-sm" id="fldTareWeight"
-                                            placeholder="0.00" min="0" step="0.01" oninput="recalcWeights()">
-                                    </div>
-                                </div>
-                                <div class="form-group row">
-                                    <label class="col-sm-5 col-form-label">Gross Weight (kg)</label>
-                                    <div class="col-sm-7">
-                                        <input type="number" class="form-control form-control-sm" id="fldGrossWeight"
-                                            placeholder="0.00" min="0" step="0.01" oninput="recalcWeights()">
+                                <div class="form-group row mb-1">
+                                    <label class="col-sm-4 col-form-label col-form-label-sm">Gross Weight</label>
+                                    <div class="col-sm-8">
+                                        <div class="input-group input-group-sm">
+                                            <input type="number" class="form-control form-control-sm"
+                                                id="fldGrossWeight" placeholder="0.00" min="0" step="0.01"
+                                                oninput="recalcNetWeight()">
+                                            <div class="input-group-append">
+                                                <input type="text" class="form-control form-control-sm bg-light"
+                                                    id="fldGrossWeightReadonly" readonly style="width:70px;">
+                                            </div>
+                                        </div>
+                                        <small>
+                                            <a href="#" class="text-primary"
+                                                onclick="readTareFromEquipment(); return false;">
+                                                Read
+                                            </a>
+                                        </small>
                                     </div>
                                 </div>
                                 <div class="form-group row mb-0">
-                                    <label class="col-sm-5 col-form-label">Net Weight (kg)</label>
-                                    <div class="col-sm-7">
-                                        <input type="number" class="form-control form-control-sm bg-light"
-                                            id="fldNetWeight" placeholder="0.00" readonly>
+                                    <label class="col-sm-4 col-form-label col-form-label-sm">Net Weight</label>
+                                    <div class="col-sm-8">
+                                        <div class="input-group input-group-sm">
+                                            <input type="text" class="form-control form-control-sm bg-light"
+                                                id="fldNetWeight" value="0.00" readonly>
+                                            <div class="input-group-append">
+                                                <input type="text" class="form-control form-control-sm bg-light"
+                                                    id="fldNetWeightReadonly" readonly style="width:70px;">
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        {{-- Save / Cancel buttons replace the old "Add to Grid" header button --}}
-                        <div class="d-flex justify-content-end mt-3" style="gap:8px;">
-                            <button class="btn btn-secondary btn-sm"
-                                onclick="event.stopPropagation(); cancelProductEntry()">
+                        {{-- Detail form actions --}}
+                        <div class="d-flex justify-content-end mt-2" style="gap:8px;">
+                            <button class="btn btn-secondary btn-sm" onclick="cancelDetailEntry()">
                                 <i class="fas fa-times mr-1"></i> Cancel
                             </button>
-                            <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); saveProductToGrid()">
-                                <i class="fas fa-check mr-1"></i> Save Product
+                            <button class="btn btn-primary btn-sm" onclick="saveDetailRow()">
+                                <i class="fas fa-save mr-1"></i> Save
+                            </button>
+                            <button class="btn btn-info btn-sm" onclick="saveAndAddMore()">
+                                <i class="fas fa-plus mr-1"></i> Save & Add More
                             </button>
                         </div>
+
                     </div>
                 </div>
-
-                {{-- Products Grid Card --}}
-                <div class="card card-primary">
-                    <div class="card-header d-flex align-items-center">
-                        <h3 class="card-title mb-0">
-                            <i class="fas fa-table mr-1"></i> Products
-                            <span class="badge badge-light ml-1" id="productCount">0</span>
-                        </h3>
-                        <button class="btn btn-light btn-sm ml-auto" id="btnShowProductEntry"
-                            onclick="event.stopPropagation(); showProductEntry();" disabled
-                            title="Select a client first to add products">
-                            <i class="fas fa-plus mr-1"></i> Add
-                        </button>
-                    </div>
-                    <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table table-bordered table-sm table-hover mb-0">
-                                <thead class="thead-light">
-                                    <tr>
-                                        <th>#</th>
-                                        <th>Product</th>
-                                        <th>Equipment Type</th>
-                                        <th>Equip No</th>
-                                        <th class="text-right">Tare (kg)</th>
-                                        <th class="text-right">Gross (kg)</th>
-                                        <th class="text-right">Net (kg)</th>
-                                        <th class="text-center">Remove</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="productGridBody">
-                                    <tr id="productGridEmpty">
-                                        <td colspan="8" class="text-center text-muted py-3">
-                                            <i class="fas fa-box-open mr-1"></i> No products added yet
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Form Actions --}}
-                <div class="card">
-                    <div class="card-body py-2 px-3 d-flex justify-content-end" style="gap:8px;">
-                        <button class="btn btn-secondary btn-sm" onclick="backToDashboard()">
-                            <i class="fas fa-times mr-1"></i> Cancel
-                        </button>
-                        <button class="btn btn-warning btn-sm" id="btnSave" onclick="saveWeightNote('save')">
-                            <i class="fas fa-save mr-1"></i> Save
-                        </button>
-                        <button class="btn btn-success btn-sm" id="btnSaveSubmit" onclick="saveWeightNote('submit')">
-                            <i class="fas fa-paper-plane mr-1"></i> Save & Submit
-                        </button>
-                    </div>
-                </div>
-
             </div>
         </div>
+
+        {{-- ── FORM ACTIONS ── --}}
+        <div class="card">
+            <div class="card-body py-2 px-3 d-flex justify-content-end" style="gap:8px;">
+                <button class="btn btn-secondary btn-sm" onclick="backToDashboard()">
+                    <i class="fas fa-times mr-1"></i> Cancel
+                </button>
+                <button class="btn btn-warning btn-sm" id="btnSave" onclick="saveWeightNote('save')">
+                    <i class="fas fa-save mr-1"></i> Save
+                </button>
+                <button class="btn btn-success btn-sm" id="btnSaveSubmit" onclick="saveWeightNote('submit')">
+                    <i class="fas fa-paper-plane mr-1"></i> Save & Submit
+                </button>
+            </div>
+        </div>
+
     </div>
 
 @stop
 
 @section('css')
     <style>
-        /* ---- Brand colour ---- */
         :root {
             --brand: #4B49AC;
         }
 
-        .card-primary>.card-header,
-        .card.card-primary>.card-header {
+        /* Card header brand colour */
+        .card-primary>.card-header {
             background-color: var(--brand) !important;
             color: #fff !important;
         }
 
-        /* Info-box accent */
-        .info-box-icon {
-            min-width: 70px;
+        .card-primary>.card-header .btn-tool {
+            color: #fff !important;
         }
 
-        /* Form spacing */
-        .form-group.row {
-            margin-bottom: 0.45rem;
-        }
-
-        .card-body {
-            padding: 1rem;
-        }
-
+        /* Table */
         .table-sm th,
         .table-sm td {
             padding: 0.3rem 0.5rem;
@@ -482,38 +507,25 @@
             font-size: 0.82rem;
         }
 
-        /* Card header collapse cursor */
-        .card-header {
-            cursor: pointer;
-            user-select: none;
+        /* Form spacing */
+        .form-group.row {
+            margin-bottom: 0.4rem;
         }
 
-        .card-header:hover {
-            opacity: 0.95;
-        }
-
-        /* Disabled field tint */
-        input:disabled,
-        select:disabled {
-            background-color: #f4f4f4 !important;
-        }
-
-        /* Client / product autocomplete dropdown */
-        #clientDropdown .list-group-item,
-        #productDropdown .list-group-item {
-            padding: 6px 10px;
-            font-size: 0.85rem;
-            cursor: pointer;
-            border-radius: 0;
-        }
-
-        #clientDropdown .list-group-item:hover,
-        #productDropdown .list-group-item:hover {
-            background-color: #e8e8f5;
+        /* Summary readonly fields */
+        #summaryTare,
+        #summaryGross,
+        #summaryNet {
+            font-weight: 600;
             color: var(--brand);
         }
 
-        /* Status badge colours */
+        /* Detail entry panel */
+        #detailEntryPanel {
+            background-color: #fafafa;
+        }
+
+        /* Status badges */
         .badge-in-progress {
             background-color: #ffc107;
             color: #000;
@@ -529,6 +541,12 @@
             color: #fff;
         }
 
+        /* Remove row btn */
+        .btn-remove-row {
+            padding: 1px 7px;
+            font-size: 0.75rem;
+        }
+
         /* Active filter badge */
         #activeFilterBadge {
             background: #e9ecef;
@@ -536,23 +554,9 @@
             font-size: 0.75rem;
         }
 
-        /* Remove row btn */
-        .btn-remove-row {
-            padding: 1px 7px;
-            font-size: 0.75rem;
-        }
-
-        /* Summary fields */
-        #summaryTotalWeight,
-        #summaryTare,
-        #summaryNetWeight {
-            font-weight: 600;
-            color: var(--brand);
-        }
-
-        /* Product entry card slide-in feel */
-        #productEntryCard {
-            border-top: 3px solid var(--brand);
+        /* Card header cursor */
+        .card-header {
+            cursor: default;
         }
     </style>
 @stop
@@ -564,38 +568,30 @@
             // ================================================================
             // STATE
             // ================================================================
-            let currentJobType = '';
-            let weightNotes = []; // in-memory list for dashboard table
-            let productRows = []; // products in current form
-            let clientSelected = false;
-            let editingIndex = null; // null = new, number = editing
-
-            // Dummy client list (replace with AJAX when backend is ready)
-            const MOCK_CLIENTS = [
-                'ABC Logistics Ltd', 'Beta Freight Solutions', 'Cargo King Africa',
-                'Delta Shipping Co', 'Eagle Forwarding', 'Fast Track Movers',
-                'Global Trade Partners', 'Horizon Freight', 'Inland Express Ltd'
-            ];
-
-            // Dummy product list
-            const MOCK_PRODUCTS = [
-                'Steel Coils', 'Cement Bags', 'Rice Sacks', 'Electronics',
-                'Machinery Parts', 'Chemical Drums', 'Textile Rolls', 'Auto Parts'
-            ];
+            let weightNotes = []; // dashboard list
+            let detailRows = []; // rows in current form
+            let editingIndex = null; // null = new note, number = editing
+            let currentWNNo = '';
+            let activeFilter = 'All';
 
             // ================================================================
             // NAVIGATION
             // ================================================================
-            window.openForm = function(jobType) {
-                currentJobType = jobType;
+            window.openForm = function() {
                 editingIndex = null;
-                resetForm();
+                detailRows = [];
+                currentWNNo = generateWNNo();
 
-                $('#formJobTypeLabel').text(jobType);
+                resetSummaryForm();
+                renderDetailGrid();
+                recalcSummaryTotals();
+
+                $('#formJobNoLabel').text(currentWNNo);
                 $('#pageHeaderDashboard').hide();
                 $('#pageHeaderForm').show();
                 $('#dashboardView').hide();
                 $('#formView').show();
+                $('#detailEntryPanel').hide();
             };
 
             window.backToDashboard = function() {
@@ -607,249 +603,266 @@
             };
 
             // ================================================================
-            // CLIENT INPUT — unlock "Add" button on products grid
+            // DETAIL ENTRY PANEL — show / hide
             // ================================================================
-            window.onClientInput = function(input) {
-                const val = $(input).val().trim();
-
-                if (val.length >= 1) {
-                    const matches = MOCK_CLIENTS.filter(c => c.toLowerCase().includes(val.toLowerCase()));
-                    const $dd = $('#clientDropdown');
-                    $dd.empty();
-                    if (matches.length) {
-                        matches.forEach(function(c) {
-                            $dd.append(
-                                $('<a class="list-group-item list-group-item-action">').text(c).on(
-                                    'click',
-                                    function() {
-                                        $('#fldClient').val(c);
-                                        $dd.hide();
-                                        onClientConfirmed();
-                                    })
-                            );
-                        });
-                        $dd.show();
-                    } else {
-                        $dd.hide();
-                    }
-                } else {
-                    $('#clientDropdown').hide();
-                }
-
-                if (val === '') {
-                    lockProductSection();
-                }
-            };
-
-            function onClientConfirmed() {
-                clientSelected = true;
-                // Enable the Add button on the products grid
-                $('#btnShowProductEntry')
-                    .prop('disabled', false)
-                    .attr('title', 'Add a product');
-            }
-
-            // Also unlock if user types and tabs out
-            $('#fldClient').on('blur', function() {
-                if ($(this).val().trim() !== '') {
-                    onClientConfirmed();
-                }
-            });
-
-            // Hide dropdowns on outside click
-            $(document).on('click', function(e) {
-                if (!$(e.target).closest('#fldClient, #clientDropdown').length) {
-                    $('#clientDropdown').hide();
-                }
-                if (!$(e.target).closest('#fldProduct, #productDropdown').length) {
-                    $('#productDropdown').hide();
-                }
-            });
-
-            // ================================================================
-            // PRODUCT ENTRY PANEL — show / hide
-            // ================================================================
-            window.showProductEntry = function() {
-                clearProductFields();
-                $('#productEntryCard').slideDown(200);
-                // Scroll to it so user sees the form
+            window.showDetailForm = function() {
+                clearDetailFields();
+                const srNo = currentWNNo + '-' + String(detailRows.length + 1).padStart(2, '0');
+                $('#fldSrNo').val(srNo);
+                $('#detailEntryPanel').slideDown(200);
                 $('html, body').animate({
-                    scrollTop: $('#productEntryCard').offset().top - 80
+                    scrollTop: $('#detailEntryPanel').offset().top - 80
                 }, 300);
-                $('#fldProduct').focus();
             };
 
-            window.cancelProductEntry = function() {
-                $('#productEntryCard').slideUp(200);
-                clearProductFields();
+            window.cancelDetailEntry = function() {
+                $('#detailEntryPanel').slideUp(200);
+                clearDetailFields();
             };
 
             // ================================================================
-            // PRODUCT INPUT — autocomplete
+            // JOB NO CHANGE — auto-fill Client & Service
             // ================================================================
-            window.onProductInput = function(input) {
-                const val = $(input).val().trim();
-                if (val.length >= 1) {
-                    const matches = MOCK_PRODUCTS.filter(p => p.toLowerCase().includes(val.toLowerCase()));
-                    const $dd = $('#productDropdown');
-                    $dd.empty();
-                    if (matches.length) {
-                        matches.forEach(function(p) {
-                            $dd.append(
-                                $('<a class="list-group-item list-group-item-action">').text(p).on(
-                                    'click',
-                                    function() {
-                                        $('#fldProduct').val(p);
-                                        $dd.hide();
-                                    })
-                            );
-                        });
-                        $dd.show();
-                    } else {
-                        $dd.hide();
-                    }
-                } else {
-                    $('#productDropdown').hide();
+            window.onJobNoChange = function(select) {
+                const val = $(select).val();
+                if (!val) {
+                    $('#fldClientName').val('');
+                    $('#fldService').val('');
+                    return;
                 }
+                // TODO: Replace with AJAX call to fetch job details by job no
+                // Example:
+                // $.get('/api/jobs/' + val, function (res) {
+                //     if (res.success) {
+                //         $('#fldClientName').val(res.data.client_name);
+                //         $('#fldService').val(res.data.service);
+                //     }
+                // });
             };
 
             // ================================================================
             // WEIGHT RECALCULATION
             // ================================================================
-            window.recalcWeights = function() {
+            window.recalcNetWeight = function() {
                 const tare = parseFloat($('#fldTareWeight').val()) || 0;
                 const gross = parseFloat($('#fldGrossWeight').val()) || 0;
-                const net = gross - tare;
-                $('#fldNetWeight').val(net >= 0 ? net.toFixed(2) : '0.00');
+                const net = gross >= tare ? (gross - tare) : 0;
+
+                $('#fldNetWeight').val(net.toFixed(2));
+                $('#fldNetWeightReadonly').val(net.toFixed(2));
+                $('#fldGrossWeightReadonly').val(gross.toFixed(2));
+            };
+
+            // Read tare from the summary equipment fields
+            window.readTareFromEquipment = function() {
+                // TODO: AJAX call to read tare from equipment type/no
+                // For now, reads from summary tare field
+                const tare = parseFloat($('#summaryTare').val()) || 0;
+                $('#fldTareWeight').val(tare.toFixed(2));
+                recalcNetWeight();
             };
 
             // ================================================================
-            // SAVE PRODUCT TO GRID (replaces addProductToGrid)
+            // VOLUME RECALCULATION
             // ================================================================
-            window.saveProductToGrid = function() {
-                const product = $('#fldProduct').val().trim();
-                const equipType = $('#fldEquipType').val();
-                const tare = parseFloat($('#fldTareWeight').val()) || 0;
+            window.recalcVolume = function() {
+                const l = parseFloat($('#fldDimL').val()) || 0;
+                const w = parseFloat($('#fldDimW').val()) || 0;
+                const h = parseFloat($('#fldDimH').val()) || 0;
+                const unit = $('#fldDimUnit').val();
+
+                let cbm = (l * w * h);
+
+                // Convert to CBM based on unit
+                if (unit === 'cm') cbm = cbm / 1000000;
+                else if (unit === 'in') cbm = cbm * 0.0000163871;
+                // 'm' is already CBM
+
+                $('#fldVolume').val(cbm.toFixed(3));
+            };
+
+            window.addDimensionRow = function() {
+                // Placeholder — extend for multi-dimension rows if needed
+                toastr.info('Multi-dimension rows coming soon.');
+            };
+
+            window.clearDimensions = function() {
+                $('#fldDimL, #fldDimW, #fldDimH').val('');
+                $('#fldVolume').val('0.000');
+            };
+
+            // ================================================================
+            // SAVE DETAIL ROW
+            // ================================================================
+            window.saveDetailRow = function() {
+                if (!validateDetailRow()) return;
+                pushDetailRow();
+                renderDetailGrid();
+                recalcSummaryTotals();
+                $('#detailEntryPanel').slideUp(200);
+                clearDetailFields();
+                toastr.success('Detail row added.');
+            };
+
+            window.saveAndAddMore = function() {
+                if (!validateDetailRow()) return;
+                pushDetailRow();
+                renderDetailGrid();
+                recalcSummaryTotals();
+                // Keep panel open, refresh Sr No
+                const srNo = currentWNNo + '-' + String(detailRows.length + 1).padStart(2, '0');
+                clearDetailFields();
+                $('#fldSrNo').val(srNo);
+                toastr.success('Row added. Fill next entry.');
+            };
+
+            function validateDetailRow() {
+                const product = $('#fldProduct').val();
                 const gross = parseFloat($('#fldGrossWeight').val()) || 0;
-                const net = parseFloat($('#fldNetWeight').val()) || 0;
 
                 if (!product) {
-                    toastr.error('Please enter a product name.');
+                    toastr.error('Please select a Product.');
                     $('#fldProduct').focus();
-                    return;
-                }
-                if (!equipType) {
-                    toastr.error('Please select an Equipment Type.');
-                    $('#fldEquipType').focus();
-                    return;
+                    return false;
                 }
                 if (gross <= 0) {
                     toastr.error('Gross Weight must be greater than 0.');
                     $('#fldGrossWeight').focus();
-                    return;
+                    return false;
                 }
+                return true;
+            }
 
-                productRows.push({
-                    product: product,
-                    equipType: equipType,
-                    equipNo: $('#fldEquipNo').val().trim(),
-                    tare: tare,
-                    gross: gross,
-                    net: net,
-                    description: $('#fldDescription').val().trim(),
-                    qty: $('#fldProdQty').val() || 0,
-                    uom: $('#fldProdUOM').val(),
+            function pushDetailRow() {
+                detailRows.push({
+                    srNo: $('#fldSrNo').val(),
+                    jobNo: $('#fldJobNo').val(),
+                    service: $('#fldService').val(),
+                    clientName: $('#fldClientName').val(),
+                    product: $('#fldProduct option:selected').text(),
+                    productVal: $('#fldProduct').val(),
+                    description: $('#fldDescription').val(),
+                    qty: $('#fldQty').val() || 0,
+                    uom: $('#fldQtyUOM').val(),
+                    tare: parseFloat($('#fldTareWeight').val()) || 0,
+                    gross: parseFloat($('#fldGrossWeight').val()) || 0,
+                    net: parseFloat($('#fldNetWeight').val()) || 0,
+                    volume: $('#fldVolume').val(),
                 });
+            }
 
-                renderProductGrid();
-                recalcSummary();
-
-                // Hide entry panel and clear fields
-                $('#productEntryCard').slideUp(200);
-                clearProductFields();
-
-                toastr.success('Product added to grid.');
-            };
-
-            function renderProductGrid() {
-                const $body = $('#productGridBody');
+            // ================================================================
+            // RENDER DETAIL GRID
+            // ================================================================
+            function renderDetailGrid() {
+                const $body = $('#detailGridBody');
                 $body.empty();
 
-                if (!productRows.length) {
+                if (!detailRows.length) {
                     $body.append(`
-                        <tr id="productGridEmpty">
-                            <td colspan="8" class="text-center text-muted py-3">
-                                <i class="fas fa-box-open mr-1"></i> No products added yet
+                        <tr id="detailGridEmpty">
+                            <td colspan="9" class="text-center text-muted py-3">
+                                <i class="fas fa-box-open mr-1"></i> No details added yet
                             </td>
                         </tr>`);
                     $('#productCount').text('0');
                     return;
                 }
 
-                productRows.forEach(function(r, i) {
+                detailRows.forEach(function(r, i) {
                     $body.append(`
                         <tr>
                             <td>${i + 1}</td>
+                            <td>${r.jobNo || '—'}</td>
+                            <td>${r.service || '—'}</td>
+                            <td>${r.clientName || '—'}</td>
                             <td>${r.product}</td>
-                            <td>${r.equipType}</td>
-                            <td>${r.equipNo || '—'}</td>
                             <td class="text-right">${r.tare.toFixed(2)}</td>
                             <td class="text-right">${r.gross.toFixed(2)}</td>
                             <td class="text-right">${r.net.toFixed(2)}</td>
                             <td class="text-center">
-                                <button class="btn btn-danger btn-remove-row" onclick="removeProductRow(${i})" title="Remove">
+                                <button class="btn btn-xs btn-warning mr-1" onclick="editDetailRow(${i})" title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-xs btn-danger btn-remove-row" onclick="removeDetailRow(${i})" title="Remove">
                                     <i class="fas fa-times"></i>
                                 </button>
                             </td>
                         </tr>`);
                 });
 
-                $('#productCount').text(productRows.length);
+                $('#productCount').text(detailRows.length);
             }
 
-            window.removeProductRow = function(index) {
-                productRows.splice(index, 1);
-                renderProductGrid();
-                recalcSummary();
+            window.removeDetailRow = function(index) {
+                detailRows.splice(index, 1);
+                renderDetailGrid();
+                recalcSummaryTotals();
             };
 
-            function recalcSummary() {
-                const totalGross = productRows.reduce((s, r) => s + r.gross, 0);
-                const totalTare = productRows.reduce((s, r) => s + r.tare, 0);
-                const totalNet = productRows.reduce((s, r) => s + r.net, 0);
-                $('#summaryTotalWeight').val(totalGross.toFixed(2));
+            window.editDetailRow = function(index) {
+                const r = detailRows[index];
+                detailRows.splice(index, 1);
+                renderDetailGrid();
+                recalcSummaryTotals();
+
+                $('#fldSrNo').val(r.srNo);
+                $('#fldJobNo').val(r.jobNo);
+                $('#fldService').val(r.service);
+                $('#fldClientName').val(r.clientName);
+                $('#fldProduct').val(r.productVal);
+                $('#fldDescription').val(r.description);
+                $('#fldQty').val(r.qty);
+                $('#fldQtyUOM').val(r.uom);
+                $('#fldTareWeight').val(r.tare.toFixed(2));
+                $('#fldGrossWeight').val(r.gross.toFixed(2));
+                $('#fldNetWeight').val(r.net.toFixed(2));
+                $('#fldVolume').val(r.volume);
+
+                $('#detailEntryPanel').slideDown(200);
+                $('html, body').animate({
+                    scrollTop: $('#detailEntryPanel').offset().top - 80
+                }, 300);
+            };
+
+            // ================================================================
+            // SUMMARY TOTALS
+            // ================================================================
+            function recalcSummaryTotals() {
+                const totalTare = detailRows.reduce((s, r) => s + r.tare, 0);
+                const totalGross = detailRows.reduce((s, r) => s + r.gross, 0);
+                const totalNet = detailRows.reduce((s, r) => s + r.net, 0);
                 $('#summaryTare').val(totalTare.toFixed(2));
-                $('#summaryNetWeight').val(totalNet.toFixed(2));
+                $('#summaryGross').val(totalGross.toFixed(2));
+                $('#summaryNet').val(totalNet.toFixed(2));
             }
 
             // ================================================================
             // SAVE / SAVE & SUBMIT
             // ================================================================
             window.saveWeightNote = function(action) {
-                const client = $('#fldClient').val().trim();
-                if (!client) {
-                    toastr.error('Client is required.');
-                    $('#fldClient').focus();
+                if (!detailRows.length) {
+                    toastr.error('Please add at least one detail row.');
                     return;
                 }
 
                 const $btn = action === 'submit' ? $('#btnSaveSubmit') : $('#btnSave');
                 $btn.prop('disabled', true).prepend('<i class="fas fa-spinner fa-spin mr-1"></i>');
 
-                // Simulate async save
+                // TODO: Replace setTimeout with AJAX POST to backend
                 setTimeout(function() {
                     const status = action === 'submit' ? 'Submitted' : 'In Progress';
 
                     const note = {
-                        jobNo: $('#fldJobNo').val().trim() || generateJobNo(),
-                        jobType: currentJobType,
-                        client: client,
-                        shipper: $('#fldShipper').val().trim(),
-                        pol: $('#fldPOL').val().trim(),
-                        pod: $('#fldPOD').val().trim(),
-                        totalWeight: $('#summaryTotalWeight').val(),
+                        wnNo: currentWNNo,
+                        equipType: $('#fldEquipType').val(),
+                        equipNo: $('#fldEquipNo').val().trim(),
+                        remark: $('#fldRemark').val().trim(),
+                        tare: $('#summaryTare').val(),
+                        gross: $('#summaryGross').val(),
+                        net: $('#summaryNet').val(),
                         status: status,
-                        products: [...productRows],
+                        details: [...detailRows],
                     };
 
                     if (editingIndex !== null) {
@@ -859,9 +872,8 @@
                     }
 
                     $btn.prop('disabled', false).find('.fa-spinner').remove();
-
-                    toastr.success(action === 'submit' ?
-                        'Weight note submitted successfully.' : 'Weight note saved.');
+                    toastr.success(action === 'submit' ? 'Weight note submitted.' :
+                        'Weight note saved.');
                     backToDashboard();
                 }, 800);
             };
@@ -869,12 +881,9 @@
             // ================================================================
             // DASHBOARD TABLE
             // ================================================================
-            let activeFilter = 'All';
-
             window.filterTable = function(status) {
                 activeFilter = status;
                 refreshDashboardTable();
-
                 if (status !== 'All') {
                     $('#activeFilterBadge').text(status).show();
                 } else {
@@ -901,12 +910,10 @@
                 $body.empty();
 
                 const filtered = weightNotes.filter(function(n) {
-                    const matchStatus = (activeFilter === 'All') || (n.status === activeFilter);
+                    const matchStatus = activeFilter === 'All' || n.status === activeFilter;
                     const matchSearch = !search ||
-                        n.jobNo.toLowerCase().includes(search) ||
-                        n.client.toLowerCase().includes(search) ||
-                        (n.pol || '').toLowerCase().includes(search) ||
-                        (n.pod || '').toLowerCase().includes(search);
+                        n.wnNo.toLowerCase().includes(search) ||
+                        (n.equipNo || '').toLowerCase().includes(search);
                     return matchStatus && matchSearch;
                 });
 
@@ -924,112 +931,102 @@
                 filtered.forEach(function(n) {
                     const realIndex = weightNotes.indexOf(n);
                     const badgeClass = n.status === 'Submitted' ? 'badge-submitted' :
-                        n.status === 'Failed' ? 'badge-failed' : 'badge-in-progress';
+                        n.status === 'Failed' ? 'badge-failed' :
+                        'badge-in-progress';
+
                     $body.append(`
                         <tr>
-                            <td>${n.jobNo}</td>
-                            <td>${n.jobType}</td>
-                            <td>${n.client}</td>
-                            <td>${n.shipper || '—'}</td>
-                            <td>${n.pol     || '—'}</td>
-                            <td>${n.pod     || '—'}</td>
-                            <td class="text-right">${n.totalWeight} kg</td>
+                            <td>${n.wnNo}</td>
+                            <td>${n.equipType || '—'}</td>
+                            <td>${n.equipNo   || '—'}</td>
+                            <td class="text-right">${n.tare} kg</td>
+                            <td class="text-right">${n.gross} kg</td>
+                            <td class="text-right">${n.net} kg</td>
+                            <td>${n.remark || '—'}</td>
                             <td><span class="badge ${badgeClass}">${n.status}</span></td>
                             <td class="text-center">
                                 <button class="btn btn-xs btn-info mr-1" onclick="viewWeightNote(${realIndex})" title="View">
                                     <i class="fas fa-eye"></i>
                                 </button>
                                 ${n.status !== 'Submitted' ? `
-                                                            <button class="btn btn-xs btn-warning" onclick="editWeightNote(${realIndex})" title="Edit">
-                                                                <i class="fas fa-edit"></i>
-                                                            </button>` : ''}
+                                        <button class="btn btn-xs btn-warning" onclick="editWeightNote(${realIndex})" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </button>` : ''}
                             </td>
                         </tr>`);
                 });
             }
 
-            // Live search
             $('#tableSearch').on('input', function() {
                 refreshDashboardTable();
             });
 
             window.viewWeightNote = function(index) {
                 const n = weightNotes[index];
-                toastr.info(`Viewing: ${n.jobNo} — ${n.client}`);
+                toastr.info(`Viewing: ${n.wnNo}`);
             };
 
             window.editWeightNote = function(index) {
                 const n = weightNotes[index];
                 editingIndex = index;
-                currentJobType = n.jobType;
-                productRows = [...n.products];
+                currentWNNo = n.wnNo;
+                detailRows = [...n.details];
 
-                openForm(n.jobType);
+                resetSummaryForm();
+                $('#fldEquipType').val(n.equipType);
+                $('#fldEquipNo').val(n.equipNo);
+                $('#fldRemark').val(n.remark);
 
-                $('#fldJobNo').val(n.jobNo);
-                $('#fldClient').val(n.client);
-                $('#fldShipper').val(n.shipper);
-                $('#fldPOL').val(n.pol);
-                $('#fldPOD').val(n.pod);
+                renderDetailGrid();
+                recalcSummaryTotals();
 
-                onClientConfirmed();
-                renderProductGrid();
-                recalcSummary();
+                $('#formJobNoLabel').text(currentWNNo);
+                $('#pageHeaderDashboard').hide();
+                $('#pageHeaderForm').show();
+                $('#dashboardView').hide();
+                $('#formView').show();
+                $('#detailEntryPanel').hide();
             };
 
             // ================================================================
             // HELPERS
             // ================================================================
-            function lockProductSection() {
-                clientSelected = false;
-                $('#btnShowProductEntry')
-                    .prop('disabled', true)
-                    .attr('title', 'Select a client first to add products');
-                // Hide the entry panel if it was open
-                $('#productEntryCard').hide();
-                clearProductFields();
-            }
-
-            function clearProductFields() {
-                $('#fldProduct, #fldProductJobNo, #fldDescription, #fldEquipNo').val('');
-                $('#fldProdQty, #fldDimL, #fldDimW, #fldDimH').val('');
-                $('#fldTareWeight, #fldGrossWeight, #fldNetWeight').val('');
+            function resetSummaryForm() {
                 $('#fldEquipType').val('');
-                $('#fldProdUOM').val('PCS');
+                $('#fldEquipNo, #fldRemark').val('');
+                $('#summaryTare, #summaryGross, #summaryNet').val('0.00');
+            }
+
+            function clearDetailFields() {
+                $('#fldSrNo, #fldClientName, #fldService').val('');
+                $('#fldJobNo').val('');
+                $('#fldProduct').val('');
+                $('#fldDescription').val('');
+                $('#fldQty').val('');
+                $('#fldQtyUOM').val('PCS');
+                $('#fldDimL, #fldDimW, #fldDimH').val('');
                 $('#fldDimUnit').val('cm');
+                $('#fldVolume').val('0.000');
+                $('#fldTareWeight').val('0.00');
+                $('#fldGrossWeight').val('');
+                $('#fldGrossWeightReadonly').val('');
+                $('#fldNetWeight, #fldNetWeightReadonly').val('0.00');
             }
 
-            function resetForm() {
-                clientSelected = false;
-                productRows = [];
-                $('#fldJobNo, #fldClient, #fldShipper, #fldConsignee, #fldForwarder').val('');
-                $('#fldPlaceReceipt, #fldPOL, #fldPOD, #fldPlaceDelivery').val('');
-                $('#fldQuantity, #fldEquipment').val('');
-                $('#summaryTotalWeight, #summaryTare, #summaryNetWeight').val('0.00');
-                lockProductSection();
-                renderProductGrid();
+            function generateWNNo() {
+                const now = new Date();
+                const yy = String(now.getFullYear()).slice(-2);
+                const seq = String(weightNotes.length + 1).padStart(5, '0');
+                return `KE-WN-${yy}-${seq}`;
             }
 
-            function generateJobNo() {
-                const ts = Date.now().toString().slice(-6);
-                return 'WN-' + ts;
-            }
-
-            // ================================================================
-            // CARD COLLAPSE
-            // ================================================================
+            // Card collapse
             $('[data-card-widget="collapse"]').on('click', function(e) {
                 e.stopPropagation();
                 $(this).find('i').toggleClass('fa-chevron-down fa-chevron-up');
             });
 
-            $('.card-header').on('click', function(e) {
-                if (!$(e.target).closest('[data-card-widget="collapse"]').length) {
-                    $(this).find('[data-card-widget="collapse"]').click();
-                }
-            });
-
-            // Initial dashboard render
+            // Initial render
             refreshDashboardTable();
         });
     </script>

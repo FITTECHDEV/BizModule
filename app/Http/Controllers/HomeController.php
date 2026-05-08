@@ -95,6 +95,18 @@ class HomeController extends Controller
             }
 
             try {
+                $weight_note_stats = $this->getWeightNoteStats();
+            } catch (\Exception $e) {
+                \Log::error('Weight Note Stats Error: ' . $e->getMessage());
+                $weight_note_stats = [
+                    'total' => 0,
+                    'in_progress' => 0,
+                    'submitted' => 0,
+                    'failed' => 0,
+                ];
+            }
+
+            try {
                 $tracker_stats = $this->getTrackerStats();
             } catch (\Exception $e) {
                 \Log::error('Tracker Stats Error: ' . $e->getMessage());
@@ -196,6 +208,7 @@ class HomeController extends Controller
                     'quotation_stats',
                     'effectiveOffice',
                     'officeGate',
+                    'weight_note_stats',
                 ),
             );
         } catch (\Exception $e) {
@@ -604,5 +617,38 @@ class HomeController extends Controller
                 return $row->CreatedOn->format('Y-m-d H:m:s');
             })
             ->make();
+    }
+
+    /**
+     * Get Weight Note statistics grouped by status.
+     */
+    private function getWeightNoteStats(): array
+    {
+        // TODO: Replace with actual table name once Weight Note DB schema is ready.
+        // Example query structure when table exists:
+        //
+        // $rows = DB::table('WeightNote_Headers')
+        //     ->selectRaw("
+        //         COUNT(*) as total,
+        //         SUM(CASE WHEN Status = 'In Progress' THEN 1 ELSE 0 END) as in_progress,
+        //         SUM(CASE WHEN Status = 'Submitted'   THEN 1 ELSE 0 END) as submitted,
+        //         SUM(CASE WHEN Status = 'Failed'      THEN 1 ELSE 0 END) as failed
+        //     ")
+        //     ->first();
+        //
+        // return [
+        //     'total'       => $rows->total       ?? 0,
+        //     'in_progress' => $rows->in_progress ?? 0,
+        //     'submitted'   => $rows->submitted   ?? 0,
+        //     'failed'      => $rows->failed      ?? 0,
+        // ];
+
+        // Returning zeros until table is available
+        return [
+            'total' => 0,
+            'in_progress' => 0,
+            'submitted' => 0,
+            'failed' => 0,
+        ];
     }
 }

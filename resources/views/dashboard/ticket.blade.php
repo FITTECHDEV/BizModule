@@ -568,6 +568,59 @@
                 </div>
             @endif
 
+            @can('approve-all-entity-request')
+                <div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-3">
+                    <a href="/weight-note" style="text-decoration: none; color: inherit;">
+                        <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card"
+                            style="cursor: pointer;">
+                            <div class="widget-user-header" style="background-color: #4B49AC;">
+                                <h3 class="widget-user-username">WEIGHT NOTE</h3>
+                                <h5 class="widget-user-desc">Manage & Track Weight Notes</h5>
+                            </div>
+                            <div class="widget-user-image">
+                                <img src="{{ asset('img/scales.png') }}" alt="Weight Note" class="img-circle elevation-2"
+                                    style="background: white; padding: 10px;">
+                            </div>
+                            <div class="card-footer">
+                                <div class="row">
+                                    <div class="col-3 border-right">
+                                        <div class="description-block">
+                                            <h5 class="description-header text-warning">
+                                                {{ $weight_note_stats['in_progress'] ?? 0 }}
+                                            </h5>
+                                            <span class="description-text">In Progress</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-3 border-right">
+                                        <div class="description-block">
+                                            <h5 class="description-header text-success">
+                                                {{ $weight_note_stats['submitted'] ?? 0 }}
+                                            </h5>
+                                            <span class="description-text">Submitted</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-3 border-right">
+                                        <div class="description-block">
+                                            <h5 class="description-header text-danger">
+                                                {{ $weight_note_stats['failed'] ?? 0 }}
+                                            </h5>
+                                            <span class="description-text">Failed</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-3">
+                                        <div class="description-block">
+                                            <h5 class="description-header text-primary">
+                                                {{ $weight_note_stats['total'] ?? 0 }}
+                                            </h5>
+                                            <span class="description-text">Total</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            @endcan
         </div>
     </div>
 
