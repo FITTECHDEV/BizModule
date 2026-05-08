@@ -128,7 +128,10 @@
                 <h3 class="card-title mb-0">
                     <i class="fas fa-clipboard-list mr-1"></i> Weight Note Summary
                 </h3>
-                <div class="card-tools ml-auto">
+                <div class="card-tools ml-auto d-flex align-items-center" style="gap:6px;">
+                    <button class="btn btn-light btn-sm" id="btnEditSummary" type="button" title="Edit equipment info">
+                        <i class="fas fa-pencil-alt mr-1"></i> Edit
+                    </button>
                     <button type="button" class="btn btn-tool" data-card-widget="collapse">
                         <i class="fas fa-chevron-up"></i>
                     </button>
@@ -141,31 +144,22 @@
                         <div class="form-group row">
                             <label class="col-sm-4 col-form-label">Equipment Type</label>
                             <div class="col-sm-8">
-                                <select class="form-control form-control-sm" id="fldEquipType">
-                                    <option value="">-- Select --</option>
-                                    <option value="20GP">20GP</option>
-                                    <option value="40GP">40GP</option>
-                                    <option value="40HC">40HC</option>
-                                    <option value="45HC">45HC</option>
-                                    <option value="20RF">20RF</option>
-                                    <option value="40RF">40RF</option>
-                                    <option value="20OT">20OT</option>
-                                    <option value="40OT">40OT</option>
-                                </select>
+                                <input type="text" class="form-control form-control-sm bg-light summary-field"
+                                    id="displayEquipType" value="—" readonly>
                             </div>
                         </div>
                         <div class="form-group row">
                             <label class="col-sm-4 col-form-label">Equipment No</label>
                             <div class="col-sm-8">
-                                <input type="text" class="form-control form-control-sm" id="fldEquipNo"
-                                    placeholder="Equipment number">
+                                <input type="text" class="form-control form-control-sm bg-light summary-field"
+                                    id="displayEquipNo" value="—" readonly>
                             </div>
                         </div>
                         <div class="form-group row mb-0">
                             <label class="col-sm-4 col-form-label">Remark</label>
                             <div class="col-sm-8">
-                                <input type="text" class="form-control form-control-sm" id="fldRemark"
-                                    placeholder="Remark">
+                                <input type="text" class="form-control form-control-sm bg-light summary-field"
+                                    id="displayRemark" value="—" readonly>
                             </div>
                         </div>
                     </div>
@@ -316,20 +310,17 @@
                                 </div>
                                 <div class="form-group row mb-1">
                                     <label class="col-sm-4 col-form-label col-form-label-sm">Quantity</label>
-                                    <div class="col-sm-8">
-                                        <div class="input-group input-group-sm">
-                                            <input type="number" class="form-control form-control-sm" id="fldQty"
-                                                placeholder="0" min="0">
-                                            <div class="input-group-append">
-                                                <select class="form-control form-control-sm" id="fldQtyUOM"
-                                                    style="border-left:0;">
-                                                    <option value="PCS">PCS</option>
-                                                    <option value="KGS">KGS</option>
-                                                    <option value="CBM">CBM</option>
-                                                    <option value="CTN">CTN</option>
-                                                </select>
-                                            </div>
-                                        </div>
+                                    <div class="col-sm-4 pr-1">
+                                        <input type="number" class="form-control form-control-sm" id="fldQty"
+                                            placeholder="0" min="0">
+                                    </div>
+                                    <div class="col-sm-4 pl-0">
+                                        <select class="form-control form-control-sm" id="fldQtyUOM">
+                                            <option value="PCS">PCS</option>
+                                            <option value="KGS">KGS</option>
+                                            <option value="CBM">CBM</option>
+                                            <option value="CTN">CTN</option>
+                                        </select>
                                     </div>
                                 </div>
                                 <div class="form-group row mb-1">
@@ -379,28 +370,25 @@
                             <div class="col-md-6">
                                 <div class="form-group row mb-1">
                                     <label class="col-sm-4 col-form-label col-form-label-sm">Tare Weight</label>
-                                    <div class="col-sm-8">
-                                        <div class="input-group input-group-sm">
-                                            <input type="text" class="form-control form-control-sm bg-light"
-                                                id="fldTareWeight" value="0.00" readonly>
-                                            <div class="input-group-append">
-                                                <select class="form-control form-control-sm" id="fldTareUnit"
-                                                    style="border-left:0;">
-                                                    <option value="KG">KG</option>
-                                                    <option value="LB">LB</option>
-                                                </select>
-                                            </div>
-                                        </div>
+                                    <div class="col-sm-4 pr-1">
+                                        <input type="text" class="form-control form-control-sm bg-light"
+                                            id="fldTareWeight" value="0.00" readonly>
+                                    </div>
+                                    <div class="col-sm-4 pl-0">
+                                        <select class="form-control form-control-sm" id="fldTareUnit">
+                                            <option value="KG">KG</option>
+                                            <option value="LB">LB</option>
+                                        </select>
                                     </div>
                                 </div>
                                 <div class="form-group row mb-1">
                                     <label class="col-sm-4 col-form-label col-form-label-sm">Gross Weight</label>
-                                    <div class="col-sm-8">
+                                    <div class="col-sm-4 pr-1">
                                         <input type="number" class="form-control form-control-sm" id="fldGrossWeight"
                                             placeholder="0.00" min="0" step="0.01">
-                                        <small>
-                                            <a href="#" id="lnkReadTare" class="text-primary">Read</a>
-                                        </small>
+                                    </div>
+                                    <div class="col-sm-4 pl-0 d-flex align-items-center">
+                                        <small><a href="#" id="lnkReadTare" class="text-primary">Read</a></small>
                                     </div>
                                 </div>
                                 <div class="form-group row mb-0">
@@ -446,6 +434,56 @@
             </div>
         </div>
 
+    </div>
+
+    {{-- ── EQUIPMENT INFO MODAL ── --}}
+    <div class="modal fade" id="equipInfoModal" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-sm" role="document">
+            <div class="modal-content">
+                <div class="modal-header" style="background-color:#4B49AC; color:#fff; padding:0.6rem 1rem;">
+                    <h6 class="modal-title mb-0">
+                        <i class="fas fa-pencil-alt mr-1"></i> Equipment Info
+                    </h6>
+                    <button type="button" class="close text-white" data-dismiss="modal" style="line-height:1;">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group mb-2">
+                        <label class="col-form-label col-form-label-sm">Equipment Type</label>
+                        <select class="form-control form-control-sm" id="modalEquipType">
+                            <option value="">-- Select --</option>
+                            <option value="20GP">20GP</option>
+                            <option value="40GP">40GP</option>
+                            <option value="40HC">40HC</option>
+                            <option value="45HC">45HC</option>
+                            <option value="20RF">20RF</option>
+                            <option value="40RF">40RF</option>
+                            <option value="20OT">20OT</option>
+                            <option value="40OT">40OT</option>
+                        </select>
+                    </div>
+                    <div class="form-group mb-2">
+                        <label class="col-form-label col-form-label-sm">Equipment No</label>
+                        <input type="text" class="form-control form-control-sm" id="modalEquipNo"
+                            placeholder="Equipment number">
+                    </div>
+                    <div class="form-group mb-0">
+                        <label class="col-form-label col-form-label-sm">Remark</label>
+                        <input type="text" class="form-control form-control-sm" id="modalRemark"
+                            placeholder="Remark">
+                    </div>
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">
+                        <i class="fas fa-times mr-1"></i> Cancel
+                    </button>
+                    <button type="button" class="btn btn-primary btn-sm" id="btnSaveEquipInfo">
+                        <i class="fas fa-save mr-1"></i> Save
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     {{-- ── VIEW MODAL ── --}}
@@ -623,6 +661,38 @@
             }
 
             // ================================================================
+            // EQUIPMENT INFO MODAL
+            // ================================================================
+            $('#btnEditSummary').on('click', function() {
+                const currentType = $('#displayEquipType').val();
+                const currentNo = $('#displayEquipNo').val();
+                const currentRmk = $('#displayRemark').val();
+
+                $('#modalEquipType').val(currentType === '—' ? '' : currentType);
+                $('#modalEquipNo').val(currentNo === '—' ? '' : currentNo);
+                $('#modalRemark').val(currentRmk === '—' ? '' : currentRmk);
+
+                $('#equipInfoModal').modal('show');
+            });
+
+            $('#equipInfoModal .close, #equipInfoModal [data-dismiss="modal"]').on('click', function() {
+                $('#equipInfoModal').modal('hide');
+            });
+
+            $('#btnSaveEquipInfo').on('click', function() {
+                const equipType = $('#modalEquipType').val();
+                const equipNo = $('#modalEquipNo').val().trim();
+                const remark = $('#modalRemark').val().trim();
+
+                $('#displayEquipType').val(equipType || '—');
+                $('#displayEquipNo').val(equipNo || '—');
+                $('#displayRemark').val(remark || '—');
+
+                $('#equipInfoModal').modal('hide');
+                toastr.success('Equipment info updated.');
+            });
+
+            // ================================================================
             // DASHBOARD — status card filters
             // ================================================================
             $('#cardInProgress').on('click', function() {
@@ -710,7 +780,7 @@
             // "Read" — fetch tare for selected equipment type
             $('#lnkReadTare').on('click', function(e) {
                 e.preventDefault();
-                const equipType = $('#fldEquipType').val();
+                const equipType = $('#displayEquipType').val().replace('—', '').trim();
                 if (!equipType) {
                     toastr.warning('Please select an Equipment Type in the summary first.');
                     return;
@@ -955,9 +1025,9 @@
                 setTimeout(function() {
                     const note = {
                         wnNo: currentWNNo,
-                        equipType: $('#fldEquipType').val(),
-                        equipNo: $('#fldEquipNo').val().trim(),
-                        remark: $('#fldRemark').val().trim(),
+                        equipType: $('#displayEquipType').val().replace('—', '').trim(),
+                        equipNo: $('#displayEquipNo').val().replace('—', '').trim(),
+                        remark: $('#displayRemark').val().replace('—', '').trim(),
                         tare: $('#summaryTare').val(),
                         gross: $('#summaryGross').val(),
                         net: $('#summaryNet').val(),
@@ -1040,10 +1110,10 @@
                                     <i class="fas fa-eye"></i>
                                 </button>
                                 ${n.status !== 'Submitted' ? `
-                                    <button class="btn btn-xs btn-warning btn-edit-note"
-                                        data-index="${realIndex}" title="Edit">
-                                        <i class="fas fa-edit"></i>
-                                    </button>` : ''}
+                                                                                        <button class="btn btn-xs btn-warning btn-edit-note"
+                                                                                            data-index="${realIndex}" title="Edit">
+                                                                                            <i class="fas fa-edit"></i>
+                                                                                        </button>` : ''}
                             </td>
                         </tr>`);
                 });
@@ -1098,9 +1168,9 @@
                 detailRows = [...n.details];
 
                 resetSummaryForm();
-                $('#fldEquipType').val(n.equipType);
-                $('#fldEquipNo').val(n.equipNo);
-                $('#fldRemark').val(n.remark);
+                $('#displayEquipType').val(n.equipType || '—');
+                $('#displayEquipNo').val(n.equipNo || '—');
+                $('#displayRemark').val(n.remark || '—');
                 renderDetailGrid();
                 recalcSummaryTotals();
 
@@ -1126,8 +1196,11 @@
             // HELPERS
             // ================================================================
             function resetSummaryForm() {
-                $('#fldEquipType').val('');
-                $('#fldEquipNo, #fldRemark').val('');
+                $('#displayEquipType').val('—');
+                $('#displayEquipNo').val('—');
+                $('#displayRemark').val('—');
+                $('#modalEquipType').val('');
+                $('#modalEquipNo, #modalRemark').val('');
                 $('#summaryTare, #summaryGross, #summaryNet').val('0.00');
             }
 
