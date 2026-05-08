@@ -8568,8 +8568,6 @@
                     showNotification('Please enter a search value', 'warning');
                     return;
                 }
-
-
                 $.ajax({
                     url: CC_SEARCH_URL,
                     type: 'GET',
@@ -8579,9 +8577,15 @@
                         filter_value: filterValue
                     },
                     beforeSend: function() {
+                        $('#ccSearchGoBtn').prop('disabled', true)
+                            .html('<i class="fas fa-spinner fa-spin mr-1"></i> Searching...');
                         $('#ccSearchResultsBody').html(
                             '<tr><td colspan="5" class="cc-empty-msg"><i class="fas fa-spinner fa-spin"></i> Searching...</td></tr>'
                         );
+                    },
+                    complete: function() {
+                        $('#ccSearchGoBtn').prop('disabled', false)
+                            .html('Search');
                     },
                     success: function(response) {
                         ccSearchResults = response.success ? (response.data || []) : [];
