@@ -31,13 +31,13 @@
   ),
   'barryvdh/laravel-dompdf' => 
   array (
+    'aliases' => 
+    array (
+      'PDF' => 'Barryvdh\\DomPDF\\Facade\\Pdf',
+    ),
     'providers' => 
     array (
       0 => 'Barryvdh\\DomPDF\\ServiceProvider',
-    ),
-    'aliases' => 
-    array (
-      'PDF' => 'Barryvdh\\DomPDF\\Facade',
     ),
   ),
   'barryvdh/laravel-ide-helper' => 
@@ -259,6 +259,20 @@
     'providers' => 
     array (
       0 => 'Sujip\\Guid\\GuidServiceProvider',
+    ),
+  ),
+  'supliu/laravel-query-monitor' => 
+  array (
+    'providers' => 
+    array (
+      0 => 'Supliu\\LaravelQueryMonitor\\ServiceProvider',
+    ),
+  ),
+  'sven/artisan-view' => 
+  array (
+    'providers' => 
+    array (
+      0 => 'Sven\\ArtisanView\\ServiceProvider',
     ),
   ),
   'webpatser/laravel-uuid' => 

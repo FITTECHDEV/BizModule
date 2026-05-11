@@ -243,39 +243,33 @@
 
                         {{-- Row 1: Sr No, Client, Job No, Service --}}
                         <div class="row mb-2">
-                            <div class="col-md-3">
+                            <div class="col-md-12">
                                 <div class="form-group row mb-1">
-                                    <label class="col-sm-5 col-form-label col-form-label-sm">Sr. No</label>
-                                    <div class="col-sm-7">
+                                    <label class="col-sm-2 col-form-label col-form-label-sm">Sr. No</label>
+                                    <div class="col-sm-4">
                                         <input type="text" class="form-control form-control-sm bg-light"
                                             id="fldSrNo" readonly>
                                     </div>
                                 </div>
-                            </div>
-                            <div class="col-md-3">
                                 <div class="form-group row mb-1">
-                                    <label class="col-sm-5 col-form-label col-form-label-sm">Client Name</label>
-                                    <div class="col-sm-7">
+                                    <label class="col-sm-2 col-form-label col-form-label-sm">Client Name</label>
+                                    <div class="col-sm-4">
                                         <input type="text" class="form-control form-control-sm bg-light"
                                             id="fldClientName" readonly placeholder="Auto-filled">
                                     </div>
                                 </div>
-                            </div>
-                            <div class="col-md-3">
                                 <div class="form-group row mb-1">
-                                    <label class="col-sm-4 col-form-label col-form-label-sm">Job No</label>
-                                    <div class="col-sm-8">
+                                    <label class="col-sm-2 col-form-label col-form-label-sm">Job No</label>
+                                    <div class="col-sm-4">
                                         <select class="form-control form-control-sm" id="fldJobNo">
                                             <option value="">-- Select --</option>
                                             {{-- Populated via AJAX --}}
                                         </select>
                                     </div>
                                 </div>
-                            </div>
-                            <div class="col-md-3">
                                 <div class="form-group row mb-1">
-                                    <label class="col-sm-4 col-form-label col-form-label-sm">Service</label>
-                                    <div class="col-sm-8">
+                                    <label class="col-sm-2 col-form-label col-form-label-sm">Service</label>
+                                    <div class="col-sm-4">
                                         <input type="text" class="form-control form-control-sm bg-light"
                                             id="fldService" readonly placeholder="Auto-filled">
                                     </div>
@@ -350,18 +344,15 @@
                                 </div>
                                 <div class="form-group row mb-0">
                                     <label class="col-sm-4 col-form-label col-form-label-sm">Volume</label>
-                                    <div class="col-sm-8">
-                                        <div class="input-group input-group-sm">
-                                            <input type="text" class="form-control form-control-sm bg-light"
-                                                id="fldVolume" value="0.000" readonly>
-                                            <div class="input-group-append">
-                                                <select class="form-control form-control-sm" id="fldVolumeUnit"
-                                                    style="border-left:0;">
-                                                    <option value="CBM">CBM</option>
-                                                    <option value="CFT">CFT</option>
-                                                </select>
-                                            </div>
-                                        </div>
+                                    <div class="col-sm-4 pr-1">
+                                        <input type="text" class="form-control form-control-sm bg-light"
+                                            id="fldVolume" value="0.000" readonly>
+                                    </div>
+                                    <div class="col-sm-4 pl-0">
+                                        <select class="form-control form-control-sm" id="fldVolumeUnit">
+                                            <option value="CBM">CBM</option>
+                                            <option value="CFT">CFT</option>
+                                        </select>
                                     </div>
                                 </div>
                             </div>
@@ -387,15 +378,26 @@
                                         <input type="number" class="form-control form-control-sm" id="fldGrossWeight"
                                             placeholder="0.00" min="0" step="0.01">
                                     </div>
-                                    <div class="col-sm-4 pl-0 d-flex align-items-center">
+                                    <div class="col-sm-4 pl-0">
+                                        <input type="text" class="form-control form-control-sm bg-light"
+                                            id="fldGrossWeightUnit" value="KG" readonly>
+                                    </div>
+                                </div>
+                                <div class="form-group row mb-1">
+                                    <label class="col-sm-4"></label>
+                                    <div class="col-sm-8">
                                         <small><a href="#" id="lnkReadTare" class="text-primary">Read</a></small>
                                     </div>
                                 </div>
                                 <div class="form-group row mb-0">
                                     <label class="col-sm-4 col-form-label col-form-label-sm">Net Weight</label>
-                                    <div class="col-sm-8">
+                                    <div class="col-sm-4 pr-1">
                                         <input type="text" class="form-control form-control-sm bg-light"
                                             id="fldNetWeight" value="0.00" readonly>
+                                    </div>
+                                    <div class="col-sm-4 pl-0">
+                                        <input type="text" class="form-control form-control-sm bg-light"
+                                            id="fldNetWeightUnit" value="KG" readonly>
                                     </div>
                                 </div>
                             </div>
@@ -616,6 +618,12 @@
         $(document).ready(function() {
 
             // ================================================================
+            // REFRESH GUARD — always land on dashboard on page load/refresh
+            // ================================================================
+            $('#formView').hide();
+            $('#dashboardView').show();
+
+            // ================================================================
             // STATE
             // ================================================================
             let weightNotes = [];
@@ -650,6 +658,8 @@
                 $('#dashboardView').hide();
                 $('#formView').show();
                 $('#detailEntryPanel').hide();
+                $('#equipInfoModal').modal('show');
+
             }
 
             function backToDashboard() {
@@ -684,8 +694,20 @@
                 const equipNo = $('#modalEquipNo').val().trim();
                 const remark = $('#modalRemark').val().trim();
 
-                $('#displayEquipType').val(equipType || '—');
-                $('#displayEquipNo').val(equipNo || '—');
+                // Require at least Equipment Type and Equipment No
+                if (!equipType) {
+                    toastr.error('Please select an Equipment Type.');
+                    $('#modalEquipType').focus();
+                    return;
+                }
+                if (!equipNo) {
+                    toastr.error('Please enter an Equipment No.');
+                    $('#modalEquipNo').focus();
+                    return;
+                }
+
+                $('#displayEquipType').val(equipType);
+                $('#displayEquipNo').val(equipNo);
                 $('#displayRemark').val(remark || '—');
 
                 $('#equipInfoModal').modal('hide');
@@ -769,6 +791,11 @@
             // ================================================================
             $('#fldGrossWeight').on('input', function() {
                 recalcNetWeight();
+            });
+
+            $('#fldTareUnit').on('change', function() {
+                $('#fldNetWeightUnit').val($(this).val());
+                $('#fldGrossWeightUnit').val($(this).val());
             });
 
             function recalcNetWeight() {
@@ -916,9 +943,13 @@
                                     data-index="${i}" title="Edit">
                                     <i class="fas fa-edit"></i>
                                 </button>
-                                <button class="btn btn-xs btn-danger btn-remove-row"
-                                    data-index="${i}" title="Remove">
-                                    <i class="fas fa-times"></i>
+                                <button class="btn btn-xs btn-danger mr-1 btn-remove-row"
+                                    data-index="${i}" title="Delete">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                                <button class="btn btn-xs btn-secondary btn-download-row"
+                                    data-index="${i}" title="Download">
+                                    <i class="fas fa-download"></i>
                                 </button>
                             </td>
                         </tr>`);
@@ -1110,10 +1141,10 @@
                                     <i class="fas fa-eye"></i>
                                 </button>
                                 ${n.status !== 'Submitted' ? `
-                                                                                        <button class="btn btn-xs btn-warning btn-edit-note"
-                                                                                            data-index="${realIndex}" title="Edit">
-                                                                                            <i class="fas fa-edit"></i>
-                                                                                        </button>` : ''}
+                                                                                                                                    <button class="btn btn-xs btn-warning btn-edit-note"
+                                                                                                                                        data-index="${realIndex}" title="Edit">
+                                                                                                                                        <i class="fas fa-edit"></i>
+                                                                                                                                    </button>` : ''}
                             </td>
                         </tr>`);
                 });
