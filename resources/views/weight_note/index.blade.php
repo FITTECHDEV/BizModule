@@ -262,7 +262,7 @@
                     <span id="detailCardTitle">Add Detail Row</span>
                 </h3>
                 <div class="card-tools ml-auto">
-                    <button type="button" class="btn btn-tool text-white" id="btnCloseDetailCard" title="Close">
+                    <button type="button" class="btn btn-sm text-white" id="btnCloseDetailCard" title="Close">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
@@ -314,16 +314,16 @@
 
                 <hr class="my-2">
 
-                {{-- Row 2: Product fields (left) + Weight fields (right) --}}
+                {{-- Row 2: Redesigned as single stacked layout matching the image --}}
                 <div class="row mb-2">
+                    <div class="col-12">
 
-                    {{-- Left: product info --}}
-                    <div class="col-md-6">
+                        {{-- Product --}}
                         <div class="form-group row mb-2">
-                            <label class="col-sm-4 col-form-label col-form-label-sm">
+                            <label class="col-sm-2 col-form-label col-form-label-sm">
                                 Product <span class="text-danger">*</span>
                             </label>
-                            <div class="col-sm-8">
+                            <div class="col-sm-10">
                                 <select class="form-control form-control-sm" id="fldProduct">
                                     <option value="">-- Select --</option>
                                     <option value="electronics">Electronics</option>
@@ -337,20 +337,24 @@
                                 </select>
                             </div>
                         </div>
+
+                        {{-- Description --}}
                         <div class="form-group row mb-2">
-                            <label class="col-sm-4 col-form-label col-form-label-sm">Description</label>
-                            <div class="col-sm-8">
+                            <label class="col-sm-2 col-form-label col-form-label-sm">Description</label>
+                            <div class="col-sm-10">
                                 <input type="text" class="form-control form-control-sm" id="fldDescription"
                                     placeholder="Description">
                             </div>
                         </div>
-                        <div class="form-group row mb-2">
-                            <label class="col-sm-4 col-form-label col-form-label-sm">Quantity</label>
-                            <div class="col-sm-4 pr-1">
+
+                        {{-- Quantity + Dimension on same row --}}
+                        <div class="form-group row mb-2 align-items-center">
+                            <label class="col-sm-2 col-form-label col-form-label-sm">Quantity</label>
+                            <div class="col-sm-2 pr-1">
                                 <input type="number" class="form-control form-control-sm" id="fldQty"
                                     placeholder="0" min="0">
                             </div>
-                            <div class="col-sm-4 pl-0">
+                            <div class="col-sm-1 pl-0">
                                 <select class="form-control form-control-sm" id="fldQtyUOM">
                                     <option value="PCS">PCS</option>
                                     <option value="KGS">KGS</option>
@@ -358,11 +362,9 @@
                                     <option value="CTN">CTN</option>
                                 </select>
                             </div>
-                        </div>
-                        <div class="form-group row mb-2">
-                            <label class="col-sm-4 col-form-label col-form-label-sm">Dimension</label>
-                            <div class="col-sm-8">
-                                <div class="d-flex align-items-center" style="gap:6px;">
+                            <label class="col-sm-1 col-form-label col-form-label-sm text-center">Dimension</label>
+                            <div class="col-sm-6">
+                                <div class="d-flex align-items-center" style="gap:5px;">
                                     <input type="number" class="form-control form-control-sm dim-input" id="fldDimL"
                                         placeholder="L" min="0" style="width:70px;">
                                     <span class="text-muted">x</span>
@@ -376,76 +378,83 @@
                                         <option value="m">m</option>
                                         <option value="in">in</option>
                                     </select>
-                                    <button class="btn btn-sm btn-outline-danger" id="btnClearDim" type="button"
+                                    <button class="btn btn-sm btn-outline-success" id="btnClearDim" type="button"
+                                        title="Clear dimensions">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" id="btnClearDimX" type="button"
                                         title="Clear dimensions">
                                         <i class="fas fa-times"></i>
                                     </button>
                                 </div>
                             </div>
                         </div>
-                        <div class="form-group row mb-0">
-                            <label class="col-sm-4 col-form-label col-form-label-sm">Volume</label>
-                            <div class="col-sm-4 pr-1">
+
+                        {{-- Volume --}}
+                        <div class="form-group row mb-2">
+                            <label class="col-sm-2 col-form-label col-form-label-sm">Volume</label>
+                            <div class="col-sm-2 pr-1">
                                 <input type="text" class="form-control form-control-sm bg-light" id="fldVolume"
                                     value="0.000" readonly>
                             </div>
-                            <div class="col-sm-4 pl-0">
+                            <div class="col-sm-1 pl-0">
                                 <select class="form-control form-control-sm" id="fldVolumeUnit">
                                     <option value="CBM">CBM</option>
                                     <option value="CFT">CFT</option>
                                 </select>
                             </div>
                         </div>
-                    </div>
 
-                    {{-- Right: weight fields --}}
-                    <div class="col-md-6">
+                        <hr class="my-2">
+
+                        {{-- Tare Weight --}}
                         <div class="form-group row mb-2">
-                            <label class="col-sm-4 col-form-label col-form-label-sm">Tare Weight</label>
-                            <div class="col-sm-5 pr-1">
+                            <label class="col-sm-2 col-form-label col-form-label-sm">Tare Weight</label>
+                            <div class="col-sm-2 pr-1">
                                 <input type="text" class="form-control form-control-sm bg-light" id="fldTareWeight"
                                     value="0.00" readonly>
                             </div>
-                            <div class="col-sm-3 pl-0">
+                            <div class="col-sm-1 pl-0">
                                 <select class="form-control form-control-sm" id="fldTareUnit">
                                     <option value="KG">KG</option>
                                     <option value="LB">LB</option>
                                 </select>
                             </div>
                         </div>
-                        <div class="form-group row mb-1">
-                            <label class="col-sm-4 col-form-label col-form-label-sm">Gross Weight</label>
-                            <div class="col-sm-5 pr-1">
+
+                        {{-- Gross Weight + Read tare link inline --}}
+                        <div class="form-group row mb-2">
+                            <label class="col-sm-2 col-form-label col-form-label-sm">Gross Weight</label>
+                            <div class="col-sm-2 pr-1">
                                 <input type="number" class="form-control form-control-sm" id="fldGrossWeight"
                                     placeholder="0.00" min="0" step="0.01">
                             </div>
-                            <div class="col-sm-3 pl-0">
+                            <div class="col-sm-1 pl-0">
                                 <input type="text" class="form-control form-control-sm bg-light"
                                     id="fldGrossWeightUnit" value="KG" readonly>
                             </div>
-                        </div>
-                        {{-- Read tare link --}}
-                        <div class="form-group row mb-2">
-                            <label class="col-sm-4"></label>
-                            <div class="col-sm-8">
+                            <div class="col-sm-2 d-flex align-items-center pl-2">
                                 <small>
                                     <a href="#" id="lnkReadTare" class="text-primary">
-                                        <i class="fas fa-magic mr-1"></i>Read tare from equipment
+                                        <i class="fas fa-magic mr-1"></i>Read
                                     </a>
                                 </small>
                             </div>
                         </div>
+
+                        {{-- Net Weight --}}
                         <div class="form-group row mb-0">
-                            <label class="col-sm-4 col-form-label col-form-label-sm">Net Weight</label>
-                            <div class="col-sm-5 pr-1">
+                            <label class="col-sm-2 col-form-label col-form-label-sm">Net Weight</label>
+                            <div class="col-sm-2 pr-1">
                                 <input type="text" class="form-control form-control-sm bg-light font-weight-bold"
                                     id="fldNetWeight" value="0.00" readonly>
                             </div>
-                            <div class="col-sm-3 pl-0">
+                            <div class="col-sm-1 pl-0">
                                 <input type="text" class="form-control form-control-sm bg-light" id="fldNetWeightUnit"
                                     value="KG" readonly>
                             </div>
                         </div>
+
                     </div>
                 </div>
 
@@ -838,7 +847,7 @@
                 }
             });
 
-            $('#btnCloseDetailCard, #btnCancelDetail').on('click', function() {
+            $(document).on('click', '#btnCloseDetailCard, #btnCancelDetail', function() {
                 closeDetailCard();
             });
 
@@ -938,7 +947,16 @@
             function recalcNetWeight() {
                 const tare = parseFloat($('#fldTareWeight').val()) || 0;
                 const gross = parseFloat($('#fldGrossWeight').val()) || 0;
-                $('#fldNetWeight').val((gross >= tare ? gross - tare : 0).toFixed(2));
+                const net = gross - tare;
+
+                $('#fldNetWeight').val(net.toFixed(2));
+
+                // Flag invalid state — gross must be >= tare in real weighing
+                if (gross > 0 && net < 0) {
+                    $('#fldNetWeight').removeClass('bg-light').addClass('border-danger text-danger');
+                } else {
+                    $('#fldNetWeight').addClass('bg-light').removeClass('border-danger text-danger');
+                }
             }
 
             // ================================================================
@@ -951,9 +969,15 @@
                 recalcVolume();
             });
 
-            $('#btnClearDim').on('click', function() {
+            // x button — clears all dimension fields
+            $(document).on('click', '#btnClearDimX', function() {
                 $('#fldDimL, #fldDimW, #fldDimH').val('');
                 $('#fldVolume').val('0.000');
+            });
+
+            // + button — triggers volume recalculation from current dimension inputs
+            $(document).on('click', '#btnClearDim', function() {
+                recalcVolume();
             });
 
             function recalcVolume() {
@@ -1006,11 +1030,21 @@
                     $('#fldProduct').focus();
                     return false;
                 }
-                if ((parseFloat($('#fldGrossWeight').val()) || 0) <= 0) {
+                const gross = parseFloat($('#fldGrossWeight').val()) || 0;
+                if (gross <= 0) {
                     toastr.error('Gross Weight must be greater than 0.');
                     $('#fldGrossWeight').focus();
                     return false;
                 }
+
+                // NEW — block save if gross < tare
+                const tare = parseFloat($('#fldTareWeight').val()) || 0;
+                if (gross < tare) {
+                    toastr.error('Gross Weight cannot be less than Tare Weight. Please check your values.');
+                    $('#fldGrossWeight').focus();
+                    return false;
+                }
+
                 return true;
             }
 
@@ -1062,16 +1096,20 @@
                             <td class="text-right">${r.tare.toFixed(2)}</td>
                             <td class="text-right">${r.gross.toFixed(2)}</td>
                             <td class="text-right">${r.net.toFixed(2)}</td>
-                            <td class="text-center">
-                                <button class="btn btn-xs btn-warning mr-1 btn-edit-row"
-                                    data-index="${i}" title="Edit">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                                <button class="btn btn-xs btn-danger btn-remove-row"
-                                    data-index="${i}" title="Delete">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </td>
+                 <td class="text-center">
+    <button class="btn btn-xs btn-info mr-1 btn-download-row"
+        data-index="${i}" title="Download">
+        <i class="fas fa-download"></i>
+    </button>
+    <button class="btn btn-xs btn-warning mr-1 btn-edit-row"
+        data-index="${i}" title="Edit">
+        <i class="fas fa-edit"></i>
+    </button>
+    <button class="btn btn-xs btn-danger btn-remove-row"
+        data-index="${i}" title="Delete">
+        <i class="fas fa-trash"></i>
+    </button>
+</td>
                         </tr>`);
                 });
 
@@ -1108,6 +1146,73 @@
                 renderDetailGrid();
                 recalcSummaryTotals();
                 toastr.info('Row removed.');
+            });
+
+            // Download detail row as printable HTML
+            $(document).on('click', '.btn-download-row', function() {
+                const i = parseInt($(this).data('index'));
+                const r = detailRows[i];
+                const equipType = $('#displayEquipType').val().replace('—', '').trim() || '—';
+                const equipNo = $('#displayEquipNo').val().replace('—', '').trim() || '—';
+
+                const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Weight Note Detail — ${currentWNNo}</title>
+            <style>
+                body { font-family: Arial, sans-serif; font-size: 13px; padding: 24px; color: #333; }
+                h2 { color: #4B49AC; margin-bottom: 4px; }
+                .sub { color: #888; margin-bottom: 20px; font-size: 12px; }
+                table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+                th { background: #4B49AC; color: #fff; padding: 7px 10px; text-align: left; font-size: 12px; }
+                td { padding: 6px 10px; border-bottom: 1px solid #e0e0e0; font-size: 12px; }
+                .label { font-weight: 600; width: 160px; }
+                .section { margin-top: 20px; font-weight: 700; color: #4B49AC; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+            </style>
+        </head>
+        <body>
+            <h2>Weight Note Detail</h2>
+            <div class="sub">${currentWNNo} &nbsp;|&nbsp; Sr. No: ${r.srNo}</div>
+
+            <div class="section">Equipment</div>
+            <table>
+                <tr><td class="label">Equipment Type</td><td>${equipType}</td></tr>
+                <tr><td class="label">Equipment No</td><td>${equipNo}</td></tr>
+            </table>
+
+            <div class="section">Job Info</div>
+            <table>
+                <tr><td class="label">Job No</td><td>${r.jobNo || '—'}</td></tr>
+                <tr><td class="label">Client</td><td>${r.clientName || '—'}</td></tr>
+                <tr><td class="label">Service</td><td>${r.service || '—'}</td></tr>
+            </table>
+
+            <div class="section">Cargo</div>
+            <table>
+                <tr><td class="label">Product</td><td>${r.product}</td></tr>
+                <tr><td class="label">Description</td><td>${r.description || '—'}</td></tr>
+                <tr><td class="label">Quantity</td><td>${r.qty} ${r.uom}</td></tr>
+                <tr><td class="label">Volume</td><td>${r.volume} ${r.volumeUnit}</td></tr>
+            </table>
+
+            <div class="section">Weights</div>
+            <table>
+                <tr><td class="label">Tare Weight</td><td>${r.tare.toFixed(2)} KG</td></tr>
+                <tr><td class="label">Gross Weight</td><td>${r.gross.toFixed(2)} KG</td></tr>
+                <tr><td class="label">Net Weight</td><td><strong>${r.net.toFixed(2)} KG</strong></td></tr>
+            </table>
+        </body>
+        </html>`;
+
+                // Open in new tab — user can Ctrl+P / Save as PDF
+                const win = window.open('', '_blank');
+                win.document.write(html);
+                win.document.close();
+                win.focus();
+                // Auto-trigger print dialog
+                setTimeout(() => win.print(), 400);
             });
 
             // ================================================================
@@ -1228,10 +1333,10 @@
                                     <i class="fas fa-eye"></i>
                                 </button>
                                 ${n.status !== 'Submitted' ? `
-                                        <button class="btn btn-xs btn-warning btn-edit-note"
-                                            data-index="${realIndex}" title="Edit">
-                                            <i class="fas fa-edit"></i>
-                                        </button>` : ''}
+                                                                                <button class="btn btn-xs btn-warning btn-edit-note"
+                                                                                    data-index="${realIndex}" title="Edit">
+                                                                                    <i class="fas fa-edit"></i>
+                                                                                </button>` : ''}
                             </td>
                         </tr>`);
                 });
