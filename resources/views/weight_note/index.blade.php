@@ -1096,20 +1096,20 @@
                             <td class="text-right">${r.tare.toFixed(2)}</td>
                             <td class="text-right">${r.gross.toFixed(2)}</td>
                             <td class="text-right">${r.net.toFixed(2)}</td>
-                 <td class="text-center">
-    <button class="btn btn-xs btn-info mr-1 btn-download-row"
-        data-index="${i}" title="Download">
-        <i class="fas fa-download"></i>
-    </button>
-    <button class="btn btn-xs btn-warning mr-1 btn-edit-row"
-        data-index="${i}" title="Edit">
-        <i class="fas fa-edit"></i>
-    </button>
-    <button class="btn btn-xs btn-danger btn-remove-row"
-        data-index="${i}" title="Delete">
-        <i class="fas fa-trash"></i>
-    </button>
-</td>
+                            <td class="text-center">
+                            <button class="btn btn-xs btn-info mr-1 btn-download-row"
+                                data-index="${i}" title="Download">
+                                <i class="fas fa-download"></i>
+                            </button>
+                            <button class="btn btn-xs btn-warning mr-1 btn-edit-row"
+                                data-index="${i}" title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-xs btn-danger btn-remove-row"
+                                data-index="${i}" title="Delete">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
                         </tr>`);
                 });
 
@@ -1156,55 +1156,94 @@
                 const equipNo = $('#displayEquipNo').val().replace('—', '').trim() || '—';
 
                 const html = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <title>Weight Note Detail — ${currentWNNo}</title>
-            <style>
-                body { font-family: Arial, sans-serif; font-size: 13px; padding: 24px; color: #333; }
-                h2 { color: #4B49AC; margin-bottom: 4px; }
-                .sub { color: #888; margin-bottom: 20px; font-size: 12px; }
-                table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-                th { background: #4B49AC; color: #fff; padding: 7px 10px; text-align: left; font-size: 12px; }
-                td { padding: 6px 10px; border-bottom: 1px solid #e0e0e0; font-size: 12px; }
-                .label { font-weight: 600; width: 160px; }
-                .section { margin-top: 20px; font-weight: 700; color: #4B49AC; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
-            </style>
-        </head>
-        <body>
-            <h2>Weight Note Detail</h2>
-            <div class="sub">${currentWNNo} &nbsp;|&nbsp; Sr. No: ${r.srNo}</div>
-
-            <div class="section">Equipment</div>
-            <table>
-                <tr><td class="label">Equipment Type</td><td>${equipType}</td></tr>
-                <tr><td class="label">Equipment No</td><td>${equipNo}</td></tr>
-            </table>
-
-            <div class="section">Job Info</div>
-            <table>
-                <tr><td class="label">Job No</td><td>${r.jobNo || '—'}</td></tr>
-                <tr><td class="label">Client</td><td>${r.clientName || '—'}</td></tr>
-                <tr><td class="label">Service</td><td>${r.service || '—'}</td></tr>
-            </table>
-
-            <div class="section">Cargo</div>
-            <table>
-                <tr><td class="label">Product</td><td>${r.product}</td></tr>
-                <tr><td class="label">Description</td><td>${r.description || '—'}</td></tr>
-                <tr><td class="label">Quantity</td><td>${r.qty} ${r.uom}</td></tr>
-                <tr><td class="label">Volume</td><td>${r.volume} ${r.volumeUnit}</td></tr>
-            </table>
-
-            <div class="section">Weights</div>
-            <table>
-                <tr><td class="label">Tare Weight</td><td>${r.tare.toFixed(2)} KG</td></tr>
-                <tr><td class="label">Gross Weight</td><td>${r.gross.toFixed(2)} KG</td></tr>
-                <tr><td class="label">Net Weight</td><td><strong>${r.net.toFixed(2)} KG</strong></td></tr>
-            </table>
-        </body>
-        </html>`;
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <title>Weight Note Detail — ${currentWNNo}</title>
+                    <style>
+                        * { box-sizing: border-box; margin: 0; padding: 0; }
+                        body { font-family: Arial, sans-serif; font-size: 13px; color: #333; background: #f4f4f4; padding: 24px; }
+                        .page { background: #fff; max-width: 760px; margin: 0 auto; border: 1px solid #ddd; }
+                        .header { background: #4B49AC; color: #fff; padding: 18px 24px; display: flex; justify-content: space-between; align-items: flex-start; }
+                        .header-left h2 { font-size: 18px; font-weight: 700; margin-bottom: 2px; }
+                        .header-left p { font-size: 11px; opacity: .8; }
+                        .header-right { text-align: right; font-size: 11px; opacity: .85; line-height: 1.7; }
+                        .header-right strong { font-size: 13px; opacity: 1; }
+                        .section { padding: 14px 24px; border-bottom: 1px solid #e8e8e8; }
+                        .section-title { font-size: 10px; font-weight: 700; letter-spacing: .9px; color: #4B49AC; text-transform: uppercase; margin-bottom: 10px; padding-bottom: 5px; border-bottom: 2px solid #4B49AC; display: inline-block; }
+                        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px; }
+                        .form-group { display: flex; flex-direction: column; gap: 3px; }
+                        .form-group label { font-size: 10px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: .5px; }
+                        .form-group .value { background: #f8f8fb; border: 1px solid #e0dff5; border-radius: 3px; padding: 6px 10px; font-size: 12px; color: #333; min-height: 30px; }
+                        .weights-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+                        .weight-box { background: #f8f8fb; border: 1px solid #e0dff5; border-radius: 4px; padding: 10px 14px; text-align: center; }
+                        .weight-box label { font-size: 10px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: .5px; display: block; margin-bottom: 4px; }
+                        .weight-box .val { font-size: 15px; font-weight: 700; color: #333; }
+                        .weight-box.net { background: #4B49AC; border-color: #4B49AC; }
+                        .weight-box.net label { color: rgba(255,255,255,.75); }
+                        .weight-box.net .val { color: #fff; font-size: 18px; }
+                        .footer { background: #f8f8fb; border-top: 1px solid #e8e8e8; padding: 12px 24px; display: flex; justify-content: space-between; font-size: 10px; color: #aaa; }
+                        @media print { body { background: #fff; padding: 0; } .page { border: none; } }
+                    </style>
+                </head>
+                <body>
+                <div class="page">
+                    <div class="header">
+                        <div class="header-left">
+                            <h2>Weight Note Detail</h2>
+                            <p>Official weighing record</p>
+                        </div>
+                        <div class="header-right">
+                            <strong>${currentWNNo}</strong><br>
+                            Sr. No: ${r.srNo}<br>
+                            Printed: ${new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })}
+                        </div>
+                    </div>
+                
+                    <div class="section">
+                        <div class="section-title">Equipment</div>
+                        <div class="form-grid">
+                            <div class="form-group"><label>Equipment Type</label><div class="value">${equipType}</div></div>
+                            <div class="form-group"><label>Equipment No</label><div class="value">${equipNo}</div></div>
+                        </div>
+                    </div>
+                
+                    <div class="section">
+                        <div class="section-title">Job Info</div>
+                        <div class="form-grid">
+                            <div class="form-group"><label>Job No</label><div class="value">${r.jobNo || '—'}</div></div>
+                            <div class="form-group"><label>Client</label><div class="value">${r.clientName || '—'}</div></div>
+                            <div class="form-group" style="grid-column:1/-1"><label>Service</label><div class="value">${r.service || '—'}</div></div>
+                        </div>
+                    </div>
+                
+                    <div class="section">
+                        <div class="section-title">Cargo</div>
+                        <div class="form-grid">
+                            <div class="form-group"><label>Product</label><div class="value">${r.product}</div></div>
+                            <div class="form-group"><label>Quantity</label><div class="value">${r.qty} ${r.uom}</div></div>
+                            <div class="form-group"><label>Description</label><div class="value">${r.description || '—'}</div></div>
+                            <div class="form-group"><label>Volume</label><div class="value">${r.volume} ${r.volumeUnit}</div></div>
+                        </div>
+                    </div>
+                
+                    <div class="section">
+                        <div class="section-title">Weights</div>
+                        <div class="weights-grid">
+                            <div class="weight-box"><label>Tare Weight</label><div class="val">${Number(r.tare).toLocaleString('en-GB', {minimumFractionDigits:2})} KG</div></div>
+                            <div class="weight-box"><label>Gross Weight</label><div class="val">${Number(r.gross).toLocaleString('en-GB', {minimumFractionDigits:2})} KG</div></div>
+                            <div class="weight-box net"><label>Net Weight</label><div class="val">${Number(r.net).toLocaleString('en-GB', {minimumFractionDigits:2})} KG</div></div>
+                        </div>
+                    </div>
+                
+                    <div class="footer">
+                        <span>Generated by Weight Note System</span>
+                        <span>${currentWNNo} &middot; ${r.srNo}</span>
+                    </div>
+                </div>
+                </body>
+                </html>`;
 
                 // Open in new tab — user can Ctrl+P / Save as PDF
                 const win = window.open('', '_blank');
@@ -1332,21 +1371,21 @@
                                     data-index="${realIndex}" title="View">
                                     <i class="fas fa-eye"></i>
                                 </button>
-${n.status === 'In Progress' ? `
-                <button class="btn btn-xs btn-warning mr-1 btn-edit-note"
-                    data-index="${realIndex}" title="Edit">
-                    <i class="fas fa-edit"></i>
-                </button>` : ''}
-${n.status === 'Submitted' ? `
-                <button class="btn btn-xs btn-secondary mr-1 btn-mark-failed"
-                    data-index="${realIndex}" title="Mark as Failed">
-                    <i class="fas fa-times"></i>
-                </button>` : ''}
-${n.status === 'Failed' ? `
-                <button class="btn btn-xs btn-danger btn-retry-note"
-                    data-index="${realIndex}" title="Retry Submit">
-                    <i class="fas fa-redo mr-1"></i> Retry
-                </button>` : ''}
+                                        ${n.status === 'In Progress' ? `
+                                        <button class="btn btn-xs btn-warning mr-1 btn-edit-note"
+                                            data-index="${realIndex}" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </button>` : ''}
+                                        ${n.status === 'Submitted' ? `
+                                        <button class="btn btn-xs btn-secondary mr-1 btn-mark-failed"
+                                            data-index="${realIndex}" title="Mark as Failed">
+                                            <i class="fas fa-times"></i>
+                                        </button>` : ''}
+                                        ${n.status === 'Failed' ? `
+                                        <button class="btn btn-xs btn-danger btn-retry-note"
+                                            data-index="${realIndex}" title="Retry Submit">
+                                            <i class="fas fa-redo mr-1"></i> Retry
+                                        </button>` : ''}
                             </td>
                         </tr>`);
                 });
