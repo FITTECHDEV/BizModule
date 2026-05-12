@@ -5642,24 +5642,41 @@ class QuotationController extends Controller
     public function getCopyChargesSearch(Request $request): JsonResponse
     {
         $officeCode = trim($request->input('office_code', ''));
-        $filterField = $request->input('filter_field', '');
-        $filterValue = urldecode(trim($request->input('filter_value', '')));
+        $customer = trim($request->input('customer', ''));
+        $origin = trim($request->input('origin', ''));
+        $destination = trim($request->input('destination', ''));
+        $por = trim($request->input('por', ''));
+        $pod = trim($request->input('pod', ''));
+        $equipment = trim($request->input('equipment', ''));
+        $incoterm = trim($request->input('incoterm', ''));
+        $quoteNo = trim($request->input('quote_no', ''));
 
-        if (!$filterField || !$filterValue) {
+        $hasFilter = $customer || $origin || $destination || $por || $pod || $equipment || $incoterm || $quoteNo;
+
+        if (!$hasFilter) {
             return response()->json(
                 [
                     'success' => false,
-                    'message' => 'Please select a filter and enter a search value',
+                    'message' => 'Please enter at least one filter value',
                 ],
                 400,
             );
         }
 
-        Log::info('getCopyChargesSearch', [
-            'office_code' => $officeCode,
-            'filter_field' => $filterField,
-            'filter_value' => $filterValue,
-        ]);
+        Log::info(
+            'getCopyChargesSearch',
+            compact(
+                'officeCode',
+                'customer',
+                'origin',
+                'destination',
+                'por',
+                'pod',
+                'equipment',
+                'incoterm',
+                'quoteNo',
+            ),
+        );
 
         // Use only 'Total' — it covers all non-deleted quotations for this office.
         // 'Completed' is not a valid SP status and caused a PDO crash.
@@ -5668,14 +5685,15 @@ class QuotationController extends Controller
                 'OfficeCode' => $officeCode,
                 'FromDate' => '',
                 'ToDate' => '',
-                'Customer' => $filterField === 'customer' ? $filterValue : '',
+                'Customer' => $customer,
                 'Service' => '',
                 'Process' => '',
-                'OriginCountry' => $filterField === 'origin' ? $filterValue : '',
-                'DestinationCountry' => $filterField === 'destination' ? $filterValue : '',
-                'InCoTerm' => $filterField === 'incoterm' ? $filterValue : '',
-                'PlaceOfReceipt' => '',
-                'PlaceOfDelivery' => '',
+                'OriginCountry' => $origin,
+                'DestinationCountry' => $destination,
+                'InCoTerm' => $incoterm,
+                'PlaceOfReceipt' => $por,
+                'PlaceOfDelivery' => $pod,
+                'QuoteNo' => $quoteNo,
                 'Status' => 'Total',
             ],
             JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES,
@@ -5693,11 +5711,16 @@ class QuotationController extends Controller
                     if (empty($fetched)) {
                         continue;
                     }
-
                     $firstVal = array_values((array) $fetched[0])[0] ?? '';
                     if (is_string($firstVal) && str_starts_with(trim($firstVal), 'Failed')) {
                         Log::error('getCopyChargesSearch - SP failure', ['message' => $firstVal]);
-                        break;
+                        return response()->json(
+                            [
+                                'success' => false,
+                                'message' => $firstVal,
+                            ],
+                            422,
+                        );
                     }
 
                     if (!isset($fetched[0]->QuoteNo)) {
@@ -5712,7 +5735,13 @@ class QuotationController extends Controller
             } while ($stmt->nextRowset());
         } catch (\Exception $e) {
             Log::error('getCopyChargesSearch failed', ['error' => $e->getMessage()]);
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => 'Search failed: ' . $e->getMessage(),
+                ],
+                500,
+            );
         }
 
         // Resolve DB IDs in one query
@@ -5730,6 +5759,9 @@ class QuotationController extends Controller
                 'CompanyName' => $row->CompanyName ?? '',
                 'Origin' => $row->OriginCountry ?? '',
                 'Destination' => $row->DestinationCountry ?? '',
+                'POR' => $row->PlaceOfReceipt ?? '',
+                'POD' => $row->PlaceOfDelivery ?? '',
+                'IncoTerm' => $row->InCoTerm ?? '',
             ],
             $rows,
         );
@@ -5752,7 +5784,7 @@ class QuotationController extends Controller
             'ChargeList' => $request->charge_ids,
         ]);
 
-        Log::info('copyChargesBulk input', ['json' => $inputJson]); // ← ADD
+        Log::info('copyChargesBulk input', ['json' => $inputJson]);
 
         try {
             $pdo = DB::getPdo();
@@ -5765,8 +5797,8 @@ class QuotationController extends Controller
             $stmt->execute([$inputJson]);
 
             $outputJson = null;
+            $transactionError = null;
 
-            // Iterate ALL rowsets; catch nextRowset() errors too
             while (true) {
                 try {
                     $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
@@ -5783,15 +5815,25 @@ class QuotationController extends Controller
                         break;
                     }
                 } catch (\PDOException $e) {
+                    $transactionError = $e->getMessage();
                     Log::warning('copyChargesBulk nextRowset PDOException', ['error' => $e->getMessage()]);
                     break;
                 }
             }
 
-            Log::info('copyChargesBulk outputJson', ['output' => $outputJson]); // ← ADD
+            Log::info('copyChargesBulk outputJson', ['output' => $outputJson]);
 
             if (!$outputJson) {
-                return response()->json(['success' => false, 'message' => 'No response from stored procedure']);
+                $message = $transactionError
+                    ? 'Stored procedure error: ' . $transactionError
+                    : 'No response from stored procedure';
+
+                Log::error('copyChargesBulk no output', [
+                    'transaction_error' => $transactionError,
+                    'input' => $inputJson,
+                ]);
+
+                return response()->json(['success' => false, 'message' => $message]);
             }
 
             $result = json_decode($outputJson, true);

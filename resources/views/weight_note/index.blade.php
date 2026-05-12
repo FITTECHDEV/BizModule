@@ -139,7 +139,6 @@
             </div>
             <div class="card-body">
                 <div class="row">
-                    {{-- Left: equipment inputs --}}
                     <div class="col-md-6">
                         <div class="form-group row">
                             <label class="col-sm-4 col-form-label">Equipment Type</label>
@@ -163,8 +162,6 @@
                             </div>
                         </div>
                     </div>
-
-                    {{-- Right: auto-calculated totals from detail rows --}}
                     <div class="col-md-6">
                         <div class="form-group row">
                             <label class="col-sm-4 col-form-label">Tare Weight</label>
@@ -210,8 +207,6 @@
                 </div>
             </div>
             <div class="card-body p-0">
-
-                {{-- Detail grid --}}
                 <div class="table-responsive">
                     <table class="table table-bordered table-sm table-hover mb-0">
                         <thead class="thead-light">
@@ -236,188 +231,6 @@
                         </tbody>
                     </table>
                 </div>
-
-                {{-- Inline detail entry form — hidden by default --}}
-                <div id="detailEntryPanel" style="display:none; border-top:3px solid #4B49AC; background:#fafafa;">
-                    <div class="p-3">
-
-                        {{-- Row 1: Sr No, Client, Job No, Service --}}
-                        <div class="row mb-2">
-                            <div class="col-md-12">
-                                <div class="form-group row mb-1">
-                                    <label class="col-sm-2 col-form-label col-form-label-sm">Sr. No</label>
-                                    <div class="col-sm-4">
-                                        <input type="text" class="form-control form-control-sm bg-light"
-                                            id="fldSrNo" readonly>
-                                    </div>
-                                </div>
-                                <div class="form-group row mb-1">
-                                    <label class="col-sm-2 col-form-label col-form-label-sm">Client Name</label>
-                                    <div class="col-sm-4">
-                                        <input type="text" class="form-control form-control-sm bg-light"
-                                            id="fldClientName" readonly placeholder="Auto-filled">
-                                    </div>
-                                </div>
-                                <div class="form-group row mb-1">
-                                    <label class="col-sm-2 col-form-label col-form-label-sm">Job No</label>
-                                    <div class="col-sm-4">
-                                        <select class="form-control form-control-sm" id="fldJobNo">
-                                            <option value="">-- Select --</option>
-                                            {{-- Populated via AJAX --}}
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="form-group row mb-1">
-                                    <label class="col-sm-2 col-form-label col-form-label-sm">Service</label>
-                                    <div class="col-sm-4">
-                                        <input type="text" class="form-control form-control-sm bg-light"
-                                            id="fldService" readonly placeholder="Auto-filled">
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <hr class="my-2">
-
-                        {{-- Row 2: Product fields (left) + Weight fields (right) --}}
-                        <div class="row mb-2">
-
-                            {{-- Left --}}
-                            <div class="col-md-6">
-                                <div class="form-group row mb-1">
-                                    <label class="col-sm-4 col-form-label col-form-label-sm">
-                                        Product <span class="text-danger">*</span>
-                                    </label>
-                                    <div class="col-sm-8">
-                                        <select class="form-control form-control-sm" id="fldProduct">
-                                            <option value="">-- Select --</option>
-                                            {{-- Populated via AJAX --}}
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="form-group row mb-1">
-                                    <label class="col-sm-4 col-form-label col-form-label-sm">Description</label>
-                                    <div class="col-sm-8">
-                                        <input type="text" class="form-control form-control-sm" id="fldDescription"
-                                            placeholder="Description">
-                                    </div>
-                                </div>
-                                <div class="form-group row mb-1">
-                                    <label class="col-sm-4 col-form-label col-form-label-sm">Quantity</label>
-                                    <div class="col-sm-4 pr-1">
-                                        <input type="number" class="form-control form-control-sm" id="fldQty"
-                                            placeholder="0" min="0">
-                                    </div>
-                                    <div class="col-sm-4 pl-0">
-                                        <select class="form-control form-control-sm" id="fldQtyUOM">
-                                            <option value="PCS">PCS</option>
-                                            <option value="KGS">KGS</option>
-                                            <option value="CBM">CBM</option>
-                                            <option value="CTN">CTN</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="form-group row mb-1">
-                                    <label class="col-sm-4 col-form-label col-form-label-sm">Dimension</label>
-                                    <div class="col-sm-8">
-                                        <div class="d-flex align-items-center" style="gap:3px;">
-                                            <input type="number" class="form-control form-control-sm dim-input"
-                                                id="fldDimL" placeholder="L" min="0" style="width:52px;">
-                                            <span class="text-muted">x</span>
-                                            <input type="number" class="form-control form-control-sm dim-input"
-                                                id="fldDimW" placeholder="W" min="0" style="width:52px;">
-                                            <span class="text-muted">x</span>
-                                            <input type="number" class="form-control form-control-sm dim-input"
-                                                id="fldDimH" placeholder="H" min="0" style="width:52px;">
-                                            <select class="form-control form-control-sm" id="fldDimUnit"
-                                                style="width:58px;">
-                                                <option value="cm">cm</option>
-                                                <option value="m">m</option>
-                                                <option value="in">in</option>
-                                            </select>
-                                            <button class="btn btn-sm btn-outline-danger" id="btnClearDim" type="button"
-                                                title="Clear dimensions">
-                                                <i class="fas fa-times"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="form-group row mb-0">
-                                    <label class="col-sm-4 col-form-label col-form-label-sm">Volume</label>
-                                    <div class="col-sm-4 pr-1">
-                                        <input type="text" class="form-control form-control-sm bg-light"
-                                            id="fldVolume" value="0.000" readonly>
-                                    </div>
-                                    <div class="col-sm-4 pl-0">
-                                        <select class="form-control form-control-sm" id="fldVolumeUnit">
-                                            <option value="CBM">CBM</option>
-                                            <option value="CFT">CFT</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {{-- Right --}}
-                            <div class="col-md-6">
-                                <div class="form-group row mb-1">
-                                    <label class="col-sm-4 col-form-label col-form-label-sm">Tare Weight</label>
-                                    <div class="col-sm-4 pr-1">
-                                        <input type="text" class="form-control form-control-sm bg-light"
-                                            id="fldTareWeight" value="0.00" readonly>
-                                    </div>
-                                    <div class="col-sm-4 pl-0">
-                                        <select class="form-control form-control-sm" id="fldTareUnit">
-                                            <option value="KG">KG</option>
-                                            <option value="LB">LB</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="form-group row mb-1">
-                                    <label class="col-sm-4 col-form-label col-form-label-sm">Gross Weight</label>
-                                    <div class="col-sm-4 pr-1">
-                                        <input type="number" class="form-control form-control-sm" id="fldGrossWeight"
-                                            placeholder="0.00" min="0" step="0.01">
-                                    </div>
-                                    <div class="col-sm-4 pl-0">
-                                        <input type="text" class="form-control form-control-sm bg-light"
-                                            id="fldGrossWeightUnit" value="KG" readonly>
-                                    </div>
-                                </div>
-                                <div class="form-group row mb-1">
-                                    <label class="col-sm-4"></label>
-                                    <div class="col-sm-8">
-                                        <small><a href="#" id="lnkReadTare" class="text-primary">Read</a></small>
-                                    </div>
-                                </div>
-                                <div class="form-group row mb-0">
-                                    <label class="col-sm-4 col-form-label col-form-label-sm">Net Weight</label>
-                                    <div class="col-sm-4 pr-1">
-                                        <input type="text" class="form-control form-control-sm bg-light"
-                                            id="fldNetWeight" value="0.00" readonly>
-                                    </div>
-                                    <div class="col-sm-4 pl-0">
-                                        <input type="text" class="form-control form-control-sm bg-light"
-                                            id="fldNetWeightUnit" value="KG" readonly>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {{-- Detail form actions --}}
-                        <div class="d-flex justify-content-end mt-2" style="gap:8px;">
-                            <button class="btn btn-secondary btn-sm" id="btnCancelDetail" type="button">
-                                <i class="fas fa-times mr-1"></i> Cancel
-                            </button>
-                            <button class="btn btn-primary btn-sm" id="btnSaveDetail" type="button">
-                                <i class="fas fa-save mr-1"></i> Save
-                            </button>
-                            <button class="btn btn-info btn-sm" id="btnSaveAddMore" type="button">
-                                <i class="fas fa-plus mr-1"></i> Save & Add More
-                            </button>
-                        </div>
-
-                    </div>
-                </div>
             </div>
         </div>
 
@@ -436,6 +249,220 @@
             </div>
         </div>
 
+    </div>
+
+    {{-- ================================================================ --}}
+    {{-- DETAIL ENTRY CARD (replaces inline panel — floats as overlay card) --}}
+    {{-- ================================================================ --}}
+    <div id="detailCardOverlay" style="display:none;">
+        <div id="detailCard" class="card card-primary detail-card-popup">
+            <div class="card-header d-flex align-items-center">
+                <h3 class="card-title mb-0">
+                    <i class="fas fa-plus-circle mr-1"></i>
+                    <span id="detailCardTitle">Add Detail Row</span>
+                </h3>
+                <div class="card-tools ml-auto">
+                    <button type="button" class="btn btn-tool text-white" id="btnCloseDetailCard" title="Close">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+
+                {{-- Row 1: Sr No, Job No, Client, Service --}}
+                <div class="row mb-2">
+                    <div class="col-md-6">
+                        <div class="form-group row mb-2">
+                            <label class="col-sm-4 col-form-label col-form-label-sm">Sr. No</label>
+                            <div class="col-sm-8">
+                                <input type="text" class="form-control form-control-sm bg-light" id="fldSrNo"
+                                    readonly>
+                            </div>
+                        </div>
+                        <div class="form-group row mb-2">
+                            <label class="col-sm-4 col-form-label col-form-label-sm">Job No <span
+                                    class="text-danger">*</span></label>
+                            <div class="col-sm-8">
+                                <select class="form-control form-control-sm" id="fldJobNo">
+                                    <option value="">-- Select --</option>
+                                    <option value="KE-2025-001">KE-2025-001</option>
+                                    <option value="KE-2025-002">KE-2025-002</option>
+                                    <option value="KE-2025-003">KE-2025-003</option>
+                                    <option value="KE-2025-004">KE-2025-004</option>
+                                    <option value="KE-2025-005">KE-2025-005</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group row mb-2">
+                            <label class="col-sm-4 col-form-label col-form-label-sm">Client Name</label>
+                            <div class="col-sm-8">
+                                <input type="text" class="form-control form-control-sm bg-light" id="fldClientName"
+                                    readonly placeholder="Auto-filled">
+                            </div>
+                        </div>
+                        <div class="form-group row mb-2">
+                            <label class="col-sm-4 col-form-label col-form-label-sm">Service</label>
+                            <div class="col-sm-8">
+                                <input type="text" class="form-control form-control-sm bg-light" id="fldService"
+                                    readonly placeholder="Auto-filled">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="my-2">
+
+                {{-- Row 2: Product fields (left) + Weight fields (right) --}}
+                <div class="row mb-2">
+
+                    {{-- Left: product info --}}
+                    <div class="col-md-6">
+                        <div class="form-group row mb-2">
+                            <label class="col-sm-4 col-form-label col-form-label-sm">
+                                Product <span class="text-danger">*</span>
+                            </label>
+                            <div class="col-sm-8">
+                                <select class="form-control form-control-sm" id="fldProduct">
+                                    <option value="">-- Select --</option>
+                                    <option value="electronics">Electronics</option>
+                                    <option value="machinery_parts">Machinery Parts</option>
+                                    <option value="textiles">Textiles</option>
+                                    <option value="coffee_beans">Coffee Beans</option>
+                                    <option value="tea_leaves">Tea Leaves</option>
+                                    <option value="fresh_produce">Fresh Produce</option>
+                                    <option value="pharmaceuticals">Pharmaceuticals</option>
+                                    <option value="automotive_parts">Automotive Parts</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group row mb-2">
+                            <label class="col-sm-4 col-form-label col-form-label-sm">Description</label>
+                            <div class="col-sm-8">
+                                <input type="text" class="form-control form-control-sm" id="fldDescription"
+                                    placeholder="Description">
+                            </div>
+                        </div>
+                        <div class="form-group row mb-2">
+                            <label class="col-sm-4 col-form-label col-form-label-sm">Quantity</label>
+                            <div class="col-sm-4 pr-1">
+                                <input type="number" class="form-control form-control-sm" id="fldQty"
+                                    placeholder="0" min="0">
+                            </div>
+                            <div class="col-sm-4 pl-0">
+                                <select class="form-control form-control-sm" id="fldQtyUOM">
+                                    <option value="PCS">PCS</option>
+                                    <option value="KGS">KGS</option>
+                                    <option value="CBM">CBM</option>
+                                    <option value="CTN">CTN</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group row mb-2">
+                            <label class="col-sm-4 col-form-label col-form-label-sm">Dimension</label>
+                            <div class="col-sm-8">
+                                <div class="d-flex align-items-center" style="gap:6px;">
+                                    <input type="number" class="form-control form-control-sm dim-input" id="fldDimL"
+                                        placeholder="L" min="0" style="width:70px;">
+                                    <span class="text-muted">x</span>
+                                    <input type="number" class="form-control form-control-sm dim-input" id="fldDimW"
+                                        placeholder="W" min="0" style="width:70px;">
+                                    <span class="text-muted">x</span>
+                                    <input type="number" class="form-control form-control-sm dim-input" id="fldDimH"
+                                        placeholder="H" min="0" style="width:70px;">
+                                    <select class="form-control form-control-sm" id="fldDimUnit" style="width:68px;">
+                                        <option value="cm">cm</option>
+                                        <option value="m">m</option>
+                                        <option value="in">in</option>
+                                    </select>
+                                    <button class="btn btn-sm btn-outline-danger" id="btnClearDim" type="button"
+                                        title="Clear dimensions">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group row mb-0">
+                            <label class="col-sm-4 col-form-label col-form-label-sm">Volume</label>
+                            <div class="col-sm-4 pr-1">
+                                <input type="text" class="form-control form-control-sm bg-light" id="fldVolume"
+                                    value="0.000" readonly>
+                            </div>
+                            <div class="col-sm-4 pl-0">
+                                <select class="form-control form-control-sm" id="fldVolumeUnit">
+                                    <option value="CBM">CBM</option>
+                                    <option value="CFT">CFT</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Right: weight fields --}}
+                    <div class="col-md-6">
+                        <div class="form-group row mb-2">
+                            <label class="col-sm-4 col-form-label col-form-label-sm">Tare Weight</label>
+                            <div class="col-sm-5 pr-1">
+                                <input type="text" class="form-control form-control-sm bg-light" id="fldTareWeight"
+                                    value="0.00" readonly>
+                            </div>
+                            <div class="col-sm-3 pl-0">
+                                <select class="form-control form-control-sm" id="fldTareUnit">
+                                    <option value="KG">KG</option>
+                                    <option value="LB">LB</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group row mb-1">
+                            <label class="col-sm-4 col-form-label col-form-label-sm">Gross Weight</label>
+                            <div class="col-sm-5 pr-1">
+                                <input type="number" class="form-control form-control-sm" id="fldGrossWeight"
+                                    placeholder="0.00" min="0" step="0.01">
+                            </div>
+                            <div class="col-sm-3 pl-0">
+                                <input type="text" class="form-control form-control-sm bg-light"
+                                    id="fldGrossWeightUnit" value="KG" readonly>
+                            </div>
+                        </div>
+                        {{-- Read tare link --}}
+                        <div class="form-group row mb-2">
+                            <label class="col-sm-4"></label>
+                            <div class="col-sm-8">
+                                <small>
+                                    <a href="#" id="lnkReadTare" class="text-primary">
+                                        <i class="fas fa-magic mr-1"></i>Read tare from equipment
+                                    </a>
+                                </small>
+                            </div>
+                        </div>
+                        <div class="form-group row mb-0">
+                            <label class="col-sm-4 col-form-label col-form-label-sm">Net Weight</label>
+                            <div class="col-sm-5 pr-1">
+                                <input type="text" class="form-control form-control-sm bg-light font-weight-bold"
+                                    id="fldNetWeight" value="0.00" readonly>
+                            </div>
+                            <div class="col-sm-3 pl-0">
+                                <input type="text" class="form-control form-control-sm bg-light" id="fldNetWeightUnit"
+                                    value="KG" readonly>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            {{-- Card footer actions --}}
+            <div class="card-footer d-flex justify-content-end" style="gap:8px; background:#f8f9fa;">
+                <button class="btn btn-secondary btn-sm" id="btnCancelDetail" type="button">
+                    <i class="fas fa-times mr-1"></i> Cancel
+                </button>
+                <button class="btn btn-primary btn-sm" id="btnSaveDetail" type="button">
+                    <i class="fas fa-save mr-1"></i> Save
+                </button>
+                <button class="btn btn-info btn-sm" id="btnSaveAddMore" type="button">
+                    <i class="fas fa-plus mr-1"></i> Save & Add More
+                </button>
+            </div>
+        </div>
     </div>
 
     {{-- ── EQUIPMENT INFO MODAL ── --}}
@@ -610,6 +637,64 @@
             padding: 1px 7px;
             font-size: 0.75rem;
         }
+
+        /* ── Detail Card Overlay ── */
+        #detailCardOverlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+            z-index: 1040;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            /* animate */
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        #detailCardOverlay.overlay-visible {
+            opacity: 1;
+        }
+
+        .detail-card-popup {
+            width: 100%;
+            max-width: 1050px;
+            max-height: 92vh;
+            overflow-y: auto;
+            margin: 0;
+            box-shadow: 0 8px 32px rgba(75, 73, 172, 0.25);
+            /* animate card sliding up */
+            transform: translateY(30px);
+            transition: transform 0.25s ease;
+        }
+
+        .detail-card-popup .card-body {
+            padding: 1.25rem 1.5rem;
+        }
+
+        .detail-card-popup .form-group.row {
+            margin-bottom: 0.65rem;
+        }
+
+        .detail-card-popup .col-form-label-sm {
+            font-size: 0.83rem;
+            font-weight: 600;
+            color: #444;
+        }
+
+        .detail-card-popup hr {
+            margin: 0.85rem 0;
+        }
+
+        /* Give dimension inputs more room */
+        .detail-card-popup .dim-input {
+            width: 70px !important;
+        }
+
+        #detailCardOverlay.overlay-visible .detail-card-popup {
+            transform: translateY(0);
+        }
     </style>
 @stop
 
@@ -618,15 +703,77 @@
         $(document).ready(function() {
 
             // ================================================================
-            // REFRESH GUARD — always land on dashboard on page load/refresh
+            // REFRESH GUARD
             // ================================================================
             $('#formView').hide();
             $('#dashboardView').show();
+            $('#detailCardOverlay').hide();
+
+            // ================================================================
+            // CONSTANTS — hardcoded for presentation
+            // ================================================================
+            const JOB_MAP = {
+                'KE-2025-001': {
+                    client: 'Maersk Kenya',
+                    service: 'FCL Export'
+                },
+                'KE-2025-002': {
+                    client: 'DHL Logistics',
+                    service: 'LCL Import'
+                },
+                'KE-2025-003': {
+                    client: 'Bollore Transport',
+                    service: 'FCL Import'
+                },
+                'KE-2025-004': {
+                    client: 'Siginon Freight',
+                    service: 'Air Freight'
+                },
+                'KE-2025-005': {
+                    client: 'Kenya Airways Cargo',
+                    service: 'Air Export'
+                },
+            };
+
+            // Standard ISO tare weights in KG
+            const TARE_WEIGHTS = {
+                '20GP': 2200,
+                '40GP': 3750,
+                '40HC': 3900,
+                '45HC': 4800,
+                '20RF': 2800,
+                '40RF': 4400,
+                '20OT': 2100,
+                '40OT': 3800,
+            };
+
+            // ================================================================
+            // PERSISTENCE HELPERS
+            // ================================================================
+            const STORAGE_KEY = 'wn_weight_notes';
+
+            function persistNotes() {
+                try {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(weightNotes));
+                } catch (e) {
+                    console.error('Failed to persist weight notes:', e);
+                }
+            }
+
+            function loadPersistedNotes() {
+                try {
+                    const raw = localStorage.getItem(STORAGE_KEY);
+                    return raw ? JSON.parse(raw) : [];
+                } catch (e) {
+                    console.error('Failed to load persisted weight notes:', e);
+                    return [];
+                }
+            }
 
             // ================================================================
             // STATE
             // ================================================================
-            let weightNotes = [];
+            let weightNotes = loadPersistedNotes();
             let detailRows = [];
             let editingIndex = null;
             let currentWNNo = '';
@@ -638,10 +785,7 @@
             $('#btnNewNote').on('click', function() {
                 openForm();
             });
-            $('#btnBackToList').on('click', function() {
-                backToDashboard();
-            });
-            $('#btnCancelForm').on('click', function() {
+            $('#btnBackToList, #btnCancelForm').on('click', function() {
                 backToDashboard();
             });
 
@@ -657,12 +801,11 @@
                 $('#pageHeaderForm').show();
                 $('#dashboardView').hide();
                 $('#formView').show();
-                $('#detailEntryPanel').hide();
                 $('#equipInfoModal').modal('show');
-
             }
 
             function backToDashboard() {
+                closeDetailCard();
                 $('#pageHeaderForm').hide();
                 $('#pageHeaderDashboard').show();
                 $('#formView').hide();
@@ -671,22 +814,56 @@
             }
 
             // ================================================================
+            // DETAIL CARD — open / close with animation
+            // ================================================================
+            function openDetailCard() {
+                $('#detailCardOverlay').css('display', 'flex');
+                // Trigger reflow so transition fires
+                $('#detailCardOverlay')[0].offsetHeight;
+                $('#detailCardOverlay').addClass('overlay-visible');
+            }
+
+            function closeDetailCard() {
+                $('#detailCardOverlay').removeClass('overlay-visible');
+                setTimeout(function() {
+                    $('#detailCardOverlay').hide();
+                    clearDetailFields();
+                }, 220);
+            }
+
+            // Close on overlay backdrop click (not on the card itself)
+            $('#detailCardOverlay').on('click', function(e) {
+                if ($(e.target).is('#detailCardOverlay')) {
+                    closeDetailCard();
+                }
+            });
+
+            $('#btnCloseDetailCard, #btnCancelDetail').on('click', function() {
+                closeDetailCard();
+            });
+
+            // ================================================================
+            // ADD DETAIL BUTTON
+            // ================================================================
+            $('#btnAddDetail').on('click', function() {
+                clearDetailFields();
+                $('#fldSrNo').val(currentWNNo + '-' + String(detailRows.length + 1).padStart(2, '0'));
+                $('#detailCardTitle').text('Add Detail Row');
+                openDetailCard();
+                $('#fldJobNo').focus();
+            });
+
+            // ================================================================
             // EQUIPMENT INFO MODAL
             // ================================================================
             $('#btnEditSummary').on('click', function() {
                 const currentType = $('#displayEquipType').val();
                 const currentNo = $('#displayEquipNo').val();
                 const currentRmk = $('#displayRemark').val();
-
                 $('#modalEquipType').val(currentType === '—' ? '' : currentType);
                 $('#modalEquipNo').val(currentNo === '—' ? '' : currentNo);
                 $('#modalRemark').val(currentRmk === '—' ? '' : currentRmk);
-
                 $('#equipInfoModal').modal('show');
-            });
-
-            $('#equipInfoModal .close, #equipInfoModal [data-dismiss="modal"]').on('click', function() {
-                $('#equipInfoModal').modal('hide');
             });
 
             $('#btnSaveEquipInfo').on('click', function() {
@@ -694,7 +871,6 @@
                 const equipNo = $('#modalEquipNo').val().trim();
                 const remark = $('#modalRemark').val().trim();
 
-                // Require at least Equipment Type and Equipment No
                 if (!equipType) {
                     toastr.error('Please select an Equipment Type.');
                     $('#modalEquipType').focus();
@@ -709,81 +885,41 @@
                 $('#displayEquipType').val(equipType);
                 $('#displayEquipNo').val(equipNo);
                 $('#displayRemark').val(remark || '—');
-
                 $('#equipInfoModal').modal('hide');
                 toastr.success('Equipment info updated.');
             });
 
             // ================================================================
-            // DASHBOARD — status card filters
-            // ================================================================
-            $('#cardInProgress').on('click', function() {
-                applyFilter('In Progress');
-            });
-            $('#cardSubmitted').on('click', function() {
-                applyFilter('Submitted');
-            });
-            $('#cardFailed').on('click', function() {
-                applyFilter('Failed');
-            });
-            $('#cardTotal').on('click', function() {
-                applyFilter('All');
-            });
-
-            // Clear filter + search
-            $('#btnClearFilter').on('click', function() {
-                $('#tableSearch').val('');
-                applyFilter('All');
-            });
-
-            function applyFilter(status) {
-                activeFilter = status;
-                $('#activeFilterBadge').toggle(status !== 'All').text(status);
-                refreshDashboardTable();
-            }
-
-            // Live search
-            $('#tableSearch').on('input', function() {
-                refreshDashboardTable();
-            });
-
-            // ================================================================
-            // DETAIL ENTRY PANEL
-            // ================================================================
-            $('#btnAddDetail').on('click', function() {
-                // Guard: prevent opening a second panel while one is active
-                if ($('#detailEntryPanel').is(':visible')) {
-                    toastr.warning('Please save or cancel the current entry first.');
-                    return;
-                }
-                clearDetailFields();
-                $('#fldSrNo').val(currentWNNo + '-' + String(detailRows.length + 1).padStart(2, '0'));
-                $('#detailEntryPanel').slideDown(200);
-                $('html, body').animate({
-                    scrollTop: $('#detailEntryPanel').offset().top - 80
-                }, 300);
-            });
-
-            $('#btnCancelDetail').on('click', function() {
-                $('#detailEntryPanel').slideUp(200);
-                clearDetailFields();
-            });
-
-            // ================================================================
-            // JOB NO — auto-fill client & service
+            // JOB NO — auto-fill client & service from hardcoded map
             // ================================================================
             $('#fldJobNo').on('change', function() {
-                const val = $(this).val();
-                if (!val) {
+                const job = JOB_MAP[$(this).val()];
+                if (job) {
+                    $('#fldClientName').val(job.client);
+                    $('#fldService').val(job.service);
+                } else {
                     $('#fldClientName, #fldService').val('');
+                }
+            });
+
+            // ================================================================
+            // TARE — read from equipment type via hardcoded ISO table
+            // ================================================================
+            $('#lnkReadTare').on('click', function(e) {
+                e.preventDefault();
+                const equipType = $('#displayEquipType').val().replace('—', '').trim();
+                if (!equipType) {
+                    toastr.warning('Please set an Equipment Type in the summary first.');
                     return;
                 }
-                // TODO: replace with real AJAX when endpoint is ready
-                // $.get('/api/weight-note/job/' + val, function (res) {
-                //     if (!res.success) { toastr.error(res.message); return; }
-                //     $('#fldClientName').val(res.data.client_name);
-                //     $('#fldService').val(res.data.service);
-                // }).fail(function () { toastr.error('Failed to load job details.'); });
+                const tare = TARE_WEIGHTS[equipType];
+                if (tare === undefined) {
+                    toastr.warning('No tare data available for: ' + equipType);
+                    return;
+                }
+                $('#fldTareWeight').val(tare.toFixed(2));
+                recalcNetWeight();
+                toastr.info('Tare weight loaded: ' + tare.toFixed(2) + ' KG (' + equipType + ')');
             });
 
             // ================================================================
@@ -794,8 +930,9 @@
             });
 
             $('#fldTareUnit').on('change', function() {
-                $('#fldNetWeightUnit').val($(this).val());
-                $('#fldGrossWeightUnit').val($(this).val());
+                const unit = $(this).val();
+                $('#fldNetWeightUnit').val(unit);
+                $('#fldGrossWeightUnit').val(unit);
             });
 
             function recalcNetWeight() {
@@ -803,23 +940,6 @@
                 const gross = parseFloat($('#fldGrossWeight').val()) || 0;
                 $('#fldNetWeight').val((gross >= tare ? gross - tare : 0).toFixed(2));
             }
-
-            // "Read" — fetch tare for selected equipment type
-            $('#lnkReadTare').on('click', function(e) {
-                e.preventDefault();
-                const equipType = $('#displayEquipType').val().replace('—', '').trim();
-                if (!equipType) {
-                    toastr.warning('Please select an Equipment Type in the summary first.');
-                    return;
-                }
-                // TODO: replace with real AJAX when endpoint is ready
-                // $.get('/api/weight-note/tare/' + equipType, function (res) {
-                //     if (!res.success) { toastr.error(res.message); return; }
-                //     $('#fldTareWeight').val(parseFloat(res.data.tare).toFixed(2));
-                //     recalcNetWeight();
-                // }).fail(function () { toastr.error('Failed to load tare weight.'); });
-                toastr.info('Tare lookup will be available once the API endpoint is connected.');
-            });
 
             // ================================================================
             // DIMENSIONS — recalc volume on any change
@@ -844,7 +964,7 @@
                 const volUnit = $('#fldVolumeUnit').val();
 
                 let cbm = l * w * h;
-                if (dimUnit === 'cm') cbm = cbm / 1000000;
+                if (dimUnit === 'cm') cbm = cbm / 1_000_000;
                 else if (dimUnit === 'in') cbm = cbm * 0.0000163871;
                 // 'm' is already CBM
 
@@ -859,8 +979,7 @@
                 pushDetailRow();
                 renderDetailGrid();
                 recalcSummaryTotals();
-                $('#detailEntryPanel').slideUp(200);
-                clearDetailFields();
+                closeDetailCard();
                 toastr.success('Detail row added.');
             });
 
@@ -869,14 +988,19 @@
                 pushDetailRow();
                 renderDetailGrid();
                 recalcSummaryTotals();
-                // Keep panel open — bump Sr. No for next entry
-                const nextSrNo = currentWNNo + '-' + String(detailRows.length + 1).padStart(2, '0');
+                // Keep card open — bump Sr. No for next entry
                 clearDetailFields();
-                $('#fldSrNo').val(nextSrNo);
+                $('#fldSrNo').val(currentWNNo + '-' + String(detailRows.length + 1).padStart(2, '0'));
+                $('#fldJobNo').focus();
                 toastr.success('Row added. Fill next entry.');
             });
 
             function validateDetailRow() {
+                if (!$('#fldJobNo').val()) {
+                    toastr.error('Please select a Job No.');
+                    $('#fldJobNo').focus();
+                    return false;
+                }
                 if (!$('#fldProduct').val()) {
                     toastr.error('Please select a Product.');
                     $('#fldProduct').focus();
@@ -943,13 +1067,9 @@
                                     data-index="${i}" title="Edit">
                                     <i class="fas fa-edit"></i>
                                 </button>
-                                <button class="btn btn-xs btn-danger mr-1 btn-remove-row"
+                                <button class="btn btn-xs btn-danger btn-remove-row"
                                     data-index="${i}" title="Delete">
                                     <i class="fas fa-trash"></i>
-                                </button>
-                                <button class="btn btn-xs btn-secondary btn-download-row"
-                                    data-index="${i}" title="Download">
-                                    <i class="fas fa-download"></i>
                                 </button>
                             </td>
                         </tr>`);
@@ -958,25 +1078,17 @@
                 $('#productCount').text(detailRows.length);
             }
 
-            // Edit row — delegated (grid is re-rendered dynamically)
+            // Edit row — pull row back out, repopulate card
             $(document).on('click', '.btn-edit-row', function() {
-                if ($('#detailEntryPanel').is(':visible')) {
-                    toastr.warning('Please save or cancel the current entry first.');
-                    return;
-                }
                 const i = parseInt($(this).data('index'));
                 const r = detailRows[i];
 
-                // Pull the row back out of state so it gets re-added on save
                 detailRows.splice(i, 1);
                 renderDetailGrid();
                 recalcSummaryTotals();
 
-                // Re-populate entry fields
                 $('#fldSrNo').val(r.srNo);
                 $('#fldJobNo').val(r.jobNo).trigger('change');
-                $('#fldClientName').val(r.clientName);
-                $('#fldService').val(r.service);
                 $('#fldProduct').val(r.productVal);
                 $('#fldDescription').val(r.description);
                 $('#fldQty').val(r.qty);
@@ -986,13 +1098,11 @@
                 $('#fldVolume').val(r.volume);
                 $('#fldVolumeUnit').val(r.volumeUnit);
 
-                $('#detailEntryPanel').slideDown(200);
-                $('html, body').animate({
-                    scrollTop: $('#detailEntryPanel').offset().top - 80
-                }, 300);
+                $('#detailCardTitle').text('Edit Detail Row');
+                openDetailCard();
             });
 
-            // Remove row — delegated
+            // Remove row
             $(document).on('click', '.btn-remove-row', function() {
                 detailRows.splice(parseInt($(this).data('index')), 1);
                 renderDetailGrid();
@@ -1028,31 +1138,6 @@
                 const $btn = action === 'submit' ? $('#btnSaveSubmit') : $('#btnSave');
                 $btn.prop('disabled', true).prepend('<i class="fas fa-spinner fa-spin mr-1 spin-icon"></i>');
 
-                // TODO: Replace with AJAX POST when backend is ready
-                // const payload = {
-                //     wn_no      : currentWNNo,
-                //     equip_type : $('#fldEquipType').val(),
-                //     equip_no   : $('#fldEquipNo').val().trim(),
-                //     remark     : $('#fldRemark').val().trim(),
-                //     action     : action,
-                //     details    : detailRows,
-                // };
-                // $.ajax({
-                //     url        : '/api/weight-note',
-                //     method     : editingIndex !== null ? 'PUT' : 'POST',
-                //     contentType: 'application/json',
-                //     data       : JSON.stringify(payload),
-                //     success: function (res) {
-                //         if (!res.success) { toastr.error(res.message); return; }
-                //         toastr.success(res.message);
-                //         backToDashboard();
-                //     },
-                //     error: function () { toastr.error('Request failed. Please try again.'); },
-                //     complete: function () {
-                //         $btn.prop('disabled', false).find('.spin-icon').remove();
-                //     }
-                // });
-
                 setTimeout(function() {
                     const note = {
                         wnNo: currentWNNo,
@@ -1072,6 +1157,7 @@
                         weightNotes.push(note);
                     }
 
+                    persistNotes();
                     $btn.prop('disabled', false).find('.spin-icon').remove();
                     toastr.success(action === 'submit' ? 'Weight note submitted.' : 'Weight note saved.');
                     backToDashboard();
@@ -1090,6 +1176,7 @@
                 weightNotes.forEach(n => {
                     if (counts[n.status] !== undefined) counts[n.status]++;
                 });
+
                 $('#countInProgress').text(counts['In Progress']);
                 $('#countSubmitted').text(counts['Submitted']);
                 $('#countFailed').text(counts['Failed']);
@@ -1141,22 +1228,48 @@
                                     <i class="fas fa-eye"></i>
                                 </button>
                                 ${n.status !== 'Submitted' ? `
-                                                                                                                                    <button class="btn btn-xs btn-warning btn-edit-note"
-                                                                                                                                        data-index="${realIndex}" title="Edit">
-                                                                                                                                        <i class="fas fa-edit"></i>
-                                                                                                                                    </button>` : ''}
+                                        <button class="btn btn-xs btn-warning btn-edit-note"
+                                            data-index="${realIndex}" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </button>` : ''}
                             </td>
                         </tr>`);
                 });
             }
 
-            // View note — opens modal
+            // Dashboard filter cards
+            $('#cardInProgress').on('click', function() {
+                applyFilter('In Progress');
+            });
+            $('#cardSubmitted').on('click', function() {
+                applyFilter('Submitted');
+            });
+            $('#cardFailed').on('click', function() {
+                applyFilter('Failed');
+            });
+            $('#cardTotal').on('click', function() {
+                applyFilter('All');
+            });
+            $('#btnClearFilter').on('click', function() {
+                $('#tableSearch').val('');
+                applyFilter('All');
+            });
+            $('#tableSearch').on('input', function() {
+                refreshDashboardTable();
+            });
+
+            function applyFilter(status) {
+                activeFilter = status;
+                $('#activeFilterBadge').toggle(status !== 'All').text(status);
+                refreshDashboardTable();
+            }
+
+            // View note modal
             $(document).on('click', '.btn-view-note', function() {
                 const n = weightNotes[parseInt($(this).data('index'))];
                 const badgeClass = n.status === 'Submitted' ? 'badge-submitted' :
                     n.status === 'Failed' ? 'badge-failed' :
                     'badge-in-progress';
-
                 $('#modalWNNo').text(n.wnNo);
                 $('#modalSummaryBody').html(`
                     <tr>
@@ -1190,7 +1303,7 @@
                 $('#viewModal').modal('show');
             });
 
-            // Edit note — load into form
+            // Edit note
             $(document).on('click', '.btn-edit-note', function() {
                 const i = parseInt($(this).data('index'));
                 const n = weightNotes[i];
@@ -1210,16 +1323,14 @@
                 $('#pageHeaderForm').show();
                 $('#dashboardView').hide();
                 $('#formView').show();
-                $('#detailEntryPanel').hide();
             });
 
             // ================================================================
-            // CARD COLLAPSE — delegated so it works on all cards
+            // CARD COLLAPSE
             // ================================================================
             $(document).on('click', '[data-card-widget="collapse"]', function(e) {
                 e.stopPropagation();
-                const $cardBody = $(this).closest('.card').find('.card-body').first();
-                $cardBody.slideToggle(200);
+                $(this).closest('.card').find('.card-body').first().slideToggle(200);
                 $(this).find('i').toggleClass('fa-chevron-down fa-chevron-up');
             });
 
@@ -1227,9 +1338,7 @@
             // HELPERS
             // ================================================================
             function resetSummaryForm() {
-                $('#displayEquipType').val('—');
-                $('#displayEquipNo').val('—');
-                $('#displayRemark').val('—');
+                $('#displayEquipType, #displayEquipNo, #displayRemark').val('—');
                 $('#modalEquipType').val('');
                 $('#modalEquipNo, #modalRemark').val('');
                 $('#summaryTare, #summaryGross, #summaryNet').val('0.00');
@@ -1249,6 +1358,7 @@
                 $('#fldTareUnit').val('KG');
                 $('#fldGrossWeight').val('');
                 $('#fldNetWeight').val('0.00');
+                $('#fldNetWeightUnit, #fldGrossWeightUnit').val('KG');
             }
 
             function generateWNNo() {

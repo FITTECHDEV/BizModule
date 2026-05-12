@@ -1031,8 +1031,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 MODALS
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 ============================================ -->
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             MODALS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1766,17 +1766,16 @@
                                 <table class="cc-table" id="ccRevenueTable">
                                     <thead>
                                         <tr>
-                                            <th class="cc-col-chk">
-                                                <input type="checkbox" id="ccRevenueSelectAll" title="Select All">
-                                            </th>
-                                            <th class="cc-col-service">Service</th>
-                                            <th class="cc-col-activity">Activity</th>
-                                            <th class="cc-col-party">Debtor</th>
+                                            <th class="cc-col-chk"><input type="checkbox" id="ccRevenueSelectAll"
+                                                    title="Select All"></th>
                                             <th class="cc-col-code">Charge Code</th>
                                             <th class="cc-col-desc">Charge Description</th>
                                             <th class="cc-col-qty">Quantity</th>
-                                            <th class="cc-col-basedon">BasedOn</th>
+                                            <th class="cc-col-basedon">Based On</th>
                                             <th class="cc-col-uom">UOM</th>
+                                            <th class="cc-col-rate">Rate</th>
+                                            <th class="cc-col-curr">Currency</th>
+                                            <th class="cc-col-amt">Amount</th>
                                         </tr>
                                     </thead>
                                     <tbody id="ccRevenueBody">
@@ -1841,17 +1840,16 @@
                                 <table class="cc-table" id="ccCostTable">
                                     <thead>
                                         <tr>
-                                            <th class="cc-col-chk">
-                                                <input type="checkbox" id="ccCostSelectAll" title="Select All">
-                                            </th>
-                                            <th class="cc-col-service">Service</th>
-                                            <th class="cc-col-activity">Activity</th>
-                                            <th class="cc-col-party">Vendor</th> {{-- Vendor, not Debtor --}}
+                                            <th class="cc-col-chk"><input type="checkbox" id="ccCostSelectAll"
+                                                    title="Select All"></th>
                                             <th class="cc-col-code">Charge Code</th>
                                             <th class="cc-col-desc">Charge Description</th>
                                             <th class="cc-col-qty">Quantity</th>
-                                            <th class="cc-col-basedon">BasedOn</th>
+                                            <th class="cc-col-basedon">Based On</th>
                                             <th class="cc-col-uom">UOM</th>
+                                            <th class="cc-col-rate">Rate</th>
+                                            <th class="cc-col-curr">Currency</th>
+                                            <th class="cc-col-amt">Amount</th>
                                         </tr>
                                     </thead>
                                     <tbody id="ccCostBody">
@@ -1928,12 +1926,15 @@
                         {{-- Advanced search row --}}
                         <div class="cc-search-controls">
                             <span class="cc-lbl" style="white-space:nowrap;">Advanced Search</span>
-                            <select class="cc-select" id="ccSearchField" style="width:140px;">
+                            <select class="cc-select" id="ccSearchField" style="width:160px;">
                                 <option value="">Select</option>
                                 <option value="customer">Customer</option>
                                 <option value="origin">Origin Country</option>
                                 <option value="destination">Destination Country</option>
                                 <option value="incoterm">InCo Term</option>
+                                <option value="por">Place of Receipt</option> {{-- NEW --}}
+                                <option value="pod">Place of Delivery</option> {{-- NEW --}}
+                                <option value="equipment">Equipment Type</option> {{-- NEW --}}
                             </select>
                             <input type="text" class="cc-input" id="ccSearchValue" style="width:200px;"
                                 placeholder="">
@@ -1941,21 +1942,39 @@
                             <button type="button" class="cc-btn-add-filter" id="ccAddFilterBtn">Add filter</button>
                         </div>
 
+
                         {{-- Search results table --}}
                         <div class="cc-table-wrap" style="margin-top:8px;">
                             <table class="cc-table" id="ccSearchResultsTable">
                                 <thead>
                                     <tr>
-                                        <th style="width:40px;">Select</th>
-                                        <th>Process Type
-                                            <i class="fas fa-sort ml-1" style="font-size:0.65rem; color:#999;"></i>
-                                        </th>
-                                        <th>Job No.</th>
+                                        <th style="width:36px;">Select</th>
+                                        <th class="cc-sortable" data-col="QuoteNo"
+                                            style="cursor:pointer; white-space:nowrap;">Quote No <i class="fas fa-sort"
+                                                style="font-size:0.6rem;color:#999;"></i></th>
+                                        <th class="cc-sortable" data-col="CompanyName"
+                                            style="cursor:pointer; white-space:nowrap;">Customer <i class="fas fa-sort"
+                                                style="font-size:0.6rem;color:#999;"></i></th>
+                                        <th class="cc-sortable" data-col="Origin"
+                                            style="cursor:pointer; white-space:nowrap;">Origin Country <i
+                                                class="fas fa-sort" style="font-size:0.6rem;color:#999;"></i></th>
+                                        <th class="cc-sortable" data-col="Destination"
+                                            style="cursor:pointer; white-space:nowrap;">Destination Country <i
+                                                class="fas fa-sort" style="font-size:0.6rem;color:#999;"></i></th>
+                                        <th class="cc-sortable" data-col="POR"
+                                            style="cursor:pointer; white-space:nowrap;">POR <i class="fas fa-sort"
+                                                style="font-size:0.6rem;color:#999;"></i></th>
+                                        <th class="cc-sortable" data-col="POD"
+                                            style="cursor:pointer; white-space:nowrap;">POD <i class="fas fa-sort"
+                                                style="font-size:0.6rem;color:#999;"></i></th>
+                                        <th class="cc-sortable" data-col="IncoTerm"
+                                            style="cursor:pointer; white-space:nowrap;">InCo Term <i class="fas fa-sort"
+                                                style="font-size:0.6rem;color:#999;"></i></th>
                                     </tr>
                                 </thead>
                                 <tbody id="ccSearchResultsBody">
                                     <tr>
-                                        <td colspan="3" class="cc-empty-msg">Click Search to find jobs</td>
+                                        <td colspan="8" class="cc-empty-msg">Click Search to find jobs</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -2004,8 +2023,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -2448,9 +2467,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -3134,6 +3153,58 @@
         /* ── Backdrop fix: search modal needs its own backdrop layer ─── */
         #ccSearchModal.modal.show~.modal-backdrop {
             z-index: 1055;
+        }
+
+        #ccRevenueTable,
+        #ccCostTable {
+            min-width: 620px;
+            table-layout: auto;
+        }
+
+        /* CC search table scroll + sortable */
+        #ccSearchResultsTable {
+            min-width: 600px;
+            table-layout: auto;
+        }
+
+        .cc-table-wrap {
+            overflow-x: auto;
+            max-height: 320px;
+            overflow-y: auto;
+        }
+
+        .cc-sortable:hover {
+            background: #dde8f0;
+        }
+
+        .cc-sort-asc .fa-sort::before {
+            content: "\f0de";
+            color: #333;
+        }
+
+        .cc-sort-desc .fa-sort::before {
+            content: "\f0dd";
+            color: #333;
+        }
+
+        /* Removed service/activity/party columns — updated widths */
+        .cc-col-rate {
+            width: 65px;
+        }
+
+        .cc-col-curr {
+            width: 55px;
+        }
+
+        .cc-col-amt {
+            width: 75px;
+        }
+
+        /* Remove old widths that referenced removed columns */
+        .cc-col-service,
+        .cc-col-activity,
+        .cc-col-party {
+            display: none;
         }
     </style>
 @stop
@@ -8560,42 +8631,59 @@
                 const filterField = $('#ccSearchField').val();
                 const filterValue = $('#ccSearchValue').val().trim();
 
-                if (!filterField) {
-                    showNotification('Please select a filter field', 'warning');
-                    return;
-                }
+                // Value is required; filter field is optional (no field = search by quote number)
                 if (!filterValue) {
                     showNotification('Please enter a search value', 'warning');
+                    $('#ccSearchValue').focus();
                     return;
                 }
+
+                const fieldMap = {
+                    customer: 'customer',
+                    origin: 'origin',
+                    destination: 'destination',
+                    incoterm: 'incoterm',
+                    por: 'por',
+                    pod: 'pod',
+                    equipment: 'equipment'
+                };
+
+                const params = {
+                    office_code: officeCode
+                };
+
+                // No filter field selected → treat input as a direct quote number search
+                if (!filterField) {
+                    params.quote_no = filterValue;
+                } else {
+                    const paramKey = fieldMap[filterField];
+                    if (paramKey) params[paramKey] = filterValue;
+                }
+
                 $.ajax({
                     url: CC_SEARCH_URL,
                     type: 'GET',
-                    data: {
-                        office_code: officeCode,
-                        filter_field: filterField,
-                        filter_value: filterValue
-                    },
+                    data: params,
                     beforeSend: function() {
                         $('#ccSearchGoBtn').prop('disabled', true)
                             .html('<i class="fas fa-spinner fa-spin mr-1"></i> Searching...');
                         $('#ccSearchResultsBody').html(
-                            '<tr><td colspan="5" class="cc-empty-msg"><i class="fas fa-spinner fa-spin"></i> Searching...</td></tr>'
+                            '<tr><td colspan="8" class="cc-empty-msg"><i class="fas fa-spinner fa-spin"></i> Searching...</td></tr>'
                         );
                     },
                     complete: function() {
-                        $('#ccSearchGoBtn').prop('disabled', false)
-                            .html('Search');
+                        $('#ccSearchGoBtn').prop('disabled', false).html('Search');
                     },
                     success: function(response) {
                         ccSearchResults = response.success ? (response.data || []) : [];
                         ccCurrentPage = 1;
                         renderSearchPage();
                     },
-                    error: function() {
+                    error: function(xhr) {
                         ccSearchResults = [];
                         renderSearchPage();
-                        showNotification('Search failed', 'error');
+                        const msg = xhr.responseJSON?.message || 'Search failed. Please try again.';
+                        showNotification(msg, 'error');
                     }
                 });
             }
@@ -8646,16 +8734,19 @@
                 page.forEach(function(row, i) {
                     const globalIdx = start + i;
                     $tbody.append(`
-                    <tr style="cursor:pointer;" data-idx="${globalIdx}">
-                        <td class="text-center">
-                            <input type="radio" name="ccJobSearchRadio" class="cc-search-radio" value="${globalIdx}">
-                        </td>
-                        <td style="font-size:0.8rem;">${row.QuoteNo}</td>
-                        <td style="font-size:0.8rem;">${row.CompanyName}</td>
-                        <td style="font-size:0.8rem;">${row.Origin}</td>
-                        <td style="font-size:0.8rem;">${row.Destination}</td>
-                    </tr>
-                `);
+        <tr style="cursor:pointer;" data-idx="${globalIdx}">
+            <td class="text-center">
+                <input type="radio" name="ccJobSearchRadio" class="cc-search-radio" value="${globalIdx}">
+            </td>
+            <td style="font-size:0.8rem;">${row.QuoteNo || ''}</td>
+            <td style="font-size:0.8rem;">${row.CompanyName || ''}</td>
+            <td style="font-size:0.8rem;">${row.Origin || ''}</td>
+            <td style="font-size:0.8rem;">${row.Destination || ''}</td>
+            <td style="font-size:0.8rem;">${row.POR || ''}</td>
+            <td style="font-size:0.8rem;">${row.POD || ''}</td>
+            <td style="font-size:0.8rem;">${row.IncoTerm || ''}</td>
+        </tr>
+    `);
                 });
 
                 $tbody.find('tr').on('click', function() {
@@ -8809,26 +8900,6 @@
                 }
             );
 
-            // ── Build charge row (6 columns) ─────────────────────────────────────────
-            function buildChargeRow(r, i, type) {
-                const partyLabel = r.isRevenue ? (r.debtor || '') : (r.vendor || '');
-                return `
-                <tr data-cc-row="${i}">
-                    <td class="text-center">
-                        <input type="checkbox" class="cc-charge-check" data-type="${type}" data-index="${i}">
-                    </td>
-                    <td style="font-size:0.8rem;">${r.service || ''}</td>
-                    <td style="font-size:0.8rem;">${r.activity || ''}</td>
-                    <td style="font-size:0.8rem;">${partyLabel}</td>
-                    <td style="font-size:0.8rem;">${r.chargeCode || ''}</td>
-                    <td style="font-size:0.8rem; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
-                        title="${r.chargeDesp || ''}">${r.chargeDesp || ''}</td>
-                    <td class="text-center" style="font-size:0.8rem;">${r.quantity || 0}</td>
-                    <td style="font-size:0.8rem;">${r.basedOn || ''}</td>
-                    <td style="font-size:0.8rem;">${r.uomCode || ''}</td>
-                </tr>
-            `;
-            }
 
             function renderTablePage(tbodyId) {
                 const s = ccTableState[tbodyId];
@@ -8944,6 +9015,91 @@
                     $('#ccSearchModal').modal('hide');
                 }
             });
+
+            // ── Job No direct entry — load charges on Enter or blur ───────────────────
+            $('#ccJobNo').on('keypress', function(e) {
+                if (e.which === 13) triggerJobNoLoad();
+            });
+            $('#ccJobNo').on('blur', function() {
+                if ($(this).val().trim()) triggerJobNoLoad();
+            });
+
+            function triggerJobNoLoad() {
+                const jobNo = $('#ccJobNo').val().trim();
+                if (!jobNo) return;
+
+                // Search by quote number to get the quotation ID, then load charges
+                $.ajax({
+                    url: CC_SEARCH_URL,
+                    type: 'GET',
+                    data: {
+                        office_code: officeCode,
+                        quote_no: jobNo
+                    },
+                    success: function(response) {
+                        if (response.success && response.data && response.data.length > 0) {
+                            // Exact match first, fallback to first result
+                            const match = response.data.find(r => r.QuoteNo === jobNo) || response.data[
+                                0];
+                            ccSelectedJobRow = match;
+                            loadJobCharges(match);
+                        } else {
+                            showNotification('No quote found for: ' + jobNo, 'warning');
+                        }
+                    },
+                    error: function() {
+                        showNotification('Failed to search for Job No', 'error');
+                    }
+                });
+            }
+
+            // ── Search results sorting ────────────────────────────────────────────────
+            let ccSortCol = null;
+            let ccSortDir = 'asc';
+
+            $(document).on('click', '.cc-sortable', function() {
+                const col = $(this).data('col');
+                if (ccSortCol === col) {
+                    ccSortDir = ccSortDir === 'asc' ? 'desc' : 'asc';
+                } else {
+                    ccSortCol = col;
+                    ccSortDir = 'asc';
+                }
+
+                // Update header icons
+                $('.cc-sortable').removeClass('cc-sort-asc cc-sort-desc');
+                $(this).addClass(ccSortDir === 'asc' ? 'cc-sort-asc' : 'cc-sort-desc');
+
+                ccSearchResults.sort(function(a, b) {
+                    const av = (a[col] || '').toString().toLowerCase();
+                    const bv = (b[col] || '').toString().toLowerCase();
+                    return ccSortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+                });
+
+                ccCurrentPage = 1;
+                renderSearchPage();
+            });
+
+            // ── Update renderSearchPage to render 8 columns (replace existing function) ──
+            // Patch: override buildChargeRow to use new 9-column structure (no service/activity/party)
+            function buildChargeRow(r, i, type) {
+                return `
+        <tr data-cc-row="${i}">
+            <td class="text-center">
+                <input type="checkbox" class="cc-charge-check" data-type="${type}" data-index="${i}">
+            </td>
+            <td style="font-size:0.8rem;">${r.chargeCode || ''}</td>
+            <td style="font-size:0.8rem; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
+                title="${r.chargeDesp || ''}">${r.chargeDesp || ''}</td>
+            <td class="text-center" style="font-size:0.8rem;">${r.quantity || 0}</td>
+            <td style="font-size:0.8rem;">${r.basedOn || ''}</td>
+            <td style="font-size:0.8rem;">${r.uomCode || ''}</td>
+            <td style="font-size:0.8rem; text-align:right;">${parseFloat(r.rate || 0).toFixed(2)}</td>
+            <td style="font-size:0.8rem;">${r.chgCurr || ''}</td>
+            <td style="font-size:0.8rem; text-align:right;">${parseFloat(r.amtInChgCurr || 0).toFixed(2)}</td>
+        </tr>
+    `;
+            }
 
             // ── Helpers ───────────────────────────────────────────────────────────────
             function resetCopyChargesModal() {
