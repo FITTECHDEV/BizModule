@@ -1332,11 +1332,21 @@
                                     data-index="${realIndex}" title="View">
                                     <i class="fas fa-eye"></i>
                                 </button>
-                                ${n.status !== 'Submitted' ? `
-                                                                                <button class="btn btn-xs btn-warning btn-edit-note"
-                                                                                    data-index="${realIndex}" title="Edit">
-                                                                                    <i class="fas fa-edit"></i>
-                                                                                </button>` : ''}
+${n.status === 'In Progress' ? `
+                <button class="btn btn-xs btn-warning mr-1 btn-edit-note"
+                    data-index="${realIndex}" title="Edit">
+                    <i class="fas fa-edit"></i>
+                </button>` : ''}
+${n.status === 'Submitted' ? `
+                <button class="btn btn-xs btn-secondary mr-1 btn-mark-failed"
+                    data-index="${realIndex}" title="Mark as Failed">
+                    <i class="fas fa-times"></i>
+                </button>` : ''}
+${n.status === 'Failed' ? `
+                <button class="btn btn-xs btn-danger btn-retry-note"
+                    data-index="${realIndex}" title="Retry Submit">
+                    <i class="fas fa-redo mr-1"></i> Retry
+                </button>` : ''}
                             </td>
                         </tr>`);
                 });
@@ -1428,6 +1438,48 @@
                 $('#pageHeaderForm').show();
                 $('#dashboardView').hide();
                 $('#formView').show();
+            });
+
+            $(document).on('click', '.btn-retry-note', function() {
+                const i = parseInt($(this).data('index'));
+                const n = weightNotes[i];
+
+                // Reset status to In Progress so user can review and re-submit
+                weightNotes[i].status = 'In Progress';
+                persistNotes();
+
+                // Open form pre-populated — same as edit
+                editingIndex = i;
+                currentWNNo = n.wnNo;
+                detailRows = [...n.details];
+
+                resetSummaryForm();
+                $('#displayEquipType').val(n.equipType || '—');
+                $('#displayEquipNo').val(n.equipNo || '—');
+                $('#displayRemark').val(n.remark || '—');
+                renderDetailGrid();
+                recalcSummaryTotals();
+
+                $('#formJobNoLabel').text(currentWNNo);
+                $('#pageHeaderDashboard').hide();
+                $('#pageHeaderForm').show();
+                $('#dashboardView').hide();
+                $('#formView').show();
+
+                toastr.warning('Note reopened for retry. Review and re-submit.');
+            });
+
+            // Mark Submitted → Failed
+            $(document).on('click', '.btn-mark-failed', function() {
+                const i = parseInt($(this).data('index'));
+                const wnNo = weightNotes[i].wnNo;
+
+                if (!confirm(`Mark "${wnNo}" as Failed? This will allow it to be retried.`)) return;
+
+                weightNotes[i].status = 'Failed';
+                persistNotes();
+                refreshDashboardTable();
+                toastr.error(`${wnNo} marked as Failed.`);
             });
 
             // ================================================================
