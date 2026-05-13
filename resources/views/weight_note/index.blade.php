@@ -246,6 +246,9 @@
                 <button class="btn btn-success btn-sm" id="btnSaveSubmit" type="button">
                     <i class="fas fa-paper-plane mr-1"></i> Save & Submit
                 </button>
+                <button class="btn btn-danger btn-sm" id="btnDownloadPDF" type="button">
+                    <i class="fas fa-file-pdf mr-1"></i> Download PDF
+                </button>
             </div>
         </div>
 
@@ -708,6 +711,9 @@
 @stop
 
 @section('js')
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+
     <script>
         $(document).ready(function() {
 
@@ -1372,20 +1378,20 @@
                                     <i class="fas fa-eye"></i>
                                 </button>
                                         ${n.status === 'In Progress' ? `
-                                        <button class="btn btn-xs btn-warning mr-1 btn-edit-note"
-                                            data-index="${realIndex}" title="Edit">
-                                            <i class="fas fa-edit"></i>
-                                        </button>` : ''}
+                                                        <button class="btn btn-xs btn-warning mr-1 btn-edit-note"
+                                                            data-index="${realIndex}" title="Edit">
+                                                            <i class="fas fa-edit"></i>
+                                                        </button>` : ''}
                                         ${n.status === 'Submitted' ? `
-                                        <button class="btn btn-xs btn-secondary mr-1 btn-mark-failed"
-                                            data-index="${realIndex}" title="Mark as Failed">
-                                            <i class="fas fa-times"></i>
-                                        </button>` : ''}
+                                                        <button class="btn btn-xs btn-secondary mr-1 btn-mark-failed"
+                                                            data-index="${realIndex}" title="Mark as Failed">
+                                                            <i class="fas fa-times"></i>
+                                                        </button>` : ''}
                                         ${n.status === 'Failed' ? `
-                                        <button class="btn btn-xs btn-danger btn-retry-note"
-                                            data-index="${realIndex}" title="Retry Submit">
-                                            <i class="fas fa-redo mr-1"></i> Retry
-                                        </button>` : ''}
+                                                        <button class="btn btn-xs btn-danger btn-retry-note"
+                                                            data-index="${realIndex}" title="Retry Submit">
+                                                            <i class="fas fa-redo mr-1"></i> Retry
+                                                        </button>` : ''}
                             </td>
                         </tr>`);
                 });
@@ -1557,11 +1563,409 @@
                 $('#fldNetWeightUnit, #fldGrossWeightUnit').val('KG');
             }
 
+            // ================================================================
+            // PDF GENERATION
+            // ================================================================
+            function generateWeightNotePDF() {
+                if (!detailRows.length) {
+                    toastr.error('Please add at least one detail row before downloading.');
+                    return;
+                }
+
+                const equipType = $('#displayEquipType').val().replace('—', '').trim() || '—';
+                const equipNo = $('#displayEquipNo').val().replace('—', '').trim() || '—';
+                const remark = $('#displayRemark').val().replace('—', '').trim() || '—';
+                const tare = $('#summaryTare').val() || '0.00';
+                const gross = $('#summaryGross').val() || '0.00';
+                const net = $('#summaryNet').val() || '0.00';
+                const printDate = new Date().toLocaleDateString('en-GB', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric'
+                });
+
+                // Brand color
+                const BRAND = '#4B49AC';
+
+                // Detail rows table body
+                const detailTableBody = detailRows.map(function(r, i) {
+                    return [{
+                            text: String(i + 1),
+                            alignment: 'center'
+                        },
+                        r.jobNo || '—',
+                        r.service || '—',
+                        r.clientName || '—',
+                        r.product || '—',
+                        {
+                            text: Number(r.tare).toFixed(2),
+                            alignment: 'right'
+                        },
+                        {
+                            text: Number(r.gross).toFixed(2),
+                            alignment: 'right'
+                        },
+                        {
+                            text: Number(r.net).toFixed(2),
+                            alignment: 'right'
+                        },
+                    ];
+                });
+
+                // Totals row
+                detailTableBody.push([{
+                        text: '',
+                        border: [false, false, false, false]
+                    },
+                    {
+                        text: '',
+                        border: [false, false, false, false]
+                    },
+                    {
+                        text: '',
+                        border: [false, false, false, false]
+                    },
+                    {
+                        text: '',
+                        border: [false, false, false, false]
+                    },
+                    {
+                        text: 'TOTALS',
+                        bold: true,
+                        alignment: 'right',
+                        border: [false, true, false, false]
+                    },
+                    {
+                        text: Number(tare).toFixed(2),
+                        bold: true,
+                        alignment: 'right',
+                        border: [false, true, false, false]
+                    },
+                    {
+                        text: Number(gross).toFixed(2),
+                        bold: true,
+                        alignment: 'right',
+                        border: [false, true, false, false]
+                    },
+                    {
+                        text: Number(net).toFixed(2),
+                        bold: true,
+                        alignment: 'right',
+                        fillColor: BRAND,
+                        color: '#ffffff',
+                        border: [false, true, false, false]
+                    },
+                ]);
+
+                const docDefinition = {
+                    pageSize: 'A4',
+                    pageMargins: [32, 32, 32, 40],
+
+                    footer: function(currentPage, pageCount) {
+                        return {
+                            margin: [32, 0],
+                            columns: [{
+                                    text: 'Generated by Weight Note System',
+                                    fontSize: 8,
+                                    color: '#aaa'
+                                },
+                                {
+                                    text: currentWNNo + '   |   Page ' + currentPage + ' of ' +
+                                        pageCount,
+                                    fontSize: 8,
+                                    color: '#aaa',
+                                    alignment: 'right'
+                                }
+                            ]
+                        };
+                    },
+
+                    content: [
+
+                        // ── HEADER ──
+                        {
+                            columns: [
+                                // Left — company placeholder
+                                {
+                                    stack: [{
+                                            text: 'YOUR COMPANY NAME',
+                                            fontSize: 16,
+                                            bold: true,
+                                            color: BRAND,
+                                        },
+                                        {
+                                            text: 'Weighbridge & Logistics Division',
+                                            fontSize: 9,
+                                            color: '#888',
+                                            margin: [0, 2, 0, 0]
+                                        },
+                                        {
+                                            text: 'Nairobi, Kenya',
+                                            fontSize: 9,
+                                            color: '#888'
+                                        },
+                                    ],
+                                    width: '*'
+                                },
+                                // Right — WN number block
+                                {
+                                    stack: [{
+                                            text: 'WEIGHT NOTE',
+                                            fontSize: 18,
+                                            bold: true,
+                                            color: '#fff',
+                                            alignment: 'center',
+                                            fillColor: BRAND,
+                                            margin: [0, 0, 0, 4]
+                                        },
+                                        {
+                                            columns: [{
+                                                    text: 'WN No:',
+                                                    fontSize: 8,
+                                                    color: '#888',
+                                                    width: 50
+                                                },
+                                                {
+                                                    text: currentWNNo,
+                                                    fontSize: 8,
+                                                    bold: true,
+                                                    width: '*'
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            columns: [{
+                                                    text: 'Date:',
+                                                    fontSize: 8,
+                                                    color: '#888',
+                                                    width: 50
+                                                },
+                                                {
+                                                    text: printDate,
+                                                    fontSize: 8,
+                                                    bold: true,
+                                                    width: '*'
+                                                }
+                                            ]
+                                        },
+                                    ],
+                                    width: 200,
+                                    alignment: 'right'
+                                }
+                            ],
+                            margin: [0, 0, 0, 16]
+                        },
+
+                        // Divider
+                        {
+                            canvas: [{
+                                type: 'line',
+                                x1: 0,
+                                y1: 0,
+                                x2: 531,
+                                y2: 0,
+                                lineWidth: 2,
+                                lineColor: BRAND
+                            }],
+                            margin: [0, 0, 0, 12]
+                        },
+
+                        // ── EQUIPMENT SUMMARY ──
+                        {
+                            text: 'EQUIPMENT SUMMARY',
+                            fontSize: 9,
+                            bold: true,
+                            color: BRAND,
+                            letterSpacing: 1,
+                            margin: [0, 0, 0, 6]
+                        },
+                        {
+                            table: {
+                                widths: ['*', '*', '*'],
+                                body: [
+                                    [{
+                                            text: 'Equipment Type',
+                                            style: 'tableHeader'
+                                        },
+                                        {
+                                            text: 'Equipment No',
+                                            style: 'tableHeader'
+                                        },
+                                        {
+                                            text: 'Remark',
+                                            style: 'tableHeader'
+                                        },
+                                    ],
+                                    [
+                                        equipType,
+                                        equipNo,
+                                        remark,
+                                    ]
+                                ]
+                            },
+                            layout: {
+                                fillColor: function(rowIndex) {
+                                    return rowIndex === 0 ? '#EDEDF9' : null;
+                                },
+                                hLineColor: function() {
+                                    return '#d0cff0';
+                                },
+                                vLineColor: function() {
+                                    return '#d0cff0';
+                                },
+                            },
+                            margin: [0, 0, 0, 4]
+                        },
+                        {
+                            table: {
+                                widths: ['*', '*', '*'],
+                                body: [
+                                    [{
+                                            text: 'Tare Weight (kg)',
+                                            style: 'tableHeader'
+                                        },
+                                        {
+                                            text: 'Gross Weight (kg)',
+                                            style: 'tableHeader'
+                                        },
+                                        {
+                                            text: 'Net Weight (kg)',
+                                            style: 'tableHeader'
+                                        },
+                                    ],
+                                    [{
+                                            text: Number(tare).toFixed(2),
+                                            alignment: 'right'
+                                        },
+                                        {
+                                            text: Number(gross).toFixed(2),
+                                            alignment: 'right'
+                                        },
+                                        {
+                                            text: Number(net).toFixed(2),
+                                            alignment: 'right',
+                                            bold: true,
+                                            color: '#fff',
+                                            fillColor: BRAND
+                                        },
+                                    ]
+                                ]
+                            },
+                            layout: {
+                                fillColor: function(rowIndex) {
+                                    return rowIndex === 0 ? '#EDEDF9' : null;
+                                },
+                                hLineColor: function() {
+                                    return '#d0cff0';
+                                },
+                                vLineColor: function() {
+                                    return '#d0cff0';
+                                },
+                            },
+                            margin: [0, 0, 0, 16]
+                        },
+
+                        // ── CARGO DETAILS ──
+                        {
+                            text: 'CARGO DETAILS',
+                            fontSize: 9,
+                            bold: true,
+                            color: BRAND,
+                            letterSpacing: 1,
+                            margin: [0, 0, 0, 6]
+                        },
+                        {
+                            table: {
+                                headerRows: 1,
+                                widths: [16, 70, 55, 70, 65, 45, 45, 45],
+                                body: [
+                                    // Header row
+                                    [{
+                                            text: '#',
+                                            style: 'tableHeader',
+                                            alignment: 'center'
+                                        },
+                                        {
+                                            text: 'Job No',
+                                            style: 'tableHeader'
+                                        },
+                                        {
+                                            text: 'Service',
+                                            style: 'tableHeader'
+                                        },
+                                        {
+                                            text: 'Client',
+                                            style: 'tableHeader'
+                                        },
+                                        {
+                                            text: 'Product',
+                                            style: 'tableHeader'
+                                        },
+                                        {
+                                            text: 'Tare',
+                                            style: 'tableHeader',
+                                            alignment: 'right'
+                                        },
+                                        {
+                                            text: 'Gross Wt.',
+                                            style: 'tableHeader',
+                                            alignment: 'right'
+                                        },
+                                        {
+                                            text: 'Net Wt.',
+                                            style: 'tableHeader',
+                                            alignment: 'right'
+                                        },
+                                    ],
+                                    // Data + totals rows
+                                    ...detailTableBody
+                                ]
+                            },
+                            layout: {
+                                fillColor: function(rowIndex) {
+                                    if (rowIndex === 0) return '#EDEDF9';
+                                    if (rowIndex % 2 === 0) return '#f9f9ff';
+                                    return null;
+                                },
+                                hLineColor: function() {
+                                    return '#d0cff0';
+                                },
+                                vLineColor: function() {
+                                    return '#d0cff0';
+                                },
+                            },
+                        },
+
+                    ],
+
+                    styles: {
+                        tableHeader: {
+                            bold: true,
+                            fontSize: 8,
+                            color: '#4B49AC',
+                            fillColor: '#EDEDF9'
+                        }
+                    },
+
+                    defaultStyle: {
+                        fontSize: 9,
+                        color: '#333'
+                    }
+                };
+
+                pdfMake.createPdf(docDefinition).download(currentWNNo + '_WeightNote.pdf');
+                toastr.success('PDF downloaded: ' + currentWNNo + '_WeightNote.pdf');
+            }
+
             function generateWNNo() {
                 const yy = String(new Date().getFullYear()).slice(-2);
                 const seq = String(weightNotes.length + 1).padStart(5, '0');
                 return `KE-WN-${yy}-${seq}`;
             }
+
+            $('#btnDownloadPDF').on('click', function() {
+                generateWeightNotePDF();
+            });
 
             // ================================================================
             // INIT
