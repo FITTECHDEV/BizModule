@@ -5693,6 +5693,7 @@ class QuotationController extends Controller
                 'InCoTerm' => $incoterm,
                 'PlaceOfReceipt' => $por,
                 'PlaceOfDelivery' => $pod,
+                'Equipment'          => $equipment ? [$equipment] : [],
                 'QuoteNo' => $quoteNo,
                 'Status' => 'Total',
             ],
@@ -6055,6 +6056,176 @@ class QuotationController extends Controller
                 [
                     'success' => false,
                     'message' => 'Failed to load charge codes: ' . $e->getMessage(),
+                ],
+                500,
+            );
+        }
+    }
+
+    /**
+     * Execute sp_Quote_Quotation_Request
+     * Copies a quotation to a requested office, generating a new quote number.
+     *
+     * SP inputs:  @QuotationID, @RequestedOfficeCode, @SubmittedBy
+     * SP outputs: @Status (varchar 25), @Remark (varchar 200), @QuoteNo (varchar 50)
+     */
+    public function requestOfficeQuotation(Request $request): JsonResponse
+    {
+        $quotationId = $request->input('quotation_id');
+        $officeCode = trim((string) $request->input('requested_office_code', ''));
+        $submittedBy = Auth::user()->username ?? 'system';
+
+        // ── Input validation ────────────────────────────────────────────────────
+        if (empty($quotationId)) {
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => 'Quotation ID is required.',
+                    'data' => null,
+                    'error' => ['source' => 'API', 'code' => 'MISSING_QUOTATION_ID', 'details' => ''],
+                ],
+                422,
+            );
+        }
+
+        if (empty($officeCode)) {
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => 'Requested Office Code is required.',
+                    'data' => null,
+                    'error' => ['source' => 'API', 'code' => 'MISSING_OFFICE_CODE', 'details' => ''],
+                ],
+                422,
+            );
+        }
+
+        // ── DB call ──────────────────────────────────────────────────────────────
+        try {
+            \Log::info('sp_Quote_Quotation_Request INPUT', [
+                'quotation_id' => $quotationId,
+                'requested_office_code' => $officeCode,
+                'submitted_by' => $submittedBy,
+            ]);
+
+            $result = DB::select(
+                "
+            DECLARE
+                @Status  VARCHAR(25),
+                @Remark  VARCHAR(200),
+                @QuoteNo VARCHAR(50);
+
+            EXEC sp_Quote_Quotation_Request
+                @QuotationID          = ?,
+                @RequestedOfficeCode  = ?,
+                @SubmittedBy          = ?,
+                @Status               = @Status  OUTPUT,
+                @Remark               = @Remark  OUTPUT,
+                @QuoteNo              = @QuoteNo OUTPUT;
+
+            SELECT
+                @Status  AS [Status],
+                @Remark  AS [Remark],
+                @QuoteNo AS [QuoteNo];
+        ",
+                [$quotationId, $officeCode, $submittedBy],
+            );
+
+            $row = $result[0] ?? null;
+            $status = $row->Status ?? 'Failed';
+            $remark = $row->Remark ?? 'No response from stored procedure.';
+            $quoteNo = $row->QuoteNo ?? '';
+
+            \Log::info('sp_Quote_Quotation_Request OUTPUT', [
+                'status' => $status,
+                'remark' => $remark,
+                'quote_no' => $quoteNo,
+            ]);
+
+            $success = strtolower(trim($status)) === 'success';
+
+            return response()->json([
+                'success' => $success,
+                'message' => $remark,
+                'data' => $success ? ['quote_no' => $quoteNo] : null,
+                'error' => $success
+                    ? null
+                    : [
+                        'source' => 'DB',
+                        'code' => 'SP_FAILED',
+                        'details' => $remark,
+                    ],
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error('sp_Quote_Quotation_Request EXCEPTION', [
+                'message' => $e->getMessage(),
+                'quotation_id' => $quotationId,
+                'office_code' => $officeCode,
+            ]);
+
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => 'An error occurred while requesting the office quotation.',
+                    'data' => null,
+                    'error' => ['source' => 'DB', 'code' => 'EXCEPTION', 'details' => $e->getMessage()],
+                ],
+                500,
+            );
+        }
+    }
+
+    public function getRequestOfficeHistory(Request $request): JsonResponse
+    {
+        $quotationId = $request->input('quotation_id');
+
+        if (empty($quotationId)) {
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => 'Quotation ID is required.',
+                    'data' => null,
+                ],
+                422,
+            );
+        }
+
+        try {
+            $rows = DB::select(
+                "
+            SELECT
+                r.Id,
+                r.RequestedByOfficeCode,
+                r.RequestedByQuoteNo,
+                r.RequestedToCode,
+                r.RequestedToQuoteNo,
+                r.CreatedBy,
+                r.CreatedOn
+            FROM Quote_Quotation_RequestedQuote r WITH (NOLOCK)
+            WHERE r.QuotationInfoID = ?
+              AND r.IsActive  = 1
+              AND r.IsDeleted = 0
+            ORDER BY r.CreatedOn ASC
+        ",
+                [$quotationId],
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'History loaded.',
+                'data' => $rows,
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error('getRequestOfficeHistory EXCEPTION', [
+                'message' => $e->getMessage(),
+                'quotation_id' => $quotationId,
+            ]);
+
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => 'Failed to load request history.',
+                    'data' => null,
                 ],
                 500,
             );

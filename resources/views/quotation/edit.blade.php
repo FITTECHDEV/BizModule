@@ -432,6 +432,91 @@
                     </div>
                 </div>
 
+                {{-- ── REQUEST OFFICE QUOTATION CARD ───────────────────────────────────────── --}}
+                <div class="card card-primary">
+                    <div class="card-header d-flex justify-content-between align-items-center py-2">
+                        <h3 class="card-title mb-0">
+                            <i class="fas fa-paper-plane mr-2"></i>Request Office Quotation
+                        </h3>
+                        <div class="d-flex align-items-center ml-auto">
+                            <button type="button" class="btn btn-email-quote btn-sm mr-2" id="openRequestOfficeBtn">
+                                <i class="fas fa-plus mr-1"></i> Request Office
+                            </button>
+                            <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                <i class="fas fa-chevron-up"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-sm table-hover mb-0">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th>Office Name</th>
+                                        <th>Quote No</th>
+                                        <th>Request</th>
+                                        <th>Requested By</th>
+                                        <th>Requested On</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="requestOfficeHistoryTable">
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted">
+                                            <i class="fas fa-spinner fa-spin"></i> Loading...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- ── REQUEST OFFICE QUOTATION MODAL ─────────────────────────────────────── --}}
+                <div class="modal fade" id="requestOfficeModal" tabindex="-1" role="dialog" aria-hidden="true">
+                    <div class="modal-dialog" role="document">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h2 class="modal-title">
+                                    <i class="fas fa-paper-plane mr-2"></i>Request Office Quotation
+                                </h2>
+                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="form-group row">
+                                    <label class="col-sm-4 col-form-label">Current Quote No</label>
+                                    <div class="col-sm-8">
+                                        <input type="text" class="form-control form-control-sm"
+                                            value="{{ $quotation->QuoteNo ?? '' }}" readonly>
+                                    </div>
+                                </div>
+                                <div class="form-group row mb-0">
+                                    <label class="col-sm-4 col-form-label">
+                                        Requested Office Code <span class="text-danger">*</span>
+                                    </label>
+                                    <div class="col-sm-8">
+                                        <input type="text" class="form-control form-control-sm"
+                                            id="requestedOfficeCodeInput" maxlength="3" placeholder="e.g. TZA"
+                                            style="text-transform:uppercase;">
+                                        <small class="form-text text-muted">
+                                            3-character office code (e.g. KEN, TZA, UGA)
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-success" id="submitRequestOfficeBtn">
+                                    <i class="fas fa-paper-plane mr-1"></i> Submit Request
+                                </button>
+                                <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Integration Details -->
                 <div class="card card-primary">
                     <div class="card-header">
@@ -1041,8 +1126,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                MODALS
-                ============================================ -->
+                                    MODALS
+                                    ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1195,8 +1280,8 @@
                                             style="display:none;">
                                             <label for="revenueSecondaryBillToParty" class="form-label">
                                                 <span class="text-danger">*</span> Secondary Bill To Party</label>
-                                            <input type="text" class="form-control" id="revenueSecondaryBillToParty"
-                                                placeholder="Select Secondary Party">
+                                            <input type="text" class="form-control"
+                                                id="revenueSecondaryBillToParty" placeholder="Select Secondary Party">
                                             <input type="hidden" id="revenueSecondaryBillToPartyCode">
                                         </div>
                                     </div>
@@ -1215,8 +1300,8 @@
         </div>
 
         {{-- COST MODAL --}}
-        <div class="modal fade" id="addCostModal" tabindex="-1" role="dialog" aria-labelledby="addCostModalLabel"
-            aria-hidden="true">
+        <div class="modal fade" id="addCostModal" tabindex="-1" role="dialog"
+            aria-labelledby="addCostModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-lg" role="document">
                 <div class="modal-content">
                     <div class="modal-header">
@@ -2044,8 +2129,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -2488,9 +2573,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -3252,6 +3337,7 @@
         const quotationProcess = '{{ trim($quotation->process ?? '') }}';
         // Mirrors QuotationController::OFFICE_BASE_CURRENCY — single source of truth via PHP
         const OFFICE_BASE_CURRENCY = @json(\App\Http\Controllers\QuotationController::OFFICE_BASE_CURRENCY);
+        const CURRENT_OFFICE_CODE = '{{ trim($officeShortCode ?? '') }}';
 
 
         $(document).ready(function() {
@@ -4063,6 +4149,77 @@
                     }
                 });
             }
+
+
+            // ── REQUEST OFFICE HISTORY ────────────────────────────────────────────────
+            function loadRequestOfficeHistory() {
+                $.ajax({
+                    url: '{{ route('quotation.request-office-history') }}',
+                    type: 'GET',
+                    data: {
+                        quotation_id: quotationId
+                    },
+                    beforeSend: function() {
+                        $('#requestOfficeHistoryTable').html(
+                            '<tr><td colspan="5" class="text-center text-muted">' +
+                            '<i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>'
+                        );
+                    },
+                    success: function(response) {
+                        renderRequestOfficeHistory(response.data || []);
+                    },
+                    error: function() {
+                        $('#requestOfficeHistoryTable').html(
+                            '<tr><td colspan="5" class="text-center text-danger">Failed to load</td></tr>'
+                        );
+                    }
+                });
+            }
+
+            function renderRequestOfficeHistory(rows) {
+                const $tbody = $('#requestOfficeHistoryTable');
+                $tbody.empty();
+
+                if (!rows.length) {
+                    $tbody.html(
+                        '<tr><td colspan="5" class="text-center text-muted">No requests made yet</td></tr>'
+                    );
+                    return;
+                }
+
+                rows.forEach(function(row) {
+                    const isSend = (row.RequestedByOfficeCode || '').toUpperCase() ===
+                        CURRENT_OFFICE_CODE.toUpperCase();
+                    const requestType = isSend ? 'Send' : 'Received';
+                    const badgeClass = isSend ? 'badge-primary' : 'badge-success';
+
+                    // Office shown is always the OTHER party
+                    const officeName = isSend ?
+                        (row.RequestedToCode || '') :
+                        (row.RequestedByOfficeCode || '');
+
+                    const quoteNo = row.RequestedToQuoteNo || '';
+
+                    const sentOn = row.CreatedOn ?
+                        new Date(row.CreatedOn).toLocaleString() :
+                        '';
+
+                    $tbody.append(`
+            <tr>
+                <td>${officeName}</td>
+                <td>${quoteNo}</td>
+                <td>
+                    <span class="badge ${badgeClass}">${requestType}</span>
+                </td>
+                <td>${row.CreatedBy || ''}</td>
+                <td>${sentOn}</td>
+            </tr>
+        `);
+                });
+            }
+
+            // Load on page init
+            loadRequestOfficeHistory();
 
             // ============================================
             // MODAL TRIGGERS
@@ -6167,6 +6324,93 @@
             });
             loadEmailHistory();
 
+            // ============================================
+            // REQUEST OFFICE QUOTATION
+            // Consumes sp_Quote_Quotation_Request via POST /quotation/request-office
+            // SP inputs:  quotation_id, requested_office_code, submitted_by (server-side)
+            // SP outputs: Status, Remark, QuoteNo
+            // ============================================
+            $('#openRequestOfficeBtn').on('click', function() {
+                $('#requestedOfficeCodeInput').val('');
+                $('#requestOfficeModal').modal('show');
+            });
+
+            $('#requestOfficeModal .close, ' +
+                '#requestOfficeModal button[data-dismiss="modal"]').on('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                $('#requestOfficeModal').modal('hide');
+            });
+
+            $('#requestOfficeModal').on('hidden.bs.modal', function() {
+                $('#requestedOfficeCodeInput').val('');
+            });
+
+            $('#submitRequestOfficeBtn').on('click', function() {
+                const requestedOfficeCode = $('#requestedOfficeCodeInput').val().trim().toUpperCase();
+
+                if (!requestedOfficeCode) {
+                    showNotification('Requested Office Code is required.', 'error');
+                    $('#requestedOfficeCodeInput').focus();
+                    return;
+                }
+                if (requestedOfficeCode.length !== 3) {
+                    showNotification('Office Code must be exactly 3 characters.', 'error');
+                    $('#requestedOfficeCodeInput').focus();
+                    return;
+                }
+
+                console.log('requestOfficeQuotation INPUT', {
+                    quotation_id: quotationId,
+                    requested_office_code: requestedOfficeCode,
+                });
+
+                $.ajax({
+                    url: '{{ route('quotation.request-office') }}',
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        quotation_id: quotationId,
+                        requested_office_code: requestedOfficeCode,
+                    },
+                    beforeSend: function() {
+                        $('#submitRequestOfficeBtn')
+                            .prop('disabled', true)
+                            .html('<i class="fas fa-spinner fa-spin mr-1"></i> Submitting...');
+                    },
+                    success: function(response) {
+                        console.log('requestOfficeQuotation OUTPUT', response);
+
+                        if (response.success) {
+                            showNotification(
+                                'Office quotation requested. New quote: ' + response.data
+                                .quote_no,
+                                'success'
+                            );
+                            $('#requestOfficeModal').modal('hide');
+
+                            loadRequestOfficeHistory();
+                        } else {
+                            showNotification(response.message || 'Request failed.', 'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        const msg = xhr.responseJSON?.message ||
+                            'Server error. Please try again.';
+                        console.error('requestOfficeQuotation ERROR', {
+                            status: xhr.status,
+                            message: msg
+                        });
+                        showNotification(msg, 'error');
+                    },
+                    complete: function() {
+                        $('#submitRequestOfficeBtn')
+                            .prop('disabled', false)
+                            .html('<i class="fas fa-paper-plane mr-1"></i> Submit Request');
+                    },
+                });
+            });
+
 
             // ============================================
             // CREATE BOOKING MODAL
@@ -6223,7 +6467,9 @@
                         if (response.success && response.templates.length) {
                             response.templates.forEach(function(t) {
                                 $select.append(
-                                    `<option value="${t.Name}">${t.Name}</option>`
+                                    ` < option value = "${t.Name}" > $ {
+                                                t.Name
+                                            } < /option>`
                                 );
                             });
                         } else {
@@ -6260,7 +6506,7 @@
                             response.parties.forEach(function(p) {
                                 $select.append(
                                     `<option value="${p.PartyCode}"
-                                 data-id="${p.PartyID}">${p.PartyName}</option>`
+                                     data-id="${p.PartyID}">${p.PartyName}</option>`
                                 );
                             });
                         } else {
@@ -6297,7 +6543,7 @@
                             response.parties.forEach(function(p) {
                                 $select.append(
                                     `<option value="${p.PartyCode}"
-                                 data-id="${p.PartyID}">${p.PartyName}</option>`
+                                     data-id="${p.PartyID}">${p.PartyName}</option>`
                                 );
                             });
                         } else {
@@ -6696,9 +6942,9 @@
 
                             $sel.append(
                                 `<option value="${isoCode}"  // Store the code as the value
-                    data-name="${name}"
-                    data-code="${isoCode}"
-                    ${isSelected ? 'selected' : ''}>${name}</option>`
+                        data-name="${name}"
+                        data-code="${isoCode}"
+                        ${isSelected ? 'selected' : ''}>${name}</option>`
                             );
                         });
                     },
@@ -7861,7 +8107,7 @@
                 if (editable) {
                     $qtyCell.append(
                         `<input type="number" class="form-control form-control-sm container-qty-input"
-                value="${qty}" min="1" style="width:75px;">`
+                    value="${qty}" min="1" style="width:75px;">`
                     );
                 } else {
                     $qtyCell.text(qty);
@@ -7871,8 +8117,8 @@
                 if (editable) {
                     $actionCell.append(
                         `<button type="button" class="btn btn-danger btn-sm remove-container-row">
-                <i class="fas fa-times"></i>
-            </button>`
+                    <i class="fas fa-times"></i>
+                </button>`
                     );
                 }
 
@@ -8357,8 +8603,8 @@
                                             .length === 0) {
                                             $cSel.append(
                                                 `<option value="${res.country_id}" 
-                                    data-name="${res.country_name}" 
-                                    data-code="${res.country_code}">${res.country_name}</option>`
+                                        data-name="${res.country_name}" 
+                                        data-code="${res.country_code}">${res.country_name}</option>`
                                             );
                                         }
                                         $cSel.val(res.country_id);
@@ -8591,14 +8837,14 @@
                     type === 'warning' ? 'alert-warning' : 'alert-info';
 
                 $('body').append(`
-                    <div class="alert ${alertClass} alert-dismissible fade show notification-toast" role="alert"
-                        style="position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
-                        <strong>${message}</strong>
-                        <button type="button" class="close" data-dismiss="alert">
-                            <span>&times;</span>
-                        </button>
-                    </div>
-                `);
+                        <div class="alert ${alertClass} alert-dismissible fade show notification-toast" role="alert"
+                            style="position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
+                            <strong>${message}</strong>
+                            <button type="button" class="close" data-dismiss="alert">
+                                <span>&times;</span>
+                            </button>
+                        </div>
+                    `);
 
                 setTimeout(function() {
                     $('.notification-toast').fadeOut(function() {
@@ -8772,19 +9018,19 @@
                 page.forEach(function(row, i) {
                     const globalIdx = start + i;
                     $tbody.append(`
-        <tr style="cursor:pointer;" data-idx="${globalIdx}">
-            <td class="text-center">
-                <input type="radio" name="ccJobSearchRadio" class="cc-search-radio" value="${globalIdx}">
-            </td>
-            <td style="font-size:0.8rem;">${row.QuoteNo || ''}</td>
-            <td style="font-size:0.8rem;">${row.CompanyName || ''}</td>
-            <td style="font-size:0.8rem;">${row.Origin || ''}</td>
-            <td style="font-size:0.8rem;">${row.Destination || ''}</td>
-            <td style="font-size:0.8rem;">${row.POR || ''}</td>
-            <td style="font-size:0.8rem;">${row.POD || ''}</td>
-            <td style="font-size:0.8rem;">${row.IncoTerm || ''}</td>
-        </tr>
-    `);
+            <tr style="cursor:pointer;" data-idx="${globalIdx}">
+                <td class="text-center">
+                    <input type="radio" name="ccJobSearchRadio" class="cc-search-radio" value="${globalIdx}">
+                </td>
+                <td style="font-size:0.8rem;">${row.QuoteNo || ''}</td>
+                <td style="font-size:0.8rem;">${row.CompanyName || ''}</td>
+                <td style="font-size:0.8rem;">${row.Origin || ''}</td>
+                <td style="font-size:0.8rem;">${row.Destination || ''}</td>
+                <td style="font-size:0.8rem;">${row.POR || ''}</td>
+                <td style="font-size:0.8rem;">${row.POD || ''}</td>
+                <td style="font-size:0.8rem;">${row.IncoTerm || ''}</td>
+            </tr>
+        `);
                 });
 
                 $tbody.find('tr').on('click', function() {
@@ -9130,20 +9376,20 @@
             function buildChargeRow(r, i, type) {
                 const basedOnUOM = [r.basedOnCode, r.uomCode].filter(Boolean).join(' / ');
                 return `
-                <tr data-cc-row="${i}">
-                    <td class="text-center">
-                        <input type="checkbox" class="cc-charge-check" data-type="${type}" data-index="${i}">
-                    </td>
-                    <td style="font-size:0.8rem; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
-                        title="${r.chargeDesp || ''}">${r.chargeDesp || ''}</td>
-                    <td style="font-size:0.8rem; text-align:right;">${parseFloat(r.rate || 0).toFixed(2)}</td>
-                    <td class="text-center col-extra" style="font-size:0.8rem;">${r.quantity || 0}</td>
-                    <td class="col-extra" style="font-size:0.8rem;">${basedOnUOM}</td>
-                    <td class="col-extra" style="font-size:0.8rem;">${r.currency || ''}</td>
-                    <td style="font-size:0.8rem; text-align:right;">${parseFloat(r.amount || 0).toFixed(2)}</td>
-                    <td style="font-size:0.8rem; text-align:right;">${parseFloat(r.baseAmount || 0).toFixed(2)}</td>
-                </tr>
-            `;
+                    <tr data-cc-row="${i}">
+                        <td class="text-center">
+                            <input type="checkbox" class="cc-charge-check" data-type="${type}" data-index="${i}">
+                        </td>
+                        <td style="font-size:0.8rem; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
+                            title="${r.chargeDesp || ''}">${r.chargeDesp || ''}</td>
+                        <td style="font-size:0.8rem; text-align:right;">${parseFloat(r.rate || 0).toFixed(2)}</td>
+                        <td class="text-center col-extra" style="font-size:0.8rem;">${r.quantity || 0}</td>
+                        <td class="col-extra" style="font-size:0.8rem;">${basedOnUOM}</td>
+                        <td class="col-extra" style="font-size:0.8rem;">${r.currency || ''}</td>
+                        <td style="font-size:0.8rem; text-align:right;">${parseFloat(r.amount || 0).toFixed(2)}</td>
+                        <td style="font-size:0.8rem; text-align:right;">${parseFloat(r.baseAmount || 0).toFixed(2)}</td>
+                    </tr>
+                `;
             }
 
             // ── Helpers ───────────────────────────────────────────────────────────────
@@ -9187,7 +9433,7 @@
             $(document).on('click', '#ccRevenueChevron', function(e) {
                 e.stopPropagation();
                 const $body = $('#ccJobDetails').find(
-                '.cc-view-toggle-bar, .cc-table-wrap, .cc-pagination');
+                    '.cc-view-toggle-bar, .cc-table-wrap, .cc-pagination');
                 const $icon = $(this);
                 const isOpen = $icon.hasClass('fa-chevron-up');
                 $body.toggle(!isOpen);
@@ -9220,4 +9466,27 @@
                 e.preventDefault();
                 e.stopPropagation();
                 const isExpanded = $(this).data('expanded') || false;
-                const nowExp
+                const nowExpanded = !isExpanded;
+                toggleCcColumns($('#ccRevenueTable'), nowExpanded);
+                $(this).data('expanded', nowExpanded)
+                    .html(nowExpanded ?
+                        '<i class="fas fa-columns mr-1"></i> Show less' :
+                        '<i class="fas fa-columns mr-1"></i> Show more');
+                syncCcModalExpansion();
+            });
+
+            $(document).on('click', '#ccCostShowMore', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const isExpanded = $(this).data('expanded') || false;
+                const nowExpanded = !isExpanded;
+                toggleCcColumns($('#ccCostTable'), nowExpanded);
+                $(this).data('expanded', nowExpanded)
+                    .html(nowExpanded ?
+                        '<i class="fas fa-columns mr-1"></i> Show less' :
+                        '<i class="fas fa-columns mr-1"></i> Show more');
+                syncCcModalExpansion();
+            });
+        }); // end document.ready
+    </script>
+@stop

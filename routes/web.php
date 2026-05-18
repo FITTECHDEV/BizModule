@@ -1579,6 +1579,16 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
         'copyChargesBulk',
     ])->name('quotation.copy-charges.bulk');
 
+    Route::post('/quotation/request-office', [
+        App\Http\Controllers\QuotationController::class,
+        'requestOfficeQuotation',
+    ])->name('quotation.request-office');
+
+    Route::get('/quotation/request-office-history', [
+        App\Http\Controllers\QuotationController::class,
+        'getRequestOfficeHistory',
+    ])->name('quotation.request-office-history');
+
     // ============================================
     // WILDCARD ROUTES — must be last
     // {id} in a GET route matches ANY path segment.
