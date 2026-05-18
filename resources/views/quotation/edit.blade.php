@@ -1041,8 +1041,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-            MODALS
-            ============================================ -->
+                MODALS
+                ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1787,9 +1787,9 @@
                                                     title="Select All"></th>
                                             <th class="cc-col-desc">Charge Description</th>
                                             <th class="cc-col-rate">Rate</th>
-                                            <th class="cc-col-qty">Quantity</th>
-                                            <th class="cc-col-basedon">Based On & UOM</th>
-                                            <th class="cc-col-curr">Currency</th>
+                                            <th class="cc-col-qty col-extra">Quantity</th>
+                                            <th class="cc-col-basedon col-extra">Based On & UOM</th>
+                                            <th class="cc-col-curr col-extra">Currency</th>
                                             <th class="cc-col-amt">Amount</th>
                                             <th class="cc-col-amt">Base Amount</th>
                                         </tr>
@@ -2044,8 +2044,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -2488,9 +2488,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -8970,164 +8970,166 @@
                 toggleCcColumns($table, isExpanded);
             }
 
-        function updateTablePagination(tbodyId) {
-            const s = ccTableState[tbodyId];
-            const total = s.rows.length;
-            const totalPages = Math.max(1, Math.ceil(total / s.pageSize));
-            const start = (s.page - 1) * s.pageSize;
-            const end = Math.min(start + s.pageSize, total);
+            function updateTablePagination(tbodyId) {
+                const s = ccTableState[tbodyId];
+                const total = s.rows.length;
+                const totalPages = Math.max(1, Math.ceil(total / s.pageSize));
+                const start = (s.page - 1) * s.pageSize;
+                const end = Math.min(start + s.pageSize, total);
 
-            $(`.cc-tbl-page-input[data-tbody="${tbodyId}"]`).val(s.page);
-            $(`.cc-tbl-total-pages[data-tbody="${tbodyId}"]`).text(totalPages);
-            $(`.cc-tbl-view-range[data-tbody="${tbodyId}"]`).text(
-                total === 0 ? 'View 0 - 0 of 0' : `View ${start + 1} - ${end} of ${total}`
-            );
-        }
-
-        function updateSaveBtn() {
-            const any = $('#ccRevenueBody .cc-charge-check:checked, #ccCostBody .cc-charge-check:checked')
-                .length >
-                0;
-            $('#ccSaveBtn').prop('disabled', !any);
-        }
-
-        // ── Save selected charges → reload page ───────────────────────────────────
-        $('#ccSaveBtn').on('click', function() {
-            if (!ccSelectedJobRow || !ccSelectedJobRow.id) {
-                showNotification('No source quotation selected', 'error');
-                return;
+                $(`.cc-tbl-page-input[data-tbody="${tbodyId}"]`).val(s.page);
+                $(`.cc-tbl-total-pages[data-tbody="${tbodyId}"]`).text(totalPages);
+                $(`.cc-tbl-view-range[data-tbody="${tbodyId}"]`).text(
+                    total === 0 ? 'View 0 - 0 of 0' : `View ${start + 1} - ${end} of ${total}`
+                );
             }
 
-            const selectedIds = [];
-            $('#ccRevenueBody .cc-charge-check:checked').each(function() {
-                const row = ccTableState.ccRevenueBody.rows[$(this).data('index')];
-                if (row && row.id) selectedIds.push(row.id);
-            });
-            $('#ccCostBody .cc-charge-check:checked').each(function() {
-                const row = ccTableState.ccCostBody.rows[$(this).data('index')];
-                if (row && row.id) selectedIds.push(row.id);
-            });
-
-            if (!selectedIds.length) {
-                showNotification('No charges selected', 'warning');
-                return;
+            function updateSaveBtn() {
+                const any = $('#ccRevenueBody .cc-charge-check:checked, #ccCostBody .cc-charge-check:checked')
+                    .length >
+                    0;
+                $('#ccSaveBtn').prop('disabled', !any);
             }
 
-            const $btn = $(this).prop('disabled', true).text('Copying...');
-
-            $.ajax({
-                url: '{{ route('quotation.copy-charges.bulk') }}',
-                type: 'POST',
-                data: {
-                    _token: '{{ csrf_token() }}',
-                    source_quotation_id: ccSelectedJobRow.id,
-                    target_quotation_id: quotationId,
-                    charge_ids: selectedIds,
-                },
-                success: function(res) {
-                    if (res.success) {
-                        showNotification(res.message, 'success');
-                        $('#copyChargesModal').modal('hide');
-                        window.location.reload();
-                    } else {
-                        showNotification(res.message, 'error');
-                    }
-                },
-                error: function(xhr) {
-                    showNotification(xhr.responseJSON?.message || 'Copy failed', 'error');
-                },
-                complete: function() {
-                    $btn.prop('disabled', false).text('Save');
+            // ── Save selected charges → reload page ───────────────────────────────────
+            $('#ccSaveBtn').on('click', function() {
+                if (!ccSelectedJobRow || !ccSelectedJobRow.id) {
+                    showNotification('No source quotation selected', 'error');
+                    return;
                 }
+
+                const selectedIds = [];
+                $('#ccRevenueBody .cc-charge-check:checked').each(function() {
+                    const row = ccTableState.ccRevenueBody.rows[$(this).data('index')];
+                    if (row && row.id) selectedIds.push(row.id);
+                });
+                $('#ccCostBody .cc-charge-check:checked').each(function() {
+                    const row = ccTableState.ccCostBody.rows[$(this).data('index')];
+                    if (row && row.id) selectedIds.push(row.id);
+                });
+
+                if (!selectedIds.length) {
+                    showNotification('No charges selected', 'warning');
+                    return;
+                }
+
+                const $btn = $(this).prop('disabled', true).text('Copying...');
+
+                $.ajax({
+                    url: '{{ route('quotation.copy-charges.bulk') }}',
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        source_quotation_id: ccSelectedJobRow.id,
+                        target_quotation_id: quotationId,
+                        charge_ids: selectedIds,
+                    },
+                    success: function(res) {
+                        if (res.success) {
+                            showNotification(res.message, 'success');
+                            $('#copyChargesModal').modal('hide');
+                            window.location.reload();
+                        } else {
+                            showNotification(res.message, 'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        showNotification(xhr.responseJSON?.message || 'Copy failed', 'error');
+                    },
+                    complete: function() {
+                        $btn.prop('disabled', false).text('Save');
+                    }
+                });
             });
-        });
 
-        // ── Copy Charges modal close ──────────────────────────────────────────────
-        $('#copyChargesModal').on('hidden.bs.modal', resetCopyChargesModal); $('#ccCancelBtn').on('click', function(
-            e) {
-            e.preventDefault();
-            $('#copyChargesModal').modal('hide');
-        });
-
-        // Close button (X) in modal header
-        $(document).on('click', '.cc-modal-close', function() {
-            const $modal = $(this).closest('.modal');
-            if ($modal.length) {
-                $modal.modal('hide');
-            } else {
+            // ── Copy Charges modal close ──────────────────────────────────────────────
+            $('#copyChargesModal').on('hidden.bs.modal', resetCopyChargesModal);
+            $('#ccCancelBtn').on('click', function(
+                e) {
+                e.preventDefault();
                 $('#copyChargesModal').modal('hide');
-                $('#ccSearchModal').modal('hide');
-            }
-        });
+            });
 
-        // ── Job No direct entry — load charges on Enter or blur ───────────────────
-        $('#ccJobNo').on('keypress', function(e) {
-            if (e.which === 13) triggerJobNoLoad();
-        }); $('#ccJobNo').on('blur', function() {
-            if ($(this).val().trim()) triggerJobNoLoad();
-        });
-
-        function triggerJobNoLoad() {
-            const jobNo = $('#ccJobNo').val().trim();
-            if (!jobNo) return;
-
-            // Search by quote number to get the quotation ID, then load charges
-            $.ajax({
-                url: CC_SEARCH_URL,
-                type: 'GET',
-                data: {
-                    office_code: officeCode,
-                    quote_no: jobNo
-                },
-                success: function(response) {
-                    if (response.success && response.data && response.data.length > 0) {
-                        // Exact match first, fallback to first result
-                        const match = response.data.find(r => r.QuoteNo === jobNo) || response.data[
-                            0];
-                        ccSelectedJobRow = match;
-                        loadJobCharges(match);
-                    } else {
-                        showNotification('No quote found for: ' + jobNo, 'warning');
-                    }
-                },
-                error: function() {
-                    showNotification('Failed to search for Job No', 'error');
+            // Close button (X) in modal header
+            $(document).on('click', '.cc-modal-close', function() {
+                const $modal = $(this).closest('.modal');
+                if ($modal.length) {
+                    $modal.modal('hide');
+                } else {
+                    $('#copyChargesModal').modal('hide');
+                    $('#ccSearchModal').modal('hide');
                 }
             });
-        }
 
-        // ── Search results sorting ────────────────────────────────────────────────
-        let ccSortCol = null;
-        let ccSortDir = 'asc';
-
-        $(document).on('click', '.cc-sortable', function() {
-            const col = $(this).data('col');
-            if (ccSortCol === col) {
-                ccSortDir = ccSortDir === 'asc' ? 'desc' : 'asc';
-            } else {
-                ccSortCol = col;
-                ccSortDir = 'asc';
-            }
-
-            // Update header icons
-            $('.cc-sortable').removeClass('cc-sort-asc cc-sort-desc');
-            $(this).addClass(ccSortDir === 'asc' ? 'cc-sort-asc' : 'cc-sort-desc');
-
-            ccSearchResults.sort(function(a, b) {
-                const av = (a[col] || '').toString().toLowerCase();
-                const bv = (b[col] || '').toString().toLowerCase();
-                return ccSortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+            // ── Job No direct entry — load charges on Enter or blur ───────────────────
+            $('#ccJobNo').on('keypress', function(e) {
+                if (e.which === 13) triggerJobNoLoad();
+            });
+            $('#ccJobNo').on('blur', function() {
+                if ($(this).val().trim()) triggerJobNoLoad();
             });
 
-            ccCurrentPage = 1;
-            renderSearchPage();
-        });
+            function triggerJobNoLoad() {
+                const jobNo = $('#ccJobNo').val().trim();
+                if (!jobNo) return;
 
-        // ── Update renderSearchPage to render 8 columns (replace existing function) ──
-        // Patch: override buildChargeRow to use new 9-column structure (no service/activity/party)
-        function buildChargeRow(r, i, type) {
-            const basedOnUOM = [r.basedOnCode, r.uomCode].filter(Boolean).join(' / ');
-            return `
+                // Search by quote number to get the quotation ID, then load charges
+                $.ajax({
+                    url: CC_SEARCH_URL,
+                    type: 'GET',
+                    data: {
+                        office_code: officeCode,
+                        quote_no: jobNo
+                    },
+                    success: function(response) {
+                        if (response.success && response.data && response.data.length > 0) {
+                            // Exact match first, fallback to first result
+                            const match = response.data.find(r => r.QuoteNo === jobNo) || response.data[
+                                0];
+                            ccSelectedJobRow = match;
+                            loadJobCharges(match);
+                        } else {
+                            showNotification('No quote found for: ' + jobNo, 'warning');
+                        }
+                    },
+                    error: function() {
+                        showNotification('Failed to search for Job No', 'error');
+                    }
+                });
+            }
+
+            // ── Search results sorting ────────────────────────────────────────────────
+            let ccSortCol = null;
+            let ccSortDir = 'asc';
+
+            $(document).on('click', '.cc-sortable', function() {
+                const col = $(this).data('col');
+                if (ccSortCol === col) {
+                    ccSortDir = ccSortDir === 'asc' ? 'desc' : 'asc';
+                } else {
+                    ccSortCol = col;
+                    ccSortDir = 'asc';
+                }
+
+                // Update header icons
+                $('.cc-sortable').removeClass('cc-sort-asc cc-sort-desc');
+                $(this).addClass(ccSortDir === 'asc' ? 'cc-sort-asc' : 'cc-sort-desc');
+
+                ccSearchResults.sort(function(a, b) {
+                    const av = (a[col] || '').toString().toLowerCase();
+                    const bv = (b[col] || '').toString().toLowerCase();
+                    return ccSortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+                });
+
+                ccCurrentPage = 1;
+                renderSearchPage();
+            });
+
+            // ── Update renderSearchPage to render 8 columns (replace existing function) ──
+            // Patch: override buildChargeRow to use new 9-column structure (no service/activity/party)
+            function buildChargeRow(r, i, type) {
+                const basedOnUOM = [r.basedOnCode, r.uomCode].filter(Boolean).join(' / ');
+                return `
                 <tr data-cc-row="${i}">
                     <td class="text-center">
                         <input type="checkbox" class="cc-charge-check" data-type="${type}" data-index="${i}">
@@ -9142,101 +9144,80 @@
                     <td style="font-size:0.8rem; text-align:right;">${parseFloat(r.baseAmount || 0).toFixed(2)}</td>
                 </tr>
             `;
-        }
+            }
 
-        // ── Helpers ───────────────────────────────────────────────────────────────
-        function resetCopyChargesModal() {
-            $('#copyChargesModal .cc-modal-dialog').removeClass('cc-expanded');
-            $('#ccJobNo').val('');
-            $('#ccJobDetails, #ccJobDetailsCost').hide();
-            $('#ccClientRow, #ccShipperRow, #ccConsigneeRow, #ccPolRow, #ccPodRow').hide();
-            $('#ccClient, #ccShipper, #ccConsignee, #ccPortOfLoading, #ccPortOfDischarge').text('');
-            const empty = '<tr><td colspan="8" class="cc-empty-msg">Enter a Job No to load charges</td></tr>';
-            $('#ccRevenueBody, #ccCostBody').html(empty);
-            $('#ccRevenueSummary').text('[ Total Record(s): 0 ]');
-            $('#ccCostSummary').text('[ Total Record(s): 0 ]');
-            $('#ccRevenueSelectAll, #ccCostSelectAll').prop('checked', false);
-            $('#ccSaveBtn').prop('disabled', true);
-            ccTableState.ccRevenueBody = {
-                rows: [],
-                page: 1,
-                pageSize: 10
-            };
-            ccTableState.ccCostBody = {
-                rows: [],
-                page: 1,
-                pageSize: 10
-            };
-            updateTablePagination('ccRevenueBody');
-            updateTablePagination('ccCostBody');
-            ccSelectedJobRow = null;
-        }
+            // ── Helpers ───────────────────────────────────────────────────────────────
+            function resetCopyChargesModal() {
+                $('#copyChargesModal .cc-modal-dialog').removeClass('cc-expanded');
+                $('#ccJobNo').val('');
+                $('#ccJobDetails, #ccJobDetailsCost').hide();
+                $('#ccClientRow, #ccShipperRow, #ccConsigneeRow, #ccPolRow, #ccPodRow').hide();
+                $('#ccClient, #ccShipper, #ccConsignee, #ccPortOfLoading, #ccPortOfDischarge').text('');
+                const empty = '<tr><td colspan="8" class="cc-empty-msg">Enter a Job No to load charges</td></tr>';
+                $('#ccRevenueBody, #ccCostBody').html(empty);
+                $('#ccRevenueSummary').text('[ Total Record(s): 0 ]');
+                $('#ccCostSummary').text('[ Total Record(s): 0 ]');
+                $('#ccRevenueSelectAll, #ccCostSelectAll').prop('checked', false);
+                $('#ccSaveBtn').prop('disabled', true);
+                ccTableState.ccRevenueBody = {
+                    rows: [],
+                    page: 1,
+                    pageSize: 10
+                };
+                ccTableState.ccCostBody = {
+                    rows: [],
+                    page: 1,
+                    pageSize: 10
+                };
+                updateTablePagination('ccRevenueBody');
+                updateTablePagination('ccCostBody');
+                ccSelectedJobRow = null;
+            }
 
-        function resetSearchModal() {
-            $('#ccSearchField').val('');
-            $('#ccSearchValue').val('');
-            ccSearchResults = [];
-            ccCurrentPage = 1;
-            ccPageSize = parseInt($('#ccPageSize').val()) || 10;
-            renderSearchPage();
-        }
+            function resetSearchModal() {
+                $('#ccSearchField').val('');
+                $('#ccSearchValue').val('');
+                ccSearchResults = [];
+                ccCurrentPage = 1;
+                ccPageSize = parseInt($('#ccPageSize').val()) || 10;
+                renderSearchPage();
+            }
 
-        // Copy Charges — collapsible Revenue/Cost sections
-        $(document).on('click', '#ccRevenueChevron', function(e) {
-            e.stopPropagation();
-            const $body = $('#ccJobDetails').find('.cc-view-toggle-bar, .cc-table-wrap, .cc-pagination');
-            const $icon = $(this);
-            const isOpen = $icon.hasClass('fa-chevron-up');
-            $body.toggle(!isOpen);
-            $icon.toggleClass('fa-chevron-up', !isOpen).toggleClass('fa-chevron-down', isOpen);
-        });
+            // Copy Charges — collapsible Revenue/Cost sections
+            $(document).on('click', '#ccRevenueChevron', function(e) {
+                e.stopPropagation();
+                const $body = $('#ccJobDetails').find(
+                '.cc-view-toggle-bar, .cc-table-wrap, .cc-pagination');
+                const $icon = $(this);
+                const isOpen = $icon.hasClass('fa-chevron-up');
+                $body.toggle(!isOpen);
+                $icon.toggleClass('fa-chevron-up', !isOpen).toggleClass('fa-chevron-down', isOpen);
+            });
 
-        $(document).on('click', '#ccCostChevron', function(e) {
-            e.stopPropagation();
-            const $body = $('#ccJobDetailsCost').find('.cc-view-toggle-bar, .cc-table-wrap, .cc-pagination');
-            const $icon = $(this);
-            const isOpen = $icon.hasClass('fa-chevron-up');
-            $body.toggle(!isOpen);
-            $icon.toggleClass('fa-chevron-up', !isOpen).toggleClass('fa-chevron-down', isOpen);
-        });
+            $(document).on('click', '#ccCostChevron', function(e) {
+                e.stopPropagation();
+                const $body = $('#ccJobDetailsCost').find(
+                    '.cc-view-toggle-bar, .cc-table-wrap, .cc-pagination');
+                const $icon = $(this);
+                const isOpen = $icon.hasClass('fa-chevron-up');
+                $body.toggle(!isOpen);
+                $icon.toggleClass('fa-chevron-up', !isOpen).toggleClass('fa-chevron-down', isOpen);
+            });
 
-        // Show more/less — extra columns in cc tables
-        function syncCcModalExpansion() {
-            const revenueExpanded = $('#ccRevenueShowMore').data('expanded') || false;
-            const costExpanded = $('#ccCostShowMore').data('expanded') || false;
-            const shouldExpand = revenueExpanded || costExpanded;
-            $('#copyChargesModal .cc-modal-dialog').toggleClass('cc-expanded', shouldExpand);
-        }
+            // Show more/less — extra columns in cc tables
+            function syncCcModalExpansion() {
+                const revenueExpanded = $('#ccRevenueShowMore').data('expanded') || false;
+                const costExpanded = $('#ccCostShowMore').data('expanded') || false;
+                const shouldExpand = revenueExpanded || costExpanded;
+                $('#copyChargesModal .cc-modal-dialog').toggleClass('cc-expanded', shouldExpand);
+            }
 
-        function toggleCcColumns($table, show) {
-            $table.find('th.col-extra, td.col-extra').css('display', show ? 'table-cell' : 'none');
-        }
+            function toggleCcColumns($table, show) {
+                $table.find('th.col-extra, td.col-extra').css('display', show ? 'table-cell' : 'none');
+            }
 
-        $(document).on('click', '#ccRevenueShowMore', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            const isExpanded = $(this).data('expanded') || false;
-            const nowExpanded = !isExpanded;
-            toggleCcColumns($('#ccRevenueTable'), nowExpanded);
-            $(this).data('expanded', nowExpanded)
-                .html(nowExpanded ?
-                    '<i class="fas fa-columns mr-1"></i> Show less' :
-                    '<i class="fas fa-columns mr-1"></i> Show more');
-            syncCcModalExpansion();
-        });
-
-        $(document).on('click', '#ccCostShowMore', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            const isExpanded = $(this).data('expanded') || false;
-            const nowExpanded = !isExpanded;
-            toggleCcColumns($('#ccCostTable'), nowExpanded);
-            $(this).data('expanded', nowExpanded)
-                .html(nowExpanded ?
-                    '<i class="fas fa-columns mr-1"></i> Show less' :
-                    '<i class="fas fa-columns mr-1"></i> Show more');
-            syncCcModalExpansion();
-        });
-        }); // end document.ready
-    </script>
-@stop
+            $(document).on('click', '#ccRevenueShowMore', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const isExpanded = $(this).data('expanded') || false;
+                const nowExp
