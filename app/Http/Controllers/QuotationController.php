@@ -1896,6 +1896,17 @@ class QuotationController extends Controller
         }
     }
 
+    public function getOfficeList(): JsonResponse
+    {
+        $result = $this->resolveUserOfficesViaSP();
+        $offices = $result['offices'] ?? collect();
+
+        return response()->json([
+            'success' => true,
+            'offices' => $offices->values(),
+        ]);
+    }
+
     private function resolveAllowedOfficeCodesViaSP(): \Illuminate\Support\Collection
     {
         $resolved = $this->resolveUserOfficesViaSP();
@@ -5693,7 +5704,7 @@ class QuotationController extends Controller
                 'InCoTerm' => $incoterm,
                 'PlaceOfReceipt' => $por,
                 'PlaceOfDelivery' => $pod,
-                'Equipment'          => $equipment ? [$equipment] : [],
+                'Equipment' => $equipment ? [$equipment] : [],
                 'QuoteNo' => $quoteNo,
                 'Status' => 'Total',
             ],
@@ -6108,30 +6119,43 @@ class QuotationController extends Controller
                 'submitted_by' => $submittedBy,
             ]);
 
-            $result = DB::select(
-                "
-            DECLARE
-                @Status  VARCHAR(25),
-                @Remark  VARCHAR(200),
-                @QuoteNo VARCHAR(50);
+            $pdo = DB::connection()->getPdo();
+            $stmt = $pdo->prepare("
+        SET NOCOUNT ON;
+        DECLARE
+            @Status  VARCHAR(25),
+            @Remark  VARCHAR(200),
+            @QuoteNo VARCHAR(50);
 
-            EXEC sp_Quote_Quotation_Request
-                @QuotationID          = ?,
-                @RequestedOfficeCode  = ?,
-                @SubmittedBy          = ?,
-                @Status               = @Status  OUTPUT,
-                @Remark               = @Remark  OUTPUT,
-                @QuoteNo              = @QuoteNo OUTPUT;
+        EXEC sp_Quote_Quotation_Request
+            @QuotationID         = ?,
+            @RequestedOfficeCode = ?,
+            @SubmittedBy         = ?,
+            @Status              = @Status  OUTPUT,
+            @Remark              = @Remark  OUTPUT,
+            @QuoteNo             = @QuoteNo OUTPUT;
 
-            SELECT
-                @Status  AS [Status],
-                @Remark  AS [Remark],
-                @QuoteNo AS [QuoteNo];
-        ",
-                [$quotationId, $officeCode, $submittedBy],
-            );
+        SELECT
+            @Status  AS [Status],
+            @Remark  AS [Remark],
+            @QuoteNo AS [QuoteNo];
+    ");
+            $stmt->execute([$quotationId, $officeCode, $submittedBy]);
 
-            $row = $result[0] ?? null;
+            // Walk rowsets until we find the one with our output columns
+            $row = null;
+            do {
+                try {
+                    $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+                    if (!empty($rows) && isset($rows[0]->Status)) {
+                        $row = $rows[0];
+                        break;
+                    }
+                } catch (\PDOException $e) {
+                    continue;
+                }
+            } while ($stmt->nextRowset());
+
             $status = $row->Status ?? 'Failed';
             $remark = $row->Remark ?? 'No response from stored procedure.';
             $quoteNo = $row->QuoteNo ?? '';

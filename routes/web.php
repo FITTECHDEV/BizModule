@@ -1478,6 +1478,9 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
         'lookupEquipmentTypes',
     ])->name('quotation.lookup.equipmentTypes');
 
+    Route::get('/quotation/offices', [App\Http\Controllers\QuotationController::class, 'getOfficeList'])
+    ->name('quotation.offices');
+
     // ============================================
     // WRITE ACTIONS (POST)
     // POST routes are NOT affected by {id} GET wildcards,

@@ -455,13 +455,11 @@
                                         <th>Office Name</th>
                                         <th>Quote No</th>
                                         <th>Request</th>
-                                        <th>Requested By</th>
-                                        <th>Requested On</th>
                                     </tr>
                                 </thead>
                                 <tbody id="requestOfficeHistoryTable">
                                     <tr>
-                                        <td colspan="5" class="text-center text-muted">
+                                        <td colspan="3" class="text-center text-muted">
                                             <i class="fas fa-spinner fa-spin"></i> Loading...
                                         </td>
                                     </tr>
@@ -491,643 +489,636 @@
                                             value="{{ $quotation->QuoteNo ?? '' }}" readonly>
                                     </div>
                                 </div>
-                                <div class="form-group row mb-0">
+                                <<div class="form-group row mb-0">
                                     <label class="col-sm-4 col-form-label">
-                                        Requested Office Code <span class="text-danger">*</span>
+                                        Requested Office <span class="text-danger">*</span>
                                     </label>
                                     <div class="col-sm-8">
-                                        <input type="text" class="form-control form-control-sm"
-                                            id="requestedOfficeCodeInput" maxlength="3" placeholder="e.g. TZA"
-                                            style="text-transform:uppercase;">
-                                        <small class="form-text text-muted">
-                                            3-character office code (e.g. KEN, TZA, UGA)
+                                        <select class="form-control form-control-sm" id="requestedOfficeSelect">
+                                            <option value="">-- Select Office --</option>
+                                        </select>
+                                        <small class="form-text text-muted" id="requestedOfficeHelp"
+                                            style="display:none;">
+                                            <span class="text-danger">Failed to load offices.</span>
                                         </small>
                                     </div>
-                                </div>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-success" id="submitRequestOfficeBtn">
-                                    <i class="fas fa-paper-plane mr-1"></i> Submit Request
-                                </button>
-                                <button type="button" class="btn btn-secondary" data-dismiss="modal">
-                                    Cancel
-                                </button>
                             </div>
                         </div>
-                    </div>
-                </div>
-
-                <!-- Integration Details -->
-                <div class="card card-primary">
-                    <div class="card-header">
-                        <h3 class="card-title">Integration Details</h3>
-                        <div class="card-tools">
-                            <button type="button" class="btn btn-tool" data-card-widget="collapse">
-                                <i class="fas fa-chevron-up"></i>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-success" id="submitRequestOfficeBtn">
+                                <i class="fas fa-paper-plane mr-1"></i> Submit Request
+                            </button>
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                                Cancel
                             </button>
                         </div>
                     </div>
-                    <div class="card-body">
-                        <div class="form-group row">
-                            <label class="col-sm-5 col-form-label">Client Status</label>
-                            <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->ClientIntegration ?? '' }}" readonly>
-                            </div>
-                        </div>
-                        <div class="form-group row">
-                            <label class="col-sm-5 col-form-label">Booking No</label>
-                            <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->SCMBookingNo ?? '' }}" readonly>
-                            </div>
-                        </div>
-                        <div class="form-group row">
-                            <label class="col-sm-5 col-form-label">Booking Integration</label>
-                            <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->SCMINTStatus ?? '' }}" readonly>
-                            </div>
-                        </div>
-                        <div class="form-group row mb-0">
-                            <label class="col-sm-5 col-form-label">Booking XML</label>
-                            <div class="col-sm-7">
-                                @if ($quotation->SCMBookingXML)
-                                    <button type="button" class="btn btn-sm btn-info" id="viewXmlBtn">
-                                        <i class="fas fa-code"></i> View XML
-                                    </button>
-                                @else
-                                    <input type="text" class="form-control form-control-sm" value="" readonly>
-                                @endif
-                            </div>
-                        </div>
-                    </div>
                 </div>
-
             </div>
-            <!-- END LEFT COLUMN -->
 
-            <!-- RIGHT COLUMN -->
-            <div class="col-md-8">
+            <!-- Integration Details -->
+            <div class="card card-primary">
+                <div class="card-header">
+                    <h3 class="card-title">Integration Details</h3>
+                    <div class="card-tools">
+                        <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                            <i class="fas fa-chevron-up"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="form-group row">
+                        <label class="col-sm-5 col-form-label">Client Status</label>
+                        <div class="col-sm-7">
+                            <input type="text" class="form-control form-control-sm"
+                                value="{{ $quotation->ClientIntegration ?? '' }}" readonly>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-5 col-form-label">Booking No</label>
+                        <div class="col-sm-7">
+                            <input type="text" class="form-control form-control-sm"
+                                value="{{ $quotation->SCMBookingNo ?? '' }}" readonly>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-5 col-form-label">Booking Integration</label>
+                        <div class="col-sm-7">
+                            <input type="text" class="form-control form-control-sm"
+                                value="{{ $quotation->SCMINTStatus ?? '' }}" readonly>
+                        </div>
+                    </div>
+                    <div class="form-group row mb-0">
+                        <label class="col-sm-5 col-form-label">Booking XML</label>
+                        <div class="col-sm-7">
+                            @if ($quotation->SCMBookingXML)
+                                <button type="button" class="btn btn-sm btn-info" id="viewXmlBtn">
+                                    <i class="fas fa-code"></i> View XML
+                                </button>
+                            @else
+                                <input type="text" class="form-control form-control-sm" value="" readonly>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-                <!-- Customer Details -->
-                <div class="card card-primary" id="customerDetailsCard">
-                    <div class="card-header">
-                        <h3 class="card-title">Customer Details</h3>
-                        <div class="card-tools">
-                            <button type="button" class="btn btn-tool" data-card-widget="collapse">
-                                <i class="fas fa-chevron-up"></i>
+        </div>
+        <!-- END LEFT COLUMN -->
+
+        <!-- RIGHT COLUMN -->
+        <div class="col-md-8">
+
+            <!-- Customer Details -->
+            <div class="card card-primary" id="customerDetailsCard">
+                <div class="card-header">
+                    <h3 class="card-title">Customer Details</h3>
+                    <div class="card-tools">
+                        <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                            <i class="fas fa-chevron-up"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+
+                    {{-- ── Customer Type & Agent Type — TOP ── --}}
+                    <div class="row mb-3 pb-2" style="border-bottom: 1px solid #dee2e6;">
+                        <div class="col-md-6">
+                            <div class="form-group row mb-0">
+                                <label class="col-sm-4 col-form-label">
+                                    Customer Type <span class="text-danger">*</span>
+                                </label>
+                                <div class="col-sm-8">
+                                    <select class="form-control form-control-sm" id="customerTypeSelect"
+                                        name="customer_type">
+                                        <option value="">-- Select --</option>
+                                        <option value="Customer"
+                                            {{ ($quotation->CustomerType ?? '') === 'Customer' ? 'selected' : '' }}>
+                                            Customer
+                                        </option>
+                                        <option value="Agent"
+                                            {{ ($quotation->CustomerType ?? '') === 'Agent' ? 'selected' : '' }}>
+                                            Agent
+                                        </option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group row mb-0">
+                                <label class="col-sm-4 col-form-label">Agent Type</label>
+                                <div class="col-sm-8">
+                                    <select class="form-control form-control-sm" id="agentTypeSelect" name="agent_type"
+                                        disabled>
+                                        <option value="">-- Loading... --</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- ── Two-column customer fields ── --}}
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group row">
+                                <label class="col-sm-4 col-form-label">Company</label>
+                                <div class="col-sm-8">
+                                    <input type="text" class="form-control form-control-sm" data-field="companyname"
+                                        value="{{ $quotation->pri_partnermaster_name ?? ($quotation->companyname ?? '') }}"
+                                        readonly>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-sm-4 col-form-label">Address 1 <span
+                                        class="text-danger">*</span></label>
+                                <div class="col-sm-8">
+                                    <input type="text" class="form-control form-control-sm"
+                                        data-field="pri_partner_steet" value="{{ $quotation->pri_partner_steet ?? '' }}"
+                                        readonly>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-sm-4 col-form-label">City</label>
+                                <div class="col-sm-8">
+                                    <input type="text" class="form-control form-control-sm" id="customerCityInput"
+                                        value="{{ $quotation->pri_partner_city ?? '' }}" readonly>
+
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-sm-4 col-form-label">State</label>
+                                <div class="col-sm-8">
+                                    <input type="text" class="form-control form-control-sm" id="customerStateInput"
+                                        value="{{ $quotation->pri_partner_statename ?? '' }}" readonly>
+
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-sm-4 col-form-label">Contact Person</label>
+                                <div class="col-sm-8">
+                                    <input type="text" class="form-control form-control-sm" id="customerContactInput"
+                                        value="{{ $quotation->contact_name ?? '' }}" readonly>
+
+                                </div>
+                            </div>
+                            <div class="form-group row mb-0">
+                                <label class="col-sm-4 col-form-label">Phone No</label>
+                                <div class="col-sm-8">
+                                    <input type="text" class="form-control form-control-sm" id="customerPhoneInput"
+                                        value="{{ $quotation->pri_partner_phone ?? '' }}" readonly>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group row">
+                                <label class="col-sm-4 col-form-label">Client ID</label>
+                                <div class="col-sm-8">
+                                    <input type="text" class="form-control form-control-sm" id="clientIdDisplay"
+                                        value="{{ $quotation->clientid ?? '' }}" readonly>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-sm-4 col-form-label">Address 2</label>
+                                <div class="col-sm-8">
+                                    <input type="text" class="form-control form-control-sm" id="customerAddress2Input"
+                                        value="{{ $quotation->pri_partner_steet2 ?? '' }}" readonly>
+
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-sm-4 col-form-label">Zip</label>
+                                <div class="col-sm-8">
+                                    <input type="text" class="form-control form-control-sm" id="customerZipInput"
+                                        value="{{ $quotation->pri_partner_zip ?? '' }}" readonly>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-sm-4 col-form-label">
+                                    Country <span class="text-danger customer-mandatory-star"
+                                        style="display:none;">*</span>
+                                </label>
+                                <div class="col-sm-8">
+                                    <input type="text" class="form-control form-control-sm"
+                                        id="customerCountryDisplay"
+                                        value="{{ $quotation->pri_partner_countryname ?? '' }}" readonly>
+                                    <div id="customerCountryEditWrap" style="display:none;">
+                                        <select class="form-control form-control-sm" id="customerCountrySelect">
+                                            <option value="">-- Select --</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-sm-4 col-form-label">Email ID</label>
+                                <div class="col-sm-8">
+                                    <input type="text" class="form-control form-control-sm" id="customerEmailInput"
+                                        value="{{ $quotation->pri_partner_email ?? '' }}" readonly>
+                                </div>
+                            </div>
+                            <div class="form-group row mb-0">
+                                <label class="col-sm-4 col-form-label">
+                                    Industry <span class="text-danger customer-mandatory-star"
+                                        style="display:none;">*</span>
+                                </label>
+                                <div class="col-sm-8">
+                                    <input type="text" class="form-control form-control-sm"
+                                        id="customerIndustryDisplay" value="{{ $quotation->industryname ?? '' }}"
+                                        readonly>
+                                    <select class="form-control form-control-sm" id="customerIndustrySelect"
+                                        style="display:none;">
+                                        <option value="">-- Select --</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- ── Quote Includes ── --}}
+                    <div class="row mt-3 pt-2" style="border-top: 1px solid #dee2e6;">
+                        <div class="col-12">
+                            <p class="text-uppercase font-weight-bold mb-2"
+                                style="font-size: 0.75rem; letter-spacing: 0.08em; color: #003580;">
+                                Quote Includes
+                            </p>
+                            <div class="d-flex flex-wrap" style="gap: 8px;">
+                                <label
+                                    class="quote-includes-option d-flex align-items-center border rounded px-3 py-2 mb-0"
+                                    style="cursor:pointer; font-size:0.875rem; gap:8px; background:#fff;">
+                                    <input type="checkbox" id="quoteIncludesInsurance" name="quote_includes_insurance">
+                                    Insurance
+                                </label>
+                                <label
+                                    class="quote-includes-option d-flex align-items-center border rounded px-3 py-2 mb-0"
+                                    style="cursor:pointer; font-size:0.875rem; gap:8px; background:#fff;">
+                                    <input type="checkbox" id="quoteIncludesLastMile" name="quote_includes_last_mile">
+                                    Last Mile
+                                </label>
+                                <label
+                                    class="quote-includes-option d-flex align-items-center border rounded px-3 py-2 mb-0"
+                                    id="customDutyLabel"
+                                    style="cursor:pointer; font-size:0.875rem; gap:8px; background:#fff;">
+                                    <input type="checkbox" id="quoteIncludesCustomDuty"
+                                        name="quote_includes_custom_duty">
+                                    Custom Duty
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- ── Product Details (visible only when Custom Duty is checked) ── --}}
+                    <div class="row mt-3" id="productDetailsSection" style="display:none;">
+                        <div class="col-12">
+                            <p class="text-uppercase font-weight-bold mb-2"
+                                style="font-size: 0.75rem; letter-spacing: 0.08em; color: #003580;">
+                                Product Details
+                            </p>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered mb-1" id="productDetailsTable">
+                                    <thead class="thead-light">
+                                        <tr>
+                                            <th style="min-width:160px; font-size:0.75rem;">Description</th>
+                                            <th style="width:100px; font-size:0.75rem;">Weight</th>
+                                            <th style="width:100px; font-size:0.75rem;">L×B×H <small
+                                                    class="text-muted">(m³)</small></th>
+                                            <th style="width:80px; font-size:0.75rem;">QTY</th>
+                                            <th style="width:120px; font-size:0.75rem;">Price</th>
+                                            <th style="width:36px;"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="productDetailsBody">
+                                        <tr class="product-details-row">
+                                            <td>
+                                                <input type="text" class="form-control form-control-sm"
+                                                    name="product_description[]" placeholder="Description">
+                                            </td>
+                                            <td>
+                                                <div class="input-group input-group-sm">
+                                                    <input type="number" class="form-control form-control-sm"
+                                                        name="product_weight[]" step="0.01" min="0">
+                                                    <div class="input-group-append">
+                                                        <span class="input-group-text"
+                                                            style="font-size:0.75rem;">kg</span>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="input-group input-group-sm">
+                                                    <input type="number" class="form-control form-control-sm"
+                                                        name="product_dimensions[]" step="0.01" min="0">
+                                                    <div class="input-group-append">
+                                                        <span class="input-group-text"
+                                                            style="font-size:0.75rem;">m³</span>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <input type="number" class="form-control form-control-sm"
+                                                    name="product_qty[]" placeholder="Qty" min="1"
+                                                    step="1">
+                                            </td>
+                                            <td>
+                                                <div class="input-group input-group-sm">
+                                                    <div class="input-group-prepend">
+                                                        <span class="input-group-text"
+                                                            style="font-size:0.75rem;">USD</span>
+                                                    </div>
+                                                    <input type="number" class="form-control form-control-sm"
+                                                        name="product_price[]" step="0.01" min="0">
+                                                </div>
+                                            </td>
+                                            <td class="text-center align-middle">
+                                                <button type="button"
+                                                    class="btn btn-sm btn-outline-danger remove-product-row-btn"
+                                                    style="padding:1px 6px; line-height:1.4;"
+                                                    title="Remove row">&times;</button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <button type="button" class="btn btn-outline-primary btn-sm" id="addProductRowBtn"
+                                style="font-size:0.8rem;">
+                                + Add Row
                             </button>
                         </div>
                     </div>
-                    <div class="card-body">
 
-                        {{-- ── Customer Type & Agent Type — TOP ── --}}
-                        <div class="row mb-3 pb-2" style="border-bottom: 1px solid #dee2e6;">
-                            <div class="col-md-6">
-                                <div class="form-group row mb-0">
-                                    <label class="col-sm-4 col-form-label">
-                                        Customer Type <span class="text-danger">*</span>
-                                    </label>
-                                    <div class="col-sm-8">
-                                        <select class="form-control form-control-sm" id="customerTypeSelect"
-                                            name="customer_type">
-                                            <option value="">-- Select --</option>
-                                            <option value="Customer"
-                                                {{ ($quotation->CustomerType ?? '') === 'Customer' ? 'selected' : '' }}>
-                                                Customer
-                                            </option>
-                                            <option value="Agent"
-                                                {{ ($quotation->CustomerType ?? '') === 'Agent' ? 'selected' : '' }}>
-                                                Agent
-                                            </option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group row mb-0">
-                                    <label class="col-sm-4 col-form-label">Agent Type</label>
-                                    <div class="col-sm-8">
-                                        <select class="form-control form-control-sm" id="agentTypeSelect"
-                                            name="agent_type" disabled>
-                                            <option value="">-- Loading... --</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                    {{-- ── Quote Includes JS (UI only — no API calls) ── --}}
+                    <script>
+                        document.addEventListener('DOMContentLoaded', function() {
+                            const customDutyCheckbox = document.getElementById('quoteIncludesCustomDuty');
+                            const productDetailsSection = document.getElementById('productDetailsSection');
+                            const addProductRowBtn = document.getElementById('addProductRowBtn');
+                            const productDetailsBody = document.getElementById('productDetailsBody');
 
-                        {{-- ── Two-column customer fields ── --}}
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group row">
-                                    <label class="col-sm-4 col-form-label">Company</label>
-                                    <div class="col-sm-8">
-                                        <input type="text" class="form-control form-control-sm"
-                                            data-field="companyname"
-                                            value="{{ $quotation->pri_partnermaster_name ?? ($quotation->companyname ?? '') }}"
-                                            readonly>
-                                    </div>
-                                </div>
-                                <div class="form-group row">
-                                    <label class="col-sm-4 col-form-label">Address 1 <span
-                                            class="text-danger">*</span></label>
-                                    <div class="col-sm-8">
-                                        <input type="text" class="form-control form-control-sm"
-                                            data-field="pri_partner_steet"
-                                            value="{{ $quotation->pri_partner_steet ?? '' }}" readonly>
-                                    </div>
-                                </div>
-                                <div class="form-group row">
-                                    <label class="col-sm-4 col-form-label">City</label>
-                                    <div class="col-sm-8">
-                                        <input type="text" class="form-control form-control-sm" id="customerCityInput"
-                                            value="{{ $quotation->pri_partner_city ?? '' }}" readonly>
+                            if (!customDutyCheckbox || !productDetailsSection) return;
 
-                                    </div>
-                                </div>
-                                <div class="form-group row">
-                                    <label class="col-sm-4 col-form-label">State</label>
-                                    <div class="col-sm-8">
-                                        <input type="text" class="form-control form-control-sm"
-                                            id="customerStateInput" value="{{ $quotation->pri_partner_statename ?? '' }}"
-                                            readonly>
-
-                                    </div>
-                                </div>
-                                <div class="form-group row">
-                                    <label class="col-sm-4 col-form-label">Contact Person</label>
-                                    <div class="col-sm-8">
-                                        <input type="text" class="form-control form-control-sm"
-                                            id="customerContactInput" value="{{ $quotation->contact_name ?? '' }}"
-                                            readonly>
-
-                                    </div>
-                                </div>
-                                <div class="form-group row mb-0">
-                                    <label class="col-sm-4 col-form-label">Phone No</label>
-                                    <div class="col-sm-8">
-                                        <input type="text" class="form-control form-control-sm"
-                                            id="customerPhoneInput" value="{{ $quotation->pri_partner_phone ?? '' }}"
-                                            readonly>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group row">
-                                    <label class="col-sm-4 col-form-label">Client ID</label>
-                                    <div class="col-sm-8">
-                                        <input type="text" class="form-control form-control-sm" id="clientIdDisplay"
-                                            value="{{ $quotation->clientid ?? '' }}" readonly>
-                                    </div>
-                                </div>
-                                <div class="form-group row">
-                                    <label class="col-sm-4 col-form-label">Address 2</label>
-                                    <div class="col-sm-8">
-                                        <input type="text" class="form-control form-control-sm"
-                                            id="customerAddress2Input" value="{{ $quotation->pri_partner_steet2 ?? '' }}"
-                                            readonly>
-
-                                    </div>
-                                </div>
-                                <div class="form-group row">
-                                    <label class="col-sm-4 col-form-label">Zip</label>
-                                    <div class="col-sm-8">
-                                        <input type="text" class="form-control form-control-sm" id="customerZipInput"
-                                            value="{{ $quotation->pri_partner_zip ?? '' }}" readonly>
-                                    </div>
-                                </div>
-                                <div class="form-group row">
-                                    <label class="col-sm-4 col-form-label">
-                                        Country <span class="text-danger customer-mandatory-star"
-                                            style="display:none;">*</span>
-                                    </label>
-                                    <div class="col-sm-8">
-                                        <input type="text" class="form-control form-control-sm"
-                                            id="customerCountryDisplay"
-                                            value="{{ $quotation->pri_partner_countryname ?? '' }}" readonly>
-                                        <div id="customerCountryEditWrap" style="display:none;">
-                                            <select class="form-control form-control-sm" id="customerCountrySelect">
-                                                <option value="">-- Select --</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="form-group row">
-                                    <label class="col-sm-4 col-form-label">Email ID</label>
-                                    <div class="col-sm-8">
-                                        <input type="text" class="form-control form-control-sm"
-                                            id="customerEmailInput" value="{{ $quotation->pri_partner_email ?? '' }}"
-                                            readonly>
-                                    </div>
-                                </div>
-                                <div class="form-group row mb-0">
-                                    <label class="col-sm-4 col-form-label">
-                                        Industry <span class="text-danger customer-mandatory-star"
-                                            style="display:none;">*</span>
-                                    </label>
-                                    <div class="col-sm-8">
-                                        <input type="text" class="form-control form-control-sm"
-                                            id="customerIndustryDisplay" value="{{ $quotation->industryname ?? '' }}"
-                                            readonly>
-                                        <select class="form-control form-control-sm" id="customerIndustrySelect"
-                                            style="display:none;">
-                                            <option value="">-- Select --</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {{-- ── Quote Includes ── --}}
-                        <div class="row mt-3 pt-2" style="border-top: 1px solid #dee2e6;">
-                            <div class="col-12">
-                                <p class="text-uppercase font-weight-bold mb-2"
-                                    style="font-size: 0.75rem; letter-spacing: 0.08em; color: #003580;">
-                                    Quote Includes
-                                </p>
-                                <div class="d-flex flex-wrap" style="gap: 8px;">
-                                    <label
-                                        class="quote-includes-option d-flex align-items-center border rounded px-3 py-2 mb-0"
-                                        style="cursor:pointer; font-size:0.875rem; gap:8px; background:#fff;">
-                                        <input type="checkbox" id="quoteIncludesInsurance"
-                                            name="quote_includes_insurance">
-                                        Insurance
-                                    </label>
-                                    <label
-                                        class="quote-includes-option d-flex align-items-center border rounded px-3 py-2 mb-0"
-                                        style="cursor:pointer; font-size:0.875rem; gap:8px; background:#fff;">
-                                        <input type="checkbox" id="quoteIncludesLastMile"
-                                            name="quote_includes_last_mile">
-                                        Last Mile
-                                    </label>
-                                    <label
-                                        class="quote-includes-option d-flex align-items-center border rounded px-3 py-2 mb-0"
-                                        id="customDutyLabel"
-                                        style="cursor:pointer; font-size:0.875rem; gap:8px; background:#fff;">
-                                        <input type="checkbox" id="quoteIncludesCustomDuty"
-                                            name="quote_includes_custom_duty">
-                                        Custom Duty
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-
-                        {{-- ── Product Details (visible only when Custom Duty is checked) ── --}}
-                        <div class="row mt-3" id="productDetailsSection" style="display:none;">
-                            <div class="col-12">
-                                <p class="text-uppercase font-weight-bold mb-2"
-                                    style="font-size: 0.75rem; letter-spacing: 0.08em; color: #003580;">
-                                    Product Details
-                                </p>
-                                <div class="table-responsive">
-                                    <table class="table table-sm table-bordered mb-1" id="productDetailsTable">
-                                        <thead class="thead-light">
-                                            <tr>
-                                                <th style="min-width:160px; font-size:0.75rem;">Description</th>
-                                                <th style="width:100px; font-size:0.75rem;">Weight</th>
-                                                <th style="width:100px; font-size:0.75rem;">L×B×H <small
-                                                        class="text-muted">(m³)</small></th>
-                                                <th style="width:80px; font-size:0.75rem;">QTY</th>
-                                                <th style="width:120px; font-size:0.75rem;">Price</th>
-                                                <th style="width:36px;"></th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="productDetailsBody">
-                                            <tr class="product-details-row">
-                                                <td>
-                                                    <input type="text" class="form-control form-control-sm"
-                                                        name="product_description[]" placeholder="Description">
-                                                </td>
-                                                <td>
-                                                    <div class="input-group input-group-sm">
-                                                        <input type="number" class="form-control form-control-sm"
-                                                            name="product_weight[]" step="0.01" min="0">
-                                                        <div class="input-group-append">
-                                                            <span class="input-group-text"
-                                                                style="font-size:0.75rem;">kg</span>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div class="input-group input-group-sm">
-                                                        <input type="number" class="form-control form-control-sm"
-                                                            name="product_dimensions[]" step="0.01" min="0">
-                                                        <div class="input-group-append">
-                                                            <span class="input-group-text"
-                                                                style="font-size:0.75rem;">m³</span>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <input type="number" class="form-control form-control-sm"
-                                                        name="product_qty[]" placeholder="Qty" min="1"
-                                                        step="1">
-                                                </td>
-                                                <td>
-                                                    <div class="input-group input-group-sm">
-                                                        <div class="input-group-prepend">
-                                                            <span class="input-group-text"
-                                                                style="font-size:0.75rem;">USD</span>
-                                                        </div>
-                                                        <input type="number" class="form-control form-control-sm"
-                                                            name="product_price[]" step="0.01" min="0">
-                                                    </div>
-                                                </td>
-                                                <td class="text-center align-middle">
-                                                    <button type="button"
-                                                        class="btn btn-sm btn-outline-danger remove-product-row-btn"
-                                                        style="padding:1px 6px; line-height:1.4;"
-                                                        title="Remove row">&times;</button>
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <button type="button" class="btn btn-outline-primary btn-sm" id="addProductRowBtn"
-                                    style="font-size:0.8rem;">
-                                    + Add Row
-                                </button>
-                            </div>
-                        </div>
-
-                        {{-- ── Quote Includes JS (UI only — no API calls) ── --}}
-                        <script>
-                            document.addEventListener('DOMContentLoaded', function() {
-                                const customDutyCheckbox = document.getElementById('quoteIncludesCustomDuty');
-                                const productDetailsSection = document.getElementById('productDetailsSection');
-                                const addProductRowBtn = document.getElementById('addProductRowBtn');
-                                const productDetailsBody = document.getElementById('productDetailsBody');
-
-                                if (!customDutyCheckbox || !productDetailsSection) return;
-
-                                // Highlight checked label to match the screenshot style
-                                document.querySelectorAll('.quote-includes-option input[type="checkbox"]')
-                                    .forEach(function(cb) {
-                                        cb.addEventListener('change', function() {
-                                            const label = this.closest('label');
-                                            if (!label) return;
-                                            if (this.checked) {
-                                                label.style.background = '#003580';
-                                                label.style.color = '#fff';
-                                                label.style.borderColor = '#003580';
-                                            } else {
-                                                label.style.background = '#fff';
-                                                label.style.color = '';
-                                                label.style.borderColor = '';
-                                            }
-                                        });
+                            // Highlight checked label to match the screenshot style
+                            document.querySelectorAll('.quote-includes-option input[type="checkbox"]')
+                                .forEach(function(cb) {
+                                    cb.addEventListener('change', function() {
+                                        const label = this.closest('label');
+                                        if (!label) return;
+                                        if (this.checked) {
+                                            label.style.background = '#003580';
+                                            label.style.color = '#fff';
+                                            label.style.borderColor = '#003580';
+                                        } else {
+                                            label.style.background = '#fff';
+                                            label.style.color = '';
+                                            label.style.borderColor = '';
+                                        }
                                     });
-
-                                // Show / hide Product Details when Custom Duty is toggled
-                                customDutyCheckbox.addEventListener('change', function() {
-                                    productDetailsSection.style.display = this.checked ? 'block' : 'none';
                                 });
 
-                                // Add a new blank product row
-                                addProductRowBtn.addEventListener('click', function() {
-                                    const firstRow = productDetailsBody.querySelector('.product-details-row');
-                                    if (!firstRow) return;
-                                    const newRow = firstRow.cloneNode(true);
-                                    newRow.querySelectorAll('input').forEach(function(input) {
+                            // Show / hide Product Details when Custom Duty is toggled
+                            customDutyCheckbox.addEventListener('change', function() {
+                                productDetailsSection.style.display = this.checked ? 'block' : 'none';
+                            });
+
+                            // Add a new blank product row
+                            addProductRowBtn.addEventListener('click', function() {
+                                const firstRow = productDetailsBody.querySelector('.product-details-row');
+                                if (!firstRow) return;
+                                const newRow = firstRow.cloneNode(true);
+                                newRow.querySelectorAll('input').forEach(function(input) {
+                                    input.value = '';
+                                });
+                                productDetailsBody.appendChild(newRow);
+                            });
+
+                            // Remove a product row via event delegation
+                            productDetailsBody.addEventListener('click', function(e) {
+                                if (!e.target.classList.contains('remove-product-row-btn')) return;
+                                const rows = productDetailsBody.querySelectorAll('.product-details-row');
+                                if (rows.length > 1) {
+                                    e.target.closest('tr').remove();
+                                } else {
+                                    // Keep at least one row — just clear the inputs
+                                    rows[0].querySelectorAll('input').forEach(function(input) {
                                         input.value = '';
                                     });
-                                    productDetailsBody.appendChild(newRow);
-                                });
-
-                                // Remove a product row via event delegation
-                                productDetailsBody.addEventListener('click', function(e) {
-                                    if (!e.target.classList.contains('remove-product-row-btn')) return;
-                                    const rows = productDetailsBody.querySelectorAll('.product-details-row');
-                                    if (rows.length > 1) {
-                                        e.target.closest('tr').remove();
-                                    } else {
-                                        // Keep at least one row — just clear the inputs
-                                        rows[0].querySelectorAll('input').forEach(function(input) {
-                                            input.value = '';
-                                        });
-                                    }
-                                });
+                                }
                             });
-                        </script>
+                        });
+                    </script>
 
-                        {{-- ── Edit / Save / Cancel ── --}}
-                        <div class="row mt-3 pt-2" style="border-top: 1px solid #dee2e6;">
-                            <div class="col-md-12 text-right">
-                                @if (!$isBookingCreated)
-                                    <button type="button" class="btn btn-warning btn-sm" id="editCustomerDetailsBtn">
-                                        <i class="fas fa-edit mr-1"></i> Edit
-                                    </button>
-                                @endif
-                                <button type="button" class="btn btn-primary btn-sm" id="saveCustomerDetailsBtn"
-                                    style="display:none">
-                                    <i class="fas fa-save mr-1"></i> Save
+                    {{-- ── Edit / Save / Cancel ── --}}
+                    <div class="row mt-3 pt-2" style="border-top: 1px solid #dee2e6;">
+                        <div class="col-md-12 text-right">
+                            @if (!$isBookingCreated)
+                                <button type="button" class="btn btn-warning btn-sm" id="editCustomerDetailsBtn">
+                                    <i class="fas fa-edit mr-1"></i> Edit
                                 </button>
-                                <button type="button" class="btn btn-secondary btn-sm" id="cancelCustomerDetailsBtn"
-                                    style="display:none">
-                                    <i class="fas fa-times mr-1"></i> Cancel
-                                </button>
-                            </div>
+                            @endif
+                            <button type="button" class="btn btn-primary btn-sm" id="saveCustomerDetailsBtn"
+                                style="display:none">
+                                <i class="fas fa-save mr-1"></i> Save
+                            </button>
+                            <button type="button" class="btn btn-secondary btn-sm" id="cancelCustomerDetailsBtn"
+                                style="display:none">
+                                <i class="fas fa-times mr-1"></i> Cancel
+                            </button>
                         </div>
                     </div>
                 </div>
-
-                <!-- Revenue Section -->
-                <div class="card card-success">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <div class="d-flex align-items-center">
-                            <h3 class="card-title mb-0 mr-1">Revenue</h3>
-                            <div class="card-tools ml-2">
-                                <button type="button" class="btn btn-tool" data-card-widget="collapse">
-                                    <i class="fas fa-chevron-up"></i>
-                                </button>
-                            </div>
-                            <span class="text-white small ml-2" id="revenueTotalHeader" style="white-space:nowrap;">
-                                Total: <strong id="revenueTotalHeaderAmount">0.00</strong>
-                            </span>
-                        </div>
-                        <div class="d-flex align-items-center ml-auto">
-                            <a href="#" class="text-white show-items-link" data-table="revenue">
-                                <i class="fas fa-columns mr-1"></i> Show more
-                            </a>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-bordered table-sm table-hover">
-                                <thead class="thead-light">
-                                    <tr>
-                                        <th style="width:32px; display:none;" class="bulk-delete-col"><input
-                                                type="checkbox" id="revenueSelectAll" title="Select all"></th>
-                                        <th>Charge Name</th>
-                                        <th>Rate</th>
-                                        <th class="col-extra">Quantity</th>
-                                        <th class="col-extra">Based On & UOM</th>
-                                        <th class="col-extra">Currency</th>
-                                        <th>Amount</th>
-                                        <th>Base Amount</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="revenueChargesTable">
-                                    <tr>
-                                        <td colspan="8" class="text-center text-muted">Loading charges...</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Cost Section -->
-                <div class="card card-danger">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <div class="d-flex align-items-center">
-                            <h3 class="card-title mb-0 mr-1">Cost</h3>
-                            <div class="card-tools ml-2">
-                                <button type="button" class="btn btn-tool" data-card-widget="collapse">
-                                    <i class="fas fa-chevron-up"></i>
-                                </button>
-                            </div>
-                            <span class="text-white small ml-2" id="costTotalHeader" style="white-space:nowrap;">
-                                Total: <strong id="costTotalHeaderAmount">0.00</strong>
-                            </span>
-                        </div>
-                        <div class="d-flex align-items-center ml-auto">
-                            <a href="#" class="text-white show-items-link" data-table="cost">
-                                <i class="fas fa-columns mr-1"></i> Show More
-                            </a>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-bordered table-sm table-hover">
-                                <thead class="thead-light">
-                                    <tr>
-                                        <th style="width:32px; display:none;" class="bulk-delete-col"><input
-                                                type="checkbox" id="costSelectAll" title="Select all"></th>
-                                        <th>Charge Name</th>
-                                        <th>Rate</th>
-                                        <th class="col-extra">Quantity</th>
-                                        <th class="col-extra">Based On & UOM</th>
-                                        <th class="col-extra">Currency</th>
-                                        <th>Amount</th>
-                                        <th>Base Amount</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="costChargesTable">
-                                    <tr>
-                                        <td colspan="8" class="text-center text-muted">Loading charges...</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Summary -->
-                <div class="card card-primary">
-                    <div class="card-header">
-                        <h3 class="card-title">Summary</h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group row">
-                                    <label class="col-sm-5 col-form-label">Expected Revenue</label>
-                                    <div class="col-sm-7">
-                                        <input type="text" class="form-control form-control-sm" id="expectedRevenue"
-                                            value="0.00" readonly>
-                                    </div>
-                                </div>
-                                <div class="form-group row">
-                                    <label class="col-sm-5 col-form-label">Quoted Revenue</label>
-                                    <div class="col-sm-7">
-                                        <input type="text" class="form-control form-control-sm" id="quotedRevenue"
-                                            value="0.00" readonly>
-                                    </div>
-                                </div>
-                                <div class="form-group row mb-0">
-                                    <label class="col-sm-5 col-form-label">Actual Revenue</label>
-                                    <div class="col-sm-7">
-                                        <input type="text" class="form-control form-control-sm" id="actualRevenue"
-                                            value="" readonly>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group row">
-                                    <label class="col-sm-5 col-form-label">Quoted Margin</label>
-                                    <div class="col-sm-7">
-                                        <input type="text" class="form-control form-control-sm" id="quotedMargin"
-                                            value="0.00" readonly>
-                                    </div>
-                                </div>
-                                <div class="form-group row mb-0">
-                                    <label class="col-sm-5 col-form-label">Actual Margin</label>
-                                    <div class="col-sm-7">
-                                        <input type="text" class="form-control form-control-sm" id="actualMargin"
-                                            value="" readonly>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row mt-3">
-                            <div class="col-md-12">
-                                <button type="button" class="btn btn-primary" id="openChargesModal">
-                                    <i class="fas fa-plus"></i> Add Charges
-                                </button>
-
-                                <button type="button" class="btn btn-secondary ml-2" id="openCopyChargesBtn">
-                                    <i class="fas fa-copy"></i> Copy Charges
-                                </button>
-                                <button type="button" class="btn btn-danger ml-2" id="openBulkDeleteBtn">
-                                    <i class="fas fa-trash"></i> Delete Charges
-                                </button>
-                                <button type="button" class="btn btn-success ml-2 d-none" id="confirmBulkDeleteBtn">
-                                    <i class="fas fa-check"></i> Confirm Delete
-                                </button>
-                                <button type="button" class="btn btn-secondary ml-2 d-none" id="cancelBulkDeleteBtn">
-                                    <i class="fas fa-times"></i> Cancel
-                                </button>
-                                <a href="{{ route('quotation.index') }}" class="btn btn-link">Close</a>
-
-                                <div class="float-right d-flex align-items-center">
-                                    <div class="btn-group" id="quoteActionDropdown"> <button type="button"
-                                            class="btn btn-secondary dropdown-toggle" data-toggle="dropdown"
-                                            aria-haspopup="true" aria-expanded="false">
-                                            <i class="fas fa-ellipsis-v mr-1"></i> Action
-                                        </button>
-                                        <div class="dropdown-menu dropdown-menu-right">
-                                            <a class="dropdown-item" href="#" id="cancelQuoteBtn">
-                                                <i class="fas fa-ban mr-2 text-warning"></i> Cancel
-                                            </a>
-                                            <a class="dropdown-item" href="#" id="lostQuoteBtn">
-                                                <i class="fas fa-times mr-2 text-danger"></i> Lost
-                                            </a>
-                                            <a class="dropdown-item" href="#" id="wonQuoteBtn">
-                                                <i class="fas fa-check mr-2 text-success"></i> Won
-                                            </a>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
             </div>
-            <!-- END RIGHT COLUMN -->
+
+            <!-- Revenue Section -->
+            <div class="card card-success">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center">
+                        <h3 class="card-title mb-0 mr-1">Revenue</h3>
+                        <div class="card-tools ml-2">
+                            <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                <i class="fas fa-chevron-up"></i>
+                            </button>
+                        </div>
+                        <span class="text-white small ml-2" id="revenueTotalHeader" style="white-space:nowrap;">
+                            Total: <strong id="revenueTotalHeaderAmount">0.00</strong>
+                        </span>
+                    </div>
+                    <div class="d-flex align-items-center ml-auto">
+                        <a href="#" class="text-white show-items-link" data-table="revenue">
+                            <i class="fas fa-columns mr-1"></i> Show more
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-sm table-hover">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th style="width:32px; display:none;" class="bulk-delete-col"><input type="checkbox"
+                                            id="revenueSelectAll" title="Select all"></th>
+                                    <th>Charge Name</th>
+                                    <th>Rate</th>
+                                    <th class="col-extra">Quantity</th>
+                                    <th class="col-extra">Based On & UOM</th>
+                                    <th class="col-extra">Currency</th>
+                                    <th>Amount</th>
+                                    <th>Base Amount</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="revenueChargesTable">
+                                <tr>
+                                    <td colspan="8" class="text-center text-muted">Loading charges...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cost Section -->
+            <div class="card card-danger">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center">
+                        <h3 class="card-title mb-0 mr-1">Cost</h3>
+                        <div class="card-tools ml-2">
+                            <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                <i class="fas fa-chevron-up"></i>
+                            </button>
+                        </div>
+                        <span class="text-white small ml-2" id="costTotalHeader" style="white-space:nowrap;">
+                            Total: <strong id="costTotalHeaderAmount">0.00</strong>
+                        </span>
+                    </div>
+                    <div class="d-flex align-items-center ml-auto">
+                        <a href="#" class="text-white show-items-link" data-table="cost">
+                            <i class="fas fa-columns mr-1"></i> Show More
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-sm table-hover">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th style="width:32px; display:none;" class="bulk-delete-col"><input type="checkbox"
+                                            id="costSelectAll" title="Select all"></th>
+                                    <th>Charge Name</th>
+                                    <th>Rate</th>
+                                    <th class="col-extra">Quantity</th>
+                                    <th class="col-extra">Based On & UOM</th>
+                                    <th class="col-extra">Currency</th>
+                                    <th>Amount</th>
+                                    <th>Base Amount</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="costChargesTable">
+                                <tr>
+                                    <td colspan="8" class="text-center text-muted">Loading charges...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary -->
+            <div class="card card-primary">
+                <div class="card-header">
+                    <h3 class="card-title">Summary</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group row">
+                                <label class="col-sm-5 col-form-label">Expected Revenue</label>
+                                <div class="col-sm-7">
+                                    <input type="text" class="form-control form-control-sm" id="expectedRevenue"
+                                        value="0.00" readonly>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-sm-5 col-form-label">Quoted Revenue</label>
+                                <div class="col-sm-7">
+                                    <input type="text" class="form-control form-control-sm" id="quotedRevenue"
+                                        value="0.00" readonly>
+                                </div>
+                            </div>
+                            <div class="form-group row mb-0">
+                                <label class="col-sm-5 col-form-label">Actual Revenue</label>
+                                <div class="col-sm-7">
+                                    <input type="text" class="form-control form-control-sm" id="actualRevenue"
+                                        value="" readonly>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group row">
+                                <label class="col-sm-5 col-form-label">Quoted Margin</label>
+                                <div class="col-sm-7">
+                                    <input type="text" class="form-control form-control-sm" id="quotedMargin"
+                                        value="0.00" readonly>
+                                </div>
+                            </div>
+                            <div class="form-group row mb-0">
+                                <label class="col-sm-5 col-form-label">Actual Margin</label>
+                                <div class="col-sm-7">
+                                    <input type="text" class="form-control form-control-sm" id="actualMargin"
+                                        value="" readonly>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-3">
+                        <div class="col-md-12">
+                            <button type="button" class="btn btn-primary" id="openChargesModal">
+                                <i class="fas fa-plus"></i> Add Charges
+                            </button>
+
+                            <button type="button" class="btn btn-secondary ml-2" id="openCopyChargesBtn">
+                                <i class="fas fa-copy"></i> Copy Charges
+                            </button>
+                            <button type="button" class="btn btn-danger ml-2" id="openBulkDeleteBtn">
+                                <i class="fas fa-trash"></i> Delete Charges
+                            </button>
+                            <button type="button" class="btn btn-success ml-2 d-none" id="confirmBulkDeleteBtn">
+                                <i class="fas fa-check"></i> Confirm Delete
+                            </button>
+                            <button type="button" class="btn btn-secondary ml-2 d-none" id="cancelBulkDeleteBtn">
+                                <i class="fas fa-times"></i> Cancel
+                            </button>
+                            <a href="{{ route('quotation.index') }}" class="btn btn-link">Close</a>
+
+                            <div class="float-right d-flex align-items-center">
+                                <div class="btn-group" id="quoteActionDropdown"> <button type="button"
+                                        class="btn btn-secondary dropdown-toggle" data-toggle="dropdown"
+                                        aria-haspopup="true" aria-expanded="false">
+                                        <i class="fas fa-ellipsis-v mr-1"></i> Action
+                                    </button>
+                                    <div class="dropdown-menu dropdown-menu-right">
+                                        <a class="dropdown-item" href="#" id="cancelQuoteBtn">
+                                            <i class="fas fa-ban mr-2 text-warning"></i> Cancel
+                                        </a>
+                                        <a class="dropdown-item" href="#" id="lostQuoteBtn">
+                                            <i class="fas fa-times mr-2 text-danger"></i> Lost
+                                        </a>
+                                        <a class="dropdown-item" href="#" id="wonQuoteBtn">
+                                            <i class="fas fa-check mr-2 text-success"></i> Won
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+        <!-- END RIGHT COLUMN -->
 
         </div>
         <!-- END ROW -->
 
         <!-- ============================================
-                                    MODALS
-                                    ============================================ -->
+                                        MODALS
+                                        ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -2129,8 +2120,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -2573,9 +2564,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -4182,7 +4173,7 @@
 
                 if (!rows.length) {
                     $tbody.html(
-                        '<tr><td colspan="5" class="text-center text-muted">No requests made yet</td></tr>'
+                        '<tr><td colspan="3" class="text-center text-muted">No requests made yet</td></tr>'
                     );
                     return;
                 }
@@ -4211,8 +4202,6 @@
                 <td>
                     <span class="badge ${badgeClass}">${requestType}</span>
                 </td>
-                <td>${row.CreatedBy || ''}</td>
-                <td>${sentOn}</td>
             </tr>
         `);
                 });
@@ -6331,7 +6320,7 @@
             // SP outputs: Status, Remark, QuoteNo
             // ============================================
             $('#openRequestOfficeBtn').on('click', function() {
-                $('#requestedOfficeCodeInput').val('');
+                loadRequestOfficeDropdown();
                 $('#requestOfficeModal').modal('show');
             });
 
@@ -6343,20 +6332,60 @@
             });
 
             $('#requestOfficeModal').on('hidden.bs.modal', function() {
-                $('#requestedOfficeCodeInput').val('');
+                $('#requestedOfficeSelect').val('');
             });
 
+            function loadRequestOfficeDropdown() {
+    const $select = $('#requestedOfficeSelect');
+    const $help = $('#requestedOfficeHelp');
+
+    // Already populated — no re-fetch needed
+    if ($select.data('populated')) {
+        $select.val('');
+        return;
+    }
+
+    $select.empty()
+        .append('<option value="">Loading offices...</option>')
+        .prop('disabled', true);
+    $help.hide();
+
+    $.ajax({
+        url: '{{ route('quotation.offices') }}',
+        type: 'GET',
+        success: function(response) {
+            $select.empty().append('<option value="">-- Select Office --</option>');
+
+            if (response.success && response.offices.length > 0) {
+                response.offices.forEach(function(office) {
+                    const label = office.code
+                        ? office.code + ' — ' + office.name
+                        : office.name;
+                    $select.append(
+                        `<option value="${office.code}">${label}</option>`
+                    );
+                });
+                $select.data('populated', true);
+            } else {
+                $select.append('<option value="" disabled>No offices available</option>');
+            }
+        },
+        error: function() {
+            $select.empty().append('<option value="">-- Select Office --</option>');
+            $help.show();
+        },
+        complete: function() {
+            $select.prop('disabled', false);
+        }
+    });
+}
+
             $('#submitRequestOfficeBtn').on('click', function() {
-                const requestedOfficeCode = $('#requestedOfficeCodeInput').val().trim().toUpperCase();
+                const requestedOfficeCode = $('#requestedOfficeSelect').val();
 
                 if (!requestedOfficeCode) {
-                    showNotification('Requested Office Code is required.', 'error');
-                    $('#requestedOfficeCodeInput').focus();
-                    return;
-                }
-                if (requestedOfficeCode.length !== 3) {
-                    showNotification('Office Code must be exactly 3 characters.', 'error');
-                    $('#requestedOfficeCodeInput').focus();
+                    showNotification('Please select an office.', 'error');
+                    $('#requestedOfficeSelect').focus();
                     return;
                 }
 
