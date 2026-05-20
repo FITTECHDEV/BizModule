@@ -1655,13 +1655,24 @@ class QuotationController extends Controller
                 return redirect()->route('quotation.index')->with('error', 'Quotation not found');
             }
 
-            // ============================================
-            // ADD THIS: Resolve the short office code
-            // ============================================
             $officeShortCode = null;
 
-            // Try to get from teamid first (most reliable)
-            if ($quotation->teamid) {
+            // Priority 1: use OfficeCode column directly if it's a 2-char code
+            if ($quotation->OfficeCode && preg_match('/^[A-Z]{2}$/', trim($quotation->OfficeCode))) {
+                $officeShortCode = trim($quotation->OfficeCode);
+            }
+
+            // Priority 2: resolve from OfficeID (UUID stored in OfficeID column)
+            if (!$officeShortCode && $quotation->OfficeID) {
+                $officeShortCode = DB::table('Cust_Office')
+                    ->where('Id', $quotation->OfficeID)
+                    ->where('IsActive', 1)
+                    ->where('IsDeleted', 0)
+                    ->value('Code');
+            }
+
+            // Priority 3: resolve from teamid via TeamCode
+            if (!$officeShortCode && $quotation->teamid) {
                 $officeShortCode = DB::table('Cust_Office')
                     ->where('TeamCode', $quotation->teamid)
                     ->where('IsActive', 1)
@@ -1669,25 +1680,8 @@ class QuotationController extends Controller
                     ->value('Code');
             }
 
-            // Fallback: try using the OfficeCode field if it's a short code, not a UUID
+            // Priority 4: check OFFICE_BASE_CURRENCY map as last resort
             if (!$officeShortCode && $quotation->OfficeCode) {
-                // Check if OfficeCode is a short code (2 characters) or a UUID
-                $isShortCode = preg_match('/^[A-Z]{2}$/', $quotation->OfficeCode);
-                if ($isShortCode) {
-                    $officeShortCode = $quotation->OfficeCode;
-                } else {
-                    // It's a UUID, try to look it up
-                    $officeShortCode = DB::table('Cust_Office')
-                        ->where('Id', $quotation->OfficeCode)
-                        ->where('IsActive', 1)
-                        ->where('IsDeleted', 0)
-                        ->value('Code');
-                }
-            }
-
-            // Final fallback: use the office base currency mapping if available
-            if (!$officeShortCode && $quotation->OfficeCode) {
-                // Check if the OfficeCode exists in our base currency map as a key
                 $officeShortCode = array_key_exists($quotation->OfficeCode, self::OFFICE_BASE_CURRENCY)
                     ? $quotation->OfficeCode
                     : null;
@@ -3656,11 +3650,9 @@ class QuotationController extends Controller
 
         $quotationId = $request->input('quotation_id');
         $reasonRemark = $request->input('reason_remark', '');
-        $source = $request->input('source', 'dashboard'); // default keeps existing behaviour
+        $source = $request->input('source', 'dashboard');
         $submittedBy = Auth::user()->displayName ?? (Auth::user()->Email ?? 'system');
 
-        // When called from the edit page, failures leave the quote In Progress.
-        // When called from the dashboard, failures mark it as Failed Int. (existing behaviour).
         $shouldMarkFailed = $source !== 'edit';
 
         $quotation = DB::table('Quote_QuotationInfo')
@@ -3694,7 +3686,6 @@ class QuotationController extends Controller
             if ($shouldMarkFailed) {
                 $this->markAsFailed($quotation->ID, 'Client Creation', $clientResult['remark'], $submittedBy);
             }
-
             return response()->json([
                 'success' => false,
                 'failed_step' => 1,
@@ -3724,7 +3715,6 @@ class QuotationController extends Controller
             EXEC sp_Quote_Quotaiton_StatusUpdate ?, @OutputJson OUTPUT;
             SELECT @OutputJson AS OutputJson
         ");
-
             $stmt->execute([$inputJson]);
 
             $spResult = null;
@@ -3772,20 +3762,15 @@ class QuotationController extends Controller
 
             if (!$overallSuccess) {
                 $errorMessage = !empty($errors) ? implode(' | ', $errors) : 'Failed to mark as Won';
-
-                // SP already reset QuoteStatus to 'In Progress' on its failure path.
-                // Only call markAsFailed (sets SCMINTStatus=Failed) for dashboard flow.
                 if ($shouldMarkFailed) {
                     $this->markAsFailed($quotation->ID, 'Mark as Won', $errorMessage, $submittedBy);
                 }
-
                 $steps[] = [
                     'step' => 2,
                     'label' => 'Mark as Won',
                     'status' => 'Failed',
                     'remark' => $errorMessage,
                 ];
-
                 return response()->json([
                     'success' => false,
                     'failed_step' => 2,
@@ -3811,30 +3796,21 @@ class QuotationController extends Controller
                 'status' => 'Success',
                 'remark' => $successRemark ?: 'Quotation marked as Won successfully.',
             ];
-
-            return response()->json([
-                'success' => true,
-                'message' => $successRemark ?: 'Quotation marked as Won successfully.',
-                'steps' => $steps,
-            ]);
         } catch (\Exception $e) {
             Log::error('processWon - Step 2 failed', [
                 'quotation_id' => $quotationId,
                 'error' => $e->getMessage(),
                 'source' => $source,
             ]);
-
             if ($shouldMarkFailed) {
                 $this->markAsFailed($quotation->ID, 'Mark as Won', $e->getMessage(), $submittedBy);
             }
-
             $steps[] = [
                 'step' => 2,
                 'label' => 'Mark as Won',
                 'status' => 'Failed',
                 'remark' => $e->getMessage(),
             ];
-
             return response()->json([
                 'success' => false,
                 'failed_step' => 2,
@@ -3842,6 +3818,83 @@ class QuotationController extends Controller
                 'message' => $e->getMessage(),
                 'steps' => $steps,
             ]);
+        }
+
+        // ── Step 3: Copy Revenue Charges to Cost ─────────────────────────────────
+        $sendChargesResult = $this->runSendChargesSP($quotation->ID);
+
+        Log::info('processWon - Step 3 SendCharges', [
+            'quotation_id' => $quotationId,
+            'status' => $sendChargesResult['status'],
+            'remark' => $sendChargesResult['remark'],
+            'source' => $source,
+        ]);
+
+        $steps[] = [
+            'step' => 3,
+            'label' => 'Copy Charges to Cost',
+            'status' => $sendChargesResult['status'],
+            'remark' => $sendChargesResult['remark'],
+        ];
+
+        if ($sendChargesResult['status'] !== 'Success') {
+            if ($shouldMarkFailed) {
+                $this->markAsFailed($quotation->ID, 'Copy Charges to Cost', $sendChargesResult['remark'], $submittedBy);
+            }
+            return response()->json([
+                'success' => false,
+                'failed_step' => 3,
+                'failed_label' => 'Copy Charges to Cost',
+                'message' => $sendChargesResult['remark'] ?: 'Failed to copy revenue charges to cost.',
+                'steps' => $steps,
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $sendChargesResult['remark'] ?: 'Quotation marked as Won and charges copied successfully.',
+            'steps' => $steps,
+        ]);
+    }
+
+    private function runSendChargesSP(string $quotationId): array
+    {
+        try {
+            $pdo = DB::connection()->getPdo();
+
+            $stmt = $pdo->prepare("
+            DECLARE @Status VARCHAR(20), @Remark VARCHAR(200);
+            EXEC dbo.sp_Quote_Quotation_Request_SendCharges ?, @Status = @Status OUTPUT, @Remark = @Remark OUTPUT;
+            SELECT @Status AS Status, @Remark AS Remark;
+        ");
+
+            $stmt->execute([$quotationId]);
+
+            $result = null;
+            do {
+                try {
+                    $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+                    if (!empty($rows) && array_key_exists('Status', $rows[0])) {
+                        $result = $rows[0];
+                    }
+                } catch (\Exception $e) {
+                    // non-fetchable result sets — skip
+                }
+            } while ($stmt->nextRowset());
+
+            if ($result === null) {
+                return [
+                    'status' => 'Failed',
+                    'remark' => 'No output returned from sp_Quote_Quotation_Request_SendCharges.',
+                ];
+            }
+
+            return [
+                'status' => $result['Status'] ?? 'Failed',
+                'remark' => $result['Remark'] ?? '',
+            ];
+        } catch (\Exception $e) {
+            return ['status' => 'Failed', 'remark' => $e->getMessage()];
         }
     }
 

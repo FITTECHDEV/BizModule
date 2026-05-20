@@ -8715,7 +8715,7 @@
                 });
             }
 
-            // ── Won process — 2-step modal (Client Creation → Mark as Won) ─────────────
+            // ── Won process — 3-step modal (Client Creation → Mark as Won → Copy Charges to Cost) ──
             function runWonProcess(bookingNo, reasonRemark) {
 
                 const WON_STEPS = [{
@@ -8724,11 +8724,11 @@
                     },
                     {
                         step: 2,
-                        label: 'Create Debtor'
+                        label: 'Mark as Won'
                     },
                     {
                         step: 3,
-                        label: 'Mark as Won'
+                        label: 'Copy Charges to Cost'
                     },
                 ];
 
@@ -8789,6 +8789,7 @@
                         booking_no: bookingNo,
                         quotation_id: quotationId,
                         reason_remark: reasonRemark || '',
+                        source: 'edit',
                     },
                     success: function(res) {
                         renderWonSteps(res.steps || []);
