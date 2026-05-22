@@ -1013,221 +1013,6 @@ class ClientPartyController extends Controller
         }
     }
 
-    //     public function store(StoreClientPartyRequest $request)
-    // {
-    //     $user = $request->user();
-
-    //     if (! $user->can('request-client-party')) {
-    //         abort(403, 'You are not allowed to request client parties.');
-    //     }
-
-    //     $operationType = $request->input('OperationType', 'OperationalEntity');
-    //     $partyEntityType = $request->partyEntityType ?? '';
-
-    //     \Log::info('Incoming entity submission', [
-    //         'operation_type' => $operationType,
-    //         'party_entity_type' => $partyEntityType,
-    //         'legal_entity_type' => $request->legalEntityType,
-    //         'has_accounting_fields' => $request->has('creditDays') || $request->has('maxCreditLimit') || $request->has('debtorType'),
-    //         'request_data' => $request->except(['_token', 'attachmentNames', 'attachmentDescription']),
-    //     ]);
-
-    //     // ── Determine ClientCode vs OtherPartyCode based on entity type ─────
-    //         // SMART FALLBACKS (this fixes the empty ClientCode bug)
-    //         $clientCode = $request->clientCode
-    //             ?? $request->companyCode
-    //             ?? $request->otherCode
-    //             ?? '';
-
-    //         $otherPartyCode = $request->otherCode
-    //             ?? $request->companyCode
-    //             ?? $request->clientCode
-    //             ?? '';
-
-    //     $payload = [
-    //         'OperationType' => $operationType,
-    //         'Action' => 'Add',
-    //         'SubmittedDatetime' => now()->format('YmdHis'),
-    //         'SubmittedBy' => $user->LoginID ?? $user->email ?? $user->full_name ?? 'system',
-    //         'Name' => $request->companyName ?? trim($request->input('name', '')),
-    //         'Address_Line1' => $request->addressLine1 ?? '',
-    //         'Address_Line2' => $request->addressLine2 ?? '',
-    //         'Address_City' => $request->cityName ?? '',
-    //         'Address_CityCode' => $request->cityCode ?? '',
-    //         'Address_State' => $request->provinceName ?? '',
-    //         'Address_StateCode' => $request->provinceCode ?? '',
-    //         'Address_CountryCode' => $request->countryCode ?? '',
-    //         'Address_Pin' => $request->zipCode ?? '',
-    //         'Cont_Bch_Dept' => $request->department ?? '',
-    //         'Cont_Bch_PersonName_FirstName' => $request->firstName ?? '',
-    //         'Cont_Bch_PersonName_LastName' => $request->lastName ?? '',
-    //         'Cont_Bch_PhoneNumbers' => $request->phoneNo ?? '',
-    //         'Cont_Bch_Email' => $request->contractEmail ?? '',
-    //         'OfficeCode' => $request->officeCode ?? $user->OfficeCode ?? '',
-    //         'OperationalEntityType' => $partyEntityType,
-    //         'ClientCode' => $clientCode,
-    //         'OtherPartyCode' => $otherPartyCode,
-    //     ];
-
-    //     if ($operationType === 'AccountingEntity' || $request->has('legalEntityType')) {
-    //         $creditDaysValue = $request->creditDays !== '' && is_numeric($request->creditDays) ? $request->creditDays : '0';
-    //         $creditLimitValue = $request->maxCreditLimit !== '' && is_numeric($request->maxCreditLimit) ? $request->maxCreditLimit : '0';
-
-    //         $payload = array_merge($payload, [
-    //             'LegalEntityType' => $request->legalEntityType ?? '',
-    //             'CreditDays' => $creditDaysValue,
-    //             'CreditLimit' => $creditLimitValue,
-    //             'CreditLimitCurrencyCode' => $request->creditLimitCurrencyCode ?? '',
-    //             'BillingCurrencyCode' => $request->billingCurrencyCode ?? '',
-    //             'BaseCurrencyCode' => $request->baseCurrencyCode ?? '',
-    //             'LicenceTypeCode' => $request->licenceTypeCode ?? '',
-    //             'LicenceTypeValue' => $request->licenceTypeValue ?? '',
-    //             'DebtorType' => $request->debtorType ?? '',
-    //             'VendorType' => $request->vendorType ?? '',
-    //         ]);
-    //     }
-
-    //     \Log::info('Payload prepared for SP', [
-    //         'operation_type' => $operationType,
-    //         'party_entity_type' => $partyEntityType,
-    //         'client_code' => $clientCode,
-    //         'other_party_code' => $otherPartyCode,
-    //     ]);
-
-    //     try {
-    //         // Call the stored procedure
-    //         $response = $this->executeJsonEntityProcedure($payload);
-
-    //         // Parse RequestNo from remarks
-    //         $requestNo = null;
-    //         if (isset($response['Remarks']) && is_array($response['Remarks'])) {
-    //             foreach ($response['Remarks'] as $remark) {
-    //                 if (isset($remark['Remark']) && preg_match('/<< (.+?) >>/', $remark['Remark'], $matches)) {
-    //                     $requestNo = trim($matches[1]);
-    //                     break;
-    //                 }
-    //             }
-    //         }
-
-    //         if (! $requestNo) {
-    //             \Log::error('Could not parse RequestNo from SP response', [
-    //                 'remarks' => $response['Remarks'] ?? null,
-    //                 'response' => $response,
-    //             ]);
-    //             throw new \Exception('Request submitted but could not retrieve request number. Please contact support.');
-    //         }
-
-    //         \Log::info('Entity request submitted successfully', [
-    //             'request_no' => $requestNo,
-    //             'operation_type' => $operationType,
-    //             'remarks' => $response['Remarks'],
-    //         ]);
-
-    //         // ── NEW: Trust SP success (no more hard check that was causing the error) ──
-    //         // For AccountingEntity the final record appears only after approval.
-    //         // We only try to find it for attachments.
-    //         $entityRecord = DB::table('Cust_Entity')
-    //             ->where('Code', $requestNo)
-    //             ->first();
-
-    //         if (! $entityRecord) {
-    //             \Log::warning('Entity record not found in Cust_Entity yet (normal for AccountingEntity initial submission)', [
-    //                 'request_no' => $requestNo,
-    //                 'operation_type' => $operationType,
-    //             ]);
-    //         } else {
-    //             \Log::info('Found entity record in Cust_Entity', [
-    //                 'request_no' => $requestNo,
-    //                 'entity_id' => $entityRecord->Id,
-    //                 'status' => $entityRecord->Status,
-    //             ]);
-    //         }
-
-    //         // ── Handle file attachments (only if we have the entity record) ──────────────────────────────────────
-    //         if ($request->hasFile('attachmentNames') && $entityRecord) {
-    //             $uploadedCount = 0;
-
-    //             foreach ($request->file('attachmentNames') as $index => $file) {
-    //                 if (! $file || ! $file->isValid()) {
-    //                     \Log::warning('Invalid file upload skipped', ['index' => $index]);
-    //                     continue;
-    //                 }
-
-    //                 try {
-    //                     $originalName = $file->getClientOriginalName();
-    //                     $extension = $file->getClientOriginalExtension();
-    //                     $filename = pathinfo($originalName, PATHINFO_FILENAME);
-    //                     $newName = $requestNo . '_' . $filename . '.' . $extension;
-
-    //                     // Store locally first
-    //                     $localPath = $file->storeAs('client-party', $newName, 'local');
-
-    //                     // Upload to Azure
-    //                     $azurePath = "Kenya/ClientParty/{$newName}";
-    //                     Storage::disk('azure')->put(
-    //                         $azurePath,
-    //                         file_get_contents(storage_path("app/{$localPath}"))
-    //                     );
-
-    //                     // Create attachment record
-    //                     DB::table('Cust_EntityAttachment')->insert([
-    //                         'ID' => (string) Str::uuid(),
-    //                         'CustEntityID' => $entityRecord->Id,
-    //                         'RequestNo' => $requestNo,
-    //                         'Title' => $request->attachmentDescription[$index] ?? 'Attachment',
-    //                         'FileName' => $newName,
-    //                         'FilePath' => $azurePath,
-    //                         'CreatedBy' => $user->ID ?? 'system',
-    //                         'CreatedOn' => now(),
-    //                         'LastModifiedBy' => $user->ID ?? 'system',
-    //                         'LastModifiedOn' => now(),
-    //                     ]);
-
-    //                     // Clean up local file
-    //                     @unlink(storage_path("app/{$localPath}"));
-
-    //                     $uploadedCount++;
-    //                 } catch (\Exception $fileEx) {
-    //                     \Log::error('Failed to upload attachment', [
-    //                         'request_no' => $requestNo,
-    //                         'file_index' => $index,
-    //                         'filename' => $originalName ?? 'unknown',
-    //                         'error' => $fileEx->getMessage(),
-    //                     ]);
-    //                 }
-    //             }
-
-    //             if ($uploadedCount > 0) {
-    //                 \Log::info('Uploaded attachments for request', [
-    //                     'request_no' => $requestNo,
-    //                     'count' => $uploadedCount,
-    //                 ]);
-    //             }
-    //         } elseif ($request->hasFile('attachmentNames')) {
-    //             \Log::warning('Attachments skipped - Cust_Entity record not available yet (will be attachable after approval)', [
-    //                 'request_no' => $requestNo,
-    //             ]);
-    //         }
-
-    //         // Success response
-    //         Alert::success('Success', "Entity Request No << {$requestNo} >> Successfully Submitted")
-    //             ->persistent(true, false);
-
-    //         return redirect()->route('client-party.index');
-    //     } catch (\Exception $e) {
-    //         \Log::error('Entity creation failed', [
-    //             'payload' => $payload,
-    //             'operation_type' => $operationType,
-    //             'error' => $e->getMessage(),
-    //             'trace' => $e->getTraceAsString(),
-    //         ]);
-
-    //         Alert::error('Error', $e->getMessage() ?: 'Failed to submit entity request. Please try again.')
-    //             ->persistent(true, false);
-
-    //         return redirect()->back()->withInput();
-    //     }
-    // }
 
     public function getOfficeNumberSeries($officeCode = null, $entityType = null)
     {
@@ -1286,16 +1071,7 @@ class ClientPartyController extends Controller
         }
     }
 
-    // public function preview(ClientParty $path)
-    // {
-    //     $attachment = $path->attachments;
-    //     $filePath = $attachment[0]->FilePath;
 
-    //     return Storage::disk('azure')->download($filePath, basename($attachment[0]->FilePath), [
-    //         'Content-Type' => 'application/octet-stream',
-    //         'Content-Disposition' => 'inline; filename="' . basename($attachment[0]->FilePath) . '"'
-    //     ]);
-    // }
 
     /**
      * Preview/Download a specific attachment file
@@ -1303,68 +1079,7 @@ class ClientPartyController extends Controller
      * @param  string  $attachmentId  - The unique ID of the attachment
      * @return \Illuminate\Http\Response
      */
-    // public function preview($attachmentId)
-    // {
-    //     try {
-    //         // Fetch the specific attachment by its ID (not entity ID)
-    //         $attachment = ClientPartyAttahment::where('ID', $attachmentId)->firstOrFail();
 
-    //         Log::info('Preview attachment request:', [
-    //             'attachmentId' => $attachmentId,
-    //             'fileName' => $attachment->FileName,
-    //             'filePath' => $attachment->FilePath,
-    //             'entityId' => $attachment->CustEntityID,
-    //         ]);
-
-    //         // Check if file exists in Azure storage
-    //         if (! Storage::disk('azure')->exists($attachment->FilePath)) {
-    //             Log::error('File not found in Azure storage:', [
-    //                 'filePath' => $attachment->FilePath,
-    //                 'attachmentId' => $attachmentId,
-    //             ]);
-    //             abort(404, 'File not found in storage');
-    //         }
-
-    //         // Get file extension to determine content type
-    //         $extension = pathinfo($attachment->FileName, PATHINFO_EXTENSION);
-    //         $mimeType = $extension === 'pdf' ? 'application/pdf' : 'application/octet-stream';
-
-    //         Log::info('File retrieved successfully:', [
-    //             'attachmentId' => $attachmentId,
-    //             'fileName' => $attachment->FileName,
-    //             'mimeType' => $mimeType,
-    //         ]);
-
-    //         // Download file from Azure and return as inline (for preview)
-    //         return Storage::disk('azure')->download(
-    //             $attachment->FilePath,
-    //             $attachment->FileName,
-    //             [
-    //                 'Content-Type' => $mimeType,
-    //                 'Content-Disposition' => 'inline; filename="' . $attachment->FileName . '"',
-    //             ]
-    //         );
-    //     } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-    //         Log::error('Attachment not found in database:', [
-    //             'attachmentId' => $attachmentId,
-    //             'error' => $e->getMessage(),
-    //         ]);
-
-    //         return response()->json([
-    //             'error' => 'Attachment not found',
-    //         ], 404);
-    //     } catch (\Exception $e) {
-    //         Log::error('Preview failed with exception:', [
-    //             'attachmentId' => $attachmentId,
-    //             'error' => $e->getMessage(),
-    //             'trace' => $e->getTraceAsString(),
-    //         ]);
-
-    //         return response()->json([
-    //             'error' => 'Error retrieving file: ' . $e->getMessage(),
-    //         ], 500);
-    //     }
-    // }
     public function preview($attachmentId)
     {
         try {
@@ -2854,6 +2569,36 @@ class ClientPartyController extends Controller
         }
     }
 
+    // public function checkLicense()
+    // {
+    //     try {
+    //         $input = request()->all();
+
+    //         $partyType = $input['partyType'] ?? 'Debtor';
+    //         $licenseNo = $input['licenseNo'] ?? null;
+    //         $officeCode = $input['officeCode'] ?? null;
+
+    //         Log::info('TEMP BYPASS: checkLicense passed automatically', [
+    //             'partyType' => $partyType,
+    //             'licenseNo' => $licenseNo,
+    //             'officeCode' => $officeCode,
+    //         ]);
+
+    //         // TEMPORARY BYPASS FOR TESTING
+    //         return response()->json([
+    //             'status' => 'Success',
+    //             'remark' => 'License check bypassed for testing',
+    //             'isDuplicate' => 0,
+    //         ]);
+    //     } catch (\Exception $e) {
+
+    //         Log::error('checkLicense bypass error: ' . $e->getMessage());
+
+    //         return response()->json([
+    //             'error' => 'Temporary bypass failed'
+    //         ], 500);
+    //     }
+    // }
     public function getCompanies()
     {
         try {

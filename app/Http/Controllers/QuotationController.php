@@ -3823,7 +3823,7 @@ class QuotationController extends Controller
 
     public function getReasons(Request $request)
     {
-        $module = $request->input('module', 'QuoteLogger');
+        $module = $request->input('module', 'Quotation');
         $reasonType = $request->input('reason_type');
         $filter = $request->input('filter', '');
 

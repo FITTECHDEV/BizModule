@@ -1831,8 +1831,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                             MODAL STYLING — matched to FitExpress UI
-                            ============================================= */
+        MODAL STYLING — matched to FitExpress UI
+        ============================================= */
         .modal-header {
             background-color: #fff !important;
             color: #000 !important;

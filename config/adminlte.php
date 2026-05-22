@@ -366,13 +366,13 @@ return [
             'can'    => 'view-quotation'
         ],
         // ↓ NEW ENTRY ↓
-        [
-            'text' => 'Z-REPORT RUNNER',
-            'url'  => 'zreport',
-            'icon' => 'fas fa-file-signature',
-            'active' => ['zreport', 'zreport/*'],
-            'can'  => 'approve-all-entity-request'
-        ],
+        // [
+        //     'text' => 'Z-REPORT RUNNER',
+        //     'url'  => 'zreport',
+        //     'icon' => 'fas fa-file-signature',
+        //     'active' => ['zreport', 'zreport/*'],
+        //     'can'  => 'approve-all-entity-request'
+        // ],
 
         // ['header' => 'account_settings'],
         [

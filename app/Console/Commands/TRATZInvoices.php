@@ -8,10 +8,13 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\DB;
 use DateTime;
+
 class TRATZInvoices extends Command
 {
-    protected $signature = 'tra_tz:invoices {invoiceId?} {--list : List pending invoices}';
-    protected $description = 'This Command Helps in generating Invoice Using TRA API for FIT- Tanzania';
+    protected $signature = 'tra_tz:invoices {invoiceId?}
+                            {--list : List pending invoices}';
+
+    protected $description = 'Generate and submit TRA invoices for FIT Tanzania via TRA API';
 
     public function __construct()
     {
@@ -20,48 +23,66 @@ class TRATZInvoices extends Command
 
     public function handle()
     {
-        // Check if list option is set
         if ($this->option('list')) {
             $this->listPendingInvoices();
             return 0;
+        }
+
+        Log::info('─── TRA FIT Invoice Push Started ───');
+
+        $bearerToken = env('FITTRA_TOKEN');
+        if (!$bearerToken) {
+            $this->logAndFail('FITTRA_TOKEN is not set in .env. Aborting.');
+            return 1;
+        }
+
+        $activeBusinessId = env('FITTRA_BUSINESS_ID');
+        if (!$activeBusinessId) {
+            $this->logAndFail('FITTRA_BUSINESS_ID is not set in .env. Aborting.');
+            return 1;
         }
 
         $invoiceId = $this->argument('invoiceId');
         $pendingInvoices = $this->fetchPendingInvoices($invoiceId);
 
         if ($pendingInvoices->isEmpty()) {
-            $msg = "No pending invoices found.";
-            Log::info($msg);
-            $this->info($msg);
+            Log::info('TRA FIT: No pending invoices found. Nothing to process.');
+            $this->info('No pending invoices found.');
             return 0;
+        }
+
+        Log::info("TRA FIT: Found {$pendingInvoices->count()} pending invoice(s) to process.");
+
+        if (!$this->isApiAvailable($bearerToken, $activeBusinessId)) {
+            $this->logAndFail('TRA FIT: API health check failed. Skipping all invoices.');
+            return 1;
         }
 
         foreach ($pendingInvoices as $invoice) {
             $jsonData = json_decode($invoice->TRAJsonFile, true);
 
-            if ($jsonData) {
-                // Log the JSON data to Laravel log file
-                Log::info("Invoice {$invoice->DocNo} JSON Data:", [
-                    'invoice_id' => $invoice->ID,
-                    'doc_no' => $invoice->DocNo,
-                    'json' => $jsonData
-                ]);
-
-                $this->info("Submitting Invoice DocNo: {$invoice->DocNo}");
-                $this->submitToApi($invoice, $jsonData);
-            } else {
-                $msg = "Failed to decode JSON data for invoice ID: {$invoice->ID}";
-                Log::error($msg);
-                $this->error($msg);
+            if (!$jsonData) {
+                Log::error("TRA FIT: Invoice {$invoice->DocNo} (ID: {$invoice->ID}) — failed to decode TRAJsonFile. Skipping.");
+                $this->error("Failed to decode JSON for invoice ID: {$invoice->ID}");
+                continue;
             }
+
+            Log::info("TRA FIT: Submitting Invoice {$invoice->DocNo} (ID: {$invoice->ID})", [
+                'payload' => $jsonData,
+            ]);
+
+            $this->info("Submitting Invoice DocNo: {$invoice->DocNo}");
+            $this->submitToApi($invoice, $jsonData, $bearerToken, $activeBusinessId);
         }
 
-        $this->info("TRA TZ push completed");
-        Log::notice("TRA TZ push completed");
+        Log::info('─── TRA FIT Invoice Push Completed ───');
+        $this->info('TRA FIT push completed.');
         return 0;
     }
 
-    protected function listPendingInvoices()
+    // ─── Helpers ──────────────────────────────────────────────────────────────
+
+    protected function listPendingInvoices(): void
     {
         $invoices = TRABillingHeader::nolock()
             ->where('Docstatus', 'Pending')
@@ -74,213 +95,223 @@ class TRATZInvoices extends Command
             ->get();
 
         if ($invoices->isEmpty()) {
-            $this->info("No pending invoices found.");
+            $this->info('No pending invoices found.');
             return;
         }
 
-        $this->info("Pending Invoices (showing up to 10):");
+        $this->info('Pending Invoices (showing up to 10):');
         $this->table(
             ['ID', 'Doc No', 'Status', 'Office'],
             $invoices->map(fn($inv) => [$inv->ID, $inv->DocNo, $inv->DocStatus, $inv->OfficeCode])
         );
     }
 
-   /**
- * Fetch pending invoices and generate JSON using stored procedure.
- *
- * @param int|null $invoiceId
- * @return \Illuminate\Database\Eloquent\Collection
- */
-protected function fetchPendingInvoices($invoiceId = null)
-{
-    $query = TRABillingHeader::nolock()
-        ->where('Docstatus', 'Pending')
-        ->whereNull('TRAInvoiceNo')
-        ->whereNull('TRASerialNo')
-        ->whereNull('TRAQRCode')
-        ->where('OfficeCode', 'AR');
+    protected function isApiAvailable(string $bearerToken, string $activeBusinessId): bool
+    {
+        $url = rtrim(env('TRA_BASE_URL'), '/') . '/health';
 
-    if ($invoiceId) {
-        $query->where('ID', $invoiceId);
-    }
+        Log::info("TRA FIT: API health check → {$url}");
 
-    $invoices = $query->get();
-
-    // Execute stored procedure for each invoice
-    foreach ($invoices as $invoice) {
         try {
-            // Execute with SET NOCOUNT ON
-            $result = DB::select("
-                SET NOCOUNT ON;
-                DECLARE @JsonOutput VARCHAR(MAX);
-                EXEC [dbo].[TRA_VFD] @InvoiceID = ?, @Json = @JsonOutput OUTPUT;
-                SELECT @JsonOutput AS JsonResult;
-            ", [$invoice->ID]);
+            $response = Http::withHeaders([
+                'Authorization'     => 'Bearer ' . $bearerToken,
+                'x-active-business' => $activeBusinessId,
+                'Accept'            => 'application/json',
+            ])->timeout(5)->get($url);
 
-            $json = $result[0]->JsonResult ?? null;
+            $status = $response->status();
+            Log::info("TRA FIT: Health check response: HTTP {$status}");
 
-            if (!empty($json)) {
-                $invoice->TRAJsonFile = $json;
-                $invoice->save();
+            if (!$response->ok()) {
+                Log::warning('TRA FIT: Health check returned non-OK status.', ['body' => $response->body()]);
             }
 
-            // Log::info("Generated JSON for Invoice ID: {$invoice->ID}");
-
+            return $response->ok();
         } catch (\Exception $e) {
-            Log::error("Failed to execute SP for Invoice ID: {$invoice->ID}. Error: " . $e->getMessage());
+            Log::error('TRA FIT: Health check exception: ' . $e->getMessage());
+            return false;
         }
     }
 
-    return $invoices;
-}
+    protected function fetchPendingInvoices(?int $invoiceId = null)
+    {
+        $query = TRABillingHeader::nolock()
+            ->where('Docstatus', 'Pending')
+            ->whereNull('TRAInvoiceNo')
+            ->whereNull('TRASerialNo')
+            ->whereNull('TRAQRCode')
+            ->where('OfficeCode', 'AR');
 
-    // protected function submitToApi($invoice, $jsonData)
-    // {
-    //     $baseUrl = rtrim(env('TRA_FITTZ_BASE_URL'), '/');
-    //     $url = "{$baseUrl}/invoices";
+        if ($invoiceId) {
+            $query->where('ID', $invoiceId);
+        }
 
-    //     $this->info("Posting invoice {$invoice->DocNo} to {$url}");
+        $invoices = $query->get();
 
+        foreach ($invoices as $invoice) {
+            try {
+                $result = DB::select("
+                    SET NOCOUNT ON;
+                    DECLARE @JsonOutput VARCHAR(MAX);
+                    EXEC [dbo].[TRA_VFD] @InvoiceID = ?, @Json = @JsonOutput OUTPUT;
+                    SELECT @JsonOutput AS JsonResult;
+                ", [$invoice->ID]);
 
+                $json = $result[0]->JsonResult ?? null;
 
-    //     try {
-    //         $response = Http::withBasicAuth(env('TRA_FITTZ_USERNAME'), env('TRA_FITTZ_PASSWORD'))
-    //             ->timeout((int) env('TRA_FITTZ_TIMEOUT', 20))
-    //             ->retry((int) env('TRA_FITTZ_RETRIES', 3), (int) env('TRA_FITTZ_RETRY_DELAY', 500))
-    //             ->post($url, $jsonData);
+                if (!empty($json)) {
+                    $invoice->TRAJsonFile = $json;
+                    $invoice->save();
+                    Log::info("TRA FIT: SP TRA_VFD executed for Invoice ID: {$invoice->ID} — JSON generated.");
+                } else {
+                    Log::warning("TRA FIT: SP TRA_VFD returned empty JSON for Invoice ID: {$invoice->ID}");
+                }
+            } catch (\Exception $e) {
+                Log::error("TRA FIT: SP execution failed for Invoice ID: {$invoice->ID}", [
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
 
-    //         $this->info("Received HTTP status: {$response->status()}");
+        return $invoices;
+    }
 
-    //         $responseData = $response->json();
+    protected function submitToApi(TRABillingHeader $invoice, array $jsonData, string $bearerToken, string $activeBusinessId): void
+    {
+        $url = rtrim(env('TRA_BASE_URL'), '/') . '/sales';
 
-    //         if (!$response->ok() || $response->status() != 200) {
-    //             // Extract clean error message
-    //             $errorMessage = $responseData['message'] ?? 'API error';
-    //             $msg = "Invoice {$invoice->DocNo} submission failed — {$errorMessage}";
-    //             Log::warning($msg);
-    //             $this->warn($msg);
+        Log::info("TRA FIT: POST → {$url} for Invoice {$invoice->DocNo}");
 
-    //             $this->handleFailedSubmission($invoice, $responseData, $errorMessage);
-    //         } else {
-    //             $this->handleSuccessfulSubmission($invoice, $responseData);
-    //         }
-    //     } catch (\Throwable $e) {
-    //         $errorMessage = $e->getMessage();
+        try {
+            $response = Http::withHeaders([
+                'Authorization'     => 'Bearer ' . $bearerToken,
+                'x-active-business' => $activeBusinessId,
+                'Content-Type'      => 'application/json',
+                'Accept'            => 'application/json',
+            ])
+                ->timeout((int) env('FITTRA_TIMEOUT', 20))
+                ->retry((int) env('FITTRA_RETRIES', 3), (int) env('FITTRA_RETRY_DELAY', 500))
+                ->post($url, $jsonData);
 
-    //         // Try to extract JSON "message" if present in exception
-    //         if (preg_match('/\{.*\}/s', $errorMessage, $matches)) {
-    //             $json = json_decode($matches[0], true);
-    //             if (json_last_error() === JSON_ERROR_NONE && isset($json['message'])) {
-    //                 $errorMessage = $json['message'];
-    //             }
-    //         }
+            $httpStatus   = $response->status();
+            $rawBody      = $response->body();
+            $responseData = $response->json();
 
-    //         $msg = "Invoice {$invoice->DocNo} API connection error: {$errorMessage}";
-    //         Log::error($msg);
-    //         $this->error($msg);
-    //         $this->handleFailedSubmission($invoice, null, $errorMessage);
-    //     }
-    // }
+            Log::info("TRA FIT: Response for Invoice {$invoice->DocNo}", [
+                'http_status'   => $httpStatus,
+                'raw_body'      => $rawBody,
+                'response_body' => $responseData,
+            ]);
 
-    protected function submitToApi($invoice, $jsonData)
-{
-    $baseUrl = rtrim(env('TRA_FITTZ_BASE_URL'), '/');
-    $url = "{$baseUrl}/invoices";
+            $this->info("HTTP {$httpStatus} received for Invoice {$invoice->DocNo}");
 
-    $this->info("Posting invoice {$invoice->DocNo} to {$url}");
+            if ($httpStatus === 401) {
+                $this->warn("401 Unauthorized — Bearer token is invalid or expired.");
+                $this->handleFailedSubmission($invoice, $responseData, 'Bearer token invalid or expired');
+                return;
+            }
 
-    try {
-        $response = Http::withBasicAuth(env('TRA_FITTZ_USERNAME'), env('TRA_FITTZ_PASSWORD'))
-            ->timeout((int) env('TRA_FITTZ_TIMEOUT', 20))
-            ->retry((int) env('TRA_FITTZ_RETRIES', 3), (int) env('TRA_FITTZ_RETRY_DELAY', 500))
-            ->post($url, $jsonData);
+            if ($httpStatus === 403) {
+                $errorMessage = $responseData['message'] ?? 'Invalid or inactive business';
+                $this->warn("403 Forbidden — {$errorMessage}");
+                $this->handleFailedSubmission($invoice, $responseData, $errorMessage);
+                return;
+            }
 
-        $this->info("Received HTTP status: {$response->status()}");
+            if ($httpStatus !== 201) {
+                $errorMessage = $responseData['message'] ?? $responseData['error'] ?? 'API error';
+                Log::warning("TRA FIT: Invoice {$invoice->DocNo} failed — {$errorMessage}");
+                $this->warn("Invoice {$invoice->DocNo} failed — {$errorMessage}");
+                $this->handleFailedSubmission($invoice, $responseData, $errorMessage);
+                return;
+            }
 
-        $responseData = $response->json();
+            if (!is_array($responseData)) {
+                $msg = "HTTP 201 but response is not valid JSON. Raw body: {$rawBody}";
+                Log::error("TRA FIT: Invoice {$invoice->DocNo} — {$msg}");
+                $this->error("Invoice {$invoice->DocNo} — {$msg}");
+                $this->handleFailedSubmission($invoice, null, $msg);
+                return;
+            }
 
-        // Log the complete API response
-        Log::info("TRA API Response for Invoice {$invoice->DocNo}:", [
-            'invoice_id' => $invoice->ID,
-            'doc_no' => $invoice->DocNo,
-            'http_status' => $response->status(),
-            'response_data' => $responseData,
-            'raw_body' => $response->body()
-        ]);
-
-        if (!$response->ok() || $response->status() != 200) {
-            // Extract clean error message
-            $errorMessage = $responseData['message'] ?? 'API error';
-            $msg = "Invoice {$invoice->DocNo} submission failed — {$errorMessage}";
-            Log::warning($msg);
-            $this->warn($msg);
-
-            $this->handleFailedSubmission($invoice, $responseData, $errorMessage);
-        } else {
             $this->handleSuccessfulSubmission($invoice, $responseData);
+        } catch (\Throwable $e) {
+            $errorMessage = $e->getMessage();
+
+            Log::error("TRA FIT: Exception while submitting Invoice {$invoice->DocNo}", [
+                'error' => $errorMessage,
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            $responseData = null;
+            if (preg_match('/\{.*\}/s', $errorMessage, $matches)) {
+                $parsed = json_decode($matches[0], true);
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    $responseData = $parsed;
+                    $errorMessage = $parsed['message'] ?? $errorMessage;
+                }
+            }
+
+            $this->error("Invoice {$invoice->DocNo} — connection error: {$errorMessage}");
+            $this->handleFailedSubmission($invoice, $responseData, $errorMessage);
         }
-    } catch (\Throwable $e) {
-        $errorMessage = $e->getMessage();
+    }
 
-        // Log the exception details
-        Log::error("TRA API Exception for Invoice {$invoice->DocNo}:", [
-            'invoice_id' => $invoice->ID,
-            'doc_no' => $invoice->DocNo,
-            'exception' => $errorMessage,
-            'trace' => $e->getTraceAsString()
-        ]);
+    protected function handleSuccessfulSubmission(TRABillingHeader $invoice, array $responseData): void
+    {
+        $traDateTime = null;
+        $localDate   = $responseData['localDate'] ?? null;
+        $localTime   = $responseData['localTime'] ?? null;
 
-        // Try to extract JSON "message" if present in exception
-        if (preg_match('/\{.*\}/s', $errorMessage, $matches)) {
-            $json = json_decode($matches[0], true);
-            if (json_last_error() === JSON_ERROR_NONE && isset($json['message'])) {
-                $errorMessage = $json['message'];
+        if ($localDate && $localTime) {
+            try {
+                $traDateTime = new DateTime("{$localDate} {$localTime}");
+            } catch (\Exception $e) {
+                Log::warning("TRA FIT: Could not parse TRA dateTime for Invoice {$invoice->DocNo}: {$e->getMessage()}");
             }
         }
 
-        $msg = "Invoice {$invoice->DocNo} API connection error: {$errorMessage}";
-        Log::error($msg);
-        $this->error($msg);
-        $this->handleFailedSubmission($invoice, null, $errorMessage);
+        $updateData = [
+            'DocStatus'        => 'Submitted',
+            'TRASubmissionOn'  => $traDateTime?->format('Y-m-d H:i:s'),
+            'SubmissionStatus' => 'Success',
+            'ResponseJson'     => json_encode($responseData),
+            'TRAInvoiceNo'     => $responseData['rctnum']            ?? null,
+            'TRASerialNo'      => $responseData['rctvnum']           ?? null,
+            'TRAQRCode'        => $responseData['verificationLink']  ?? null,
+        ];
+
+        TRABillingHeader::where('ID', $invoice->ID)->update($updateData);
+
+        Log::info("TRA FIT: Invoice {$invoice->DocNo} (ID: {$invoice->ID}) submitted successfully.", [
+            'TRAInvoiceNo'    => $updateData['TRAInvoiceNo'],
+            'TRASerialNo'     => $updateData['TRASerialNo'],
+            'TRAQRCode'       => $updateData['TRAQRCode'],
+            'TRASubmissionOn' => $updateData['TRASubmissionOn'],
+        ]);
+
+        $this->info("Invoice {$invoice->DocNo} submitted successfully.");
     }
-}
 
+    protected function handleFailedSubmission(TRABillingHeader $invoice, ?array $responseData, string $errorMessage): void
+    {
+        $submissionStatus = !empty($errorMessage) ? $errorMessage : 'Unknown error';
 
-    protected function handleSuccessfulSubmission($invoice, $responseData)
-{
-    // Parse the dateTime from response
-    $traDateTime = null;
-    if (isset($responseData['data']['dateTime'])) {
-        try {
-            $traDateTime = new DateTime($responseData['data']['dateTime']);
-        } catch (\Exception $e) {
-            Log::warning("Failed to parse TRA dateTime for Invoice {$invoice->DocNo}: " . $e->getMessage());
-        }
+        TRABillingHeader::where('ID', $invoice->ID)->update([
+            'DocStatus'        => 'Failed',
+            'SubmissionStatus' => $submissionStatus,
+            'ResponseJson'     => $responseData ? json_encode($responseData) : null,
+        ]);
+
+        Log::error("TRA FIT: Invoice {$invoice->DocNo} (ID: {$invoice->ID}) failed.", [
+            'error'         => $submissionStatus,
+            'response_data' => $responseData,
+        ]);
     }
 
-    TRABillingHeader::where('ID', $invoice->ID)->update([
-        'DocStatus' => 'Submitted',
-        'TRAInvoiceNo' => $responseData['data']['receipVerificationNo'] ?? null,
-        'TRAQRCode' => $responseData['data']['invoiceVerificationUrl'] ?? null,
-        'TRASubmissionOn' => $traDateTime,
-        'SubmissionStatus' => $responseData['message'] ?? 'Success',
-        'ResponseJson' => json_encode($responseData),
-    ]);
-
-    Log::info("Invoice ID: {$invoice->ID} submitted successfully.");
-}
-
-    protected function handleFailedSubmission($invoice, $responseData, $errorMessage)
-{
-    // Use only the error message, avoid full HTTP response
-    $submissionStatus = !empty($errorMessage) ? $errorMessage : 'Unknown error';
-
-    TRABillingHeader::where('ID', $invoice->ID)->update([
-        'DocStatus' => 'Failed', // Standardized to 'Failed'
-        'SubmissionStatus' => $submissionStatus,
-        'ResponseJson' => $responseData ? json_encode($responseData) : null,
-    ]);
-
-    Log::error("Failed to submit invoice ID: {$invoice->ID}. Error: " . $submissionStatus);
-}
+    protected function logAndFail(string $message): void
+    {
+        Log::critical($message);
+        $this->error($message);
+    }
 }
