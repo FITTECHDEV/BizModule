@@ -224,11 +224,31 @@ class QuotationController extends Controller
             }
 
             $lostCanceled = count($lostCancelledRows);
-            $total = $inProgress + $won + $completed + $failedInt + $failedProgress + $lostCanceled;
 
+            // Count quotations that have at least one office request
+            $allQuoteNosForStats = array_column($allRows, 'QuoteNo');
+            $inProgressRequest = 0;
+            if (!empty($allQuoteNosForStats)) {
+                $quotationIds = DB::table('Quote_QuotationInfo')
+                    ->whereIn('QuoteNo', $allQuoteNosForStats)
+                    ->pluck('ID')
+                    ->toArray();
+
+                if (!empty($quotationIds)) {
+                    $inProgressRequest = DB::table('Quote_Quotation_RequestedQuote')
+                        ->whereIn('QuotationInfoID', $quotationIds)
+                        ->where('IsActive', 1)
+                        ->where('IsDeleted', 0)
+                        ->distinct('QuotationInfoID')
+                        ->count('QuotationInfoID');
+                }
+            }
+
+            $total = $inProgress + $won + $completed + $failedInt + $failedProgress + $lostCanceled;
             $stats = [
                 'total' => $total,
                 'in_progress' => $inProgress,
+                'in_progress_request' => $inProgressRequest,
                 'won' => $won,
                 'completed' => $completed,
                 'lost_canceled' => $lostCanceled,
@@ -237,14 +257,38 @@ class QuotationController extends Controller
             ];
 
             // ── Select row set for active card ────────────────────────────────
+            // Resolve QuoteNos that have office requests (only when needed)
+            $requestQuoteNos = [];
+            if ($cardFilter === 'in_progress_request') {
+                $allRowQuoteNos = array_column($allRows, 'QuoteNo');
+                $requestedIds = DB::table('Quote_Quotation_RequestedQuote')
+                    ->whereIn(
+                        'QuotationInfoID',
+                        DB::table('Quote_QuotationInfo')->whereIn('QuoteNo', $allRowQuoteNos)->pluck('ID'),
+                    )
+                    ->where('IsActive', 1)
+                    ->where('IsDeleted', 0)
+                    ->distinct('QuotationInfoID')
+                    ->pluck('QuotationInfoID')
+                    ->toArray();
+
+                $requestQuoteNos = DB::table('Quote_QuotationInfo')
+                    ->whereIn('ID', $requestedIds)
+                    ->pluck('QuoteNo')
+                    ->toArray();
+            }
+
             $activeRows = match ($cardFilter) {
                 'lost_canceled' => $lostCancelledRows,
                 'failed_progress' => $failedProgressRows,
+                'in_progress_request' => array_values(
+                    array_filter($allRows, fn($row) => in_array($row->QuoteNo, $requestQuoteNos)),
+                ),
                 default => $allRows,
             };
 
             // ── PHP filter for Total-branch sub-cards ─────────────────────────
-            if (!in_array($cardFilter, ['lost_canceled', 'failed_progress', 'total'])) {
+            if (!in_array($cardFilter, ['lost_canceled', 'failed_progress', 'total', 'in_progress_request'])) {
                 $activeRows = array_values(
                     array_filter($activeRows, function ($row) use ($cardFilter, $scmLookup) {
                         $db = $scmLookup->get($row->QuoteNo);
@@ -537,6 +581,7 @@ class QuotationController extends Controller
         return [
             'total' => 0,
             'in_progress' => 0,
+            'in_progress_request' => 0,
             'won' => 0,
             'completed' => 0,
             'lost_canceled' => 0,
@@ -628,9 +673,25 @@ class QuotationController extends Controller
         $failedProgress = count($failedProgressRows);
         $total = $inProgress + $won + $completed + $failedInt + $failedProgress + $lostCanceled;
 
+        // Count quotations that have at least one office request
+        $inProgressRequest = 0;
+        if (!empty($quoteNos)) {
+            $quotationIds = DB::table('Quote_QuotationInfo')->whereIn('QuoteNo', $quoteNos)->pluck('ID')->toArray();
+
+            if (!empty($quotationIds)) {
+                $inProgressRequest = DB::table('Quote_Quotation_RequestedQuote')
+                    ->whereIn('QuotationInfoID', $quotationIds)
+                    ->where('IsActive', 1)
+                    ->where('IsDeleted', 0)
+                    ->distinct('QuotationInfoID')
+                    ->count('QuotationInfoID');
+            }
+        }
+
         return response()->json([
             'total' => $total,
             'in_progress' => $inProgress,
+            'in_progress_request' => $inProgressRequest,
             'won' => $won,
             'completed' => $completed,
             'lost_canceled' => $lostCanceled,

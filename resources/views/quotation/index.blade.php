@@ -21,6 +21,19 @@
                 </div>
             </div>
 
+            {{-- 1b. In Progress Request --}}
+            <div class="col-6 col-md-4 col-lg mb-2">
+                <div class="small-box bg-purple card-filter-trigger compact-card" data-filter="in_progress_request">
+                    <div class="inner">
+                        <h3 id="stat-in-progress-request">{{ $stats['in_progress_request'] ?? 0 }}</h3>
+                        <p>In Progress(Requested Quote)</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-paper-plane"></i>
+                    </div>
+                </div>
+            </div>
+
             {{-- 2. Won --}}
             <div class="col-6 col-md-4 col-lg mb-2">
                 <div class="small-box bg-success card-filter-trigger compact-card" data-filter="won">
@@ -165,8 +178,8 @@
 
                     {{-- Clear Filters Button --}}
                     <div class="col-12 col-sm-6 col-md-auto order-6" id="clearFiltersContainer" style="display: none;">
-                        <button type="button" id="clearAllFilters" class="btn btn-outline-secondary btn-sm w-100 w-md-auto"
-                            title="Clear all filters">
+                        <button type="button" id="clearAllFilters"
+                            class="btn btn-outline-secondary btn-sm w-100 w-md-auto" title="Clear all filters">
                             <i class="fas fa-redo"></i> Clear Filters
                         </button>
                     </div>
@@ -795,6 +808,16 @@
             opacity: 0.85;
             border-color: #dee2e6;
         }
+
+        .bg-purple {
+            background-color: #7b68ee !important;
+            color: #fff !important;
+        }
+
+        .bg-purple .inner h3,
+        .bg-purple .inner p {
+            color: #fff !important;
+        }
     </style>
 @stop
 
@@ -848,6 +871,7 @@
                 if (!stats) return;
                 $('#stat-total').text(stats.total || 0);
                 $('#stat-in-progress').text(stats.in_progress || 0);
+                $('#stat-in-progress-request').text(stats.in_progress_request || 0);
                 $('#stat-won').text(stats.won || 0);
                 $('#stat-completed').text(stats.completed || 0);
                 $('#stat-lost-canceled').text(stats.lost_canceled || 0);
@@ -2355,7 +2379,7 @@
                                 var rowClass = r.status === 'failed' ?
                                     'class="table-danger"' : '';
                                 var company = esc(String(companyMap[String(r
-                                    .bookingno)] ||
+                                        .bookingno)] ||
                                     '-'));
                                 var errorCell = r.error ? esc(String(r.error)) : '';
                                 html +=

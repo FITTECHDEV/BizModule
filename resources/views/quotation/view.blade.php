@@ -13,8 +13,7 @@
                 <i class="fas fa-arrow-left"></i> Back to List
             </a>
 
-            <button type="button" class="btn btn-info btn-sm" id="btnCopyBooking"
-                data-bookingno="{{ $quotation->bookingno }}">
+            <button type="button" class="btn btn-info btn-sm" id="btnCopyBooking" data-bookingno="{{ $quotation->bookingno }}">
                 <i class="fas fa-copy"></i> Duplicate
             </button>
 
@@ -65,8 +64,7 @@
     @php
         $quoteStatus = $quotation->QuoteStatus ?? ($quotation->status ?? null);
         $isInProgress =
-            in_array($quoteStatus, ['Proposal', 'Pending', 'In Progress', 'Failed Progress']) ||
-            is_null($quoteStatus);
+            in_array($quoteStatus, ['Proposal', 'Pending', 'In Progress', 'Failed Progress']) || is_null($quoteStatus);
     @endphp
 
     <div class="row">
@@ -109,8 +107,8 @@
                         <label class="col-sm-5 col-form-label">Sales Person</label>
                         <div class="col-sm-7">
                             <input type="text" class="form-control form-control-sm" data-field="username"
-                                data-code="{{ $quotation->SalesPersonCode ?? '' }}"
-                                value="{{ $quotation->username ?? '' }}" readonly>
+                                data-code="{{ $quotation->SalesPersonCode ?? '' }}" value="{{ $quotation->username ?? '' }}"
+                                readonly>
                         </div>
                     </div>
                     <div class="form-group row mb-0">
@@ -226,7 +224,7 @@
                         </div>
                     </div>
                     <div class="form-group row mb-0" id="viewContainerSection"
-                        style="{{($quotation->scopevolume ?? '') === 'Containerized' ? '' : 'display:none;'}}">
+                        style="{{ ($quotation->scopevolume ?? '') === 'Containerized' ? '' : 'display:none;' }}">
                         <label class="col-sm-5 col-form-label">Containers</label>
                         <div class="col-sm-7">
                             <table class="table table-bordered table-sm mb-0">
@@ -260,7 +258,7 @@
                     </div>
                 </div>
                 <div class="card-body">
-                   @php
+                    @php
                         $documents = DB::table('Quote_Quotation_Document')
                             ->where('QuotationInfoID', $quotation->ID)
                             ->where('DocumentType', 'QuotationPDF')
@@ -268,17 +266,17 @@
                             ->orderByDesc('CreatedOn')
                             ->get(['Name', 'FilePath', 'CreatedOn']);
                     @endphp
-                    
+
                     @if ($documents->isNotEmpty())
                         @foreach ($documents as $index => $doc)
                             @php
                                 preg_match('/_V(\d+)_/i', $doc->Name, $matches);
                                 $version = $matches[1] ?? $index + 1;
                                 $displayName = $doc->Name ?? "Quotation_{$quotation->bookingno}_V{$version}.pdf";
-                                
+
                                 // Use the same route the edit page uses — avoids the storage::exists() false negative
                                 $downloadUrl = route('quotation.download-pdf', [
-                                    'id'      => $quotation->ID,
+                                    'id' => $quotation->ID,
                                     'version' => $version,
                                 ]);
                             @endphp
@@ -297,6 +295,40 @@
                     @else
                         <p class="text-muted text-center mb-0">No PDF versions generated yet</p>
                     @endif
+                </div>
+            </div>
+
+            <!-- Request Office Quotation -->
+            <div class="card card-primary">
+                <div class="card-header d-flex justify-content-between align-items-center py-2">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-paper-plane mr-2"></i>Request Office Quotation
+                    </h3>
+                    <div class="card-tools">
+                        <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                            <i class="fas fa-chevron-up"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-sm table-hover mb-0">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>Office Name</th>
+                                    <th>Quote No</th>
+                                    <th>Request</th>
+                                </tr>
+                            </thead>
+                            <tbody id="viewRequestOfficeHistoryTable">
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted">
+                                        <i class="fas fa-spinner fa-spin"></i> Loading...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
@@ -356,7 +388,7 @@
                         </button>
                     </div>
                 </div>
-            <div class="card-body">
+                <div class="card-body">
                     {{-- Customer Type & Agent Type --}}
                     <div class="row mb-3 pb-2" style="border-bottom: 1px solid #dee2e6;">
                         <div class="col-md-6">
@@ -384,7 +416,8 @@
                                 <label class="col-sm-4 col-form-label">Company</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm" data-field="companyname"
-                                        value="{{ $quotation->pri_partnermaster_name ?? ($quotation->companyname ?? '') }}" readonly>
+                                        value="{{ $quotation->pri_partnermaster_name ?? ($quotation->companyname ?? '') }}"
+                                        readonly>
                                 </div>
                             </div>
                             <div class="form-group row">
@@ -415,8 +448,8 @@
                                 <label class="col-sm-4 col-form-label">Contact Person</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control form-control-sm"
-                                        data-field="pri_partnermaster_name"
-                                        value="{{ $quotation->contact_name ?? '' }}" readonly>
+                                        data-field="pri_partnermaster_name" value="{{ $quotation->contact_name ?? '' }}"
+                                        readonly>
                                 </div>
                             </div>
                             <div class="form-group row mb-0">
@@ -722,7 +755,7 @@
 
         $(document).ready(function() {
 
-            const bookingNo     = '{{ $quotation->bookingno ?? '' }}';
+            const bookingNo = '{{ $quotation->bookingno ?? '' }}';
             const QUOTE_NO_VIEW = '{{ $quotation->QuoteNo ?? '' }}';
             const SCOPE_OF_VOLUME = '{{ $quotation->scopevolume ?? '' }}';
 
@@ -733,7 +766,9 @@
                 $.ajax({
                     url: '{{ route('quotation.containers') }}',
                     type: 'GET',
-                    data: { quote_no: QUOTE_NO_VIEW },
+                    data: {
+                        quote_no: QUOTE_NO_VIEW
+                    },
                     success: function(response) {
                         const tbody = $('#viewContainerTableBody');
                         tbody.empty();
@@ -762,12 +797,12 @@
             // ============================================================
             // SHIPMENT DETAILS — Edit / Save / Cancel
             // ============================================================
-            const savedShipmentMode  = '{{ $quotation->shipmentmode ?? '' }}';
+            const savedShipmentMode = '{{ $quotation->shipmentmode ?? '' }}';
             const savedTransportMode = '{{ $quotation->TransportMode ?? '' }}';
             const savedOriginCountry = '{{ $quotation->origincountry ?? '' }}';
-            const savedDestCountry   = '{{ $quotation->destinationcountry ?? '' }}';
-            const savedIncoTerm      = '{{ $quotation->incoterm ?? '' }}';
-            const savedServiceClass  = '{{ $quotation->ServiceClass ?? '' }}';
+            const savedDestCountry = '{{ $quotation->destinationcountry ?? '' }}';
+            const savedIncoTerm = '{{ $quotation->incoterm ?? '' }}';
+            const savedServiceClass = '{{ $quotation->ServiceClass ?? '' }}';
 
             let viewShipmentSnapshot = {};
             let viewShipmentDropdownsLoaded = false;
@@ -781,7 +816,7 @@
                     $select.empty();
                     allOptions.each(function() {
                         const optText = $(this).text().toLowerCase();
-                        const optVal  = $(this).val();
+                        const optVal = $(this).val();
                         if (optVal === '' || optText.includes(term)) {
                             $select.append($(this).clone());
                         }
@@ -798,6 +833,7 @@
                     return;
                 }
                 let remaining = 5;
+
                 function oneDone() {
                     remaining--;
                     if (remaining === 0) {
@@ -836,9 +872,12 @@
                 $.ajax({
                     url: '{{ route('quotation.lookup.countries') }}',
                     type: 'GET',
-                    data: { filter: '' },
+                    data: {
+                        filter: ''
+                    },
                     success: function(countries) {
                         const list = Array.isArray(countries) ? countries : [];
+
                         function fillCountrySelect(selectId, savedValue) {
                             const $sel = $('#' + selectId).empty()
                                 .append('<option value="">-- Select --</option>');
@@ -876,12 +915,14 @@
                 $.ajax({
                     url: '{{ route('quotation.lookup.serviceClasses') }}',
                     type: 'GET',
-                    data: { filter: '' },
+                    data: {
+                        filter: ''
+                    },
                     success: function(classes) {
                         const $sel = $('#viewServiceClassSelect').empty()
                             .append('<option value="">-- Select --</option>');
                         (Array.isArray(classes) ? classes : []).forEach(function(item) {
-                            const code    = item.Code || '';
+                            const code = item.Code || '';
                             const display = item.Name || item.Description || code;
                             $sel.append(
                                 `<option value="${code}" ${code === savedServiceClass ? 'selected' : ''}>${display}</option>`
@@ -894,17 +935,19 @@
 
             $('#viewShipmentEditBtn').on('click', function() {
                 viewShipmentSnapshot = {
-                    shipmentMode:  $('#viewShipmentModeSelect').val()  || savedShipmentMode,
+                    shipmentMode: $('#viewShipmentModeSelect').val() || savedShipmentMode,
                     transportMode: $('#viewTransportModeSelect').val() || savedTransportMode,
                     originCountry: $('#viewOriginCountrySelect').val() || savedOriginCountry,
-                    destCountry:   $('#viewDestCountrySelect').val()   || savedDestCountry,
-                    incoTerm:      $('#viewIncoTermSelect').val()      || savedIncoTerm,
-                    serviceClass:  $('#viewServiceClassSelect').val()  || savedServiceClass,
+                    destCountry: $('#viewDestCountrySelect').val() || savedDestCountry,
+                    incoTerm: $('#viewIncoTermSelect').val() || savedIncoTerm,
+                    serviceClass: $('#viewServiceClassSelect').val() || savedServiceClass,
                 };
                 loadViewShipmentDropdowns(function() {
-                    $('#viewShipmentModeDisplay, #viewTransportModeDisplay, #viewIncoTermDisplay, #viewServiceClassDisplay').addClass('d-none');
+                    $('#viewShipmentModeDisplay, #viewTransportModeDisplay, #viewIncoTermDisplay, #viewServiceClassDisplay')
+                        .addClass('d-none');
                     $('#viewOriginCountryDisplay, #viewDestCountryDisplay').addClass('d-none');
-                    $('#viewShipmentModeSelect, #viewTransportModeSelect, #viewIncoTermSelect, #viewServiceClassSelect').removeClass('d-none').prop('disabled', false);
+                    $('#viewShipmentModeSelect, #viewTransportModeSelect, #viewIncoTermSelect, #viewServiceClassSelect')
+                        .removeClass('d-none').prop('disabled', false);
                     $('#viewOriginCountryEditWrap, #viewDestCountryEditWrap').removeClass('d-none');
                     $('#viewShipmentEditBtn').hide();
                     $('#viewShipmentSaveBtn, #viewShipmentCancelBtn').show();
@@ -919,9 +962,11 @@
                 $('#viewIncoTermSelect').val(viewShipmentSnapshot.incoTerm);
                 $('#viewServiceClassSelect').val(viewShipmentSnapshot.serviceClass);
                 $('#viewOriginCountrySearch, #viewDestCountrySearch').val('');
-                $('#viewShipmentModeSelect, #viewTransportModeSelect, #viewIncoTermSelect, #viewServiceClassSelect').addClass('d-none').prop('disabled', true);
+                $('#viewShipmentModeSelect, #viewTransportModeSelect, #viewIncoTermSelect, #viewServiceClassSelect')
+                    .addClass('d-none').prop('disabled', true);
                 $('#viewOriginCountryEditWrap, #viewDestCountryEditWrap').addClass('d-none');
-                $('#viewShipmentModeDisplay, #viewTransportModeDisplay, #viewIncoTermDisplay, #viewServiceClassDisplay').removeClass('d-none');
+                $('#viewShipmentModeDisplay, #viewTransportModeDisplay, #viewIncoTermDisplay, #viewServiceClassDisplay')
+                    .removeClass('d-none');
                 $('#viewOriginCountryDisplay, #viewDestCountryDisplay').removeClass('d-none');
                 $(this).hide();
                 $('#viewShipmentSaveBtn').hide();
@@ -929,19 +974,37 @@
             });
 
             $('#viewShipmentSaveBtn').on('click', function() {
-                const shipmentMode  = $('#viewShipmentModeSelect').val();
+                const shipmentMode = $('#viewShipmentModeSelect').val();
                 const transportMode = $('#viewTransportModeSelect').val();
                 const originCountry = $('#viewOriginCountrySelect').val();
-                const destCountry   = $('#viewDestCountrySelect').val();
-                const incoTerm      = $('#viewIncoTermSelect').val();
-                const serviceClass  = $('#viewServiceClassSelect').val();
+                const destCountry = $('#viewDestCountrySelect').val();
+                const incoTerm = $('#viewIncoTermSelect').val();
+                const serviceClass = $('#viewServiceClassSelect').val();
 
-                if (!shipmentMode)  { toastr.error('Please select a Shipment Mode.');    return; }
-                if (!transportMode) { toastr.error('Please select a Transport Mode.');   return; }
-                if (!originCountry) { toastr.error('Please select an Origin Country.');  return; }
-                if (!destCountry)   { toastr.error('Please select a Destination Country.'); return; }
-                if (!incoTerm)      { toastr.error('Please select an InCO Term.');       return; }
-                if (!serviceClass)  { toastr.error('Please select a Service Class.');    return; }
+                if (!shipmentMode) {
+                    toastr.error('Please select a Shipment Mode.');
+                    return;
+                }
+                if (!transportMode) {
+                    toastr.error('Please select a Transport Mode.');
+                    return;
+                }
+                if (!originCountry) {
+                    toastr.error('Please select an Origin Country.');
+                    return;
+                }
+                if (!destCountry) {
+                    toastr.error('Please select a Destination Country.');
+                    return;
+                }
+                if (!incoTerm) {
+                    toastr.error('Please select an InCO Term.');
+                    return;
+                }
+                if (!serviceClass) {
+                    toastr.error('Please select a Service Class.');
+                    return;
+                }
 
                 const $btn = $(this);
                 $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Saving...');
@@ -962,29 +1025,37 @@
                     success: function(r) {
                         if (!r.success) {
                             toastr.error(r.message || 'Shipment save failed.');
-                            $btn.prop('disabled', false).html('<i class="fas fa-save mr-1"></i> Save');
+                            $btn.prop('disabled', false).html(
+                                '<i class="fas fa-save mr-1"></i> Save');
                             return;
                         }
                         $('#viewShipmentModeDisplay').val(shipmentMode);
-                        $('#viewTransportModeDisplay').val($('#viewTransportModeSelect option:selected').text().trim());
+                        $('#viewTransportModeDisplay').val($(
+                            '#viewTransportModeSelect option:selected').text().trim());
                         $('#viewOriginCountryDisplay').val(originCountry);
                         $('#viewDestCountryDisplay').val(destCountry);
                         $('#viewIncoTermDisplay').val(incoTerm);
                         $('#viewServiceClassDisplay').val(serviceClass);
-                        $('#viewShipmentModeSelect, #viewTransportModeSelect, #viewIncoTermSelect, #viewServiceClassSelect').addClass('d-none').prop('disabled', true);
-                        $('#viewOriginCountryEditWrap, #viewDestCountryEditWrap').addClass('d-none');
-                        $('#viewShipmentModeDisplay, #viewTransportModeDisplay, #viewIncoTermDisplay, #viewServiceClassDisplay').removeClass('d-none');
-                        $('#viewOriginCountryDisplay, #viewDestCountryDisplay').removeClass('d-none');
+                        $('#viewShipmentModeSelect, #viewTransportModeSelect, #viewIncoTermSelect, #viewServiceClassSelect')
+                            .addClass('d-none').prop('disabled', true);
+                        $('#viewOriginCountryEditWrap, #viewDestCountryEditWrap').addClass(
+                            'd-none');
+                        $('#viewShipmentModeDisplay, #viewTransportModeDisplay, #viewIncoTermDisplay, #viewServiceClassDisplay')
+                            .removeClass('d-none');
+                        $('#viewOriginCountryDisplay, #viewDestCountryDisplay').removeClass(
+                            'd-none');
                         $('#viewOriginCountrySearch, #viewDestCountrySearch').val('');
                         $('#viewShipmentSaveBtn, #viewShipmentCancelBtn').hide();
                         $('#viewShipmentEditBtn').show();
                         toastr.success('Shipment details saved successfully.');
                     },
                     error: function(xhr) {
-                        toastr.error(xhr.responseJSON?.message || 'Unexpected error saving shipment details.');
+                        toastr.error(xhr.responseJSON?.message ||
+                            'Unexpected error saving shipment details.');
                     },
                     complete: function() {
-                        $btn.prop('disabled', false).html('<i class="fas fa-save mr-1"></i> Save');
+                        $btn.prop('disabled', false).html(
+                            '<i class="fas fa-save mr-1"></i> Save');
                     }
                 });
             });
@@ -994,25 +1065,33 @@
             // ============================================================
             $('#btnCopyBooking').off('click').on('click', function() {
                 const $btn = $(this);
-                $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Duplicating...');
+                $btn.prop('disabled', true).html(
+                    '<i class="fas fa-spinner fa-spin mr-1"></i> Duplicating...');
                 $.ajax({
                     url: '{{ route('quotation.processDuplicate', $quotation->QuoteNo) }}',
                     type: 'POST',
-                    headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json'
+                    },
                     contentType: 'application/json',
                     data: JSON.stringify({}),
                     success: function(response) {
-                        $btn.prop('disabled', false).html('<i class="fas fa-copy mr-1"></i> Duplicate');
+                        $btn.prop('disabled', false).html(
+                            '<i class="fas fa-copy mr-1"></i> Duplicate');
                         if (response.success) {
-                            $('#dupResultLink').text(response.new_booking_no).attr('href', response.redirect_url);
+                            $('#dupResultLink').text(response.new_booking_no).attr('href',
+                                response.redirect_url);
                             $('#dupResultCard').slideDown(300);
                         } else {
                             toastr.error(response.message || 'Duplication failed.');
                         }
                     },
                     error: function(xhr) {
-                        $btn.prop('disabled', false).html('<i class="fas fa-copy mr-1"></i> Duplicate');
-                        toastr.error('Error: ' + (xhr.responseJSON?.message || 'Unexpected error (HTTP ' + xhr.status + ')'));
+                        $btn.prop('disabled', false).html(
+                            '<i class="fas fa-copy mr-1"></i> Duplicate');
+                        toastr.error('Error: ' + (xhr.responseJSON?.message ||
+                            'Unexpected error (HTTP ' + xhr.status + ')'));
                     }
                 });
             });
@@ -1030,9 +1109,13 @@
                 $.ajax({
                     url: '{{ route('quotation.charges') }}',
                     type: 'GET',
-                        data: { booking_no: bookingNo, quotation_id: '{{ $quotation->ID ?? '' }}' },                    
-                        beforeSend: function() {
-                        const spinner = '<tr><td colspan="7" class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>';
+                    data: {
+                        booking_no: bookingNo,
+                        quotation_id: '{{ $quotation->ID ?? '' }}'
+                    },
+                    beforeSend: function() {
+                        const spinner =
+                            '<tr><td colspan="7" class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>';
                         $('#revenueChargesViewTable, #costChargesViewTable').html(spinner);
                     },
                     success: function(response) {
@@ -1041,14 +1124,86 @@
                             renderCostChargesView(response.cost || []);
                             updateViewSummary(response.revenue || [], response.cost || []);
                         } else {
-                            const err = '<tr><td colspan="7" class="text-center text-danger">Failed to load charges</td></tr>';
+                            const err =
+                                '<tr><td colspan="7" class="text-center text-danger">Failed to load charges</td></tr>';
                             $('#revenueChargesViewTable, #costChargesViewTable').html(err);
                         }
                     },
                     error: function() {
-                        const err = '<tr><td colspan="7" class="text-center text-danger">Error loading charges</td></tr>';
+                        const err =
+                            '<tr><td colspan="7" class="text-center text-danger">Error loading charges</td></tr>';
                         $('#revenueChargesViewTable, #costChargesViewTable').html(err);
                     }
+                });
+            }
+
+            // ============================================================
+            // REQUEST OFFICE QUOTATION HISTORY — view page (read-only)
+            // Mirrors the edit page implementation without the action button.
+            // ============================================================
+            const CURRENT_OFFICE_CODE_VIEW = '{{ trim($officeShortCode ?? '') }}';
+            const QUOTATION_ID_VIEW = '{{ $quotation->ID ?? '' }}';
+
+            loadRequestOfficeHistoryView();
+
+            function loadRequestOfficeHistoryView() {
+                $.ajax({
+                    url: '{{ route('quotation.request-office-history') }}',
+                    type: 'GET',
+                    data: {
+                        quotation_id: QUOTATION_ID_VIEW
+                    },
+                    beforeSend: function() {
+                        $('#viewRequestOfficeHistoryTable').html(
+                            '<tr><td colspan="3" class="text-center text-muted">' +
+                            '<i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>'
+                        );
+                    },
+                    success: function(response) {
+                        renderRequestOfficeHistoryView(response.data || []);
+                    },
+                    error: function() {
+                        $('#viewRequestOfficeHistoryTable').html(
+                            '<tr><td colspan="3" class="text-center text-danger">Failed to load</td></tr>'
+                        );
+                    }
+                });
+            }
+
+            function renderRequestOfficeHistoryView(rows) {
+                const $tbody = $('#viewRequestOfficeHistoryTable');
+                $tbody.empty();
+
+                if (!rows.length) {
+                    $tbody.html(
+                        '<tr><td colspan="3" class="text-center text-muted">No requests made yet</td></tr>'
+                    );
+                    return;
+                }
+
+                rows.forEach(function(row) {
+                    const isSend = (row.RequestedByOfficeCode || '').toUpperCase() ===
+                        CURRENT_OFFICE_CODE_VIEW.toUpperCase();
+
+                    const requestType = isSend ? 'Send' : 'Received';
+                    const badgeClass = isSend ? 'badge-primary' : 'badge-success';
+
+                    // Show the OTHER party's office code
+                    const officeName = isSend ?
+                        (row.RequestedToCode || '') :
+                        (row.RequestedByOfficeCode || '');
+
+                    const quoteNo = row.RequestedToQuoteNo || '';
+
+                    $tbody.append(`
+            <tr>
+                <td>${officeName}</td>
+                <td>${quoteNo}</td>
+                <td>
+                    <span class="badge ${badgeClass}">${requestType}</span>
+                </td>
+            </tr>
+        `);
                 });
             }
 
@@ -1056,7 +1211,8 @@
                 const tbody = $('#revenueChargesViewTable');
                 tbody.empty();
                 if (!charges.length) {
-                    tbody.append('<tr><td colspan="7" class="text-center text-muted">No revenue charges found</td></tr>');
+                    tbody.append(
+                        '<tr><td colspan="7" class="text-center text-muted">No revenue charges found</td></tr>');
                     $('#revenueTotalHeaderAmount').text('0.00');
                     return;
                 }
@@ -1083,7 +1239,8 @@
                 const tbody = $('#costChargesViewTable');
                 tbody.empty();
                 if (!charges.length) {
-                    tbody.append('<tr><td colspan="7" class="text-center text-muted">No cost charges found</td></tr>');
+                    tbody.append(
+                        '<tr><td colspan="7" class="text-center text-muted">No cost charges found</td></tr>');
                     $('#costTotalHeaderAmount').text('0.00');
                     return;
                 }
@@ -1108,10 +1265,10 @@
 
             function updateViewSummary(revenueCharges, costCharges) {
                 const totalRevenue = revenueCharges.reduce((s, c) => s + parseFloat(c.amtInBaseCurr || 0), 0);
-                const totalCost    = costCharges.reduce((s, c) => s + parseFloat(c.amtInBaseCurr || 0), 0);
-                const margin       = totalRevenue - totalCost;
-                const marginPct    = totalRevenue > 0 ? (margin / totalRevenue * 100) : 0;
-                const bc           = getBaseCurrency();
+                const totalCost = costCharges.reduce((s, c) => s + parseFloat(c.amtInBaseCurr || 0), 0);
+                const margin = totalRevenue - totalCost;
+                const marginPct = totalRevenue > 0 ? (margin / totalRevenue * 100) : 0;
+                const bc = getBaseCurrency();
                 $('#viewQuotedRevenue').val(bc + ' ' + totalRevenue.toFixed(2));
                 $('#viewQuotedMargin').val(bc + ' ' + margin.toFixed(2) + ' (' + marginPct.toFixed(2) + '%)');
             }
@@ -1124,10 +1281,10 @@
             $('.show-items-link').on('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                const tableId  = $(this).data('table');
-                const $table   = tableId === 'revenue'
-                    ? $('#revenueChargesViewTable').closest('table')
-                    : $('#costChargesViewTable').closest('table');
+                const tableId = $(this).data('table');
+                const $table = tableId === 'revenue' ?
+                    $('#revenueChargesViewTable').closest('table') :
+                    $('#costChargesViewTable').closest('table');
                 const isExpanded = $(this).data('expanded') || false;
                 if (isExpanded) {
                     $table.find('.col-extra').hide();

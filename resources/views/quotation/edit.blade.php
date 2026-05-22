@@ -489,7 +489,7 @@
                                             value="{{ $quotation->QuoteNo ?? '' }}" readonly>
                                     </div>
                                 </div>
-                                <<div class="form-group row mb-0">
+                                <div class="form-group row mb-0">
                                     <label class="col-sm-4 col-form-label">
                                         Requested Office <span class="text-danger">*</span>
                                     </label>
@@ -1117,8 +1117,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                        MODALS
-                                        ============================================ -->
+                                                MODALS
+                                                ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -2120,8 +2120,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -2564,9 +2564,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -2709,19 +2709,20 @@
 
         /* ── Modal shell ─────────────────────────────────────────────── */
         .cc-modal-dialog {
-            max-width: 900px;
-            width: 900px;
+            max-width: 1100px;
+            width: 1100px;
             margin: 30px auto;
             transition: max-width 0.3s ease, width 0.3s ease;
         }
-
         .cc-modal-dialog.cc-expanded {
-            max-width: 1200px;
-            width: 1200px;
+            max-width: 1300px;
+            width: 1300px;
         }
-
+        
+        
         .cc-search-dialog {
-            max-width: 560px;
+            max-width: 920px;
+            width: 920px;
             margin: 40px auto;
         }
 
@@ -2729,8 +2730,7 @@
             border-radius: 0;
             border: 1px solid #aaa;
             box-shadow: 2px 4px 12px rgba(0, 0, 0, .25);
-            font-size: 12px;
-            font-family: Arial, sans-serif;
+            font-size: 0.875rem;
             color: #222;
         }
 
@@ -2745,24 +2745,28 @@
         }
 
         .cc-modal-title {
-            font-size: 14px;
-            font-weight: 700;
-            color: #222;
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #000;
         }
 
         .cc-modal-close {
             background: none;
-            border: 1px solid #bbb;
-            font-size: 14px;
+            border: none;
+            font-size: 1.5rem;
             line-height: 1;
             padding: 1px 6px;
             cursor: pointer;
-            color: #555;
-            border-radius: 2px;
+            color: #000;
+            opacity: 0.5;
+            border-radius: 0;
         }
 
         .cc-modal-close:hover {
-            background: #e0e0e0;
+            background: none;
+            /* was #e0e0e0 */
+            opacity: 0.75;
+            color: #000;
         }
 
         /* ── Body ────────────────────────────────────────────────────── */
@@ -2798,28 +2802,6 @@
             /* matches the input row height */
         }
 
-        .cc-lbl {
-            min-width: 120px;
-            /* fixed label width → values always start at same x */
-            font-size: 12px;
-            color: #555;
-            text-align: right;
-            padding-right: 6px;
-            white-space: nowrap;
-            flex-shrink: 0;
-        }
-
-        .cc-lbl-required {
-            color: #c00;
-            font-weight: 600;
-        }
-
-        .cc-val {
-            font-size: 12px;
-            color: #111;
-            font-weight: 400;
-        }
-
         /* Job No input + search button row */
         .cc-input-group {
             display: flex;
@@ -2845,28 +2827,30 @@
 
         /* Highlighted Job No field — yellow border like in screenshot */
         .cc-input-highlight {
-            border-color: #d4a800;
-            background: #fffde6;
-            width: 160px;
+            border-color: #f0a500;
+            border-width: 1.5px;
+            background: #fffdf0;
+            border-radius: 4px;
+            width: 180px;
+            font-size: 0.875rem;
+            padding: 3px 8px;
+            height: 28px;
         }
 
         .cc-search-icon-btn {
-            height: 24px;
-            width: 24px;
-            padding: 0;
-            border: 1px solid #aaa;
-            border-radius: 2px;
-            background: #f0f0f0;
-            cursor: pointer;
+            height: 28px;
+            width: 28px;
+            border-radius: 4px;
+            background: #4B49AC;
+            border: 1px solid #4B49AC;
+            color: #fff;
             font-size: 11px;
-            color: #555;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
 
+
         .cc-search-icon-btn:hover {
-            background: #ddd;
+            background: #3a3990;
+            border-color: #3a3990;
         }
 
         /* ── Section header (blue band) ─────────────────────────────── */
@@ -2881,13 +2865,13 @@
             border: 1px solid #4B49AC;
             border-bottom: none;
             padding: 4px 8px;
-            font-size: 12px;
+            font-size: 0.875rem;
             color: #ffffff;
             gap: 8px;
         }
 
         .cc-section-header strong {
-            font-size: 12px;
+            font-size: 0.875rem;
             font-weight: 700;
             color: #ffffff;
         }
@@ -2911,9 +2895,9 @@
         }
 
         .cc-view-toggle {
-            color: #1a6dbf;
+            color: #5b9bd5;
             text-decoration: none;
-            font-size: 11px;
+            font-size: 0.8rem;
         }
 
         .cc-view-toggle:hover {
@@ -2977,14 +2961,14 @@
         }
 
         .cc-table thead tr {
-            background: #e8edf2;
+            background: #e9ecef;
         }
 
         .cc-table thead th {
             padding: 4px 5px;
-            font-size: 11px;
+            font-size: 0.85rem;
             font-weight: 700;
-            color: #333;
+            color: #495057;
             border: 1px solid #c8d4de;
             white-space: nowrap;
             text-align: left;
@@ -2997,13 +2981,13 @@
         }
 
         .cc-table tbody td {
-            padding: 3px 4px;
+            padding: 0.4rem;
             border: 1px solid #dde3ea;
             vertical-align: middle;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            font-size: 12px;
+            font-size: 0.875rem;
             color: #222;
         }
 
@@ -3158,26 +3142,29 @@
 
         /* Save — olive/yellow-green to match system palette */
         .cc-btn-save {
-            height: 26px;
-            padding: 0 16px;
-            font-size: 12px;
+            /* height: 26px; */
+            padding: 0.375rem 0.75rem;
+            font-size: 0.875rem;
             font-weight: 600;
-            background: #a8b400;
+            background: #28a745;
             color: #fff;
-            border: 1px solid #8a9400;
-            border-radius: 2px;
+            border: 1px solid #28a745;
+            border-radius: 0.25rem;
             cursor: pointer;
         }
 
         .cc-btn-save:hover:not(:disabled) {
-            background: #8a9400;
+            background: #218838;
+            /* was #95bb7a */
+            border-color: #1e7e34;
         }
 
+
         .cc-btn-save:disabled {
-            background: #c8cc80;
-            border-color: #b0b870;
+            background: #6ab97a;
+            border-color: #5aa06a;
             cursor: not-allowed;
-            color: #eee;
+            color: #fff;
         }
 
         .cc-footer-or {
@@ -3187,22 +3174,24 @@
 
         .cc-btn-cancel {
             font-size: 12px;
-            color: #1a6dbf;
+            color: #007bff;
             text-decoration: none;
             font-weight: 500;
         }
 
         .cc-btn-cancel:hover {
             text-decoration: underline;
-            color: #0d4d9c;
+            color: #0056b3;
         }
 
         /* ── Search modal controls ───────────────────────────────────── */
         .cc-search-controls {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            flex-wrap: wrap;
+            background: #f8f9fb;
+            border: 1px solid #e2e6ea;
+            border-radius: 6px;
+            padding: 10px 12px;
+            margin-bottom: 10px;
+            gap: 8px;
         }
 
         .cc-select {
@@ -3216,35 +3205,29 @@
         }
 
         .cc-btn-search-go {
-            height: 24px;
-            padding: 0 12px;
-            font-size: 12px;
-            font-weight: 700;
-            background: #a8b400;
-            color: #fff;
-            border: 1px solid #8a9400;
-            border-radius: 2px;
-            cursor: pointer;
-            white-space: nowrap;
+            height: 28px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            padding: 0 14px;
         }
-
+        
         .cc-btn-search-go:hover {
-            background: #8a9400;
+            background: #218838;
+            border-color: #1e7e34;
         }
 
         .cc-btn-add-filter {
-            height: 24px;
-            padding: 0 10px;
-            font-size: 12px;
-            background: #f0f0f0;
-            color: #444;
-            border: 1px solid #bbb;
-            border-radius: 2px;
-            cursor: pointer;
+            height: 28px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            padding: 0 12px;
+            background: #ffffff;
+            border: 1px solid #ced4da;
+            color: #495057;
         }
-
+        
         .cc-btn-add-filter:hover {
-            background: #ddd;
+            background: #e9ecef;
         }
 
         /* Search results table radio column */
@@ -3268,9 +3251,34 @@
 
         /* CC search table scroll + sortable */
         #ccSearchResultsTable {
-            min-width: 600px;
-            table-layout: auto;
+            min-width: 100px;
+            table-layout: fixed;
         }
+
+        #ccSearchResultsTable th:nth-child(1),
+        #ccSearchResultsTable td:nth-child(1) { width: 45px; }
+        
+        #ccSearchResultsTable th:nth-child(2),
+        #ccSearchResultsTable td:nth-child(2) { width: 100px; }
+        
+        #ccSearchResultsTable th:nth-child(3),
+        #ccSearchResultsTable td:nth-child(3) { width: 130px; }
+        
+        #ccSearchResultsTable th:nth-child(4),
+        #ccSearchResultsTable td:nth-child(4) { width: 120px; }
+        
+        #ccSearchResultsTable th:nth-child(5),
+        #ccSearchResultsTable td:nth-child(5) { width: 150px; }
+        
+        #ccSearchResultsTable th:nth-child(6),
+        #ccSearchResultsTable td:nth-child(6) { width: 100px; }
+        
+        #ccSearchResultsTable th:nth-child(7),
+        #ccSearchResultsTable td:nth-child(7) { width: 100px; }
+        
+        #ccSearchResultsTable th:nth-child(8),
+        #ccSearchResultsTable td:nth-child(8) { width: 100px; }
+
 
         .cc-table-wrap {
             overflow-x: auto;
@@ -6336,49 +6344,49 @@
             });
 
             function loadRequestOfficeDropdown() {
-    const $select = $('#requestedOfficeSelect');
-    const $help = $('#requestedOfficeHelp');
+                const $select = $('#requestedOfficeSelect');
+                const $help = $('#requestedOfficeHelp');
 
-    // Already populated — no re-fetch needed
-    if ($select.data('populated')) {
-        $select.val('');
-        return;
-    }
+                // Already populated — no re-fetch needed
+                if ($select.data('populated')) {
+                    $select.val('');
+                    return;
+                }
 
-    $select.empty()
-        .append('<option value="">Loading offices...</option>')
-        .prop('disabled', true);
-    $help.hide();
+                $select.empty()
+                    .append('<option value="">Loading offices...</option>')
+                    .prop('disabled', true);
+                $help.hide();
 
-    $.ajax({
-        url: '{{ route('quotation.offices') }}',
-        type: 'GET',
-        success: function(response) {
-            $select.empty().append('<option value="">-- Select Office --</option>');
+                $.ajax({
+                    url: '{{ route('quotation.offices') }}',
+                    type: 'GET',
+                    success: function(response) {
+                        $select.empty().append('<option value="">-- Select Office --</option>');
 
-            if (response.success && response.offices.length > 0) {
-                response.offices.forEach(function(office) {
-                    const label = office.code
-                        ? office.code + ' — ' + office.name
-                        : office.name;
-                    $select.append(
-                        `<option value="${office.code}">${label}</option>`
-                    );
+                        if (response.success && response.offices.length > 0) {
+                            response.offices.forEach(function(office) {
+                                const label = office.code ?
+                                    office.code + ' — ' + office.name :
+                                    office.name;
+                                $select.append(
+                                    `<option value="${office.code}">${label}</option>`
+                                );
+                            });
+                            $select.data('populated', true);
+                        } else {
+                            $select.append('<option value="" disabled>No offices available</option>');
+                        }
+                    },
+                    error: function() {
+                        $select.empty().append('<option value="">-- Select Office --</option>');
+                        $help.show();
+                    },
+                    complete: function() {
+                        $select.prop('disabled', false);
+                    }
                 });
-                $select.data('populated', true);
-            } else {
-                $select.append('<option value="" disabled>No offices available</option>');
             }
-        },
-        error: function() {
-            $select.empty().append('<option value="">-- Select Office --</option>');
-            $help.show();
-        },
-        complete: function() {
-            $select.prop('disabled', false);
-        }
-    });
-}
 
             $('#submitRequestOfficeBtn').on('click', function() {
                 const requestedOfficeCode = $('#requestedOfficeSelect').val();

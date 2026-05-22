@@ -71,8 +71,10 @@
                                     aria-labelledby="basic-details-trigger">
                                     <fieldset class="border pl-2 pr-2 card shadow-sm m-0" style="border-radius: 10px;">
                                         <legend class="w-auto p-0 m-0">Entity Creation Options</legend>
+
                                         <div class="row">
-                                            <div class="col col-md-6 col-sm-12">
+
+                                            {{-- <div class="col col-md-6 col-sm-12">
 
                                                 <div class="form-group row mb-1">
                                                     <label for="partyEntityType"
@@ -103,7 +105,57 @@
                                                         </select>
                                                     </div>
                                                 </div>
+                                            </div> --}}
+
+
+
+
+                                            <div class="col col-md-6 col-sm-12">
+                                                <div class="form-group row mb-1">
+                                                    <label for="partyEntityType"
+                                                        class="col-sm-3 col-lg-4 col-md-4 col-form-label col-form-label-sm"
+                                                        style="font-size: 17px">
+                                                        Operation Type <span class="text-danger">*</span>
+                                                    </label>
+                                                    <div class="col-sm-9 col-lg-8 col-md-8">
+                                                        <select class="form-control form-control-sm" id="partyEntityType"
+                                                            name="partyEntityType" required>
+                                                            <option value="">Select Operation Type...</option>
+
+                                                            <option value="Client"
+                                                                @if (trim($clientParty->OperationalEntityType ?? '') == 'Client') selected @endif>Client
+                                                            </option>
+
+                                                            <option value="Create only in D365"
+                                                                @if (trim($clientParty->OperationalEntityType ?? '') == 'Create only in D365') selected @endif>Create
+                                                                only in D365</option>
+
+                                                            <option value="Agent / Forwarder"
+                                                                @if (trim($clientParty->OperationalEntityType ?? '') == 'Agent / Forwarder') selected @endif>Agent /
+                                                                Forwarder</option>
+
+                                                            <option value="Airline"
+                                                                @if (trim($clientParty->OperationalEntityType ?? '') == 'Airline') selected @endif>Airline
+                                                            </option>
+
+                                                            <option value="Shipping Line"
+                                                                @if (trim($clientParty->OperationalEntityType ?? '') == 'Shipping Line') selected @endif>Shipping
+                                                                Line</option>
+
+                                                            <option value="Trucker / Transporter"
+                                                                @if (trim($clientParty->OperationalEntityType ?? '') == 'Trucker / Transporter') selected @endif>Trucker /
+                                                                Transporter</option>
+                                                        </select>
+
+                                                        {{-- Debug --}}
+                                                        {{-- <small class="text-muted">
+                                                            DB Value:
+                                                            <strong>{{ $clientParty->OperationalEntityType ?? 'NULL' }}</strong>
+                                                        </small> --}}
+                                                    </div>
+                                                </div>
                                             </div>
+
 
                                             @if ($type === 'accounting')
                                                 <div class="col col-md-6 col-sm-12">
@@ -141,6 +193,7 @@
                                             @endif
 
                                         </div>
+
                                     </fieldset>
                                     <div class="row">
                                         <div class="col-md-6 col-sm-12">
@@ -1037,12 +1090,12 @@
                 </div>
             </div>
 
-@stop
+        @stop
 
         @section('css')
             <!-- ============================================
-                                                                                                                                 EXTERNAL STYLESHEETS
-                                                                                                                            ============================================ -->
+                                                                                                                                             EXTERNAL STYLESHEETS
+                                                                                                                                        ============================================ -->
             <!-- Bootstrap Stepper -->
             <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bs-stepper/dist/css/bs-stepper.min.css">
 
@@ -1054,8 +1107,8 @@
 
             <style>
                 /* ============================================
-                                                                                                                                   CSS VARIABLES (Custom Properties)
-                                                                                                                                ============================================ */
+                                                                                                                                               CSS VARIABLES (Custom Properties)
+                                                                                                                                            ============================================ */
                 :root {
                     --primary-color: #007bff;
                     --primary-hover: #0056b3;
@@ -1077,8 +1130,8 @@
                 }
 
                 /* ============================================
-                                                                                                                                   CARD COMPONENTS
-                                                                                                                                ============================================ */
+                                                                                                                                               CARD COMPONENTS
+                                                                                                                                            ============================================ */
                 .card {
                     border: none;
                     border-radius: var(--border-radius-md);
@@ -1099,8 +1152,8 @@
                 }
 
                 /* ============================================
-                                                                                                                                   ENHANCED FILE DISPLAY STYLES
-                                                                                                                                ============================================ */
+                                                                                                                                               ENHANCED FILE DISPLAY STYLES
+                                                                                                                                            ============================================ */
                 .file-item {
                     background: #f8f9fa;
                     transition: all 0.3s ease;
@@ -1219,8 +1272,8 @@
                 }
 
                 /* ============================================
-                                                                                                                                   BADGE SYSTEM
-                                                                                                                                ============================================ */
+                                                                                                                                               BADGE SYSTEM
+                                                                                                                                            ============================================ */
                 .badge {
                     font-size: 0.9rem;
                     padding: 0.5em 1em;
@@ -1296,8 +1349,8 @@
                 }
 
                 /* ============================================
-                                                                                                                                   TYPOGRAPHY
-                                                                                                                                ============================================ */
+                                                                                                                                               TYPOGRAPHY
+                                                                                                                                            ============================================ */
                 .text-muted {
                     font-size: 0.95rem;
                     color: var(--muted-color) !important;
@@ -1318,8 +1371,8 @@
                 }
 
                 /* ============================================
-                                                                                                                                   FIELDSET & LEGEND STYLING
-                                                                                                                                ============================================ */
+                                                                                                                                               FIELDSET & LEGEND STYLING
+                                                                                                                                            ============================================ */
                 fieldset {
                     border: 2px solid var(--border-color);
                     border-radius: var(--border-radius-md);
@@ -1359,8 +1412,8 @@
                 }
 
                 /* ============================================
-                                                                                                                                   FORM ELEMENTS
-                                                                                                                                ============================================ */
+                                                                                                                                               FORM ELEMENTS
+                                                                                                                                            ============================================ */
                 .form-control:focus {
                     border-color: var(--primary-color);
                     box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
@@ -1388,8 +1441,8 @@
                 }
 
                 /* ============================================
-                                                                                                                                   DISABLED STATES
-                                                                                                                                ============================================ */
+                                                                                                                                               DISABLED STATES
+                                                                                                                                            ============================================ */
                 .disabled {
                     opacity: 0.6;
                     cursor: not-allowed;
@@ -1414,8 +1467,8 @@
                 }
 
                 /* ============================================
-                                                                                                                                   TOOLTIP ENHANCEMENTS
-                                                                                                                                ============================================ */
+                                                                                                                                               TOOLTIP ENHANCEMENTS
+                                                                                                                                            ============================================ */
                 .tooltip-inner {
                     background: linear-gradient(135deg, var(--dark-color) 0%, #495057 100%);
                     color: white;
@@ -1430,8 +1483,8 @@
                 }
 
                 /* ============================================
-                                                                                                                                   LOADING & PRELOADER
-                                                                                                                                ============================================ */
+                                                                                                                                               LOADING & PRELOADER
+                                                                                                                                            ============================================ */
                 #loader {
                     display: none;
                     position: fixed;
@@ -1522,8 +1575,8 @@
                 }
 
                 /* ============================================
-                                                                                                                                   BUTTON ENHANCEMENTS
-                                                                                                                                ============================================ */
+                                                                                                                                               BUTTON ENHANCEMENTS
+                                                                                                                                            ============================================ */
                 .btn {
                     border-radius: var(--border-radius-sm);
                     font-weight: 500;
@@ -1563,8 +1616,8 @@
                 }
 
                 /* ============================================
-                                                                                                                                   RESPONSIVE DESIGN
-                                                                                                                                ============================================ */
+                                                                                                                                               RESPONSIVE DESIGN
+                                                                                                                                            ============================================ */
                 @media (max-width: 768px) {
                     .card {
                         margin-bottom: 1rem;
@@ -1600,8 +1653,8 @@
                 }
 
                 /* ============================================
-                                                                                                                                   UTILITY CLASSES
-                                                                                                                                ============================================ */
+                                                                                                                                               UTILITY CLASSES
+                                                                                                                                            ============================================ */
                 .shadow-soft {
                     box-shadow: var(--shadow-light);
                 }
@@ -1635,8 +1688,8 @@
                 }
 
                 /* ============================================
-                                                                                                                                   PRINT STYLES
-                                                                                                                                ============================================ */
+                        PRINT STYLES
+                            ============================================ */
                 @media print {
 
                     .btn,
@@ -1661,38 +1714,38 @@
         @section('js')
             <!-- SweetAlert2 JS -->
             <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.js"></script>
-{{-- Flash error/success via SweetAlert2 --}}
-@if(session('swal_error_title'))
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            setTimeout(function() {
-                Swal.fire({
-                    icon: 'error',
-                    title: '{!! addslashes(session("swal_error_title")) !!}',
-                    text: '{!! addslashes(session("swal_error_text")) !!}',
-                    confirmButtonColor: '#dc3545',
-                    confirmButtonText: 'OK'
-                });
-            }, 300);
-        });
-    </script>
-@endif
-@if(session('swal_success_title'))
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            setTimeout(function() {
-                Swal.fire({
-                    icon: 'success',
-                    title: '{!! addslashes(session("swal_success_title")) !!}',
-                    text: '{!! addslashes(session("swal_success_text")) !!}',
-                    confirmButtonColor: '#28a745',
-                    timer: 3000,
-                    timerProgressBar: true
-                });
-            }, 300);
-        });
-    </script>
-@endif
+            {{-- Flash error/success via SweetAlert2 --}}
+            @if (session('swal_error_title'))
+                <script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        setTimeout(function() {
+                            Swal.fire({
+                                icon: 'error',
+                                title: '{!! addslashes(session('swal_error_title')) !!}',
+                                text: '{!! addslashes(session('swal_error_text')) !!}',
+                                confirmButtonColor: '#dc3545',
+                                confirmButtonText: 'OK'
+                            });
+                        }, 300);
+                    });
+                </script>
+            @endif
+            @if (session('swal_success_title'))
+                <script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        setTimeout(function() {
+                            Swal.fire({
+                                icon: 'success',
+                                title: '{!! addslashes(session('swal_success_title')) !!}',
+                                text: '{!! addslashes(session('swal_success_text')) !!}',
+                                confirmButtonColor: '#28a745',
+                                timer: 3000,
+                                timerProgressBar: true
+                            });
+                        }, 300);
+                    });
+                </script>
+            @endif
 
             <script src="//code.jquery.com/jquery-1.12.4.min.js"></script>
             <script src="https://cdn.jsdelivr.net/npm/bs-stepper/dist/js/bs-stepper.min.js"></script>
@@ -1983,22 +2036,88 @@
 
                     // Make all form fields read-only or disabled, EXCLUDING the <fieldset> inputs
                     // Selects (excluding those in the <fieldset>)
-                    $('select[name="partyEntityType"], select[name="legalEntityType"], select[name="countryID"], select[name="officeCountry"], select[name="billingCurrency"], select[name="licenceTypeID"], #level')
-                        .prop('readonly', true);
+                    // $('select[name="partyEntityType"], select[name="legalEntityType"], select[name="countryID"], select[name="officeCountry"], select[name="billingCurrency"], select[name="licenceTypeID"], #level')
+                    //     .prop('readonly', true);
 
-                    // Checkboxes (excluding those in the <fieldset>)
-                    $('input[name="otherCheck"]:not(.border.p-2 input), input[name="debtorCheck"]:not(.border.p-2 input), input[name="vendorCheck"]:not(.border.p-2 input)')
-                        .prop('readonly', true);
+                    // // Checkboxes (excluding those in the <fieldset>)
+                    // $('input[name="otherCheck"]:not(.border.p-2 input), input[name="debtorCheck"]:not(.border.p-2 input), input[name="vendorCheck"]:not(.border.p-2 input)')
+                    //     .prop('readonly', true);
 
-                    // Text inputs and textareas (excluding those in the <fieldset>)
-                    $('input[name="companyName"], input[name="provinceName"], input[name="zipCode"], input[name="cityName"], input[name="firstName"], input[name="lastName"], input[name="department"], input[name="phoneNo"], input[name="contractEmail"], textarea[name="addressLine1"], textarea[name="addressLine2"], input[name="attachmentDescription[]"], input[name="creditDays"], input[name="maxCreditLimit"], input[name="baseCurrency"], input[name="licenceTypeValue"]')
-                        .prop('readonly', true);
+                    // // Text inputs and textareas (excluding those in the <fieldset>)
+                    // $('input[name="companyName"], input[name="provinceName"], input[name="zipCode"], input[name="cityName"], input[name="firstName"], input[name="lastName"], input[name="department"], input[name="phoneNo"], input[name="contractEmail"], textarea[name="addressLine1"], textarea[name="addressLine2"], input[name="attachmentDescription[]"], input[name="creditDays"], input[name="maxCreditLimit"], input[name="baseCurrency"], input[name="licenceTypeValue"]')
+                    //     .prop('readonly', true);
 
-                    // File inputs
+                    // // File inputs
+                    // $('input[name="attachmentNames[]"]').prop('disabled', true);
+
+                    // // Buttons - EXCLUDE approve and reject buttons
+                    // $('.addAttachment, .deleteFile').prop('disabled', true).addClass('disabled');
+
+
+
+                    // ===============================
+                    // SAFE READONLY / LOCK MODE
+                    // ===============================
+
+                    // Fields to lock
+                    const lockedInputs = `
+                    input[name="companyName"],
+                    input[name="provinceName"],
+                    input[name="zipCode"],
+                    input[name="cityName"],
+                    input[name="firstName"],
+                    input[name="lastName"],
+                    input[name="department"],
+                    input[name="phoneNo"],
+                    input[name="contractEmail"],
+                    textarea[name="addressLine1"],
+                    textarea[name="addressLine2"]
+                    `;
+
+                    // Make text fields readonly ONLY
+                    $(lockedInputs).prop('readonly', true);
+
+                    // Lock selects WITHOUT disabling them
+                    const lockedSelects = `
+                    select[name="partyEntityType"],
+                    select[name="legalEntityType"],
+                    select[name="countryID"],
+                    select[name="officeCountry"]
+                    `;
+
+                    $(lockedSelects)
+                        .addClass('readonly-select')
+                        .css({
+                            'pointer-events': 'none',
+                            'background-color': '#f8f9fa',
+                            'cursor': 'not-allowed'
+                        });
+
+                    // Re-enable editable financial fields
+                    $('#billingCurrency, #creditDays, #maxCreditLimit, #baseCurrency, ' +
+                            '#licenceTypeID, #licenceTypeValue, #debtorType, #vendorType')
+                        .prop('readonly', false)
+                        .css('pointer-events', 'auto');
+
+                    // Disable attachment actions ONLY
+                    $('.addAttachment, .deleteFile').prop('disabled', true);
+
+                    // Disable file upload ONLY
                     $('input[name="attachmentNames[]"]').prop('disabled', true);
 
-                    // Buttons - EXCLUDE approve and reject buttons
-                    $('.addAttachment, .deleteFile').prop('disabled', true).addClass('disabled');
+                    // Styling for readonly inputs
+                    $('input[readonly], textarea[readonly]').css({
+                        'background-color': '#f8f9fa',
+                        'color': '#6c757d',
+                        'cursor': 'not-allowed'
+                    });
+
+                    // IMPORTANT:
+                    // Never disable hidden inputs, CSRF tokens,
+                    // _method fields, or submit buttons
+
+                    console.log('✅ Safe lock mode applied');
+
 
                     // Enable the specific inputs in the <fieldset> explicitly (optional, for clarity)
                     $('fieldset.border.p-2 input[type="text"], fieldset.border.p-2 input[type="checkbox"], fieldset.border.p-2 input[type="hidden"]')
@@ -2192,34 +2311,62 @@
                     });
 
                     // Handle partyEntityType validation (skipped since field is disabled)
-                    const typeConfig = {
-                        'Agent / Forwarder': {
-                            display: 'Agent / Forwarder',
-                            value: 'Agent / Forwarder'
-                        },
-                        'Trucker / Transporter': {
-                            display: 'Trucker / Transporter',
-                            value: 'Trucker / Transporter'
-                        },
-                        'Client': {
-                            display: 'Client',
-                            value: 'Client'
-                        },
-                        'Airline': {
-                            display: 'Airline',
-                            value: 'Airline'
-                        },
-                        'Shipping Line': {
-                            display: 'Shipping Line',
-                            value: 'Shipping Line'
+                    // const typeConfig = {
+                    //     'Agent / Forwarder': {
+                    //         display: 'Agent / Forwarder',
+                    //         value: 'Agent / Forwarder'
+                    //     },
+                    //     'Trucker / Transporter': {
+                    //         display: 'Trucker / Transporter',
+                    //         value: 'Trucker / Transporter'
+                    //     },
+                    //     'Client': {
+                    //         display: 'Client',
+                    //         value: 'Client'
+                    //     },
+                    //     'Airline': {
+                    //         display: 'Airline',
+                    //         value: 'Airline'
+                    //     },
+                    //     'Shipping Line': {
+                    //         display: 'Shipping Line',
+                    //         value: 'Shipping Line'
+                    //     }
+                    // };
+                    // const serverPartyType = '{{ $clientParty->OperatioEntityType }}';
+                    // const config = typeConfig[serverPartyType] || {
+                    //     display: serverPartyType,
+                    //     value: serverPartyType
+                    // };
+                    // $('#partyEntityType').val(config.value);
+
+
+
+                    // ==================== FIXED: Load Operation Type from Database ====================
+                    const savedOperationType =
+                        '{{ trim($clientParty->OperationalEntityType ?? ($clientParty->OperatioEntityType ?? '')) }}';
+                    console.log('🔧 Saved Operation Type from DB:', savedOperationType);
+
+                    if (savedOperationType) {
+                        const $partySelect = $('#partyEntityType');
+
+                        // Primary: Set by value
+                        $partySelect.val(savedOperationType);
+
+                        // Fallback: If value not set (due to readonly or mismatch), select manually
+                        if ($partySelect.val() !== savedOperationType) {
+                            $partySelect.find('option').each(function() {
+                                if ($(this).val() === savedOperationType) {
+                                    $(this).prop('selected', true);
+                                    console.log('✅ Operation Type set via fallback');
+                                    return false;
+                                }
+                            });
                         }
-                    };
-                    const serverPartyType = '{{ $clientParty->OperatioEntityType }}';
-                    const config = typeConfig[serverPartyType] || {
-                        display: serverPartyType,
-                        value: serverPartyType
-                    };
-                    $('#partyEntityType').val(config.value);
+
+                        console.log('Final selected Operation Type:', $partySelect.val());
+                    }
+
 
                     // 🔥 UPDATED: Approve button handler with SweetAlert2
                     $('#approveBtn').off('click').on('click', async function(e) {
