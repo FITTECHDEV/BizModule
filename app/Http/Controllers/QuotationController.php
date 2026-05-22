@@ -3116,6 +3116,7 @@ class QuotationController extends Controller
     {
         try {
             $bookingNo = $request->input('booking_no');
+            $quotationId = $request->input('quotation_id');
             $targetStatus = $request->input('status');
             $reasonCode = $request->input('reason_code', '');
             $reasonRemark = $request->input('reason_remark', '');
@@ -3140,7 +3141,6 @@ class QuotationController extends Controller
                 );
             }
 
-            // Validate status value
             if (!in_array($targetStatus, ['Won', 'Lost', 'Cancel'])) {
                 Log::warning('Update Status - Invalid status value', [
                     'booking_no' => $bookingNo,
@@ -3162,24 +3162,33 @@ class QuotationController extends Controller
 
             // ============================================
             // GET QUOTATION WITH FULL CONTEXT
+            // Prefer quotation_id (UUID) over bookingno — bookingno is not
+            // unique across offices and causes multi-row matches.
             // ============================================
 
-            $quotation = DB::table('Quote_QuotationInfo')
-                ->where('bookingno', $bookingNo)
-                ->first([
-                    'ID',
-                    'teamid',
-                    'QuoteStatus',
-                    'status',
-                    'ServiceVerticalname',
-                    'origincountry',
-                    'destinationcountry',
-                    'companyname',
-                ]);
+            $query = DB::table('Quote_QuotationInfo');
+
+            if ($quotationId) {
+                $query->where('ID', $quotationId);
+            } else {
+                $query->where('bookingno', $bookingNo);
+            }
+
+            $quotation = $query->first([
+                'ID',
+                'teamid',
+                'QuoteStatus',
+                'status',
+                'ServiceVerticalname',
+                'origincountry',
+                'destinationcountry',
+                'companyname',
+            ]);
 
             if (!$quotation) {
                 Log::error('Update Status - Quotation not found', [
                     'booking_no' => $bookingNo,
+                    'quotation_id' => $quotationId,
                     'target_status' => $targetStatus,
                     'user' => $submittedBy,
                 ]);
@@ -3193,7 +3202,6 @@ class QuotationController extends Controller
                 );
             }
 
-            // Get office code for context
             $officeCode = 'Unknown';
             $office = DB::table('Cust_Office')
                 ->where('TeamCode', $quotation->teamid)
@@ -3225,10 +3233,9 @@ class QuotationController extends Controller
             ]);
 
             // ============================================
-            // HANDLE "LOST" AND "CANCEL" VIA STORED PROCEDURE
+            // VALIDATE REASON CODE FOR LOST / CANCEL
             // ============================================
 
-            // Validate reason code is provided for Lost/Cancel
             if (empty($reasonCode) && $targetStatus !== 'Won') {
                 return response()->json(
                     [
@@ -3239,32 +3246,33 @@ class QuotationController extends Controller
                 );
             }
 
-            // Handle status transition requirements
+            // ============================================
+            // INTERMEDIATE STATUS TRANSITION IF NEEDED
+            // ============================================
+
             $needsPendingFirst = false;
 
             if ($targetStatus === 'Lost' && $currentStatus !== 'In Progress') {
                 $needsPendingFirst = true;
-                Log::info('Update Status - Lost requires Pending first', [
+                Log::info('Update Status - Lost requires In Progress first', [
                     'booking_no' => $bookingNo,
                     'current_status' => $currentStatus,
                     'office_code' => $officeCode,
                 ]);
-            } elseif ($targetStatus === 'Cancel' && !in_array($currentStatus, ['In Progress', 'WON'])) {
+            } elseif ($targetStatus === 'Cancel' && !in_array($currentStatus, ['In Progress', 'Won'])) {
                 $needsPendingFirst = true;
-
-                Log::info('Update Status - Cancel requires Pending/Won first', [
+                Log::info('Update Status - Cancel requires In Progress/Won first', [
                     'booking_no' => $bookingNo,
                     'current_status' => $currentStatus,
                     'office_code' => $officeCode,
                 ]);
             }
 
-            // Update to Pending first if needed
-
             if ($needsPendingFirst) {
                 try {
+                    // Scope by ID to avoid partial bookingno matches
                     $pendingRows = DB::table('Quote_QuotationInfo')
-                        ->where('bookingno', $bookingNo)
+                        ->where('ID', $quotation->ID)
                         ->update([
                             'QuoteStatus' => 'In Progress',
                             'status' => 'In Progress',
@@ -3272,7 +3280,7 @@ class QuotationController extends Controller
                             'updatedon' => now(),
                         ]);
 
-                    Log::info('Update Status - Intermediate Pending update', [
+                    Log::info('Update Status - Intermediate In Progress update', [
                         'booking_no' => $bookingNo,
                         'previous_status' => $currentStatus,
                         'rows_updated' => $pendingRows,
@@ -3280,7 +3288,7 @@ class QuotationController extends Controller
                         'office_code' => $officeCode,
                     ]);
                 } catch (\Exception $e) {
-                    Log::error('Update Status - Failed to set intermediate Pending status', [
+                    Log::error('Update Status - Failed to set intermediate In Progress status', [
                         'booking_no' => $bookingNo,
                         'error_message' => $e->getMessage(),
                         'file' => $e->getFile(),
@@ -3307,11 +3315,12 @@ class QuotationController extends Controller
                 'SubmittedDatetime' => now()->format('YmdHis'),
                 'SubmittedBy' => $submittedBy,
                 'Action' => 'Edit',
-                'QuotationID' => $quotation->ID, // ← REPLACE BookingNo with QuotationID
-                'Status' => strtoupper($targetStatus) === 'WON' ? 'WON' : $targetStatus,
+                'QuotationID' => $quotation->ID,
+                'Status' => $targetStatus,
                 'ReasonCode' => $reasonCode,
                 'ReasonRemark' => $reasonRemark,
             ]);
+
             Log::info('Update Status - Executing SP', [
                 'booking_no' => $bookingNo,
                 'target_status' => $targetStatus,
@@ -3324,17 +3333,17 @@ class QuotationController extends Controller
             SET NOCOUNT ON;
             DECLARE @OutputJson VARCHAR(2000);
             EXEC sp_Quote_Quotaiton_StatusUpdate ?, @OutputJson OUTPUT;
-                SELECT @OutputJson AS OutputJson
-            ");
+            SELECT @OutputJson AS OutputJson
+        ");
 
             $executeSuccess = $stmt->execute([$inputJson]);
+
             if (!$executeSuccess) {
                 $errorInfo = $stmt->errorInfo();
 
-                // Rollback pending status if we changed it
                 if ($needsPendingFirst) {
                     DB::table('Quote_QuotationInfo')
-                        ->where('bookingno', $bookingNo)
+                        ->where('ID', $quotation->ID)
                         ->update([
                             'QuoteStatus' => $currentStatus,
                             'status' => $currentStatus,
@@ -3342,7 +3351,7 @@ class QuotationController extends Controller
                             'updatedon' => now(),
                         ]);
 
-                    Log::info('Update Status - Rolled back intermediate Pending status', [
+                    Log::info('Update Status - Rolled back intermediate status after SP execute failure', [
                         'booking_no' => $bookingNo,
                         'restored_status' => $currentStatus,
                     ]);
@@ -3368,7 +3377,7 @@ class QuotationController extends Controller
             }
 
             // ============================================
-            // ENHANCED RESULT SET PROCESSING
+            // PROCESS RESULT SETS
             // ============================================
 
             $result = null;
@@ -3385,10 +3394,6 @@ class QuotationController extends Controller
                         'first_row' => !empty($rows) ? (array) $rows[0] : null,
                     ]);
 
-                    // ============================================
-                    // ENHANCED ERROR DETECTION IN RESULT SET
-                    // ============================================
-
                     if (!empty($rows) && is_object($rows[0])) {
                         $properties = get_object_vars($rows[0]);
                         $hasError = false;
@@ -3396,22 +3401,16 @@ class QuotationController extends Controller
                         foreach ($properties as $key => $value) {
                             if (
                                 empty($key) ||
-                                $key === '' ||
                                 (is_string($value) &&
                                     (strpos($value, 'Error Message') !== false || strpos($value, 'Failed -') !== false))
                             ) {
-                                Log::error('Update Status - SP returned error object in result set:', [
+                                Log::error('Update Status - SP returned error object in result set', [
                                     'booking_no' => $bookingNo,
                                     'target_status' => $targetStatus,
                                     'result_set' => $resultSetCount,
                                     'error_property_name' => $key,
                                     'error_message' => $value,
                                     'all_properties' => $properties,
-                                    'context' => [
-                                        'office_code' => $officeCode,
-                                        'current_status' => $currentStatus,
-                                        'reason_code' => $reasonCode,
-                                    ],
                                 ]);
                                 $hasError = true;
                                 break;
@@ -3424,14 +3423,14 @@ class QuotationController extends Controller
 
                         if (isset($rows[0]->OutputJson)) {
                             $result = $rows;
-                            Log::info('Update Status - ✓ Found OutputJson in result set #' . $resultSetCount, [
+                            Log::info('Update Status - Found OutputJson in result set #' . $resultSetCount, [
                                 'booking_no' => $bookingNo,
                             ]);
                             break;
                         }
                     }
                 } catch (\PDOException $e) {
-                    Log::debug("Update Status - Result set #$resultSetCount error (skipping)", [
+                    Log::debug("Update Status - Result set #$resultSetCount skipped", [
                         'booking_no' => $bookingNo,
                         'error' => $e->getMessage(),
                     ]);
@@ -3445,7 +3444,6 @@ class QuotationController extends Controller
                     'target_status' => $targetStatus,
                     'total_result_sets' => $resultSetCount,
                     'office_code' => $officeCode,
-                    'probable_cause' => 'Stored procedure may have failed silently or returned unexpected format',
                 ]);
 
                 return response()->json(
@@ -3458,7 +3456,7 @@ class QuotationController extends Controller
             }
 
             // ============================================
-            // PARSE OUTPUT WITH ENHANCED ERROR HANDLING
+            // PARSE SP OUTPUT
             // ============================================
 
             $outputJson = $result[0]->OutputJson ?? '{}';
@@ -3469,12 +3467,7 @@ class QuotationController extends Controller
                     'booking_no' => $bookingNo,
                     'target_status' => $targetStatus,
                     'json_error' => json_last_error_msg(),
-                    'json_error_code' => json_last_error(),
                     'raw_output' => $outputJson,
-                    'context' => [
-                        'office_code' => $officeCode,
-                        'current_status' => $currentStatus,
-                    ],
                 ]);
 
                 return response()->json(
@@ -3505,21 +3498,20 @@ class QuotationController extends Controller
 
                 return response()->json([
                     'success' => true,
-                    'message' => $output['Remarks'][0]['Remark'] ?? 'Status updated successfully',
+                    'message' => $output['Remark'] ?? 'Status updated successfully',
                 ]);
             }
 
             // ============================================
-            // HANDLE FAILURE - ROLLBACK PENDING IF NEEDED
+            // HANDLE SP FAILURE — ROLLBACK IF NEEDED
             // ============================================
 
-            $errorMessage = $output['Remarks'][0]['Remark'] ?? 'Failed to update status';
+            $errorMessage = $output['Remark'] ?? 'Failed to update status';
 
-            // If SP failed and we had changed to Pending, restore original status
             if ($needsPendingFirst) {
                 try {
                     DB::table('Quote_QuotationInfo')
-                        ->where('bookingno', $bookingNo)
+                        ->where('ID', $quotation->ID)
                         ->update([
                             'QuoteStatus' => $currentStatus,
                             'status' => $currentStatus,
@@ -3527,13 +3519,13 @@ class QuotationController extends Controller
                             'updatedon' => now(),
                         ]);
 
-                    Log::info('Update Status - Rolled back intermediate Pending after SP failure', [
+                    Log::info('Update Status - Rolled back intermediate status after SP failure', [
                         'booking_no' => $bookingNo,
                         'restored_status' => $currentStatus,
                         'sp_error' => $errorMessage,
                     ]);
                 } catch (\Exception $e) {
-                    Log::error('Update Status - Failed to rollback intermediate Pending status', [
+                    Log::error('Update Status - Failed to rollback intermediate status', [
                         'booking_no' => $bookingNo,
                         'error' => $e->getMessage(),
                         'original_status' => $currentStatus,
@@ -3545,15 +3537,12 @@ class QuotationController extends Controller
                 'booking_no' => $bookingNo,
                 'target_status' => $targetStatus,
                 'current_status' => $currentStatus,
-                'status' => $output['Status'] ?? 'Unknown',
+                'sp_status' => $output['Status'] ?? 'Unknown',
                 'message' => $errorMessage,
                 'full_output' => $output,
-                'context' => [
-                    'office_code' => $officeCode,
-                    'reason_code' => $reasonCode,
-                    'user' => $submittedBy,
-                    'company' => $quotation->companyname ?? 'N/A',
-                ],
+                'office_code' => $officeCode,
+                'reason_code' => $reasonCode,
+                'user' => $submittedBy,
             ]);
 
             return response()->json(
@@ -3570,12 +3559,9 @@ class QuotationController extends Controller
                 'target_status' => $request->input('status'),
                 'error_message' => $e->getMessage(),
                 'error_code' => $e->getCode(),
-                'error_file' => $e->getFile(),
-                'error_line' => $e->getLine(),
                 'sql_state' => $e->errorInfo[0] ?? 'Unknown',
                 'driver_error_code' => $e->errorInfo[1] ?? 'Unknown',
                 'driver_error_message' => $e->errorInfo[2] ?? 'Unknown',
-                'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json(
@@ -3597,12 +3583,8 @@ class QuotationController extends Controller
                 'booking_no' => $request->input('booking_no'),
                 'target_status' => $request->input('status'),
                 'error_message' => $e->getMessage(),
-                'error_code' => $e->getCode(),
-                'error_file' => $e->getFile(),
-                'error_line' => $e->getLine(),
                 'sql' => $e->getSql() ?? 'N/A',
                 'bindings' => $e->getBindings() ?? [],
-                'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json(
@@ -3627,7 +3609,6 @@ class QuotationController extends Controller
                 'error_message' => $e->getMessage(),
                 'error_file' => $e->getFile(),
                 'error_line' => $e->getLine(),
-                'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json(
