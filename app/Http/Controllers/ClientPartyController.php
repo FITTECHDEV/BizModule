@@ -2599,6 +2599,7 @@ class ClientPartyController extends Controller
     //         ], 500);
     //     }
     // }
+    
     public function getCompanies()
     {
         try {

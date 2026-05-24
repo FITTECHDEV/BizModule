@@ -8282,6 +8282,7 @@
                 data: {
                     _token: '{{ csrf_token() }}',
                     booking_no: bookingNo,
+                    quotation_id: quotationId,
                     status: status,
                     reason_code: reasonCode,
                     reason_remark: reasonRemark
