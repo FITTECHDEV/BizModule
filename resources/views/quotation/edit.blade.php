@@ -1152,8 +1152,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                            MODALS
-                                                            ============================================ -->
+                                                                    MODALS
+                                                                    ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -2057,7 +2057,7 @@
 
                         {{-- Advanced search row --}}
                         <div class="cc-search-controls">
-                            <span class="cc-lbl" style="white-space:nowrap;">Advanced Search</span>
+                            <span class="cc-lbl" style="white-space:nowrap;">Search</span>
                             <select class="cc-select" id="ccSearchField" style="width:160px;">
                                 <option value="">Select</option>
                                 <option value="customer">Customer</option>
@@ -2113,21 +2113,16 @@
                         </div>
 
                         {{-- Pagination --}}
-                        <div class="cc-pagination" style="margin-top:6px;">
-                            <div class="cc-pag-controls">
-                                data-action="prev">&lt;&lt;</button>
-                                <span class="cc-pag-label">Page</span>
-                                <input type="number" id="ccPageInput" class="cc-pag-input" value="1"
-                                    min="1">
-                                <span class="cc-pag-label">of <strong id="ccTotalPages">1</strong></span>
-                                data-action="last">&gt;|</button>
-                                <select class="cc-pag-size" id="ccPageSize">
-                                    <option value="10" selected>10</option>
-                                    <option value="25">25</option>
-                                    <option value="50">50</option>
-                                </select>
-                            </div>
-                            <span class="cc-pag-range" id="ccViewRange">View 1 - 0 of 0</span>
+                        <div class="cc-pag-controls">
+                            <span class="cc-pag-label">Page</span>
+                            <input type="number" id="ccPageInput" class="cc-pag-input" value="1"
+                                min="1">
+                            <span class="cc-pag-label">of <strong id="ccTotalPages">1</strong></span>
+                            <select class="cc-pag-size" id="ccPageSize">
+                                <option value="10" selected>10</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                            </select>
                         </div>
                     </div>
 
@@ -2148,8 +2143,8 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -2592,9 +2587,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -2752,9 +2747,14 @@
 
         /* ── Header ──────────────────────────────────────────────────── */
         .cc-modal-dialog {
+            max-width: 480px;
+            width: 480px;
+            margin: 30px auto;
+        }
+
+        .cc-modal-dialog.cc-charges-loaded {
             max-width: 900px;
             width: 900px;
-            margin: 30px auto;
         }
 
         .cc-modal-dialog.cc-expanded {
@@ -2812,12 +2812,19 @@
         .cc-info-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 0 24px;
+            gap: 0 16px;
             margin-bottom: 16px;
             background: #f4f4fb;
             border: 1px solid #dddcf5;
             border-radius: 6px;
             padding: 10px 14px;
+        }
+
+        .cc-lbl {
+            min-width: 70px;
+            white-space: nowrap;
+            font-size: 0.85rem;
+            color: #555;
         }
 
         .cc-info-col {
@@ -9461,6 +9468,7 @@
 
                         $('#ccJobDetails').show();
                         $('#ccJobDetailsCost').show();
+                        $('#copyChargesModal .cc-modal-dialog').addClass('cc-charges-loaded');
                         updateSaveBtn();
                     },
                     error: function() {
@@ -9742,7 +9750,7 @@
 
             // ── Helpers ───────────────────────────────────────────────────────────────
             function resetCopyChargesModal() {
-                $('#copyChargesModal .cc-modal-dialog').removeClass('cc-expanded');
+                $('#copyChargesModal .cc-modal-dialog').removeClass('cc-expanded cc-charges-loaded');
                 $('#ccJobNo').val('');
                 $('#ccJobDetails, #ccJobDetailsCost').hide();
                 $('#ccClientRow, #ccShipperRow, #ccConsigneeRow, #ccPolRow, #ccPodRow').hide();

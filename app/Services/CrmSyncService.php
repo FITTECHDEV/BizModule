@@ -66,16 +66,16 @@ class CrmSyncService
             if ($bookingNo) {
                 $stmt = $pdo->prepare(
                     'SELECT bookingno, bookingdetailsjson
-                     FROM   crm_details
-                     WHERE  bookingno = ?
-                     ORDER  BY bookingno ASC',
+                        FROM   crm_details
+                        WHERE  bookingno = ?
+                        ORDER  BY bookingno ASC',
                 );
                 $stmt->execute([$bookingNo]);
             } else {
                 $stmt = $pdo->query(
                     'SELECT bookingno, bookingdetailsjson
-                     FROM   crm_details
-                     ORDER  BY bookingno ASC',
+                        FROM   crm_details
+                        ORDER  BY bookingno ASC',
                 );
             }
 
@@ -132,7 +132,7 @@ class CrmSyncService
                     continue;
                 }
 
-                json_decode($row->bookingdetailsjson, true);
+                $data = json_decode($row->bookingdetailsjson, true);
                 if (json_last_error() !== JSON_ERROR_NONE) {
                     $failed++;
                     $errorMsg = 'JSON parse error: ' . json_last_error_msg();
@@ -161,6 +161,18 @@ class CrmSyncService
                     ]);
                     continue;
                 }
+
+                $populatedColumns = array_keys(array_filter($data, fn($v) => $v !== null && $v !== '' && $v !== 0));
+                Log::info('CRM Sync - Populated columns', [
+                    'bookingno' => $bno,
+                    'populated' => $populatedColumns,
+                    'count' => count($populatedColumns),
+                ]);
+
+                Log::info('CRM Sync - Raw JSON', [
+                    'bookingno' => $bno,
+                    'json' => $row->bookingdetailsjson,
+                ]);
 
                 $stmt = $scmPdo->prepare('EXEC dbo.sp_Quote_QuotationCreate ?');
                 $stmt->execute([$row->bookingdetailsjson]);
