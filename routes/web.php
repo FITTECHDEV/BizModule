@@ -979,223 +979,346 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
         ->name('shipment-reports.stats');
 });
 
+
 // ============================================================================
 // QUOTATION INTEGRATION ROUTES
 // ============================================================================
 Route::middleware(['auth', 'can:view-quotation'])->group(function () {
-
-    Route::get('/quotation', [App\Http\Controllers\QuotationController::class, 'index'])
-        ->name('quotation.index');
-    Route::get('/quotation/data', [App\Http\Controllers\QuotationController::class, 'data'])
-        ->name('quotation.data');
+    Route::get('/quotation', [App\Http\Controllers\QuotationController::class, 'index'])->name('quotation.index');
+    Route::get('/quotation/data', [App\Http\Controllers\QuotationController::class, 'data'])->name('quotation.data');
 
     // ============================================
     // STATIC LOOKUP ROUTES — all must be above any {id} wildcard
     // ============================================
-    Route::get('/quotation/charges', [App\Http\Controllers\QuotationController::class, 'getCharges'])
-        ->name('quotation.charges');
-    Route::get('/quotation/reasons', [App\Http\Controllers\QuotationController::class, 'getReasons'])
-        ->name('quotation.reasons');
-    Route::get('/quotation/charge-codes', [App\Http\Controllers\QuotationController::class, 'getChargeCodes'])
-        ->name('quotation.charge-codes');
-    Route::get('/quotation/legal-entities', [App\Http\Controllers\QuotationController::class, 'getLegalEntities'])
-        ->name('quotation.legal-entities');
-    Route::get('/quotation/based-on-list', [App\Http\Controllers\QuotationController::class, 'getBasedOnList'])
-        ->name('quotation.based-on-list');
-    Route::get('/quotation/based-on-uom', [App\Http\Controllers\QuotationController::class, 'getBasedOnUOM'])
-        ->name('quotation.based-on-uom');
-    Route::get('/quotation/contract-charges', [App\Http\Controllers\QuotationController::class, 'getContractCharges'])
-        ->name('quotation.contract.charges');
-    Route::get('/quotation/equipment-types', [App\Http\Controllers\QuotationController::class, 'getEquipmentTypes'])
-        ->name('quotation.equipment-types');
-    Route::get('/quotation/charge-based-on-defaults', [App\Http\Controllers\QuotationController::class, 'getChargeBasedOnDefaults'])
-        ->name('quotation.charge-based-on-defaults');
-    Route::get('/quotation/agent-types', [App\Http\Controllers\QuotationController::class, 'getAgentTypes'])
-        ->name('quotation.agent-types');
-    Route::get('/quotation/customer-types', [App\Http\Controllers\QuotationController::class, 'getCustomerTypes'])
-        ->name('quotation.customer-types');
-    Route::get('/quotation/client-list', [App\Http\Controllers\QuotationController::class, 'getClientList'])
-        ->name('quotation.client-list');
-    Route::get('/quotation/client-details', [App\Http\Controllers\QuotationController::class, 'getClientDetails'])
-        ->name('quotation.client-details');
-    Route::get('/quotation/charge-details', [App\Http\Controllers\QuotationController::class, 'getChargeDetails'])
-        ->name('quotation.charge-details');
-    Route::get('/quotation/email-history', [App\Http\Controllers\QuotationController::class, 'getEmailHistory'])
-        ->name('quotation.email.history');
-    Route::get('/quotation/shipment-modes', [App\Http\Controllers\QuotationController::class, 'getShipmentModes'])
-        ->name('quotation.shipment-modes');
-    Route::get('/quotation/transport-modes', [App\Http\Controllers\QuotationController::class, 'getTransportModes'])
-        ->name('quotation.transport-modes');
-    Route::get('/quotation/containers', [App\Http\Controllers\QuotationController::class, 'getContainers'])
-        ->name('quotation.containers');
-    Route::get('/quotation/report-data', [App\Http\Controllers\QuotationController::class, 'reportData'])
-        ->name('quotation.report-data');
+    Route::get('/quotation/charges', [App\Http\Controllers\QuotationController::class, 'getCharges'])->name(
+        'quotation.charges',
+    );
+    Route::get('/quotation/reasons', [App\Http\Controllers\QuotationController::class, 'getReasons'])->name(
+        'quotation.reasons',
+    );
+    Route::get('/quotation/charge-codes', [App\Http\Controllers\QuotationController::class, 'getChargeCodes'])->name(
+        'quotation.charge-codes',
+    );
+    Route::get('/quotation/legal-entities', [
+        App\Http\Controllers\QuotationController::class,
+        'getLegalEntities',
+    ])->name('quotation.legal-entities');
+    Route::get('/quotation/based-on-list', [App\Http\Controllers\QuotationController::class, 'getBasedOnList'])->name(
+        'quotation.based-on-list',
+    );
+    Route::get('/quotation/based-on-uom', [App\Http\Controllers\QuotationController::class, 'getBasedOnUOM'])->name(
+        'quotation.based-on-uom',
+    );
+    Route::get('/quotation/contract-charges', [
+        App\Http\Controllers\QuotationController::class,
+        'getContractCharges',
+    ])->name('quotation.contract.charges');
+    Route::get('/quotation/equipment-types', [
+        App\Http\Controllers\QuotationController::class,
+        'getEquipmentTypes',
+    ])->name('quotation.equipment-types');
+    Route::get('/quotation/charge-based-on-defaults', [
+        App\Http\Controllers\QuotationController::class,
+        'getChargeBasedOnDefaults',
+    ])->name('quotation.charge-based-on-defaults');
+    Route::get('/quotation/agent-types', [App\Http\Controllers\QuotationController::class, 'getAgentTypes'])->name(
+        'quotation.agent-types',
+    );
+    Route::get('/quotation/customer-types', [
+        App\Http\Controllers\QuotationController::class,
+        'getCustomerTypes',
+    ])->name('quotation.customer-types');
+    Route::get('/quotation/client-list', [App\Http\Controllers\QuotationController::class, 'getClientList'])->name(
+        'quotation.client-list',
+    );
+    Route::get('/quotation/client-details', [
+        App\Http\Controllers\QuotationController::class,
+        'getClientDetails',
+    ])->name('quotation.client-details');
+    Route::get('/quotation/charge-details', [
+        App\Http\Controllers\QuotationController::class,
+        'getChargeDetails',
+    ])->name('quotation.charge-details');
+    Route::get('/quotation/email-history', [App\Http\Controllers\QuotationController::class, 'getEmailHistory'])->name(
+        'quotation.email.history',
+    );
+    Route::get('/quotation/shipment-modes', [
+        App\Http\Controllers\QuotationController::class,
+        'getShipmentModes',
+    ])->name('quotation.shipment-modes');
+    Route::get('/quotation/transport-modes', [
+        App\Http\Controllers\QuotationController::class,
+        'getTransportModes',
+    ])->name('quotation.transport-modes');
+    Route::get('/quotation/containers', [App\Http\Controllers\QuotationController::class, 'getContainers'])->name(
+        'quotation.containers',
+    );
+    Route::get('/quotation/report-data', [App\Http\Controllers\QuotationController::class, 'reportData'])->name(
+        'quotation.report-data',
+    );
     Route::get('/quotation/debug-lookups', [App\Http\Controllers\QuotationController::class, 'debugLookups']);
     Route::get('/quotation/debug-countries', [App\Http\Controllers\QuotationController::class, 'debugLookupCountries']);
-    Route::get('/quotation/terms-templates', [App\Http\Controllers\QuotationController::class, 'getTermsTemplates'])
-        ->name('quotation.terms-templates');
+    Route::get('/quotation/terms-templates', [
+        App\Http\Controllers\QuotationController::class,
+        'getTermsTemplates',
+    ])->name('quotation.terms-templates');
 
     // ✅ MOVED UP — were incorrectly placed after {id} wildcards
-    Route::get('/quotation/inco-terms', [App\Http\Controllers\QuotationController::class, 'getIncoTerms'])
-        ->name('quotation.inco-terms');
-    Route::get('/quotation/sales-persons', [App\Http\Controllers\QuotationController::class, 'getSalesPersons'])
-        ->name('quotation.sales-persons');
+    Route::get('/quotation/inco-terms', [App\Http\Controllers\QuotationController::class, 'getIncoTerms'])->name(
+        'quotation.inco-terms',
+    );
+    Route::get('/quotation/sales-persons', [App\Http\Controllers\QuotationController::class, 'getSalesPersons'])->name(
+        'quotation.sales-persons',
+    );
 
     // ============================================
     // OFFICE / CURRENCY
     // ============================================
-    Route::get('/quotation/office-code', [App\Http\Controllers\QuotationController::class, 'getOfficeCode'])
-        ->name('quotation.office-code');
-    Route::get('/quotation/currencies', [App\Http\Controllers\QuotationController::class, 'getCurrencies'])
-        ->name('quotation.currencies');
-    Route::get('/quotation/exchange-rate', [App\Http\Controllers\QuotationController::class, 'getExchangeRate'])
-        ->name('quotation.exchange-rate');
+    Route::get('/quotation/office-code', [App\Http\Controllers\QuotationController::class, 'getOfficeCode'])->name(
+        'quotation.office-code',
+    );
+    Route::get('/quotation/currencies', [App\Http\Controllers\QuotationController::class, 'getCurrencies'])->name(
+        'quotation.currencies',
+    );
+    Route::get('/quotation/exchange-rate', [App\Http\Controllers\QuotationController::class, 'getExchangeRate'])->name(
+        'quotation.exchange-rate',
+    );
 
     // ============================================
     // COMMUNICATION (T&C + EMAIL)
     // ============================================
-    Route::get('/quotation/communication/templates', [App\Http\Controllers\QuotationController::class, 'getCommunicationTemplates'])
-        ->name('quotation.communication.templates');
-    Route::get('/quotation/communication/description', [App\Http\Controllers\QuotationController::class, 'getCommunicationDescription'])
-        ->name('quotation.communication.description');
-    Route::post('/quotation/communication/save-terms', [App\Http\Controllers\QuotationController::class, 'saveTermsCondition'])
-        ->name('quotation.communication.save-terms');
-    Route::post('/quotation/email/send', [App\Http\Controllers\QuotationController::class, 'sendEmailQuote'])
-        ->name('quotation.email.send');
+    Route::get('/quotation/communication/templates', [
+        App\Http\Controllers\QuotationController::class,
+        'getCommunicationTemplates',
+    ])->name('quotation.communication.templates');
+    Route::get('/quotation/communication/description', [
+        App\Http\Controllers\QuotationController::class,
+        'getCommunicationDescription',
+    ])->name('quotation.communication.description');
+    Route::post('/quotation/communication/save-terms', [
+        App\Http\Controllers\QuotationController::class,
+        'saveTermsCondition',
+    ])->name('quotation.communication.save-terms');
+    Route::post('/quotation/email/send', [App\Http\Controllers\QuotationController::class, 'sendEmailQuote'])->name(
+        'quotation.email.send',
+    );
 
     // ============================================
     // CREATE BOOKING LOOKUPS
     // ============================================
-    Route::get('/quotation/create-booking/service-templates', [App\Http\Controllers\QuotationController::class, 'getServiceTemplates'])
-        ->name('quotation.booking.service-templates');
-    Route::get('/quotation/create-booking/bill-to-parties', [App\Http\Controllers\QuotationController::class, 'getBillToParties'])
-        ->name('quotation.booking.bill-to-parties');
-    Route::get('/quotation/create-booking/forwarders', [App\Http\Controllers\QuotationController::class, 'getForwarders'])
-        ->name('quotation.booking.forwarders');
-    Route::get('/quotation/create-booking/locations', [App\Http\Controllers\QuotationController::class, 'getLocations'])
-        ->name('quotation.booking.locations');
+    Route::get('/quotation/create-booking/service-templates', [
+        App\Http\Controllers\QuotationController::class,
+        'getServiceTemplates',
+    ])->name('quotation.booking.service-templates');
+    Route::get('/quotation/create-booking/bill-to-parties', [
+        App\Http\Controllers\QuotationController::class,
+        'getBillToParties',
+    ])->name('quotation.booking.bill-to-parties');
+    Route::get('/quotation/create-booking/forwarders', [
+        App\Http\Controllers\QuotationController::class,
+        'getForwarders',
+    ])->name('quotation.booking.forwarders');
+    Route::get('/quotation/create-booking/locations', [
+        App\Http\Controllers\QuotationController::class,
+        'getLocations',
+    ])->name('quotation.booking.locations');
 
     // ============================================
     // LOOKUP ROUTES (duplicate modal)
     // ============================================
-    Route::get('/quotation/lookup/countries', [App\Http\Controllers\QuotationController::class, 'lookupCountries'])
-        ->name('quotation.lookup.countries');
-    Route::get('/quotation/lookup/incoterms', [App\Http\Controllers\QuotationController::class, 'lookupIncoTerms'])
-        ->name('quotation.lookup.incoterms');
-    Route::get('/quotation/lookup/service-classes', [App\Http\Controllers\QuotationController::class, 'lookupServiceClasses'])
-        ->name('quotation.lookup.serviceClasses');
-    Route::get('/quotation/lookup/industry-types', [App\Http\Controllers\QuotationController::class, 'lookupIndustryTypes'])
-        ->name('quotation.lookup.industryTypes');
-    Route::get('/quotation/lookup/persons', [App\Http\Controllers\QuotationController::class, 'lookupPersonsInCharge'])
-        ->name('quotation.lookup.persons');
-    Route::get('/quotation/lookup/shipment-modes', [App\Http\Controllers\QuotationController::class, 'lookupShipmentModes'])
-        ->name('quotation.lookup.shipmentModes');
-    Route::get('/quotation/lookup/transport-modes', [App\Http\Controllers\QuotationController::class, 'lookupTransportModes'])
-        ->name('quotation.lookup.transportModes');
-    Route::get('/quotation/lookup/equipment-types', [App\Http\Controllers\QuotationController::class, 'lookupEquipmentTypes'])
-        ->name('quotation.lookup.equipmentTypes');
+    Route::get('/quotation/lookup/countries', [
+        App\Http\Controllers\QuotationController::class,
+        'lookupCountries',
+    ])->name('quotation.lookup.countries');
+    Route::get('/quotation/lookup/incoterms', [
+        App\Http\Controllers\QuotationController::class,
+        'lookupIncoTerms',
+    ])->name('quotation.lookup.incoterms');
+    Route::get('/quotation/lookup/service-classes', [
+        App\Http\Controllers\QuotationController::class,
+        'lookupServiceClasses',
+    ])->name('quotation.lookup.serviceClasses');
+    Route::get('/quotation/lookup/industry-types', [
+        App\Http\Controllers\QuotationController::class,
+        'lookupIndustryTypes',
+    ])->name('quotation.lookup.industryTypes');
+    Route::get('/quotation/lookup/persons', [
+        App\Http\Controllers\QuotationController::class,
+        'lookupPersonsInCharge',
+    ])->name('quotation.lookup.persons');
+    Route::get('/quotation/lookup/shipment-modes', [
+        App\Http\Controllers\QuotationController::class,
+        'lookupShipmentModes',
+    ])->name('quotation.lookup.shipmentModes');
+    Route::get('/quotation/lookup/transport-modes', [
+        App\Http\Controllers\QuotationController::class,
+        'lookupTransportModes',
+    ])->name('quotation.lookup.transportModes');
+    Route::get('/quotation/lookup/equipment-types', [
+        App\Http\Controllers\QuotationController::class,
+        'lookupEquipmentTypes',
+    ])->name('quotation.lookup.equipmentTypes');
+
+    Route::get('/quotation/offices', [App\Http\Controllers\QuotationController::class, 'getOfficeList'])
+    ->name('quotation.offices');
 
     // ============================================
     // WRITE ACTIONS (POST)
     // POST routes are NOT affected by {id} GET wildcards,
     // but keeping them grouped here is cleaner.
     // ============================================
-Route::post('/quotation/process-booking', [App\Http\Controllers\QuotationController::class, 'processBooking'])
-    ->name('quotation.process-booking');
+    Route::post('/quotation/process-booking', [
+        App\Http\Controllers\QuotationController::class,
+        'processBooking',
+    ])->name('quotation.process-booking');
 
-// ── Individual booking step routes (sequential pipeline) ─────────────────
-Route::post('/quotation/booking/step/save-info', [App\Http\Controllers\QuotationController::class, 'processBookingStep0'])
-    ->name('quotation.booking.step.save-info');
-Route::post('/quotation/booking/step/xml', [App\Http\Controllers\QuotationController::class, 'processBookingStep2'])
-    ->name('quotation.booking.step.xml');
-Route::post('/quotation/booking/step/scm-push', [App\Http\Controllers\QuotationController::class, 'processBookingStep2b'])
-    ->name('quotation.booking.step.scm-push');
-Route::post('/quotation/booking/step/charges', [App\Http\Controllers\QuotationController::class, 'processBookingStep3'])
-    ->name('quotation.booking.step.charges');
-Route::post('/quotation/booking/step/documents', [App\Http\Controllers\QuotationController::class, 'processBookingStep4'])
-    ->name('quotation.booking.step.documents');
+    // ── Individual booking step routes (sequential pipeline) ─────────────────
+    Route::post('/quotation/booking/step/save-info', [
+        App\Http\Controllers\QuotationController::class,
+        'processBookingStep0',
+    ])->name('quotation.booking.step.save-info');
+    Route::post('/quotation/booking/step/xml', [
+        App\Http\Controllers\QuotationController::class,
+        'processBookingStep2',
+    ])->name('quotation.booking.step.xml');
+    Route::post('/quotation/booking/step/scm-push', [
+        App\Http\Controllers\QuotationController::class,
+        'processBookingStep2b',
+    ])->name('quotation.booking.step.scm-push');
+    Route::post('/quotation/booking/step/charges', [
+        App\Http\Controllers\QuotationController::class,
+        'processBookingStep3',
+    ])->name('quotation.booking.step.charges');
+    Route::post('/quotation/booking/step/documents', [
+        App\Http\Controllers\QuotationController::class,
+        'processBookingStep4',
+    ])->name('quotation.booking.step.documents');
 
-Route::post('/quotation/booking/create', [App\Http\Controllers\QuotationController::class, 'createBooking'])
-    ->name('quotation.booking.create');
-    Route::post('/quotation/charge/save', [App\Http\Controllers\QuotationController::class, 'saveCharge'])
-        ->name('quotation.charge.save');
-    Route::post('/quotation/charge/delete', [App\Http\Controllers\QuotationController::class, 'deleteCharge'])
-        ->name('quotation.charge.delete');
-    Route::post('/quotation/status/update', [App\Http\Controllers\QuotationController::class, 'updateStatus'])
-        ->name('quotation.status.update');
-    Route::post('/quotation/retrigger', [App\Http\Controllers\QuotationController::class, 'retrigger'])
-        ->name('quotation.retrigger');
-    Route::post('/quotation/customer/save', [App\Http\Controllers\QuotationController::class, 'saveCustomerDetails'])
-        ->name('quotation.customer.save');
-    Route::post('/quotation/shipment/save', [App\Http\Controllers\QuotationController::class, 'saveShipmentDetails'])
-        ->name('quotation.shipment.save');
-    Route::post('/quotation/cargo/save', [App\Http\Controllers\QuotationController::class, 'saveCargoDetails'])
-        ->name('quotation.cargo.save');
+    Route::post('/quotation/booking/create', [App\Http\Controllers\QuotationController::class, 'createBooking'])->name(
+        'quotation.booking.create',
+    );
+    Route::post('/quotation/charge/save', [App\Http\Controllers\QuotationController::class, 'saveCharge'])->name(
+        'quotation.charge.save',
+    );
+    Route::post('/quotation/charge/delete', [App\Http\Controllers\QuotationController::class, 'deleteCharge'])->name(
+        'quotation.charge.delete',
+    );
+    Route::post('/quotation/status/update', [App\Http\Controllers\QuotationController::class, 'updateStatus'])->name(
+        'quotation.status.update',
+    );
+    Route::post('/quotation/retrigger', [App\Http\Controllers\QuotationController::class, 'retrigger'])->name(
+        'quotation.retrigger',
+    );
+    Route::post('/quotation/customer/save', [
+        App\Http\Controllers\QuotationController::class,
+        'saveCustomerDetails',
+    ])->name('quotation.customer.save');
+    Route::post('/quotation/shipment/save', [
+        App\Http\Controllers\QuotationController::class,
+        'saveShipmentDetails',
+    ])->name('quotation.shipment.save');
+    Route::post('/quotation/cargo/save', [App\Http\Controllers\QuotationController::class, 'saveCargoDetails'])->name(
+        'quotation.cargo.save',
+    );
     // Route::post('/quotation/booking-integration-response', [App\Http\Controllers\QuotationController::class, 'handleBookingIntegrationResponse'])
     //     ->name('quotation.bookingIntegrationResponse');
     // ✅ MOVED UP — inquiry/save is a POST so technically safe, but grouped correctly herefv
-    Route::post('/quotation/inquiry/save', [App\Http\Controllers\QuotationController::class, 'saveInquiryDetails'])
-        ->name('quotation.inquiry.save');
+    Route::post('/quotation/inquiry/save', [
+        App\Http\Controllers\QuotationController::class,
+        'saveInquiryDetails',
+    ])->name('quotation.inquiry.save');
 
-    Route::post('/quotation/push-to-scm', [App\Http\Controllers\QuotationController::class, 'pushBookingToSCM'])
-        ->name('quotation.push-to-scm');
+    Route::post('/quotation/push-to-scm', [App\Http\Controllers\QuotationController::class, 'pushBookingToSCM'])->name(
+        'quotation.push-to-scm',
+    );
 
-    Route::get('/quotation/portal', [App\Http\Controllers\QuotationController::class, 'portal'])
-        ->name('quotation.portal');
-    Route::get('/quotation/portal-debug', [App\Http\Controllers\QuotationController::class, 'portalDebug'])
-        ->name('quotation.portal.debug');
-    Route::get('/quotation/copy-charges/search', [App\Http\Controllers\QuotationController::class, 'getCopyChargesSearch'])
-        ->name('quotation.copy-charges.search');
-    Route::get('/quotation/copy-charges/charges', [App\Http\Controllers\QuotationController::class, 'getCopyCharges'])
-        ->name('quotation.copy-charges.charges');
-    Route::post('/quotation/process-won', [App\Http\Controllers\QuotationController::class, 'processWon'])
-        ->name('quotation.process-won');
-    Route::get('/quotation/create-booking/existing-data', [App\Http\Controllers\QuotationController::class, 'getBookingFormData'])
-        ->name('quotation.booking.existing-data');
+    Route::get('/quotation/portal', [App\Http\Controllers\QuotationController::class, 'portal'])->name(
+        'quotation.portal',
+    );
+    Route::get('/quotation/portal-debug', [App\Http\Controllers\QuotationController::class, 'portalDebug'])->name(
+        'quotation.portal.debug',
+    );
+    Route::get('/quotation/copy-charges/search', [
+        App\Http\Controllers\QuotationController::class,
+        'getCopyChargesSearch',
+    ])->name('quotation.copy-charges.search');
+    Route::get('/quotation/copy-charges/charges', [
+        App\Http\Controllers\QuotationController::class,
+        'getCopyCharges',
+    ])->name('quotation.copy-charges.charges');
+    Route::post('/quotation/process-won', [App\Http\Controllers\QuotationController::class, 'processWon'])->name(
+        'quotation.process-won',
+    );
+    Route::get('/quotation/create-booking/existing-data', [
+        App\Http\Controllers\QuotationController::class,
+        'getBookingFormData',
+    ])->name('quotation.booking.existing-data');
     Route::post('/quotation/charges/bulk-delete', [
         App\Http\Controllers\QuotationController::class,
         'bulkDeleteCharges',
     ])->name('quotation.charges.bulk-delete');
 
+    Route::post('/quotation/copy-charges/bulk', [
+        App\Http\Controllers\QuotationController::class,
+        'copyChargesBulk',
+    ])->name('quotation.copy-charges.bulk');
+
+    Route::post('/quotation/request-office', [
+        App\Http\Controllers\QuotationController::class,
+        'requestOfficeQuotation',
+    ])->name('quotation.request-office');
+
+    Route::get('/quotation/request-office-history', [
+        App\Http\Controllers\QuotationController::class,
+        'getRequestOfficeHistory',
+    ])->name('quotation.request-office-history');
 
     // ============================================
     // WILDCARD ROUTES — must be last
     // {id} in a GET route matches ANY path segment.
     // Nothing with a static segment may come after /quotation/{id}.
     // ============================================
-    Route::post('/quotation/{id}/generate-pdf', [App\Http\Controllers\QuotationController::class, 'generatePdf'])
-        ->name('quotation.generate-pdf');
-    Route::post('/quotation/{quoteno}/duplicate', [App\Http\Controllers\QuotationController::class, 'processDuplicate'])
-        ->name('quotation.processDuplicate');
-    Route::post('/quotation/{bookingno}/copy', [App\Http\Controllers\QuotationController::class, 'copy'])
-        ->name('quotation.copy');
+    Route::post('/quotation/{id}/generate-pdf', [App\Http\Controllers\QuotationController::class, 'generatePdf'])->name(
+        'quotation.generate-pdf',
+    );
+    Route::post('/quotation/{quoteno}/duplicate', [
+        App\Http\Controllers\QuotationController::class,
+        'processDuplicate',
+    ])->name('quotation.processDuplicate');
+    Route::post('/quotation/{bookingno}/copy', [App\Http\Controllers\QuotationController::class, 'copy'])->name(
+        'quotation.copy',
+    );
 
-    Route::get('/quotation/{id}/versions', [App\Http\Controllers\QuotationController::class, 'getQuotationVersions'])
-        ->name('quotation.versions');
-    Route::get('/quotation/{id}/download-pdf/{version}', [App\Http\Controllers\QuotationController::class, 'downloadPdf'])
-        ->name('quotation.download-pdf');
-    Route::get('/quotation/{id}/edit', [App\Http\Controllers\QuotationController::class, 'edit'])
-        ->name('quotation.edit');
-    Route::post('/quotation/{id}/update', [App\Http\Controllers\QuotationController::class, 'update'])
-        ->name('quotation.update');
+    Route::get('/quotation/{id}/versions', [
+        App\Http\Controllers\QuotationController::class,
+        'getQuotationVersions',
+    ])->name('quotation.versions');
+    Route::get('/quotation/{id}/download-pdf/{version}', [
+        App\Http\Controllers\QuotationController::class,
+        'downloadPdf',
+    ])->name('quotation.download-pdf');
+    Route::get('/quotation/{id}/edit', [App\Http\Controllers\QuotationController::class, 'edit'])->name(
+        'quotation.edit',
+    );
+    Route::post('/quotation/{id}/update', [App\Http\Controllers\QuotationController::class, 'update'])->name(
+        'quotation.update',
+    );
 
     // ⚠️ ABSOLUTE LAST — catches /quotation/<anything>
-    Route::get('/quotation/{id}', [App\Http\Controllers\QuotationController::class, 'view'])
-        ->name('quotation.view');
+    Route::get('/quotation/{id}', [App\Http\Controllers\QuotationController::class, 'view'])->name('quotation.view');
 
     // ============================================
     // CRM SYNC
     // ============================================
-    Route::get('/crm/sync/history', [App\Http\Controllers\CrmSyncController::class, 'history'])
-        ->name('crm.sync.history');
-    Route::post('/crm/sync/run', [App\Http\Controllers\CrmSyncController::class, 'run'])
-        ->name('crm.sync.run');
+    Route::get('/crm/sync/history', [App\Http\Controllers\CrmSyncController::class, 'history'])->name(
+        'crm.sync.history',
+    );
+    Route::post('/crm/sync/run', [App\Http\Controllers\CrmSyncController::class, 'run'])->name('crm.sync.run');
 });
-Route::post(
-    '/quotation/booking-integration-response',
-    [App\Http\Controllers\QuotationController::class, 'handleBookingIntegrationResponse']
-)
-    ->name('quotation.bookingIntegrationResponse');
+Route::post('/quotation/booking-integration-response', [
+    App\Http\Controllers\QuotationController::class,
+    'handleBookingIntegrationResponse',
+])->name('quotation.bookingIntegrationResponse');
 
 
 // ============================================================================

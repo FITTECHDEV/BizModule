@@ -432,6 +432,117 @@
                     </div>
                 </div>
 
+                {{-- ── REQUEST OFFICE QUOTATION CARD ───────────────────────────────────────── --}}
+                <div class="card card-primary">
+                    <div class="card-header d-flex justify-content-between align-items-center py-2">
+                        <h3 class="card-title mb-0">
+                            <i class="fas fa-paper-plane mr-2"></i>Request Office Quotation
+                        </h3>
+                        <div class="d-flex align-items-center ml-auto">
+                            <button type="button" class="btn btn-email-quote btn-sm mr-2" id="openRequestOfficeBtn">
+                                <i class="fas fa-plus mr-1"></i> Request Office
+                            </button>
+                            <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                <i class="fas fa-chevron-up"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    {{-- ↓ REPLACED card-body ↓ --}}
+                    <div class="card-body p-0">
+
+                        {{-- SENT --}}
+                        <div class="req-office-section-title">
+                            <i class="fas fa-paper-plane mr-1"></i> Sent
+                        </div>
+                        <table class="req-office-table">
+                            <thead>
+                                <tr>
+                                    <th>Office Name</th>
+                                    <th>Quote No</th>
+                                    <th>Date</th>
+                                    <th>Request</th>
+                                </tr>
+                            </thead>
+                            <tbody id="requestOfficeSentTable">
+                                <tr>
+                                    <td colspan="4" class="req-office-empty">No sent requests</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <hr class="req-office-divider">
+
+                        {{-- RECEIVED --}}
+                        <div class="req-office-section-title">
+                            <i class="fas fa-inbox mr-1"></i> Received
+                        </div>
+                        <table class="req-office-table">
+                            <thead>
+                                <tr>
+                                    <th>Office Name</th>
+                                    <th>Quote No</th>
+                                    <th>Date</th>
+                                    <th>Request</th>
+                                </tr>
+                            </thead>
+                            <tbody id="requestOfficeReceivedTable">
+                                <tr>
+                                    <td colspan="4" class="req-office-empty">No received requests</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                    </div>
+
+                    {{-- ── REQUEST OFFICE QUOTATION MODAL ─────────────────────────────────────── --}}
+                    <div class="modal fade" id="requestOfficeModal" tabindex="-1" role="dialog" aria-hidden="true">
+                        <div class="modal-dialog" role="document">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h2 class="modal-title">
+                                        <i class="fas fa-paper-plane mr-2"></i>Request Office Quotation
+                                    </h2>
+                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="form-group row">
+                                        <label class="col-sm-4 col-form-label">Current Quote No</label>
+                                        <div class="col-sm-8">
+                                            <input type="text" class="form-control form-control-sm"
+                                                value="{{ $quotation->QuoteNo ?? '' }}" readonly>
+                                        </div>
+                                    </div>
+                                    <div class="form-group row mb-0">
+                                        <label class="col-sm-4 col-form-label">
+                                            Requested Office <span class="text-danger">*</span>
+                                        </label>
+                                        <div class="col-sm-8">
+                                            <select class="form-control form-control-sm" id="requestedOfficeSelect">
+                                                <option value="">-- Select Office --</option>
+                                            </select>
+                                            <small class="form-text text-muted" id="requestedOfficeHelp"
+                                                style="display:none;">
+                                                <span class="text-danger">Failed to load offices.</span>
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-success" id="submitRequestOfficeBtn">
+                                        <i class="fas fa-paper-plane mr-1"></i> Submit Request
+                                    </button>
+                                    <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Integration Details -->
                 <div class="card card-primary">
                     <div class="card-header">
@@ -681,6 +792,11 @@
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <div class="d-flex align-items-center">
                             <h3 class="card-title mb-0 mr-1">Revenue</h3>
+                            <div class="card-tools ml-2">
+                                <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                    <i class="fas fa-chevron-up"></i>
+                                </button>
+                            </div>
                             <span class="text-white small ml-2" id="revenueTotalHeader" style="white-space:nowrap;">
                                 Total: <strong id="revenueTotalHeaderAmount">0.00</strong>
                             </span>
@@ -723,6 +839,11 @@
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <div class="d-flex align-items-center">
                             <h3 class="card-title mb-0 mr-1">Cost</h3>
+                            <div class="card-tools ml-2">
+                                <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                    <i class="fas fa-chevron-up"></i>
+                                </button>
+                            </div>
                             <span class="text-white small ml-2" id="costTotalHeader" style="white-space:nowrap;">
                                 Total: <strong id="costTotalHeaderAmount">0.00</strong>
                             </span>
@@ -828,7 +949,6 @@
                                 </button>
                                 <a href="{{ route('quotation.index') }}" class="btn btn-link">Close</a>
 
-
                                 <div class="float-right d-flex align-items-center">
                                     <div class="btn-group" id="quoteActionDropdown"> <button type="button"
                                             class="btn btn-secondary dropdown-toggle" data-toggle="dropdown"
@@ -858,7 +978,11 @@
 
         </div>
         <!-- END ROW -->
-        <!-- ===========================================                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     MODAL       ============================================ -->
+
+        <!-- ============================================
+                                                                    MODALS
+                                                                    ============================================ -->
+
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
             aria-labelledby="addRevenueModalLabel" aria-hidden="true">
@@ -1010,8 +1134,8 @@
                                             style="display:none;">
                                             <label for="revenueSecondaryBillToParty" class="form-label">
                                                 <span class="text-danger">*</span> Secondary Bill To Party</label>
-                                            <input type="text" class="form-control" id="revenueSecondaryBillToParty"
-                                                placeholder="Select Secondary Party">
+                                            <input type="text" class="form-control"
+                                                id="revenueSecondaryBillToParty" placeholder="Select Secondary Party">
                                             <input type="hidden" id="revenueSecondaryBillToPartyCode">
                                         </div>
                                     </div>
@@ -1030,8 +1154,8 @@
         </div>
 
         {{-- COST MODAL --}}
-        <div class="modal fade" id="addCostModal" tabindex="-1" role="dialog" aria-labelledby="addCostModalLabel"
-            aria-hidden="true">
+        <div class="modal fade" id="addCostModal" tabindex="-1" role="dialog"
+            aria-labelledby="addCostModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-lg" role="document">
                 <div class="modal-content">
                     <div class="modal-header">
@@ -1059,7 +1183,8 @@
                                     <div class="form-check form-check-inline">
                                         <input class="form-check-input" type="radio" name="costChargeType"
                                             id="costTypeCostMarkup" value="costmarkup">
-                                        <label class="form-check-label" for="costTypeCostMarkup">Cost with markup</label>
+                                        <label class="form-check-label" for="costTypeCostMarkup">Cost with
+                                            markup</label>
                                     </div>
                                 </div>
                                 <div class="text-end">
@@ -1079,7 +1204,8 @@
                                             name="cost_charge_code" required>
                                     </div>
                                     <div class="mb-3">
-                                        <label for="cost_bill_to_party" class="form-label" id="costBillToPartyLabel">Bill
+                                        <label for="cost_bill_to_party" class="form-label"
+                                            id="costBillToPartyLabel">Bill
                                             to
                                             Party</label>
                                         <input type="text" class="form-control" id="cost_bill_to_party"
@@ -1090,8 +1216,8 @@
                                     <div class="mb-3">
                                         <label for="cost_based_on" class="form-label">
                                             <span class="text-danger">*</span> Based On</label>
-                                        <select class="form-select form-control" id="cost_based_on" name="cost_based_on"
-                                            required>
+                                        <select class="form-select form-control" id="cost_based_on"
+                                            name="cost_based_on" required>
                                             <option value="">Select</option>
                                         </select>
                                     </div>
@@ -1341,7 +1467,6 @@
             </div>
         </div>
 
-
         {{-- WON MODAL --}}
         <div class="modal fade" id="wonModal" tabindex="-1" role="dialog" aria-hidden="true">
             <div class="modal-dialog" role="document">
@@ -1572,11 +1697,17 @@
                         {{-- ── REVENUE CHARGES TABLE ───────────────────────── --}}
                         <div class="cc-section" id="ccJobDetails" style="display:none;">
 
-                            <div class="cc-section-header">
+                            <div class="cc-section-header" id="ccRevenueToggle">
                                 <strong>Revenue Charges</strong>
                                 <span class="cc-section-summary" id="ccRevenueSummary">
                                     [ Total Record(s): 0 &nbsp; Total Amount: 0 KES ]
                                 </span>
+                                <a href="#" class="cc-show-more-link ml-auto" id="ccRevenueShowMore"
+                                    style="color:#d4d3f0; font-size:11px; text-decoration:underline; white-space:nowrap;">
+                                    <i class="fas fa-columns mr-1"></i> Show more
+                                </a>
+                                <i class="fas fa-chevron-up" id="ccRevenueChevron"
+                                    style="margin-left:10px; cursor:pointer;"></i>
                             </div>
 
                             <div class="cc-view-toggle-bar">
@@ -1591,17 +1722,15 @@
                                 <table class="cc-table" id="ccRevenueTable">
                                     <thead>
                                         <tr>
-                                            <th class="cc-col-chk">
-                                                <input type="checkbox" id="ccRevenueSelectAll" title="Select All">
-                                            </th>
-                                            <th class="cc-col-service">Service</th>
-                                            <th class="cc-col-activity">Activity</th>
-                                            <th class="cc-col-party">Debtor</th>
-                                            <th class="cc-col-code">Charge Code</th>
+                                            <th class="cc-col-chk"><input type="checkbox" id="ccRevenueSelectAll"
+                                                    title="Select All"></th>
                                             <th class="cc-col-desc">Charge Description</th>
-                                            <th class="cc-col-qty">Quantity</th>
-                                            <th class="cc-col-basedon">BasedOn</th>
-                                            <th class="cc-col-uom">UOM</th>
+                                            <th class="cc-col-rate">Rate</th>
+                                            <th class="cc-col-qty col-extra">Quantity</th>
+                                            <th class="cc-col-basedon col-extra">Based On & UOM</th>
+                                            <th class="cc-col-curr col-extra">Currency</th>
+                                            <th class="cc-col-amt">Amount</th>
+                                            <th class="cc-col-amt">Base Amount</th>
                                         </tr>
                                     </thead>
                                     <tbody id="ccRevenueBody">
@@ -1647,11 +1776,17 @@
                         {{-- ── COST CHARGES TABLE ──────────────────────────── --}}
                         <div class="cc-section cc-section--cost" id="ccJobDetailsCost" style="display:none;">
 
-                            <div class="cc-section-header">
+                            <div class="cc-section-header" id="ccCostToggle">
                                 <strong>Cost Charges</strong>
                                 <span class="cc-section-summary" id="ccCostSummary">
                                     [ Total Record(s): 0 &nbsp; Total Amount: 0 KES ]
                                 </span>
+                                <a href="#" class="cc-show-more-link ml-auto" id="ccCostShowMore"
+                                    style="color:#d4d3f0; font-size:11px; text-decoration:underline; white-space:nowrap;">
+                                    <i class="fas fa-columns mr-1"></i> Show more
+                                </a>
+                                <i class="fas fa-chevron-up" id="ccCostChevron"
+                                    style="margin-left:10px; cursor:pointer;"></i>
                             </div>
 
                             <div class="cc-view-toggle-bar">
@@ -1666,17 +1801,15 @@
                                 <table class="cc-table" id="ccCostTable">
                                     <thead>
                                         <tr>
-                                            <th class="cc-col-chk">
-                                                <input type="checkbox" id="ccCostSelectAll" title="Select All">
-                                            </th>
-                                            <th class="cc-col-service">Service</th>
-                                            <th class="cc-col-activity">Activity</th>
-                                            <th class="cc-col-party">Vendor</th> {{-- Vendor, not Debtor --}}
-                                            <th class="cc-col-code">Charge Code</th>
+                                            <th class="cc-col-chk"><input type="checkbox" id="ccCostSelectAll"
+                                                    title="Select All"></th>
                                             <th class="cc-col-desc">Charge Description</th>
-                                            <th class="cc-col-qty">Quantity</th>
-                                            <th class="cc-col-basedon">BasedOn</th>
-                                            <th class="cc-col-uom">UOM</th>
+                                            <th class="cc-col-rate">Rate</th>
+                                            <th class="cc-col-qty col-extra">Quantity</th>
+                                            <th class="cc-col-basedon col-extra">Based On & UOM</th>
+                                            <th class="cc-col-curr col-extra">Currency</th>
+                                            <th class="cc-col-amt">Amount</th>
+                                            <th class="cc-col-amt">Base Amount</th>
                                         </tr>
                                     </thead>
                                     <tbody id="ccCostBody">
@@ -1734,10 +1867,9 @@
             </div>{{-- /modal-dialog --}}
         </div>
 
-
         {{-- ============================================================
-            COPY CHARGES — JOB SEARCH MODAL
-            Sits above the main modal (z-index: 1060 > 1050)
+        COPY CHARGES — JOB SEARCH MODAL
+        Sits above the main modal (z-index: 1060 > 1050)
         ============================================================ --}}
         <div class="modal fade" id="ccSearchModal" tabindex="-1" role="dialog" aria-hidden="true"
             style="z-index: 1060;">
@@ -1753,13 +1885,16 @@
 
                         {{-- Advanced search row --}}
                         <div class="cc-search-controls">
-                            <span class="cc-lbl" style="white-space:nowrap;">Advanced Search</span>
-                            <select class="cc-select" id="ccSearchField" style="width:140px;">
+                            <span class="cc-lbl" style="white-space:nowrap;">Search</span>
+                            <select class="cc-select" id="ccSearchField" style="width:160px;">
                                 <option value="">Select</option>
-                                <option value="quote_no">Quote No</option>
                                 <option value="customer">Customer</option>
                                 <option value="origin">Origin Country</option>
                                 <option value="destination">Destination Country</option>
+                                <option value="incoterm">InCo Term</option>
+                                <option value="por">Place of Receipt</option> {{-- NEW --}}
+                                <option value="pod">Place of Delivery</option> {{-- NEW --}}
+                                <option value="equipment">Equipment Type</option> {{-- NEW --}}
                             </select>
                             <input type="text" class="cc-input" id="ccSearchValue" style="width:200px;"
                                 placeholder="">
@@ -1767,50 +1902,56 @@
                             <button type="button" class="cc-btn-add-filter" id="ccAddFilterBtn">Add filter</button>
                         </div>
 
+
                         {{-- Search results table --}}
                         <div class="cc-table-wrap" style="margin-top:8px;">
                             <table class="cc-table" id="ccSearchResultsTable">
                                 <thead>
                                     <tr>
-                                        <th style="width:40px;">Select</th>
-                                        <th>Process Type
-                                            <i class="fas fa-sort ml-1" style="font-size:0.65rem; color:#999;"></i>
-                                        </th>
-                                        <th>Job No.</th>
+                                        <th style="width:36px;">Select</th>
+                                        <th class="cc-sortable" data-col="QuoteNo"
+                                            style="cursor:pointer; white-space:nowrap;">Quote No <i class="fas fa-sort"
+                                                style="font-size:0.6rem;color:#999;"></i></th>
+                                        <th class="cc-sortable" data-col="CompanyName"
+                                            style="cursor:pointer; white-space:nowrap;">Customer <i class="fas fa-sort"
+                                                style="font-size:0.6rem;color:#999;"></i></th>
+                                        <th class="cc-sortable" data-col="Origin"
+                                            style="cursor:pointer; white-space:nowrap;">Origin Country <i
+                                                class="fas fa-sort" style="font-size:0.6rem;color:#999;"></i></th>
+                                        <th class="cc-sortable" data-col="Destination"
+                                            style="cursor:pointer; white-space:nowrap;">Destination Country <i
+                                                class="fas fa-sort" style="font-size:0.6rem;color:#999;"></i></th>
+                                        <th class="cc-sortable" data-col="POR"
+                                            style="cursor:pointer; white-space:nowrap;">POR <i class="fas fa-sort"
+                                                style="font-size:0.6rem;color:#999;"></i></th>
+                                        <th class="cc-sortable" data-col="POD"
+                                            style="cursor:pointer; white-space:nowrap;">POD <i class="fas fa-sort"
+                                                style="font-size:0.6rem;color:#999;"></i></th>
+                                        <th class="cc-sortable" data-col="IncoTerm"
+                                            style="cursor:pointer; white-space:nowrap;">InCo Term <i class="fas fa-sort"
+                                                style="font-size:0.6rem;color:#999;"></i></th>
                                     </tr>
                                 </thead>
                                 <tbody id="ccSearchResultsBody">
                                     <tr>
-                                        <td colspan="3" class="cc-empty-msg">Click Search to find jobs</td>
+                                        <td colspan="8" class="cc-empty-msg">Click Search to find jobs</td>
                                     </tr>
                                 </tbody>
                             </table>
                         </div>
 
                         {{-- Pagination --}}
-                        <div class="cc-pagination" style="margin-top:6px;">
-                            <div class="cc-pag-controls">
-                                <button type="button" class="cc-pag-btn cc-page-btn"
-                                    data-action="first">|&lt;</button>
-                                <button type="button" class="cc-pag-btn cc-page-btn"
-                                    data-action="prev">&lt;&lt;</button>
-                                <span class="cc-pag-label">Page</span>
-                                <input type="number" id="ccPageInput" class="cc-pag-input" value="1"
-                                    min="1">
-                                <span class="cc-pag-label">of <strong id="ccTotalPages">1</strong></span>
-                                <button type="button" class="cc-pag-btn cc-page-btn"
-                                    data-action="next">&gt;&gt;</button>
-                                <button type="button" class="cc-pag-btn cc-page-btn"
-                                    data-action="last">&gt;|</button>
-                                <select class="cc-pag-size" id="ccPageSize">
-                                    <option value="10" selected>10</option>
-                                    <option value="25">25</option>
-                                    <option value="50">50</option>
-                                </select>
-                            </div>
-                            <span class="cc-pag-range" id="ccViewRange">View 1 - 0 of 0</span>
+                        <div class="cc-pag-controls">
+                            <span class="cc-pag-label">Page</span>
+                            <input type="number" id="ccPageInput" class="cc-pag-input" value="1"
+                                min="1">
+                            <span class="cc-pag-label">of <strong id="ccTotalPages">1</strong></span>
+                            <select class="cc-pag-size" id="ccPageSize">
+                                <option value="10" selected>10</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                            </select>
                         </div>
-
                     </div>
 
                     <div class="cc-modal-footer">
@@ -1822,7 +1963,6 @@
                 </div>
             </div>
         </div>
-
     </form>
 @stop
 
@@ -1831,8 +1971,9 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <style>
         /* =============================================
-        MODAL STYLING — matched to FitExpress UI
-        ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ============================================= */
+
         .modal-header {
             background-color: #fff !important;
             color: #000 !important;
@@ -2274,9 +2415,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -2417,70 +2558,101 @@
             /* override browser default which can make it too faint */
         }
 
-        /* ── Modal shell ─────────────────────────────────────────────── */
-        .cc-modal-dialog {
-            max-width: 900px;
-            /* matches screenshot width ~860px */
-            margin: 30px auto;
-        }
 
         .cc-search-dialog {
-            max-width: 560px;
-            margin: 40px auto;
+            max-width: 960px;
+            width: 960px;
+            margin: 30px auto;
         }
 
         .cc-modal-content {
             border-radius: 0;
             border: 1px solid #aaa;
             box-shadow: 2px 4px 12px rgba(0, 0, 0, .25);
-            font-size: 12px;
-            font-family: Arial, sans-serif;
+            font-size: 0.875rem;
             color: #222;
         }
 
         /* ── Header ──────────────────────────────────────────────────── */
+        .cc-modal-dialog {
+            max-width: 480px;
+            width: 480px;
+            margin: 30px auto;
+        }
+
+        .cc-modal-dialog.cc-charges-loaded {
+            max-width: 900px;
+            width: 900px;
+        }
+
+        .cc-modal-dialog.cc-expanded {
+            max-width: 1200px;
+            width: 1200px;
+        }
+
         .cc-modal-header {
+            background: #4B49AC;
+            border-bottom: none;
+            padding: 10px 16px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: #fff;
-            border-bottom: 1px solid #ccc;
-            padding: 7px 12px;
         }
 
         .cc-modal-title {
-            font-size: 14px;
-            font-weight: 700;
-            color: #222;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #fff;
         }
 
         .cc-modal-close {
             background: none;
-            border: 1px solid #bbb;
-            font-size: 14px;
+            border: none;
+            font-size: 1.5rem;
             line-height: 1;
             padding: 1px 6px;
             cursor: pointer;
-            color: #555;
-            border-radius: 2px;
+            color: #fff;
+            opacity: 0.8;
+            border-radius: 0;
+            box-shadow: none;
+            outline: none;
         }
 
-        .cc-modal-close:hover {
-            background: #e0e0e0;
+        .cc-modal-close:hover,
+        .cc-modal-close:focus,
+        .cc-modal-close:active {
+            background: none !important;
+            box-shadow: none !important;
+            outline: none !important;
+            opacity: 1;
+            color: #fff;
         }
 
         /* ── Body ────────────────────────────────────────────────────── */
         .cc-modal-body {
-            padding: 10px 14px;
+            padding: 16px 20px;
             background: #fff;
         }
+
 
         /* ── 2-column info grid ──────────────────────────────────────── */
         .cc-info-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 0 24px;
-            margin-bottom: 10px;
+            gap: 0 16px;
+            margin-bottom: 16px;
+            background: #f4f4fb;
+            border: 1px solid #dddcf5;
+            border-radius: 6px;
+            padding: 10px 14px;
+        }
+
+        .cc-lbl {
+            min-width: 70px;
+            white-space: nowrap;
+            font-size: 0.85rem;
+            color: #555;
         }
 
         .cc-info-col {
@@ -2492,36 +2664,15 @@
         .cc-info-row {
             display: flex;
             align-items: center;
-            min-height: 22px;
-            gap: 4px;
+            min-height: 26px;
+            gap: 6px;
+            font-size: 0.85rem;
         }
 
         /* Spacer row keeps right column vertically aligned with left's Job No row */
         .cc-info-row-spacer {
             min-height: 26px;
             /* matches the input row height */
-        }
-
-        .cc-lbl {
-            min-width: 120px;
-            /* fixed label width → values always start at same x */
-            font-size: 12px;
-            color: #555;
-            text-align: right;
-            padding-right: 6px;
-            white-space: nowrap;
-            flex-shrink: 0;
-        }
-
-        .cc-lbl-required {
-            color: #c00;
-            font-weight: 600;
-        }
-
-        .cc-val {
-            font-size: 12px;
-            color: #111;
-            font-weight: 400;
         }
 
         /* Job No input + search button row */
@@ -2549,28 +2700,35 @@
 
         /* Highlighted Job No field — yellow border like in screenshot */
         .cc-input-highlight {
-            border-color: #d4a800;
-            background: #fffde6;
-            width: 160px;
+            border: 1.5px solid #4B49AC;
+            background: #fff;
+            border-radius: 4px;
+            width: 180px;
+            font-size: 0.875rem;
+            padding: 3px 8px;
+            height: 28px;
+            color: #333;
+        }
+
+        .cc-input-highlight:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(75, 73, 172, 0.15);
         }
 
         .cc-search-icon-btn {
-            height: 24px;
-            width: 24px;
-            padding: 0;
-            border: 1px solid #aaa;
-            border-radius: 2px;
-            background: #f0f0f0;
-            cursor: pointer;
+            height: 28px;
+            width: 28px;
+            border-radius: 4px;
+            background: #4B49AC;
+            border: 1px solid #4B49AC;
+            color: #fff;
             font-size: 11px;
-            color: #555;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
 
+
         .cc-search-icon-btn:hover {
-            background: #ddd;
+            background: #3a3990;
+            border-color: #3a3990;
         }
 
         /* ── Section header (blue band) ─────────────────────────────── */
@@ -2581,23 +2739,24 @@
         .cc-section-header {
             display: flex;
             align-items: center;
-            background: #d9e8f5;
-            border: 1px solid #b8d4ea;
+            background: #4B49AC;
+            border: 1px solid #4B49AC;
             border-bottom: none;
             padding: 4px 8px;
-            font-size: 12px;
-            color: #222;
+            font-size: 0.875rem;
+            color: #ffffff;
             gap: 8px;
         }
 
         .cc-section-header strong {
-            font-size: 12px;
+            font-size: 0.875rem;
             font-weight: 700;
+            color: #ffffff;
         }
 
         .cc-section-summary {
             font-size: 11px;
-            color: #555;
+            color: #d4d3f0;
             font-weight: 400;
         }
 
@@ -2614,9 +2773,9 @@
         }
 
         .cc-view-toggle {
-            color: #1a6dbf;
+            color: #5b9bd5;
             text-decoration: none;
-            font-size: 11px;
+            font-size: 0.8rem;
         }
 
         .cc-view-toggle:hover {
@@ -2680,14 +2839,14 @@
         }
 
         .cc-table thead tr {
-            background: #e8edf2;
+            background: #e9ecef;
         }
 
         .cc-table thead th {
             padding: 4px 5px;
-            font-size: 11px;
+            font-size: 0.85rem;
             font-weight: 700;
-            color: #333;
+            color: #495057;
             border: 1px solid #c8d4de;
             white-space: nowrap;
             text-align: left;
@@ -2700,13 +2859,13 @@
         }
 
         .cc-table tbody td {
-            padding: 3px 4px;
+            padding: 0.4rem;
             border: 1px solid #dde3ea;
             vertical-align: middle;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            font-size: 12px;
+            font-size: 0.875rem;
             color: #222;
         }
 
@@ -2853,34 +3012,37 @@
         .cc-modal-footer {
             display: flex;
             align-items: center;
-            gap: 8px;
-            padding: 8px 14px;
-            background: #fff;
-            border-top: 1px solid #ccc;
+            gap: 10px;
+            padding: 10px 20px;
+            background: #f8f8fd;
+            border-top: 1px solid #e8e8f5;
         }
 
         /* Save — olive/yellow-green to match system palette */
         .cc-btn-save {
-            height: 26px;
-            padding: 0 16px;
-            font-size: 12px;
+            /* height: 26px; */
+            padding: 0.375rem 0.75rem;
+            font-size: 0.875rem;
             font-weight: 600;
-            background: #a8b400;
+            background: #28a745;
             color: #fff;
-            border: 1px solid #8a9400;
-            border-radius: 2px;
+            border: 1px solid #28a745;
+            border-radius: 0.25rem;
             cursor: pointer;
         }
 
         .cc-btn-save:hover:not(:disabled) {
-            background: #8a9400;
+            background: #218838;
+            /* was #95bb7a */
+            border-color: #1e7e34;
         }
 
+
         .cc-btn-save:disabled {
-            background: #c8cc80;
-            border-color: #b0b870;
+            background: #6ab97a;
+            border-color: #5aa06a;
             cursor: not-allowed;
-            color: #eee;
+            color: #fff;
         }
 
         .cc-footer-or {
@@ -2889,23 +3051,25 @@
         }
 
         .cc-btn-cancel {
-            font-size: 12px;
-            color: #1a6dbf;
+            font-size: 0.85rem;
+            color: #4B49AC;
             text-decoration: none;
             font-weight: 500;
         }
 
         .cc-btn-cancel:hover {
             text-decoration: underline;
-            color: #0d4d9c;
+            color: #3a3990;
         }
 
         /* ── Search modal controls ───────────────────────────────────── */
         .cc-search-controls {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            flex-wrap: wrap;
+            background: #f8f9fb;
+            border: 1px solid #e2e6ea;
+            border-radius: 6px;
+            padding: 10px 12px;
+            margin-bottom: 10px;
+            gap: 8px;
         }
 
         .cc-select {
@@ -2919,35 +3083,29 @@
         }
 
         .cc-btn-search-go {
-            height: 24px;
-            padding: 0 12px;
-            font-size: 12px;
-            font-weight: 700;
-            background: #a8b400;
-            color: #fff;
-            border: 1px solid #8a9400;
-            border-radius: 2px;
-            cursor: pointer;
-            white-space: nowrap;
+            height: 28px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            padding: 0 14px;
         }
 
         .cc-btn-search-go:hover {
-            background: #8a9400;
+            background: #218838;
+            border-color: #1e7e34;
         }
 
         .cc-btn-add-filter {
-            height: 24px;
-            padding: 0 10px;
-            font-size: 12px;
-            background: #f0f0f0;
-            color: #444;
-            border: 1px solid #bbb;
-            border-radius: 2px;
-            cursor: pointer;
+            height: 28px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            padding: 0 12px;
+            background: #ffffff;
+            border: 1px solid #ced4da;
+            color: #495057;
         }
 
         .cc-btn-add-filter:hover {
-            background: #ddd;
+            background: #e9ecef;
         }
 
         /* Search results table radio column */
@@ -2961,9 +3119,207 @@
         #ccSearchModal.modal.show~.modal-backdrop {
             z-index: 1055;
         }
+
+        #ccRevenueTable,
+        #ccCostTable {
+            min-width: auto;
+            table-layout: auto;
+            width: 100%;
+        }
+
+        /* CC search table scroll + sortable */
+        #ccSearchResultsTable {
+            min-width: 100px;
+            table-layout: fixed;
+        }
+
+        #ccSearchResultsTable th:nth-child(1),
+        #ccSearchResultsTable td:nth-child(1) {
+            width: 45px;
+        }
+
+        #ccSearchResultsTable th:nth-child(2),
+        #ccSearchResultsTable td:nth-child(2) {
+            width: 100px;
+        }
+
+        #ccSearchResultsTable th:nth-child(3),
+        #ccSearchResultsTable td:nth-child(3) {
+            width: 130px;
+        }
+
+        #ccSearchResultsTable th:nth-child(4),
+        #ccSearchResultsTable td:nth-child(4) {
+            width: 120px;
+        }
+
+        #ccSearchResultsTable th:nth-child(5),
+        #ccSearchResultsTable td:nth-child(5) {
+            width: 150px;
+        }
+
+        #ccSearchResultsTable th:nth-child(6),
+        #ccSearchResultsTable td:nth-child(6) {
+            width: 100px;
+        }
+
+        #ccSearchResultsTable th:nth-child(7),
+        #ccSearchResultsTable td:nth-child(7) {
+            width: 100px;
+        }
+
+        #ccSearchResultsTable th:nth-child(8),
+        #ccSearchResultsTable td:nth-child(8) {
+            width: 100px;
+        }
+
+
+        .cc-table-wrap {
+            overflow-x: auto;
+            max-height: 320px;
+            overflow-y: auto;
+        }
+
+        .cc-sortable:hover {
+            background: #dde8f0;
+        }
+
+        .cc-sort-asc .fa-sort::before {
+            content: "\f0de";
+            color: #333;
+        }
+
+        .cc-sort-desc .fa-sort::before {
+            content: "\f0dd";
+            color: #333;
+        }
+
+        /* Removed service/activity/party columns — updated widths */
+        .cc-col-rate {
+            width: 65px;
+        }
+
+        .cc-col-curr {
+            width: 55px;
+        }
+
+        .cc-col-amt {
+            width: 75px;
+        }
+
+        /* Remove old widths that referenced removed columns */
+        .cc-col-service,
+        .cc-col-activity,
+        .cc-col-party {
+            display: none;
+        }
+
+        /* ── Request Office Quotation Card ───────────────────────────── */
+        .req-office-section-title {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #4B49AC;
+            padding: 8px 12px 4px;
+            border-bottom: 2px solid #4B49AC;
+            margin-bottom: 0;
+        }
+
+        .req-office-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+        }
+
+        .req-office-table thead th {
+            background: #f4f4fb;
+            color: #4B49AC;
+            font-weight: 600;
+            padding: 6px 10px;
+            border-bottom: 1px solid #dddcf5;
+            white-space: nowrap;
+        }
+
+        .req-office-table tbody td {
+            padding: 6px 10px;
+            border-bottom: 1px solid #f0f0f7;
+            color: #333;
+            vertical-align: middle;
+        }
+
+        .req-office-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .req-office-table tbody tr:hover {
+            background: #f9f9fd;
+        }
+
+        .req-office-empty {
+            text-align: center;
+            color: #aaa;
+            font-style: italic;
+            padding: 10px;
+            font-size: 0.8rem;
+        }
+
+        .req-badge-sent {
+            display: inline-block;
+            background: #4B49AC;
+            color: #fff;
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 10px;
+            letter-spacing: 0.03em;
+        }
+
+        .req-badge-received {
+            display: inline-block;
+            background: #28a745;
+            color: #fff;
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 10px;
+            letter-spacing: 0.03em;
+        }
+
+        .req-office-divider {
+            border: none;
+            border-top: 1px solid #e8e8f5;
+            margin: 0;
+        }
+
+        .cc-filter-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 6px;
+        }
+
+        .cc-filter-remove {
+            height: 24px;
+            width: 24px;
+            border: 1px solid #dc3545;
+            border-radius: 3px;
+            background: #fff;
+            color: #dc3545;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .cc-filter-remove:hover {
+            background: #dc3545;
+            color: #fff;
+        }
     </style>
 @stop
-
 
 
 @section('js')
@@ -2978,6 +3334,7 @@
         const quotationProcess = '{{ trim($quotation->process ?? '') }}';
         // Mirrors QuotationController::OFFICE_BASE_CURRENCY — single source of truth via PHP
         const OFFICE_BASE_CURRENCY = @json(\App\Http\Controllers\QuotationController::OFFICE_BASE_CURRENCY);
+        const CURRENT_OFFICE_CODE = '{{ trim($officeShortCode ?? '') }}';
 
 
         $(document).ready(function() {
@@ -3024,7 +3381,7 @@
             let currentEditingCharge = null;
             let currentEditingType = null;
             let currencyMap = {};
-            let officeCode = '{{ trim($quotation->OfficeCode ?? '') }}';
+            let officeCode = '{{ trim($officeShortCode ?? '') }}';
 
             // ── Single source of truth for Generate Quote gate ────────────────────────
             // All paths that touch the button must go through setGenerateBtn().
@@ -3177,7 +3534,6 @@
                     }
                 });
             }
-
 
             // ============================================
             // TRANSPORT MODE DROPDOWN
@@ -3514,6 +3870,7 @@
 
                             $('#shipmentModeSelect, #transportModeSelect').prop('disabled',
                                 true);
+
                             $('#incoTermSelect').val(incoTerm).addClass('d-none').prop(
                                 'disabled', true);
                             $('#incoTermDisplay').removeClass('d-none').val(incoTerm);
@@ -3528,6 +3885,7 @@
                             $('#destCountryDisplay').val(
                                 $('#destCountrySelect option:selected').data('name')
                             ).show();
+
 
                             $('#serviceClassSelect').val(serviceClass).addClass('d-none').prop(
                                 'disabled', true);
@@ -3788,6 +4146,77 @@
                     }
                 });
             }
+
+
+            // ── REQUEST OFFICE HISTORY ────────────────────────────────────────────────
+            function loadRequestOfficeHistory() {
+                $.ajax({
+                    url: '{{ route('quotation.request-office-history') }}',
+                    type: 'GET',
+                    data: {
+                        quotation_id: quotationId
+                    },
+                    beforeSend: function() {
+                        $('#requestOfficeHistoryTable').html(
+                            '<tr><td colspan="5" class="text-center text-muted">' +
+                            '<i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>'
+                        );
+                    },
+                    success: function(response) {
+                        renderRequestOfficeHistory(response.data || []);
+                    },
+                    error: function() {
+                        $('#requestOfficeHistoryTable').html(
+                            '<tr><td colspan="5" class="text-center text-danger">Failed to load</td></tr>'
+                        );
+                    }
+                });
+            }
+
+            function renderRequestOfficeHistory(rows) {
+                const $sent = $('#requestOfficeSentTable').empty();
+                const $received = $('#requestOfficeReceivedTable').empty();
+
+                const sentRows = rows.filter(r => (r.RequestedByOfficeCode || '').toUpperCase() ===
+                    CURRENT_OFFICE_CODE.toUpperCase());
+                const receivedRows = rows.filter(r => (r.RequestedByOfficeCode || '').toUpperCase() !==
+                    CURRENT_OFFICE_CODE.toUpperCase());
+
+                if (!sentRows.length) {
+                    $sent.html('<tr><td colspan="4" class="req-office-empty">No sent requests</td></tr>');
+                } else {
+                    sentRows.forEach(function(row) {
+                        const date = row.CreatedOn ? new Date(row.CreatedOn).toLocaleDateString() : '—';
+                        $sent.append(`
+                <tr>
+                    <td>${row.RequestedToCode || '—'}</td>
+                    <td>${row.RequestedToQuoteNo || '—'}</td>
+                    <td>${date}</td>
+                    <td><span class="req-badge-sent">Send</span></td>
+                </tr>
+            `);
+                    });
+                }
+
+                if (!receivedRows.length) {
+                    $received.html('<tr><td colspan="4" class="req-office-empty">No received requests</td></tr>');
+                } else {
+                    receivedRows.forEach(function(row) {
+                        const date = row.CreatedOn ? new Date(row.CreatedOn).toLocaleDateString() : '—';
+                        $received.append(`
+                <tr>
+                    <td>${row.RequestedByOfficeCode || '—'}</td>
+                    <td>${row.RequestedToQuoteNo || '—'}</td>
+                    <td>${date}</td>
+                    <td><span class="req-badge-received">Received</span></td>
+                </tr>
+            `);
+                    });
+                }
+            }
+
+            // Load on page init
+            loadRequestOfficeHistory();
 
             // ============================================
             // MODAL TRIGGERS
@@ -5195,7 +5624,7 @@
                         totalBaseAmount += parseFloat(charge.amtInBaseCurr || 0);
                         tbody.append(`
                         <tr>
-                        <td class="text-center bulk-delete-col" style="display:none;">
+                           <td class="text-center bulk-delete-col" style="display:none;">
                                 <input type="checkbox" class="charge-row-check"
                                     data-type="revenue" data-id="${charge.id}">
                             </td>
@@ -5245,9 +5674,9 @@
                         totalBaseAmount += parseFloat(charge.amtInBaseCurr || 0);
                         tbody.append(`
                             <tr>
-                            <td class="text-center bulk-delete-col" style="display:none;">
+                             <td class="text-center bulk-delete-col" style="display:none;">
                                 <input type="checkbox" class="charge-row-check"
-                                    data-type="cost" data-id="${charge.id}">
+                                       data-type="cost" data-id="${charge.id}">
                             </td>
                                 <td>${charge.chargeName || charge.chargeCode || ''}</td>
                                 <td class="text-right">${parseFloat(charge.rate || 0).toFixed(2)}</td>
@@ -5426,6 +5855,7 @@
                         $('#reasonRemark').addClass('is-invalid').focus();
                         return;
                     }
+
                     $('#reasonRemark').removeClass('is-invalid');
                     updateStatus(status, reasonCode, reasonRemark, bookingNo);
                 });
@@ -5891,6 +6321,133 @@
             });
             loadEmailHistory();
 
+            // ============================================
+            // REQUEST OFFICE QUOTATION
+            // Consumes sp_Quote_Quotation_Request via POST /quotation/request-office
+            // SP inputs:  quotation_id, requested_office_code, submitted_by (server-side)
+            // SP outputs: Status, Remark, QuoteNo
+            // ============================================
+            $('#openRequestOfficeBtn').on('click', function() {
+                loadRequestOfficeDropdown();
+                $('#requestOfficeModal').modal('show');
+            });
+
+            $('#requestOfficeModal .close, ' +
+                '#requestOfficeModal button[data-dismiss="modal"]').on('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                $('#requestOfficeModal').modal('hide');
+            });
+
+            $('#requestOfficeModal').on('hidden.bs.modal', function() {
+                $('#requestedOfficeSelect').val('');
+            });
+
+            function loadRequestOfficeDropdown() {
+                const $select = $('#requestedOfficeSelect');
+                const $help = $('#requestedOfficeHelp');
+
+                // Already populated — no re-fetch needed
+                if ($select.data('populated')) {
+                    $select.val('');
+                    return;
+                }
+
+                $select.empty()
+                    .append('<option value="">Loading offices...</option>')
+                    .prop('disabled', true);
+                $help.hide();
+
+                $.ajax({
+                    url: '{{ route('quotation.offices') }}',
+                    type: 'GET',
+                    success: function(response) {
+                        $select.empty().append('<option value="">-- Select Office --</option>');
+
+                        if (response.success && response.offices.length > 0) {
+                            response.offices.forEach(function(office) {
+                                const label = office.code ?
+                                    office.code + ' — ' + office.name :
+                                    office.name;
+                                $select.append(
+                                    `<option value="${office.code}">${label}</option>`
+                                );
+                            });
+                            $select.data('populated', true);
+                        } else {
+                            $select.append('<option value="" disabled>No offices available</option>');
+                        }
+                    },
+                    error: function() {
+                        $select.empty().append('<option value="">-- Select Office --</option>');
+                        $help.show();
+                    },
+                    complete: function() {
+                        $select.prop('disabled', false);
+                    }
+                });
+            }
+
+            $('#submitRequestOfficeBtn').on('click', function() {
+                const requestedOfficeCode = $('#requestedOfficeSelect').val();
+
+                if (!requestedOfficeCode) {
+                    showNotification('Please select an office.', 'error');
+                    $('#requestedOfficeSelect').focus();
+                    return;
+                }
+
+                console.log('requestOfficeQuotation INPUT', {
+                    quotation_id: quotationId,
+                    requested_office_code: requestedOfficeCode,
+                });
+
+                $.ajax({
+                    url: '{{ route('quotation.request-office') }}',
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        quotation_id: quotationId,
+                        requested_office_code: requestedOfficeCode,
+                    },
+                    beforeSend: function() {
+                        $('#submitRequestOfficeBtn')
+                            .prop('disabled', true)
+                            .html('<i class="fas fa-spinner fa-spin mr-1"></i> Submitting...');
+                    },
+                    success: function(response) {
+                        console.log('requestOfficeQuotation OUTPUT', response);
+
+                        if (response.success) {
+                            showNotification(
+                                'Office quotation requested. New quote: ' + response.data
+                                .quote_no,
+                                'success'
+                            );
+                            $('#requestOfficeModal').modal('hide');
+
+                            loadRequestOfficeHistory();
+                        } else {
+                            showNotification(response.message || 'Request failed.', 'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        const msg = xhr.responseJSON?.message ||
+                            'Server error. Please try again.';
+                        console.error('requestOfficeQuotation ERROR', {
+                            status: xhr.status,
+                            message: msg
+                        });
+                        showNotification(msg, 'error');
+                    },
+                    complete: function() {
+                        $('#submitRequestOfficeBtn')
+                            .prop('disabled', false)
+                            .html('<i class="fas fa-paper-plane mr-1"></i> Submit Request');
+                    },
+                });
+            });
+
 
             // ============================================
             // CREATE BOOKING MODAL
@@ -5947,7 +6504,9 @@
                         if (response.success && response.templates.length) {
                             response.templates.forEach(function(t) {
                                 $select.append(
-                                    `<option value="${t.Name}">${t.Name}</option>`
+                                    ` < option value = "${t.Name}" > $ {
+                                                t.Name
+                                            } < /option>`
                                 );
                             });
                         } else {
@@ -5984,7 +6543,7 @@
                             response.parties.forEach(function(p) {
                                 $select.append(
                                     `<option value="${p.PartyCode}"
-                                 data-id="${p.PartyID}">${p.PartyName}</option>`
+                                     data-id="${p.PartyID}">${p.PartyName}</option>`
                                 );
                             });
                         } else {
@@ -6021,7 +6580,7 @@
                             response.parties.forEach(function(p) {
                                 $select.append(
                                     `<option value="${p.PartyCode}"
-                                 data-id="${p.PartyID}">${p.PartyName}</option>`
+                                     data-id="${p.PartyID}">${p.PartyName}</option>`
                                 );
                             });
                         } else {
@@ -6420,9 +6979,9 @@
 
                             $sel.append(
                                 `<option value="${isoCode}"  // Store the code as the value
-                    data-name="${name}"
-                    data-code="${isoCode}"
-                    ${isSelected ? 'selected' : ''}>${name}</option>`
+                        data-name="${name}"
+                        data-code="${isoCode}"
+                        ${isSelected ? 'selected' : ''}>${name}</option>`
                             );
                         });
                     },
@@ -6941,7 +7500,7 @@
                 e.preventDefault();
             });
 
-            $('.card').not('.card-success, .card-danger').each(function() {
+            $('.card').each(function() {
                 const $card = $(this);
                 const cardTitle = $card.find('.card-title').text().trim();
 
@@ -7585,7 +8144,7 @@
                 if (editable) {
                     $qtyCell.append(
                         `<input type="number" class="form-control form-control-sm container-qty-input"
-                value="${qty}" min="1" style="width:75px;">`
+                    value="${qty}" min="1" style="width:75px;">`
                     );
                 } else {
                     $qtyCell.text(qty);
@@ -7595,8 +8154,8 @@
                 if (editable) {
                     $actionCell.append(
                         `<button type="button" class="btn btn-danger btn-sm remove-container-row">
-                <i class="fas fa-times"></i>
-            </button>`
+                    <i class="fas fa-times"></i>
+                </button>`
                     );
                 }
 
@@ -7834,11 +8393,10 @@
                 if ($sp.hasClass('ui-autocomplete-input')) $sp.autocomplete('destroy');
             });
 
-
             $('#saveInquiryBtn').on('click', function() {
                 var code = $('#salesPersonCode').val().trim();
                 var email = $('#salesPersonEmail').val().trim();
-                var currency = $('#quotationCurrencySelect').val().trim(); 
+                var currency = $('#quotationCurrencySelect').val();
 
                 if (!code) {
                     showNotification('Please select a Sales Person.', 'error');
@@ -7846,6 +8404,10 @@
                 }
                 if (!email) {
                     showNotification('Sales Person Email is required.', 'error');
+                    return;
+                }
+                if (!currency) {
+                    showNotification('Please select a Currency.', 'error');
                     return;
                 }
 
@@ -7860,25 +8422,23 @@
                         quotation_id: quotationId,
                         sales_person_code: code,
                         sales_person_email: email,
-                            quotation_currency: currency 
-
+                        quotation_currency: currency,
                     },
                     success: function(res) {
                         if (res.success) {
                             $('#salesPersonDisplay').attr('readonly', true);
                             $('#salesPersonEmail').attr('readonly', true);
+                            $('#quotationCurrencyDisplay').val(currency).removeClass('d-none');
+                            $('#quotationCurrencySelect').addClass('d-none');
                             $('#editInquiryBtn').removeClass('d-none');
-                            $('#saveInquiryBtn, #cancelInquiryBtn').addClass(
-                                'd-none');
+                            $('#saveInquiryBtn, #cancelInquiryBtn').addClass('d-none');
                             showNotification('Inquiry details saved.', 'success');
                         } else {
-                            showNotification(res.message || 'Save failed.',
-                                'error');
+                            showNotification(res.message || 'Save failed.', 'error');
                         }
                     },
                     error: function(xhr) {
-                        showNotification(xhr.responseJSON?.message ||
-                            'Server error.', 'error');
+                        showNotification(xhr.responseJSON?.message || 'Server error.', 'error');
                     },
                     complete: function() {
                         $btn.prop('disabled', false).html(
@@ -8080,8 +8640,8 @@
                                             .length === 0) {
                                             $cSel.append(
                                                 `<option value="${res.country_id}" 
-                                    data-name="${res.country_name}" 
-                                    data-code="${res.country_code}">${res.country_name}</option>`
+                                        data-name="${res.country_name}" 
+                                        data-code="${res.country_code}">${res.country_name}</option>`
                                             );
                                         }
                                         $cSel.val(res.country_id);
@@ -8163,7 +8723,7 @@
                 });
             }
 
-            // ── Won process — 2-step modal (Client Creation → Mark as Won) ─────────────
+            // ── Won process — 3-step modal (Client Creation → Mark as Won → Copy Charges to Cost) ──
             function runWonProcess(bookingNo, reasonRemark) {
 
                 const WON_STEPS = [{
@@ -8173,6 +8733,10 @@
                     {
                         step: 2,
                         label: 'Mark as Won'
+                    },
+                    {
+                        step: 3,
+                        label: 'Copy Charges to Cost'
                     },
                 ];
 
@@ -8244,6 +8808,7 @@
                                 window.location.href = '{{ route('quotation.index') }}';
                             }, 1500);
                         } else {
+
                             var failedStep = (res.steps || []).find(function(s) {
                                 return s.status === 'Failed';
                             });
@@ -8272,62 +8837,841 @@
                 });
             }
 
-        }); // end document.ready
+            function updateStatus(status, reasonCode, reasonRemark, bookingNo) {
+                $.ajax({
+                    url: '{{ route('quotation.status.update') }}',
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        booking_no: bookingNo,
+                        quotation_id: quotationId,
+                        status: status,
+                        reason_code: reasonCode,
+                        reason_remark: reasonRemark
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            showNotification(response.message, 'success');
+                            $('#statusModal').modal('hide');
+                            $('#wonModal').modal('hide');
 
-
-        function updateStatus(status, reasonCode, reasonRemark, bookingNo) {
-            $.ajax({
-                url: '{{ route('quotation.status.update') }}',
-                type: 'POST',
-                data: {
-                    _token: '{{ csrf_token() }}',
-                    booking_no: bookingNo,
-                    quotation_id: quotationId,
-                    status: status,
-                    reason_code: reasonCode,
-                    reason_remark: reasonRemark
-                },
-                success: function(response) {
-                    if (response.success) {
-                        showNotification(response.message, 'success');
-                        $('#statusModal').modal('hide');
-                        $('#wonModal').modal('hide');
-
-                        setTimeout(function() {
-                            window.location.href = '{{ route('quotation.index') }}';
-                        }, 1500);
-                    } else {
-                        showNotification(response.message, 'error');
+                            setTimeout(function() {
+                                window.location.href = '{{ route('quotation.index') }}';
+                            }, 1500);
+                        } else {
+                            showNotification(response.message, 'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        showNotification(xhr.responseJSON?.message || 'Failed to update status',
+                            'error');
                     }
+                });
+            }
+
+
+            function showNotification(message, type) {
+                const alertClass = type === 'success' ? 'alert-success' :
+                    type === 'error' ? 'alert-danger' :
+                    type === 'warning' ? 'alert-warning' : 'alert-info';
+
+                $('body').append(`
+                        <div class="alert ${alertClass} alert-dismissible fade show notification-toast" role="alert"
+                            style="position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
+                            <strong>${message}</strong>
+                            <button type="button" class="close" data-dismiss="alert">
+                                <span>&times;</span>
+                            </button>
+                        </div>
+                    `);
+
+                setTimeout(function() {
+                    $('.notification-toast').fadeOut(function() {
+                        $(this).remove();
+                    });
+                }, 3000);
+            }
+
+            // ============================================
+            // COPY CHARGES
+            // ============================================
+            const CC_SEARCH_URL = '{{ route('quotation.copy-charges.search') }}';
+            const CC_CHARGES_URL = '{{ route('quotation.copy-charges.charges') }}';
+            const CC_SAVE_URL = '{{ route('quotation.charge.save') }}';
+
+            let ccSearchResults = [];
+            let ccCurrentPage = 1;
+            let ccPageSize = 10;
+            let ccSelectedJobRow = null;
+
+            const ccTableState = {
+                ccRevenueBody: {
+                    rows: [],
+                    page: 1,
+                    pageSize: 10
                 },
-                error: function(xhr) {
-                    showNotification(xhr.responseJSON?.message || 'Failed to update status',
-                        'error');
+                ccCostBody: {
+                    rows: [],
+                    page: 1,
+                    pageSize: 10
+                },
+            };
+
+            // ── Open modal ────────────────────────────────────────────────────────────
+            $('#openCopyChargesBtn').on('click', function() {
+                resetCopyChargesModal();
+                $('#copyChargesModal').modal('show');
+            });
+
+            // ── Open job search ───────────────────────────────────────────────────────
+            $('#ccJobNoSearchBtn').on('click', function() {
+                const jobNo = $('#ccJobNo').val().trim();
+
+                // If a job number is already typed, search directly — skip the Search modal
+                if (jobNo) {
+                    triggerJobNoLoad();
+                    return;
+                }
+
+                // No job number entered — open the Search modal as before
+                ccSelectedJobRow = null;
+                $('#ccSearchOkBtn').prop('disabled', true);
+                resetSearchModal();
+                $('#ccSearchModal').css('z-index', 1060).modal('show');
+            });
+
+            // ── Search ────────────────────────────────────────────────────────────────
+            $('#ccSearchGoBtn').on('click', function() {
+                ccCurrentPage = 1;
+                runSearch();
+            });
+
+            $('#ccSearchValue').on('keypress', function(e) {
+                if (e.which === 13) $('#ccSearchGoBtn').trigger('click');
+            });
+
+            // ── Add Filter button ─────────────────────────────────────────
+            $('#ccAddFilterBtn').on('click', function() {
+                const $filterRow = $(`
+        <div class="cc-filter-row">
+            <select class="cc-select cc-extra-field" style="width:160px;">
+                <option value="">Select</option>
+                <option value="customer">Customer</option>
+                <option value="origin">Origin Country</option>
+                <option value="destination">Destination Country</option>
+                <option value="incoterm">InCo Term</option>
+                <option value="por">Place of Receipt</option>
+                <option value="pod">Place of Delivery</option>
+                <option value="equipment">Equipment Type</option>
+            </select>
+            <input type="text" class="cc-input cc-extra-value" style="width:200px;" placeholder="Value...">
+            <button type="button" class="cc-filter-remove" title="Remove filter">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `);
+
+                // Insert after the main search controls row
+                $('#ccAddFilterBtn').closest('.cc-search-controls').append($filterRow);
+            });
+
+            // ── Remove individual filter row ──────────────────────────────
+            $(document).on('click', '.cc-filter-remove', function() {
+                $(this).closest('.cc-filter-row').remove();
+            });
+
+            // ── Updated runSearch — collects all filter rows ──────────────
+            function runSearch() {
+                // Primary filter
+                const primaryField = $('#ccSearchField').val();
+                const primaryValue = $('#ccSearchValue').val().trim();
+
+                // Collect extra filter rows
+                const extraFilters = [];
+                $('.cc-filter-row').each(function() {
+                    const field = $(this).find('.cc-extra-field').val();
+                    const value = $(this).find('.cc-extra-value').val().trim();
+                    if (field && value) extraFilters.push({
+                        field,
+                        value
+                    });
+                });
+
+                // At least the primary value OR one extra filter must be filled
+                if (!primaryValue && !extraFilters.length) {
+                    showNotification('Please enter at least one search value', 'warning');
+                    $('#ccSearchValue').focus();
+                    return;
+                }
+
+                const fieldMap = {
+                    customer: 'customer',
+                    origin: 'origin',
+                    destination: 'destination',
+                    incoterm: 'incoterm',
+                    por: 'por',
+                    pod: 'pod',
+                    equipment: 'equipment'
+                };
+
+                // Build params for the primary filter only — backend takes one at a time
+                const params = {
+                    office_code: officeCode
+                };
+                if (!primaryField && primaryValue) {
+                    params.quote_no = primaryValue;
+                } else if (primaryField && primaryValue) {
+                    params[fieldMap[primaryField]] = primaryValue;
+                } else if (!primaryValue && extraFilters.length) {
+                    // No primary value — use first extra filter as the primary API call
+                    const first = extraFilters.shift();
+                    params[fieldMap[first.field] || first.field] = first.value;
+                }
+
+                $.ajax({
+                    url: CC_SEARCH_URL,
+                    type: 'GET',
+                    data: params,
+                    beforeSend: function() {
+                        $('#ccSearchGoBtn').prop('disabled', true)
+                            .html('<i class="fas fa-spinner fa-spin mr-1"></i> Searching...');
+                        $('#ccSearchResultsBody').html(
+                            '<tr><td colspan="8" class="cc-empty-msg">' +
+                            '<i class="fas fa-spinner fa-spin"></i> Searching...</td></tr>'
+                        );
+                    },
+                    complete: function() {
+                        $('#ccSearchGoBtn').prop('disabled', false).html('Search');
+                    },
+                    success: function(response) {
+                        let results = response.success ? (response.data || []) : [];
+
+                        // ── Client-side filtering for extra filters ───────────
+                        // Maps filter field → which result property to match against
+                        const resultFieldMap = {
+                            customer: r => (r.CompanyName || '').toLowerCase(),
+                            origin: r => (r.Origin || '').toLowerCase(),
+                            destination: r => (r.Destination || '').toLowerCase(),
+                            incoterm: r => (r.IncoTerm || '').toLowerCase(),
+                            por: r => (r.POR || '').toLowerCase(),
+                            pod: r => (r.POD || '').toLowerCase(),
+                            equipment: r => (r.Equipment || '').toLowerCase(),
+                        };
+
+                        // Also apply primary filter client-side if it was sent to API
+                        // (API may return broader results — narrow them down)
+                        if (primaryField && primaryValue) {
+                            const getter = resultFieldMap[primaryField];
+                            if (getter) {
+                                results = results.filter(r =>
+                                    getter(r).includes(primaryValue.toLowerCase())
+                                );
+                            }
+                        }
+
+                        // Apply each extra filter row
+                        extraFilters.forEach(function(f) {
+                            const getter = resultFieldMap[f.field];
+                            if (getter) {
+                                results = results.filter(r =>
+                                    getter(r).includes(f.value.toLowerCase())
+                                );
+                            }
+                        });
+
+                        ccSearchResults = results;
+                        ccCurrentPage = 1;
+                        renderSearchPage();
+                    },
+                    error: function(xhr) {
+                        ccSearchResults = [];
+                        renderSearchPage();
+                        showNotification(
+                            xhr.responseJSON?.message || 'Search failed. Please try again.',
+                            'error'
+                        );
+                    }
+                });
+            }
+
+            // function runSearch() {
+            //     const filterField = $('#ccSearchField').val();
+            //     const filterValue = $('#ccSearchValue').val().trim();
+
+            //     // Value is required; filter field is optional (no field = search by quote number)
+            //     if (!filterValue) {
+            //         showNotification('Please enter a search value', 'warning');
+            //         $('#ccSearchValue').focus();
+            //         return;
+            //     }
+
+            //     const fieldMap = {
+            //         customer: 'customer',
+            //         origin: 'origin',
+            //         destination: 'destination',
+            //         incoterm: 'incoterm',
+            //         por: 'por',
+            //         pod: 'pod',
+            //         equipment: 'equipment'
+            //     };
+
+            //     const params = {
+            //         office_code: officeCode
+            //     };
+
+            //     // No filter field selected → treat input as a direct quote number search
+            //     if (!filterField) {
+            //         params.quote_no = filterValue;
+            //     } else {
+            //         const paramKey = fieldMap[filterField];
+            //         if (paramKey) params[paramKey] = filterValue;
+            //     }
+
+            //     $.ajax({
+            //         url: CC_SEARCH_URL,
+            //         type: 'GET',
+            //         data: params,
+            //         beforeSend: function() {
+            //             $('#ccSearchGoBtn').prop('disabled', true)
+            //                 .html('<i class="fas fa-spinner fa-spin mr-1"></i> Searching...');
+            //             $('#ccSearchResultsBody').html(
+            //                 '<tr><td colspan="8" class="cc-empty-msg"><i class="fas fa-spinner fa-spin"></i> Searching...</td></tr>'
+            //             );
+            //         },
+            //         complete: function() {
+            //             $('#ccSearchGoBtn').prop('disabled', false).html('Search');
+            //         },
+            //         success: function(response) {
+            //             ccSearchResults = response.success ? (response.data || []) : [];
+            //             ccCurrentPage = 1;
+            //             renderSearchPage();
+            //         },
+            //         error: function(xhr) {
+            //             ccSearchResults = [];
+            //             renderSearchPage();
+            //             const msg = xhr.responseJSON?.message || 'Search failed. Please try again.';
+            //             showNotification(msg, 'error');
+            //         }
+            //     });
+            // }
+
+            // ── Search pagination ─────────────────────────────────────────────────────
+            $(document).on('click', '.cc-page-btn', function() {
+                const action = $(this).data('action');
+                const totalPages = Math.max(1, Math.ceil(ccSearchResults.length / ccPageSize));
+                if (action === 'first') ccCurrentPage = 1;
+                else if (action === 'prev') ccCurrentPage = Math.max(1, ccCurrentPage - 1);
+                else if (action === 'next') ccCurrentPage = Math.min(totalPages, ccCurrentPage + 1);
+                else if (action === 'last') ccCurrentPage = totalPages;
+                renderSearchPage();
+            });
+
+            $('#ccPageInput').on('change', function() {
+                const totalPages = Math.max(1, Math.ceil(ccSearchResults.length / ccPageSize));
+                ccCurrentPage = Math.min(totalPages, Math.max(1, parseInt($(this).val()) || 1));
+                renderSearchPage();
+            });
+
+            $('#ccPageSize').on('change', function() {
+                ccPageSize = parseInt($(this).val()) || 10;
+                ccCurrentPage = 1;
+                renderSearchPage();
+            });
+
+            function renderSearchPage() {
+                const $tbody = $('#ccSearchResultsBody');
+                const total = ccSearchResults.length;
+                const totalPages = Math.max(1, Math.ceil(total / ccPageSize));
+                ccCurrentPage = Math.min(ccCurrentPage, totalPages);
+                const start = (ccCurrentPage - 1) * ccPageSize;
+                const end = Math.min(start + ccPageSize, total);
+                const page = ccSearchResults.slice(start, end);
+
+                $('#ccPageInput').val(ccCurrentPage);
+                $('#ccTotalPages').text(totalPages);
+                $('#ccViewRange').text(total === 0 ? 'View 0 - 0 of 0' : `View ${start + 1} - ${end} of ${total}`);
+
+                $tbody.empty();
+
+                if (!page.length) {
+                    $tbody.html('<tr><td colspan="5" class="cc-empty-msg">No results found</td></tr>');
+                    return;
+                }
+
+                page.forEach(function(row, i) {
+                    const globalIdx = start + i;
+                    $tbody.append(`
+            <tr style="cursor:pointer;" data-idx="${globalIdx}">
+                <td class="text-center">
+                    <input type="radio" name="ccJobSearchRadio" class="cc-search-radio" value="${globalIdx}">
+                </td>
+                <td style="font-size:0.8rem;">${row.QuoteNo || ''}</td>
+                <td style="font-size:0.8rem;">${row.CompanyName || ''}</td>
+                <td style="font-size:0.8rem;">${row.Origin || ''}</td>
+                <td style="font-size:0.8rem;">${row.Destination || ''}</td>
+                <td style="font-size:0.8rem;">${row.POR || ''}</td>
+                <td style="font-size:0.8rem;">${row.POD || ''}</td>
+                <td style="font-size:0.8rem;">${row.IncoTerm || ''}</td>
+            </tr>
+        `);
+                });
+
+                $tbody.find('tr').on('click', function() {
+                    $(this).find('input[type="radio"]').prop('checked', true).trigger('change');
+                });
+            }
+
+            // ── Row selection ─────────────────────────────────────────────────────────
+            $(document).on('change', '.cc-search-radio', function() {
+                const idx = parseInt($(this).val(), 10);
+                ccSelectedJobRow = ccSearchResults[idx] || null;
+                $('#ccSearchOkBtn').prop('disabled', !ccSelectedJobRow);
+            });
+
+            // ── Search Ok ─────────────────────────────────────────────────────────────
+            $('#ccSearchOkBtn').on('click', function() {
+                if (!ccSelectedJobRow) return;
+                $('#ccJobNo').val(ccSelectedJobRow.QuoteNo);
+                $('#ccSearchModal').modal('hide');
+                loadJobCharges(ccSelectedJobRow);
+            });
+
+            // ── Search cancel / close ─────────────────────────────────────────────────
+            $('#ccSearchCancelBtn, #ccSearchModalClose').on('click', function(e) {
+                e.preventDefault();
+                $('#ccSearchModal').modal('hide');
+            });
+
+            // ── Load charges for selected quote ───────────────────────────────────────
+            function loadJobCharges(jobRow) {
+                if (!jobRow.id) {
+                    showNotification('Quotation ID not found for this quote', 'error');
+                    return;
+                }
+
+                $('#ccJobDetails, #ccJobDetailsCost').hide();
+                const emptyMsg =
+                    '<tr><td colspan="8" class="cc-empty-msg"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>';
+                $('#ccRevenueBody, #ccCostBody').html(emptyMsg);
+
+                $.ajax({
+                    url: CC_CHARGES_URL,
+                    type: 'GET',
+                    data: {
+                        quotation_id: jobRow.id
+                    },
+                    success: function(response) {
+                        if (!response.success) {
+                            showNotification(response.message || 'Failed to load charges', 'error');
+                            return;
+                        }
+
+                        var info = response.job_info || {};
+                        $('#ccClient').text(info.client || '');
+                        $('#ccShipper').text(info.shipper || '');
+                        $('#ccConsignee').text(info.consignee || '');
+                        $('#ccPortOfLoading').text(info.port_of_loading || '');
+                        $('#ccPortOfDischarge').text(info.port_of_discharge || '');
+                        $('#ccClientRow').css('display', info.client ? 'flex' : 'none');
+                        $('#ccShipperRow').css('display', info.shipper ? 'flex' : 'none');
+                        $('#ccConsigneeRow').css('display', info.consignee ? 'flex' : 'none');
+                        $('#ccPolRow').css('display', info.port_of_loading ? 'flex' : 'none');
+                        $('#ccPodRow').css('display', info.port_of_discharge ? 'flex' : 'none');
+
+                        ccTableState.ccRevenueBody.rows = response.revenue || [];
+                        ccTableState.ccRevenueBody.page = 1;
+                        ccTableState.ccRevenueBody.pageSize = 10;
+
+                        ccTableState.ccCostBody.rows = response.cost || [];
+                        ccTableState.ccCostBody.page = 1;
+                        ccTableState.ccCostBody.pageSize = 10;
+
+                        const rev = response.revenue.length;
+                        const cost = response.cost.length;
+                        $('#ccRevenueSummary').text(`[ Total Record(s): ${rev} ]`);
+                        $('#ccCostSummary').text(`[ Total Record(s): ${cost} ]`);
+
+                        renderTablePage('ccRevenueBody');
+                        renderTablePage('ccCostBody');
+
+                        $('#ccJobDetails').show();
+                        $('#ccJobDetailsCost').show();
+                        $('#copyChargesModal .cc-modal-dialog').addClass('cc-charges-loaded');
+                        updateSaveBtn();
+                    },
+                    error: function() {
+                        showNotification('Failed to load charges', 'error');
+                    }
+                });
+            }
+
+            // ── Per-table pagination ──────────────────────────────────────────────────
+            $(document).on('click', '.cc-tbl-page-btn', function() {
+                const tbodyId = $(this).data('tbody');
+                const action = $(this).data('action');
+                const s = ccTableState[tbodyId];
+                if (!s) return;
+                const totalPages = Math.max(1, Math.ceil(s.rows.length / s.pageSize));
+                if (action === 'first') s.page = 1;
+                else if (action === 'prev') s.page = Math.max(1, s.page - 1);
+                else if (action === 'next') s.page = Math.min(totalPages, s.page + 1);
+                else if (action === 'last') s.page = totalPages;
+                renderTablePage(tbodyId);
+            });
+
+            $(document).on('change', '.cc-tbl-page-input', function() {
+                const tbodyId = $(this).data('tbody');
+                const s = ccTableState[tbodyId];
+                if (!s) return;
+                const totalPages = Math.max(1, Math.ceil(s.rows.length / s.pageSize));
+                s.page = Math.min(totalPages, Math.max(1, parseInt($(this).val()) || 1));
+                renderTablePage(tbodyId);
+            });
+
+            $(document).on('change', '.cc-tbl-page-size', function() {
+                const tbodyId = $(this).data('tbody');
+                const s = ccTableState[tbodyId];
+                if (!s) return;
+                s.pageSize = parseInt($(this).val()) || 10;
+                s.page = 1;
+                renderTablePage(tbodyId);
+            });
+
+            // ── View All / Selected toggles ───────────────────────────────────────────
+            $(document).on('click', '.cc-view-toggle', function(e) {
+                e.preventDefault();
+                const tbodyId = $(this).data('tbody');
+                const mode = $(this).data('mode');
+                const $tbody = $('#' + tbodyId);
+
+                if (mode === 'selected') {
+                    $tbody.find('tr').each(function() {
+                        $(this).toggle($(this).find('input[type="checkbox"]').is(':checked'));
+                    });
+                } else {
+                    $tbody.find('tr').show();
                 }
             });
-        }
+
+            // ── Select all ────────────────────────────────────────────────────────────
+            $('#ccRevenueSelectAll').on('change', function() {
+                $('#ccRevenueBody input[type="checkbox"]').prop('checked', $(this).is(':checked'));
+                updateSaveBtn();
+            });
+            $('#ccCostSelectAll').on('change', function() {
+                $('#ccCostBody input[type="checkbox"]').prop('checked', $(this).is(':checked'));
+                updateSaveBtn();
+            });
+            $(document).on('change', '#ccRevenueBody input[type="checkbox"], #ccCostBody input[type="checkbox"]',
+                function() {
+                    updateSaveBtn();
+                }
+            );
 
 
-        function showNotification(message, type) {
-            const alertClass = type === 'success' ? 'alert-success' :
-                type === 'error' ? 'alert-danger' :
-                type === 'warning' ? 'alert-warning' : 'alert-info';
+            function renderTablePage(tbodyId) {
+                const s = ccTableState[tbodyId];
+                const $tbody = $('#' + tbodyId);
+                const type = tbodyId === 'ccRevenueBody' ? 'revenue' : 'cost';
+                const total = s.rows.length;
+                const totalPages = Math.max(1, Math.ceil(total / s.pageSize));
+                s.page = Math.min(s.page, totalPages);
+                const start = (s.page - 1) * s.pageSize;
+                const end = Math.min(start + s.pageSize, total);
+                const page = s.rows.slice(start, end);
 
-            $('body').append(`
-                    <div class="alert ${alertClass} alert-dismissible fade show notification-toast" role="alert"
-                        style="position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
-                        <strong>${message}</strong>
-                        <button type="button" class="close" data-dismiss="alert">
-                            <span>&times;</span>
-                        </button>
-                    </div>
-                `);
+                $tbody.empty();
 
-            setTimeout(function() {
-                $('.notification-toast').fadeOut(function() {
-                    $(this).remove();
+                if (!page.length) {
+                    const msg = total === 0 ? 'No charges on this quote' : 'No charges on this page';
+                    $tbody.html(`<tr><td colspan="8" class="cc-empty-msg">${msg}</td></tr>`);
+                } else {
+                    page.forEach(function(r, i) {
+                        $tbody.append(buildChargeRow(r, start + i, type));
+                    });
+                }
+
+                updateTablePagination(tbodyId);
+
+                // Re-apply column visibility after rows are rebuilt by pagination
+                const $showMoreBtn = tbodyId === 'ccRevenueBody' ? $('#ccRevenueShowMore') : $('#ccCostShowMore');
+                const $table = tbodyId === 'ccRevenueBody' ? $('#ccRevenueTable') : $('#ccCostTable');
+                const isExpanded = $showMoreBtn.data('expanded') || false;
+                toggleCcColumns($table, isExpanded);
+            }
+
+            function updateTablePagination(tbodyId) {
+                const s = ccTableState[tbodyId];
+                const total = s.rows.length;
+                const totalPages = Math.max(1, Math.ceil(total / s.pageSize));
+                const start = (s.page - 1) * s.pageSize;
+                const end = Math.min(start + s.pageSize, total);
+
+                $(`.cc-tbl-page-input[data-tbody="${tbodyId}"]`).val(s.page);
+                $(`.cc-tbl-total-pages[data-tbody="${tbodyId}"]`).text(totalPages);
+                $(`.cc-tbl-view-range[data-tbody="${tbodyId}"]`).text(
+                    total === 0 ? 'View 0 - 0 of 0' : `View ${start + 1} - ${end} of ${total}`
+                );
+            }
+
+            function updateSaveBtn() {
+                const any = $('#ccRevenueBody .cc-charge-check:checked, #ccCostBody .cc-charge-check:checked')
+                    .length >
+                    0;
+                $('#ccSaveBtn').prop('disabled', !any);
+            }
+
+            // ── Save selected charges → reload page ───────────────────────────────────
+            $('#ccSaveBtn').on('click', function() {
+                if (!ccSelectedJobRow || !ccSelectedJobRow.id) {
+                    showNotification('No source quotation selected', 'error');
+                    return;
+                }
+
+                const selectedIds = [];
+                $('#ccRevenueBody .cc-charge-check:checked').each(function() {
+                    const row = ccTableState.ccRevenueBody.rows[$(this).data('index')];
+                    if (row && row.id) selectedIds.push(row.id);
                 });
-            }, 3000);
-        }
+                $('#ccCostBody .cc-charge-check:checked').each(function() {
+                    const row = ccTableState.ccCostBody.rows[$(this).data('index')];
+                    if (row && row.id) selectedIds.push(row.id);
+                });
+
+                if (!selectedIds.length) {
+                    showNotification('No charges selected', 'warning');
+                    return;
+                }
+
+                const $btn = $(this).prop('disabled', true).text('Copying...');
+
+                $.ajax({
+                    url: '{{ route('quotation.copy-charges.bulk') }}',
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        source_quotation_id: ccSelectedJobRow.id,
+                        target_quotation_id: quotationId,
+                        charge_ids: selectedIds,
+                    },
+                    success: function(res) {
+                        if (res.success) {
+                            showNotification(res.message, 'success');
+                            $('#copyChargesModal').modal('hide');
+                            window.location.reload();
+                        } else {
+                            showNotification(res.message, 'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        showNotification(xhr.responseJSON?.message || 'Copy failed', 'error');
+                    },
+                    complete: function() {
+                        $btn.prop('disabled', false).text('Save');
+                    }
+                });
+            });
+
+            // ── Copy Charges modal close ──────────────────────────────────────────────
+            $('#copyChargesModal').on('hidden.bs.modal', resetCopyChargesModal);
+            $('#ccCancelBtn').on('click', function(
+                e) {
+                e.preventDefault();
+                $('#copyChargesModal').modal('hide');
+            });
+
+            // Close button (X) in modal header
+            $(document).on('click', '.cc-modal-close', function() {
+                const $modal = $(this).closest('.modal');
+                if ($modal.length) {
+                    $modal.modal('hide');
+                } else {
+                    $('#copyChargesModal').modal('hide');
+                    $('#ccSearchModal').modal('hide');
+                }
+            });
+
+            // ── Job No direct entry — load charges on Enter or blur ───────────────────
+            $('#ccJobNo').on('keypress', function(e) {
+                if (e.which === 13) triggerJobNoLoad();
+            });
+            $('#ccJobNo').on('blur', function() {
+                if ($(this).val().trim()) triggerJobNoLoad();
+            });
+
+            function triggerJobNoLoad() {
+                const jobNo = $('#ccJobNo').val().trim();
+                if (!jobNo) return;
+
+                // Search by quote number to get the quotation ID, then load charges
+                $.ajax({
+                    url: CC_SEARCH_URL,
+                    type: 'GET',
+                    data: {
+                        office_code: officeCode,
+                        quote_no: jobNo
+                    },
+                    success: function(response) {
+                        if (response.success && response.data && response.data.length > 0) {
+                            // Exact match first, fallback to first result
+                            const match = response.data.find(r => r.QuoteNo === jobNo) || response.data[
+                                0];
+                            ccSelectedJobRow = match;
+                            loadJobCharges(match);
+                        } else {
+                            showNotification('No quote found for: ' + jobNo, 'warning');
+                        }
+                    },
+                    error: function() {
+                        showNotification('Failed to search for Job No', 'error');
+                    }
+                });
+            }
+
+            // ── Search results sorting ────────────────────────────────────────────────
+            let ccSortCol = null;
+            let ccSortDir = 'asc';
+
+            $(document).on('click', '.cc-sortable', function() {
+                const col = $(this).data('col');
+                if (ccSortCol === col) {
+                    ccSortDir = ccSortDir === 'asc' ? 'desc' : 'asc';
+                } else {
+                    ccSortCol = col;
+                    ccSortDir = 'asc';
+                }
+
+                // Update header icons
+                $('.cc-sortable').removeClass('cc-sort-asc cc-sort-desc');
+                $(this).addClass(ccSortDir === 'asc' ? 'cc-sort-asc' : 'cc-sort-desc');
+
+                ccSearchResults.sort(function(a, b) {
+                    const av = (a[col] || '').toString().toLowerCase();
+                    const bv = (b[col] || '').toString().toLowerCase();
+                    return ccSortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+                });
+
+                ccCurrentPage = 1;
+                renderSearchPage();
+            });
+
+            // ── Update renderSearchPage to render 8 columns (replace existing function) ──
+            // Patch: override buildChargeRow to use new 9-column structure (no service/activity/party)
+            function buildChargeRow(r, i, type) {
+                const basedOnUOM = [r.basedOnCode, r.uomCode].filter(Boolean).join(' / ');
+                return `
+                    <tr data-cc-row="${i}">
+                        <td class="text-center">
+                            <input type="checkbox" class="cc-charge-check" data-type="${type}" data-index="${i}">
+                        </td>
+                        <td style="font-size:0.8rem; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
+                            title="${r.chargeDesp || ''}">${r.chargeDesp || ''}</td>
+                        <td style="font-size:0.8rem; text-align:right;">${parseFloat(r.rate || 0).toFixed(2)}</td>
+                        <td class="text-center col-extra" style="font-size:0.8rem;">${r.quantity || 0}</td>
+                        <td class="col-extra" style="font-size:0.8rem;">${basedOnUOM}</td>
+                        <td class="col-extra" style="font-size:0.8rem;">${r.currency || ''}</td>
+                        <td style="font-size:0.8rem; text-align:right;">${parseFloat(r.amount || 0).toFixed(2)}</td>
+                        <td style="font-size:0.8rem; text-align:right;">${parseFloat(r.baseAmount || 0).toFixed(2)}</td>
+                    </tr>
+                `;
+            }
+
+            // ── Helpers ───────────────────────────────────────────────────────────────
+            function resetCopyChargesModal() {
+                $('#copyChargesModal .cc-modal-dialog').removeClass('cc-expanded cc-charges-loaded');
+                $('#ccJobNo').val('');
+                $('#ccJobDetails, #ccJobDetailsCost').hide();
+                $('#ccClientRow, #ccShipperRow, #ccConsigneeRow, #ccPolRow, #ccPodRow').hide();
+                $('#ccClient, #ccShipper, #ccConsignee, #ccPortOfLoading, #ccPortOfDischarge').text('');
+                const empty = '<tr><td colspan="8" class="cc-empty-msg">Enter a Job No to load charges</td></tr>';
+                $('#ccRevenueBody, #ccCostBody').html(empty);
+                $('#ccRevenueSummary').text('[ Total Record(s): 0 ]');
+                $('#ccCostSummary').text('[ Total Record(s): 0 ]');
+                $('#ccRevenueSelectAll, #ccCostSelectAll').prop('checked', false);
+                $('#ccSaveBtn').prop('disabled', true);
+                ccTableState.ccRevenueBody = {
+                    rows: [],
+                    page: 1,
+                    pageSize: 10
+                };
+                ccTableState.ccCostBody = {
+                    rows: [],
+                    page: 1,
+                    pageSize: 10
+                };
+                updateTablePagination('ccRevenueBody');
+                updateTablePagination('ccCostBody');
+                ccSelectedJobRow = null;
+            }
+
+            function resetSearchModal() {
+                $('#ccSearchField').val('');
+                $('#ccSearchValue').val('');
+                $('.cc-filter-row').remove();
+                ccSearchResults = [];
+                ccCurrentPage = 1;
+                ccPageSize = parseInt($('#ccPageSize').val()) || 10;
+                renderSearchPage();
+            }
+
+            // Copy Charges — collapsible Revenue/Cost sections
+            $(document).on('click', '#ccRevenueChevron', function(e) {
+                e.stopPropagation();
+                const $body = $('#ccJobDetails').find(
+                    '.cc-view-toggle-bar, .cc-table-wrap, .cc-pagination');
+                const $icon = $(this);
+                const isOpen = $icon.hasClass('fa-chevron-up');
+                $body.toggle(!isOpen);
+                $icon.toggleClass('fa-chevron-up', !isOpen).toggleClass('fa-chevron-down', isOpen);
+            });
+
+            $(document).on('click', '#ccCostChevron', function(e) {
+                e.stopPropagation();
+                const $body = $('#ccJobDetailsCost').find(
+                    '.cc-view-toggle-bar, .cc-table-wrap, .cc-pagination');
+                const $icon = $(this);
+                const isOpen = $icon.hasClass('fa-chevron-up');
+                $body.toggle(!isOpen);
+                $icon.toggleClass('fa-chevron-up', !isOpen).toggleClass('fa-chevron-down', isOpen);
+            });
+
+            // Show more/less — extra columns in cc tables
+            function syncCcModalExpansion() {
+                const revenueExpanded = $('#ccRevenueShowMore').data('expanded') || false;
+                const costExpanded = $('#ccCostShowMore').data('expanded') || false;
+                const shouldExpand = revenueExpanded || costExpanded;
+                $('#copyChargesModal .cc-modal-dialog').toggleClass('cc-expanded', shouldExpand);
+            }
+
+            function toggleCcColumns($table, show) {
+                $table.find('th.col-extra, td.col-extra').css('display', show ? 'table-cell' : 'none');
+            }
+
+            $(document).on('click', '#ccRevenueShowMore', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const isExpanded = $(this).data('expanded') || false;
+                const nowExpanded = !isExpanded;
+                toggleCcColumns($('#ccRevenueTable'), nowExpanded);
+                $(this).data('expanded', nowExpanded)
+                    .html(nowExpanded ?
+                        '<i class="fas fa-columns mr-1"></i> Show less' :
+                        '<i class="fas fa-columns mr-1"></i> Show more');
+                syncCcModalExpansion();
+            });
+
+            $(document).on('click', '#ccCostShowMore', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const isExpanded = $(this).data('expanded') || false;
+                const nowExpanded = !isExpanded;
+                toggleCcColumns($('#ccCostTable'), nowExpanded);
+                $(this).data('expanded', nowExpanded)
+                    .html(nowExpanded ?
+                        '<i class="fas fa-columns mr-1"></i> Show less' :
+                        '<i class="fas fa-columns mr-1"></i> Show more');
+                syncCcModalExpansion();
+            });
+        }); // end document.ready
     </script>
 @stop
