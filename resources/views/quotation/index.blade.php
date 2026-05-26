@@ -129,12 +129,11 @@
                     {{-- Date Filter --}}
                     <div class="col-12 col-sm-6 col-md-auto order-2">
                         <select id="dateFilter" class="form-control form-control-sm">
-                            <option value="all" selected>All Time</option>
+                        <option value="all">All Time</option>
                             <option value="0">Today</option>
                             <option value="1">Yesterday</option>
                             <option value="15">Last 15 Days</option>
-                            <option value="30">Last 30 Days</option>
-                            <option value="custom">Custom Range</option>
+                            <option value="30" selected>Last 30 Days</option>
                         </select>
                     </div>
 
@@ -853,7 +852,7 @@
             ];
 
             // Set date filter before DataTable initialises so the first request picks it up
-            $('#dateFilter').val('all');
+            $('#dateFilter').val('30');
 
             var _savedOffice = null;
             try {

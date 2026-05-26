@@ -1107,7 +1107,7 @@ class QuotationController extends Controller
     ): array {
         $inputJson = json_encode(
             [
-                'OfficeCode' => $officeCode, // ← was always ''
+                'OfficeCode' => $officeCode,
                 'FromDate' => $fromDate,
                 'ToDate' => $toDate,
                 'Customer' => '',
@@ -1159,6 +1159,10 @@ class QuotationController extends Controller
                     continue;
                 }
             } while ($stmt->nextRowset());
+
+            $stmt = null; // ← ADDED: release handle so the PDO connection can be
+            //   reused safely by the next callQuotationListSP() call
+            //   in portal(). Prevents 0xC0000005 in php_pdo_sqlsrv DLL.
 
             return $rows;
         } catch (\Exception $e) {
@@ -2747,7 +2751,7 @@ class QuotationController extends Controller
             INNER JOIN Quote_QuotationInfo QI WITH (NOLOCK) ON QI.id = QC.QuotationInfoID
             LEFT JOIN [FITSCM].dbo.Bill_ChargeCode BC WITH (NOLOCK) ON BC.Id = QC.ChargeCodeId
             LEFT JOIN [FITSCM].dbo.Cust_Currency CC WITH (NOLOCK) ON CC.Id = QC.EstChargeCurrencyId
-            LEFT JOIN [FITSCM].dbo.Cust_ChargecodeBasedOn CB WITH (NOLOCK) ON CB.Id = QC.BasedOnId
+            LEFT JOIN Cust_ChargecodeBasedOn CB WITH (NOLOCK) ON CB.Id = QC.BasedOnId
             LEFT JOIN [FITSCM].dbo.Sys_UOM SU WITH (NOLOCK) ON SU.Id = QC.UOMId
             LEFT JOIN [FITSCM].dbo.Cust_Party CP WITH (NOLOCK) ON CP.Id = QC.PartyID
             WHERE QC.Id = ?
@@ -3967,7 +3971,6 @@ class QuotationController extends Controller
 
                     // Skip SP status/error result sets — they return a single
                     // column whose value starts with 'Failed' or 'Error'
-
                     $firstVal = array_values((array) $firstRow)[0] ?? '';
                     if (
                         is_string($firstVal) &&
@@ -3996,18 +3999,18 @@ class QuotationController extends Controller
                 }
             } while ($stmt->nextRowset());
 
+            $stmt = null; // ← ADDED: release handle after loop completes
+
             return response()->json(['success' => true, 'reasons' => $reasons]);
         } catch (\Exception $e) {
             Log::error('getReasons failed', [
                 'reason_type' => $reasonType,
-
                 'error' => $e->getMessage(),
             ]);
 
             return response()->json(
                 [
                     'success' => false,
-
                     'message' => 'Failed to load reasons: ' . $e->getMessage(),
                 ],
                 500,
@@ -4444,32 +4447,14 @@ class QuotationController extends Controller
         }
 
         try {
-            // Step 1: Run Eloquent UPDATE first
-            DB::table('Quote_QuotationInfo')
-                ->where('ID', $quotationId)
-                ->update(['OfficeCode' => DB::raw('RTRIM(OfficeCode)')]);
-
-            // Step 2: Force a fresh connection — the Eloquent UPDATE leaves the
-            // shared PDO handle in a dirty state on pdo_sqlsrv. Disconnecting
-            // forces Laravel to open a clean connection on the next getPdo() call.
-            DB::disconnect();
-            DB::reconnect();
+            // RTRIM OfficeCode via raw SQL — avoids touching the PDO handle state
+            // that the SP call below depends on. No disconnect/reconnect needed.
+            DB::statement('UPDATE Quote_QuotationInfo SET OfficeCode = RTRIM(OfficeCode) WHERE ID = ?', [$quotationId]);
 
             $pdo = DB::connection()->getPdo();
 
-            // pdo_sqlsrv on IIS can return null on the first getPdo() after disconnect().
-            // Retry once before giving up.
             if (!($pdo instanceof \PDO)) {
-                Log::warning('getTermsTemplates - getPdo() returned null, retrying reconnect', [
-                    'quotation_id' => $quotationId,
-                ]);
-                DB::disconnect();
-                DB::reconnect();
-                $pdo = DB::connection()->getPdo();
-            }
-
-            if (!($pdo instanceof \PDO)) {
-                Log::error('getTermsTemplates - getPdo() returned null after retry', [
+                Log::error('getTermsTemplates - getPdo() returned null', [
                     'quotation_id' => $quotationId,
                 ]);
                 return response()->json(
@@ -4481,7 +4466,6 @@ class QuotationController extends Controller
                 );
             }
 
-            // Step 3: Raw PDO with SET NOCOUNT ON + columnCount() guard.
             $stmt = $pdo->prepare('SET NOCOUNT ON; EXEC dbo.sp_Quote_TermsandConditionList ?');
             $stmt->execute([$quotationId]);
 
@@ -4497,11 +4481,6 @@ class QuotationController extends Controller
                 }
 
                 try {
-                    if ($stmt->columnCount() === 0) {
-                        Log::debug('getTermsTemplates - columnCount() race, skipping set #' . $resultSetIndex);
-                        continue;
-                    }
-
                     $fetched = $stmt->fetchAll(\PDO::FETCH_OBJ);
 
                     if (empty($fetched)) {
@@ -4515,6 +4494,9 @@ class QuotationController extends Controller
                             'quotation_id' => $quotationId,
                             'message' => $firstVal,
                         ]);
+
+                        $stmt = null; // ← ADDED
+
                         return response()->json(
                             [
                                 'success' => false,
@@ -4579,6 +4561,8 @@ class QuotationController extends Controller
                     }
                 })()
             );
+
+            $stmt = null; // ← ADDED: release handle after loop completes
 
             if (empty($rows)) {
                 Log::warning('getTermsTemplates - SP returned no usable templates', [
@@ -8497,10 +8481,12 @@ class QuotationController extends Controller
                             stripos($trimmed, 'There is already') !== false
                         ) {
                             Log::error('runBookingProcessMain - SP emitted error result set', [
-                                'quotation_id' => $quotationId, // was $quoteNo — not in scope here
+                                'quotation_id' => $quotationId,
                                 'process_type' => $processType,
                                 'sp_error' => $trimmed,
                             ]);
+
+                            $stmt = null; // ← ADDED
 
                             return [
                                 'status' => 'Failed',
@@ -8525,6 +8511,8 @@ class QuotationController extends Controller
                     continue;
                 }
             } while ($stmt->nextRowset());
+
+            $stmt = null; // ← ADDED: release handle after loop completes
 
             if (!$result) {
                 return [
@@ -10170,6 +10158,7 @@ class QuotationController extends Controller
                 400,
             );
         }
+
 
         try {
             // ── Fetch record ──────────────────────────────────────────────────────
