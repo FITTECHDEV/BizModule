@@ -364,7 +364,6 @@ class QuotationController extends Controller
                         'bookingno',
                         'teamname',
                         'teamid',
-                        'clientid',
                         'username',
                         'QuoteStatus',
                         'SCMINTStatus',
@@ -799,7 +798,6 @@ class QuotationController extends Controller
                         'bookingno',
                         'teamname',
                         'teamid',
-                        'clientid',
                         'username',
                         'QuoteStatus',
                         'SCMINTStatus',
@@ -1257,6 +1255,7 @@ class QuotationController extends Controller
     // UPDATED data()
     // Same office validation pattern as stats()
     // ============================================================
+
     public function data(Request $request)
     {
         try {
@@ -1289,8 +1288,7 @@ class QuotationController extends Controller
                 'ID',
                 'QuoteNo',
                 'bookingno',
-                'companyname',
-                'clientid',
+                'pri_partnermaster_name',
                 'username',
                 'teamname',
                 'teamid',
@@ -1302,6 +1300,11 @@ class QuotationController extends Controller
                 'QuoteStatusDescription',
                 'CreatedOn',
                 'Updatedon',
+                'pri_id',
+                'countryname',
+                'ServiceVertical',
+                'process',
+                'incoterm',
             ]);
 
             // ── Date filter ──────────────────────────────────────────────
@@ -1411,8 +1414,8 @@ class QuotationController extends Controller
             // ── DataTables (unchanged below this line) ────────────────
             return DataTables::of($query)
                 ->filterColumn('OfficeName', fn($q, $k) => $q->where('teamname', 'like', "%$k%"))
-                ->filterColumn('ClientName', fn($q, $k) => $q->where('companyname', 'like', "%$k%"))
-                ->filterColumn('ClientID', fn($q, $k) => $q->where('clientid', 'like', "%$k%"))
+                ->filterColumn('ClientName', fn($q, $k) => $q->where('pri_partnermaster_name', 'like', "%$k%"))
+                ->filterColumn('ClientID', fn($q, $k) => $q->where('pri_id', 'like', "%$k%"))
                 ->filterColumn('SalesPerson', fn($q, $k) => $q->where('username', 'like', "%$k%"))
                 ->filterColumn('OriginCountry', fn($q, $k) => $q->where('origincountry', 'like', "%$k%"))
                 ->filterColumn('DestinationCountry', fn($q, $k) => $q->where('destinationcountry', 'like', "%$k%"))
@@ -1453,11 +1456,15 @@ class QuotationController extends Controller
                 })
                 ->addColumn('report_date', fn($r) => $r->CreatedOn ? date('Y-m-d H:i', strtotime($r->CreatedOn)) : '-')
                 ->addColumn('OfficeName', fn($r) => $r->teamname ?? '-')
-                ->addColumn('ClientName', fn($r) => $r->companyname ?? '-')
-                ->addColumn('ClientID', fn($r) => $r->clientid ?? '-')
+                ->addColumn('ClientName', fn($r) => $r->pri_partnermaster_name ?? '-')
+                ->addColumn('ClientID', fn($r) => $r->pri_id ?? '-')
                 ->addColumn('SalesPerson', fn($r) => $r->username ?? '-')
                 ->addColumn('OriginCountry', fn($r) => $r->origincountry ?? '-')
                 ->addColumn('DestinationCountry', fn($r) => $r->destinationcountry ?? '-')
+                ->addColumn('Service', fn($r) => $r->ServiceVertical ?? '-')
+                ->addColumn('CompanyName', fn($r) => $r->pri_partnermaster_name ?? '-')
+                ->addColumn('Process', fn($r) => $r->process ?? '-')
+                ->addColumn('IncoTerm', fn($r) => $r->incoterm ?? '-')
                 ->addColumn('BookingNo', fn($r) => $r->bookingno ?? '-')
                 ->addColumn('QuotationStatus', function ($row) {
                     $status = $row->QuoteStatus ?? ($row->status ?? 'Proposal');
@@ -1618,7 +1625,7 @@ class QuotationController extends Controller
                 'containerlist' => 'containerlist',
 
                 // Customer
-                'companyname' => 'companyname',
+                'pri_partnermaster_name' => 'pri_partnermaster_name',
                 'pri_partner_steet' => 'pri_partner_steet',
                 'pri_partner_steet2' => 'pri_partner_steet2',
                 'pri_partner_city' => 'pri_partner_city',
@@ -1758,7 +1765,7 @@ class QuotationController extends Controller
             Log::info('Quotation data loaded', [
                 'id' => $quotation->ID,
                 'bookingno' => $quotation->bookingno,
-                'companyname' => $quotation->companyname,
+                'pri_partnermaster_name' => $quotation->pri_partnermaster_name,
             ]);
 
             return view('quotation.edit', compact('quotation', 'officeShortCode'));
@@ -2133,7 +2140,7 @@ class QuotationController extends Controller
                     ->first([
                         'ID',
                         'teamid',
-                        'ServiceVerticalname',
+                        'ServiceVertical',
                         'origincountry',
                         'destinationcountry',
                         'QuoteStatus',
@@ -2145,7 +2152,7 @@ class QuotationController extends Controller
                     ->first([
                         'ID',
                         'teamid',
-                        'ServiceVerticalname',
+                        'ServiceVertical',
                         'origincountry',
                         'destinationcountry',
                         'QuoteStatus',
@@ -2176,7 +2183,7 @@ class QuotationController extends Controller
                 'context' => [
                     'quotation_id' => $quotation->ID ?? 'N/A',
                     'office_code' => $officeCode,
-                    'service_type' => $quotation->ServiceVerticalname ?? 'N/A',
+                    'service_type' => $quotation->ServiceVertical ?? 'N/A',
                     'status' => $quotation->QuoteStatus ?? ($quotation->status ?? 'Unknown'),
                 ],
             ]);
@@ -2390,7 +2397,7 @@ class QuotationController extends Controller
                                     'all_properties' => $properties,
                                     'context' => [
                                         'office_code' => $officeCode,
-                                        'service_type' => $quotation->ServiceVerticalname ?? 'N/A',
+                                        'service_type' => $quotation->ServiceVertical ?? 'N/A',
                                         'action' => $request->input('action'),
                                     ],
                                 ]);
@@ -2670,7 +2677,7 @@ class QuotationController extends Controller
                 ->first([
                     'ID',
                     'teamid',
-                    'ServiceVerticalname',
+                    'ServiceVertical',
                     'origincountry',
                     'destinationcountry',
                     'QuoteStatus',
@@ -2695,7 +2702,7 @@ class QuotationController extends Controller
                 'context' => [
                     'quotation_id' => $quotation->ID ?? 'N/A',
                     'office_code' => $officeCode,
-                    'service_type' => $quotation->ServiceVerticalname ?? 'N/A',
+                    'service_type' => $quotation->ServiceVertical ?? 'N/A',
                     'origin' => $quotation->origincountry ?? 'N/A',
                     'destination' => $quotation->destinationcountry ?? 'N/A',
                     'current_status' => $quotation->QuoteStatus ?? ($quotation->status ?? 'Unknown'),
@@ -2787,7 +2794,7 @@ class QuotationController extends Controller
                             'all_properties' => $properties,
                             'context' => [
                                 'office_code' => $officeCode,
-                                'service_type' => $quotation->ServiceVerticalname ?? 'N/A',
+                                'service_type' => $quotation->ServiceVertical ?? 'N/A',
                             ],
                             'probable_cause' => 'Database schema mismatch or invalid charge ID',
                         ]);
@@ -3240,10 +3247,10 @@ class QuotationController extends Controller
                 'teamid',
                 'QuoteStatus',
                 'status',
-                'ServiceVerticalname',
+                'ServiceVertical',
                 'origincountry',
                 'destinationcountry',
-                'companyname',
+                'pri_partnermaster_name',
             ]);
 
             if (!$quotation) {
@@ -3284,8 +3291,8 @@ class QuotationController extends Controller
                 'context' => [
                     'quotation_id' => $quotation->ID,
                     'office_code' => $officeCode,
-                    'service_type' => $quotation->ServiceVerticalname ?? 'N/A',
-                    'company' => $quotation->companyname ?? 'N/A',
+                    'service_type' => $quotation->ServiceVertical ?? 'N/A',
+                    'company' => $quotation->pri_partnermaster_name ?? 'N/A',
                     'origin' => $quotation->origincountry ?? 'N/A',
                     'destination' => $quotation->destinationcountry ?? 'N/A',
                     'reason_code' => $reasonCode ?: 'N/A',
@@ -3554,7 +3561,7 @@ class QuotationController extends Controller
                     'reason_code' => $reasonCode,
                     'user' => $submittedBy,
                     'office_code' => $officeCode,
-                    'company' => $quotation->companyname ?? 'N/A',
+                    'company' => $quotation->pri_partnermaster_name ?? 'N/A',
                 ]);
 
                 return response()->json([
@@ -3699,7 +3706,7 @@ class QuotationController extends Controller
 
         $quotation = DB::table('Quote_QuotationInfo')
             ->where('ID', $quotationId)
-            ->first(['ID', 'QuoteNo', 'QuoteStatus', 'status', 'companyname', 'teamid']);
+            ->first(['ID', 'QuoteNo', 'QuoteStatus', 'status', 'pri_partnermaster_name', 'teamid']);
 
         if (!$quotation) {
             return response()->json(['success' => false, 'message' => 'Quotation not found'], 404);
@@ -4671,12 +4678,12 @@ class QuotationController extends Controller
             // ── Log current record state after heal ───────────────────────────────
             $record = DB::table('Quote_QuotationInfo')
                 ->where('QuoteNo', $bookingNo)
-                ->first(['QuoteNo', 'SVName', 'process', 'OfficeCode']);
+                ->first(['QuoteNo', 'ServiceVertical', 'process', 'OfficeCode']);
 
             Log::info('getCommunicationTemplatesViaSP - record state after heal', [
                 'booking_no' => $bookingNo,
                 'quote_no' => $record->QuoteNo ?? 'NULL',
-                'svname' => $record->SVName ?? 'NULL',
+                'svname' => $record->ServiceVertical ?? 'NULL',
                 'process' => $record->process ?? 'NULL',
                 'office_code' => $record->OfficeCode ?? 'NULL',
                 'office_bracketed' => '[' . ($record->OfficeCode ?? '') . ']',
@@ -5006,7 +5013,7 @@ class QuotationController extends Controller
             // ============================================
             // LOG VIA SP
             // ============================================
-            $clientName = DB::table('Quote_QuotationInfo')->where('bookingno', $bookingNo)->value('companyname') ?? '';
+            $clientName = DB::table('Quote_QuotationInfo')->where('bookingno', $bookingNo)->value('pri_partnermaster_name') ?? '';
 
             $jsonData = json_encode([
                 'SchedulerType' => 'QuotationEmail',
@@ -5583,16 +5590,16 @@ class QuotationController extends Controller
         }
 
         try {
-            // Fetch quotation to get companyname for matching
+            // Fetch quotation to get pri_partnermaster_name for matching
             $quotation = DB::table('Quote_QuotationInfo')
                 ->where('bookingno', $bookingNo)
-                ->first(['companyname']);
+                ->first(['pri_partnermaster_name']);
             if (!$quotation) {
                 return response()->json(['success' => true, 'emails' => []]);
             }
 
             $emails = DB::table('email_emailscheduler')
-                ->where('ClientName', $quotation->companyname)
+                ->where('ClientName', $quotation->pri_partnermaster_name)
                 ->where('SchedulerType', 'QuotationEmail')
                 ->orderBy('SubmittedOn', 'desc')
                 ->get([
@@ -6008,7 +6015,7 @@ class QuotationController extends Controller
 
             $jobInfo = DB::table('Quote_QuotationInfo')
                 ->where('ID', $quotationId)
-                ->select(['companyname', 'origincountry', 'destinationcountry', 'pri_partnermaster_name', 'SCMJobNo'])
+                ->select(['origincountry', 'destinationcountry', 'pri_partnermaster_name', 'SCMJobNo'])
                 ->first();
 
             return response()->json([
@@ -6017,7 +6024,7 @@ class QuotationController extends Controller
                 'cost' => array_map(fn($r) => $map($r, false), $costRows),
                 'job_info' => $jobInfo
                     ? [
-                        'client' => $jobInfo->companyname ?? '',
+                        'client' => $jobInfo->pri_partnermaster_name ?? '',
                         'shipper' => $jobInfo->pri_partnermaster_name ?? '',
                         'consignee' => '',
                         'port_of_loading' => $jobInfo->origincountry ?? '',
@@ -6649,8 +6656,8 @@ class QuotationController extends Controller
             $quotation = DB::table('Quote_QuotationInfo')
                 ->where('bookingno', $bookingNo)
                 ->first([
-                    'clientid',
-                    'ServiceVerticalname',
+                    'pri_id',
+                    'ServiceVertical',
                     'process',
                     'origincountry',
                     'destinationcountry',
@@ -6679,9 +6686,9 @@ class QuotationController extends Controller
             }
 
             $inputJson = json_encode([
-                'Service' => $quotation->ServiceVerticalname ?? '',
+                'Service' => $quotation->ServiceVertical ?? '',
                 'Process' => $quotation->process ?? '',
-                'Client' => $quotation->clientid ?? '',
+                'Client' => $quotation->pri_id ?? '',
                 'Weight' => (float) ($quotation->scopevolume ?? 0),
                 'Volume' => (float) ($quotation->cargovolume ?? 0),
                 'Filter' => [
@@ -7114,7 +7121,7 @@ class QuotationController extends Controller
                         $userMessage = $firstVal;
                         if (str_contains($firstVal, 'Service Details')) {
                             $userMessage =
-                                'Service type is not configured on this quotation (SVName is missing or unrecognised).';
+                                'Service type is not configured on this quotation (ServiceVertical is missing or unrecognised).';
                         } elseif (str_contains($firstVal, 'Process Details')) {
                             $userMessage =
                                 'Process type is not configured on this quotation (Export/Import/Local required).';

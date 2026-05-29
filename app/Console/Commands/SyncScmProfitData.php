@@ -362,7 +362,7 @@ class SyncScmProfitData extends Command
             'pri_partner_phone' => $record->pri_partner_phone,
             'pri_partner_mobile' => $record->pri_partner_mobile,
             'ServiceVertical' => $record->servicevertical,
-            'SVName' => $record->svname,
+            'SVName' => $record->servicevertical,
             'TransportMode' => $record->transportmode,
             'ServiceClass' => $record->serviceclass,
             'SalesPersonCode' => $record->salespersoncode,

@@ -262,11 +262,7 @@ class CrmSyncService
 
             // ── Company / contact ────────────────────────────────────
             'companyname' => $d['companyname'] ?? '',
-            'companyname_crm' => $d['companyname_crm'] ?? '',
             'contact_name' => $d['contact_name'] ?? '',
-            'partner_name' => $d['partner_name'] ?? '',
-            'type' => $d['type'] ?? '',
-            'function' => $d['function'] ?? '',
             'email_from' => $d['email_from'] ?? '',
             'phone' => $d['phone'] ?? '',
             'mobile' => $d['mobile'] ?? '',
@@ -274,8 +270,6 @@ class CrmSyncService
             'street2' => $d['street2'] ?? '',
             'zip' => $d['zip'] ?? '',
             'city' => $d['city'] ?? '',
-            'phone_sanitized' => $d['phone_sanitized'] ?? '',
-            'email_normalized' => $d['email_normalized'] ?? '',
 
             // ── Partner (company-level) ──────────────────────────────
             'partnermaster_name' => $d['partnermaster_name'] ?? '',
@@ -285,8 +279,8 @@ class CrmSyncService
             'partner_country_code' => $d['partner_country_code'] ?? '',
             'partner_countryname' => $d['partner_countryname'] ?? '',
             'industry_id' => $d['industry_id'] ?? null,
-            'partner_industrttypecode' => $d['partner_industrttypecode'] ?? '',
-            'partner_industrttype' => $d['partner_industrttype'] ?? '',
+            'partner_industrytypecode' => $d['partner_industrytypecode'] ?? '',
+            'partner_industrytype' => $d['partner_industrytype'] ?? '',
             'partner_function' => $d['partner_function'] ?? '',
             'partner_steet' => $d['partner_steet'] ?? '',
             'partner_steet2' => $d['partner_steet2'] ?? '',
@@ -305,8 +299,8 @@ class CrmSyncService
             'pri_partner_countrycode' => $d['pri_partner_countrycode'] ?? '',
             'pri_partner_countryname' => $d['pri_partner_countryname'] ?? '',
             'pri_rrp_industryid' => $d['pri_rrp_industryid'] ?? null,
-            'pri_partner_industrttypecode' => $d['pri_partner_industrttypecode'] ?? '',
-            'pri_partner_industrttype' => $d['pri_partner_industrttype'] ?? '',
+            'pri_partner_industrytypecode' => $d['pri_partner_industrytypecode'] ?? '',
+            'pri_partner_industrytype' => $d['pri_partner_industrytype'] ?? '',
             'pri_partner_function' => $d['pri_partner_function'] ?? '',
             'pri_partner_steet' => $d['pri_partner_steet'] ?? '',
             'pri_partner_steet2' => $d['pri_partner_steet2'] ?? '',
@@ -324,7 +318,6 @@ class CrmSyncService
             'destination_country_code' => $d['destination_country_code'] ?? '',
             'destinationcountry' => $d['destinationcountry'] ?? '',
             'stateid' => $d['stateid'] ?? null,
-            'statename' => $d['statename'] ?? '',
             'countryid' => $d['countryid'] ?? null,
             'countrycode' => $d['countrycode'] ?? '',
             'countryname' => $d['countryname'] ?? '',
@@ -335,48 +328,36 @@ class CrmSyncService
 
             // ── Service details ──────────────────────────────────────
             'serviceverticalid' => $d['serviceverticalid'] ?? null,
-            'serviceverticalname' => $d['svname'] ?? ($d['serviceverticalname'] ?? ''),
             'ServiceVertical' => $d['servicevertical'] ?? null,
-            'SVName' => $d['svname'] ?? '',
+            'SVName' => $d['servicevertical'] ?? '',
             'TransportMode' => $d['transportmode'] ?? '',
             'ServiceClass' => $d['serviceclass'] ?? '',
             'shipmentmode' => $d['shipmentmode'] ?? '',
             'incoterm' => $d['incoterm'] ?? '',
             'process' => $d['process'] ?? '',
-            'storage' => $d['storage'] ?? '',
-            'other' => $d['other'] ?? '',
 
             // ── Cargo ────────────────────────────────────────────────
             'commodity' => $d['commodity'] ?? '',
-            'scope_of_volume' => $d['scope_of_volume'] ?? '',
             'scopevolume' => $d['scopevolume'] ?? '',
-            'cargo_volume' => ($d['cargo_volume'] ?? 0) > 0 ? (float) $d['cargo_volume'] : null,
             'cargovolume' => ($d['cargovolume'] ?? 0) > 0 ? (float) $d['cargovolume'] : null,
             'containerlist' => $d['containerlist'] ?? '',
 
             // ── Revenue ──────────────────────────────────────────────
             'quoted_revenue' => ($d['quoted_revenue'] ?? 0) > 0 ? (float) $d['quoted_revenue'] : null,
             'expected_revenue' => ($d['expected_revenue'] ?? 0) > 0 ? (float) $d['expected_revenue'] : null,
-            'prorated_revenue' => ($d['prorated_revenue'] ?? 0) > 0 ? (float) $d['prorated_revenue'] : null,
 
             // ── CRM metadata ─────────────────────────────────────────
             'source_id' => $d['source_id'] ?? null,
             'source' => $d['source'] ?? '',
-            'source_name' => $d['source_name'] ?? '',
             'medium_id' => $d['medium_id'] ?? null,
             'medium' => $d['medium'] ?? '',
             'stage_id' => $d['stage_id'] ?? null,
-            'state' => $d['state'] ?? '',
-            'quotationo' => $d['quotationo'] ?? '',
-            'won_status' => $d['won_status'] ?? '',
+            'status' => $d['status'] ?? '',
 
             // ── Status ───────────────────────────────────────────────
-            'status' => $d['status'] ?? '',
             'QuoteStatus' => $this->deriveQuoteStatus($d['won_status'] ?? null, $d['status'] ?? null),
 
             // ── Dates ────────────────────────────────────────────────
-            'date_deadline' => $this->parseDate($d['date_deadline'] ?? null),
-            'date_closed' => $this->parseDate($d['date_closed'] ?? null),
             'CreatedOn' => $this->parseDate($d['createdon'] ?? null),
             'Updatedon' => $this->parseDate($d['updatedon'] ?? null),
 
@@ -407,12 +388,12 @@ class CrmSyncService
                     ->where('bookingno', $bookingNo)
                     ->first([
                         'bookingno',
-                        'companyname',
+                        'pri_partnermaster_name',
                         'teamname',
                         'username',
                         'origincountry',
                         'destinationcountry',
-                        'serviceverticalname',
+                        'ServiceVertical',
                         'QuoteStatus',
                         'status',
                         'Updatedon',
@@ -433,7 +414,7 @@ class CrmSyncService
             $total = $query->count();
             $recent = $query
                 ->orderByDesc('Updatedon')
-                ->get(['bookingno', 'companyname', 'teamname', 'QuoteStatus', 'Updatedon'])
+                ->get(['bookingno', 'pri_partnermaster_name', 'teamname', 'QuoteStatus', 'Updatedon'])
                 ->toArray();
 
             return compact('total', 'recent');
