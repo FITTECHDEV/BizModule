@@ -251,18 +251,18 @@ class DashboardController extends Controller
             if ($filter === 'inactive') {
                 $threeMonthsAgo = now()->subMonths(3)->startOfDay()->format('Y-m-d H:i:s');
                 $sql = "
-                SELECT 
+                SELECT
                     au.id,
                     au.displayName as name,
                     au.userPrincipalName as login_id,
                     0 as logins_last_month,
                     (SELECT MAX(ald2.date_utc) FROM Azure_LoginDetails ald2 WHERE ald2.username = au.userPrincipalName) as last_login
                 FROM Azure_Users au
-                WHERE au.displayName IS NOT NULL 
+                WHERE au.displayName IS NOT NULL
                     AND au.displayName != ''
                     AND au.displayName NOT LIKE 'User-%'
                     AND NOT EXISTS (
-                        SELECT 1 FROM Azure_LoginDetails ald 
+                        SELECT 1 FROM Azure_LoginDetails ald
                         WHERE ald.username = au.userPrincipalName AND ald.date_utc >= ?
                     )
             ";
@@ -1329,17 +1329,17 @@ class DashboardController extends Controller
             // FIXED: Use INNER JOIN to only get users with logins, then LEFT JOIN to get all users
             $usersWithLogins = DB::select(
                 "
-            SELECT 
+            SELECT
                 au.id,
                 au.displayName as name,
                 au.userPrincipalName as login_id,
                 COUNT(ald.request_id) as logins_last_month,
                 MAX(ald.date_utc) as last_login
             FROM Azure_Users au
-            INNER JOIN Azure_LoginDetails ald 
+            INNER JOIN Azure_LoginDetails ald
                 ON LOWER(ald.user_id) = LOWER(au.id)
                 AND ald.date_utc BETWEEN ? AND ?
-            WHERE au.displayName IS NOT NULL 
+            WHERE au.displayName IS NOT NULL
                 AND au.displayName != ''
                 AND au.displayName NOT LIKE 'User-%'
                 AND au.userPrincipalName IS NOT NULL
@@ -1353,12 +1353,12 @@ class DashboardController extends Controller
 
             // Get all valid users
             $allUsers = DB::select("
-            SELECT 
+            SELECT
                 id,
                 displayName as name,
                 userPrincipalName as login_id
             FROM Azure_Users
-            WHERE displayName IS NOT NULL 
+            WHERE displayName IS NOT NULL
                 AND displayName != ''
                 AND displayName NOT LIKE 'User-%'
                 AND userPrincipalName IS NOT NULL
@@ -1630,7 +1630,7 @@ class DashboardController extends Controller
 
         return $insights;
     }
-    
+
     public function debugRelationships(Request $request)
     {
         $system = $request->input('system', 'SCM');

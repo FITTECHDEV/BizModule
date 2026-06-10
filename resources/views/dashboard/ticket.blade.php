@@ -164,37 +164,37 @@
             @endif
 
             <!-- EFRIS Integration -->
-            @if (Auth::user()->can('efris-access') && (!$effectiveOffice || in_array($effectiveOffice, $officeGate['efris'])))
-                <div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-3">
-                    <a href="/efris" style="text-decoration: none; color: inherit;">
-                        <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
-                            <div class="widget-user-header bg-maroon">
-                                <h3 class="widget-user-username">EFRIS INTEGRATION</h3>
-                                <h5 class="widget-user-desc">EFRIS Dashboard</h5>
-                            </div>
-                            <div class="widget-user-image">
-                                <img class="img-circle elevation-2"
-                                    src="{{ asset('site_imgs/Custom-Icon-Design-Round-World-Flags-Uganda.ico') }}"
-                                    alt="Uganda Flag">
-                            </div>
-                            <div class="card-footer">
-                                <div class="row justify-content-center">
-                                    @foreach ($efris_stats as $entityStats)
-                                        <div class="col-4 border">
-                                            <div class="description-block">
-                                                <h5 class="description-header"><span
-                                                        class="badge badge-primary">{{ $entityStats->EfrisStatus }}</span>
-                                                </h5>
-                                                <span class="description-text small">{{ $entityStats->NoOfInvoice }}</span>
-                                            </div>
+            {{-- @if (Auth::user()->can('efris-access') && (!$effectiveOffice || in_array($effectiveOffice, $officeGate['efris']))) --}}
+            <div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-3">
+                <a href="/efris" style="text-decoration: none; color: inherit;">
+                    <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card">
+                        <div class="widget-user-header bg-maroon">
+                            <h3 class="widget-user-username">EFRIS INTEGRATION</h3>
+                            <h5 class="widget-user-desc">EFRIS Dashboard</h5>
+                        </div>
+                        <div class="widget-user-image">
+                            <img class="img-circle elevation-2"
+                                src="{{ asset('site_imgs/Custom-Icon-Design-Round-World-Flags-Uganda.ico') }}"
+                                alt="Uganda Flag">
+                        </div>
+                        <div class="card-footer">
+                            <div class="row justify-content-center">
+                                @foreach ($efris_stats as $entityStats)
+                                    <div class="col-4 border">
+                                        <div class="description-block">
+                                            <h5 class="description-header"><span
+                                                    class="badge badge-primary">{{ $entityStats->EfrisStatus }}</span>
+                                            </h5>
+                                            <span class="description-text small">{{ $entityStats->NoOfInvoice }}</span>
                                         </div>
-                                    @endforeach
-                                </div>
+                                    </div>
+                                @endforeach
                             </div>
                         </div>
-                    </a>
-                </div>
-            @endif
+                    </div>
+                </a>
+            </div>
+            {{-- @endif --}}
 
             <!-- TRA Integration (Tanzania) -->
             @if (Auth::user()->can('tra-tz-access') && in_array($effectiveOffice, $officeGate['tra_tz']))
@@ -387,6 +387,88 @@
                     </a>
                 </div>
             @endif
+
+
+            {{-- AR/AP Smart Invoices - Zambia Revenue Authority (ZRA) Integration --}}
+            @php
+                $zraOfficeFlags = [
+                    'KE' => 'kenya_flag.png',
+                    'ZM' => 'zambia-flag.png',
+                    'TZ' => 'tanzania_flag.png',
+                    'AR' => 'tanzania_flag.png',
+                    'UG' => 'uganda_flag.png',
+                    'RW' => 'rwanda_flag.png',
+                ];
+                
+
+                $zraOfficeLabels = [
+                    'KE' => 'KRA Integration',
+                    'ZM' => 'ZRA Integration',
+                    'TZ' => 'TRA Integration',
+                    'AR' => 'TRA Integration',
+                    'UG' => 'EFRIS Integration',
+                    'RW' => 'RRA Integration',
+                ];
+
+                $zraFlag = $zraOfficeFlags[$effectiveOffice] ?? 'zambia-flag.png';
+                $zraLabel = $zraOfficeLabels[$effectiveOffice] ?? 'Smart Invoice';
+            @endphp
+
+            <div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-3">
+                <a href="/zra" style="text-decoration: none; color: inherit;">
+                    <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card"
+                        style="cursor: pointer;">
+                        <div class="widget-user-header"
+                            style="background: linear-gradient(135deg, #198754 0%, #0a3d1f 100%);">
+                            <h3 class="widget-user-username">{{ strtoupper($zraLabel) }}</h3>
+                            <h5 class="widget-user-desc">Smart Invoice Dashboard</h5>
+                        </div>
+                        <div class="widget-user-image">
+                            <img class="img-circle elevation-2" src="{{ asset('site_imgs/' . $zraFlag) }}"
+                                alt="{{ $effectiveOffice }} Flag" style="background: white; padding: 4px;">
+                        </div>
+                        <div class="card-footer">
+                            <div class="row">
+                                @forelse ($zra_stats as $entityStats)
+                                    <div class="col-4 {{ !$loop->last ? 'border-right' : '' }}">
+                                        <div class="description-block">
+                                            <h5
+                                                class="description-header
+                                    @if (strtolower($entityStats->StatusName) === 'failed') text-danger
+                                    @elseif(strtolower($entityStats->StatusName) === 'pending') text-warning
+                                    @elseif(strtolower($entityStats->StatusName) === 'submitted') text-success
+                                    @else text-info @endif">
+                                                {{ $entityStats->StatusCount }}
+                                            </h5>
+                                            <span class="description-text">{{ $entityStats->StatusName }}</span>
+                                        </div>
+                                    </div>
+                                @empty
+                                    <div class="col-4 border-right">
+                                        <div class="description-block">
+                                            <h5 class="description-header text-danger">0</h5>
+                                            <span class="description-text">Failed</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-4 border-right">
+                                        <div class="description-block">
+                                            <h5 class="description-header text-warning">0</h5>
+                                            <span class="description-text">Pending</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="description-block">
+                                            <h5 class="description-header text-success">0</h5>
+                                            <span class="description-text">Submitted</span>
+                                        </div>
+                                    </div>
+                                @endforelse
+                            </div>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
 
             <!-- Azure Management Card -->
             @if (Auth::user()->can('approve-all-entity-request'))

@@ -74,6 +74,8 @@ class HomeController extends Controller
                 \Log::error('RRA Stats Error: ' . $e->getMessage());
                 $rra_stats = [];
             }
+            // ZRA (Zambia) — DB not ready yet, placeholder until sp_ZRA_GetStats exists
+            $zra_stats = [];
 
             try {
                 $azureStats = AzureUser::getStatistics();
@@ -195,6 +197,7 @@ class HomeController extends Controller
                     'traStatsTZ',
                     'traStatsADL',
                     'rra_stats',
+                    'zra_stats', 
                     'loginTrackerStats',
                     'active_this_month',
                     'active_last_month',

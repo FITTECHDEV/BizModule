@@ -360,10 +360,26 @@ return [
 
         [
             'text' => 'QUOTATION',
-            'url' => 'quotation',
+            'url' => '/#',
             'icon' => 'fas fa-fw fa-file-invoice',
             'active' => ['quotation', 'quotation/*'],
             'can' => 'view-quotation',
+            'submenu' => [
+                [
+                    'text' => 'Quotations',
+                    'url' => 'quotation',
+                    'icon' => 'fas fa-fw fa-file-invoice',
+                    'active' => ['quotation'],
+                    'can' => 'view-quotation',
+                ],
+                [
+                    'text' => 'Website Requests',
+                    'url' => 'quotation/website-requests',
+                    'icon' => 'fas fa-fw fa-globe',
+                    'active' => ['quotation/website-requests'],
+                    'can' => 'view-quotation',
+                ],
+            ],
         ],
         // ↓ NEW ENTRY ↓
         [

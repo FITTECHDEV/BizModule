@@ -1478,8 +1478,9 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
         'lookupEquipmentTypes',
     ])->name('quotation.lookup.equipmentTypes');
 
-    Route::get('/quotation/offices', [App\Http\Controllers\QuotationController::class, 'getOfficeList'])
-    ->name('quotation.offices');
+    Route::get('/quotation/offices', [App\Http\Controllers\QuotationController::class, 'getOfficeList'])->name(
+        'quotation.offices',
+    );
 
     // ============================================
     // WRITE ACTIONS (POST)
@@ -1591,6 +1592,23 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
         App\Http\Controllers\QuotationController::class,
         'getRequestOfficeHistory',
     ])->name('quotation.request-office-history');
+
+    Route::get('/quotation/website-requests', [App\Http\Controllers\WebsiteQuotationController::class, 'index'])->name(
+        'quotation.website-requests',
+    );
+
+    // WEBSITE QUOTATION REQUESTS
+    // ============================================
+    Route::get('/quotation/website-requests', [App\Http\Controllers\WebsiteQuotationController::class, 'index'])->name(
+        'quotation.website-requests',
+    );
+
+    Route::get('/quotation/website-requests/portal', [
+        App\Http\Controllers\WebsiteQuotationController::class,
+        'portal',
+    ])->name('quotation.website-requests.portal');
+
+    
 
     // ============================================
     // WILDCARD ROUTES — must be last
@@ -1989,3 +2007,5 @@ Route::get('/debug-azure-files/{prefix}', function ($prefix) {
     $filtered = array_filter($files, fn($f) => str_contains($f, $prefix));
     return response()->json(array_values($filtered));
 });
+// ZRA Smart Invoice
+Route::get('/zra', [App\Http\Controllers\ZraController::class, 'index'])->name('zra.index')->middleware('auth');
