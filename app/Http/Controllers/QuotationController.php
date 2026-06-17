@@ -27,7 +27,7 @@ class QuotationController extends Controller
         'ET' => 'ETB',
         'KE' => 'KES',
         'RW' => 'RWF',
-        'SA' => 'KES', 
+        'SA' => 'KES',
         'SS' => 'SSP',
         'TZ' => 'TZS',
         'UG' => 'UGX',
@@ -1514,7 +1514,7 @@ class QuotationController extends Controller
 
     /**
      * QuotationController::update()
-     * ───────────────────────────────────────────────────────────────────────────── 
+     * ─────────────────────────────────────────────────────────────────────────────
      *   OLD: Hard-coded array passed every column on every save — partial saves
      *        from the show page would null-out columns not in the request.
      *
@@ -10302,6 +10302,40 @@ class QuotationController extends Controller
                 ],
                 500,
             );
+        }
+    }
+
+    public function salesIntelligence(Request $request)
+    {
+        $officeCode = $request->input('office_code');
+        $customer = $request->input('customer');
+
+        $inputJson = json_encode([
+            'OfficeCode' => $officeCode,
+            'Status' => 'Total',
+            'Customer' => $customer,
+            'FromDate' => '',
+            'ToDate' => '',
+            'Service' => '',
+            'Process' => '',
+        ]);
+
+        try {
+            $results = DB::select('EXEC sp_Quote_QuotationList @InputJson = ?', [$inputJson]);
+
+            // Exact match guard — SP uses LIKE, we enforce exact match here
+            $company = $customer;
+            $filtered = array_filter($results, fn($r) => trim($r->CompanyName) === trim($company));
+
+            return response()->json([
+                'success' => true,
+                'data' => array_values($filtered),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ]);
         }
     }
 }

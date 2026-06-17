@@ -1608,7 +1608,10 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
         'portal',
     ])->name('quotation.website-requests.portal');
 
-    
+    Route::get('/quotation/sales-intelligence', [
+        App\Http\Controllers\QuotationController::class,
+        'salesIntelligence',
+    ])->name('quotation.sales-intelligence');
 
     // ============================================
     // WILDCARD ROUTES — must be last
@@ -2008,4 +2011,6 @@ Route::get('/debug-azure-files/{prefix}', function ($prefix) {
     return response()->json(array_values($filtered));
 });
 // ZRA Smart Invoice
-Route::get('/zra', [App\Http\Controllers\ZraController::class, 'index'])->name('zra.index')->middleware('auth');
+Route::get('/zra', [App\Http\Controllers\ZraController::class, 'index'])
+    ->name('zra.index')
+    ->middleware('auth');

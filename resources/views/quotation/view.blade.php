@@ -13,10 +13,6 @@
                 <i class="fas fa-arrow-left"></i> Back to List
             </a>
 
-            <button type="button" class="btn btn-info btn-sm" id="btnCopyBooking" data-bookingno="{{ $quotation->bookingno }}">
-                <i class="fas fa-copy"></i> Duplicate
-            </button>
-
             @php
                 $quoteStatus = $quotation->QuoteStatus ?? ($quotation->status ?? null);
                 $isInProgress =
@@ -25,6 +21,11 @@
             @endphp
 
             @if ($isInProgress)
+                <button type="button" class="btn btn-info btn-sm" id="btnCopyBooking"
+                    data-bookingno="{{ $quotation->bookingno }}">
+                    <i class="fas fa-copy"></i> Duplicate
+                </button>
+
                 <a href="{{ route('quotation.edit', $quotation->ID) }}" class="btn btn-warning btn-sm">
                     <i class="fas fa-edit"></i> Edit Booking
                 </a>

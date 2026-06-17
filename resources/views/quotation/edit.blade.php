@@ -29,6 +29,239 @@
     <form id="bookingQuotationForm">
         @csrf
 
+        {{-- ═══════════════════════════════════════════════════════════ --}}
+        {{-- SALES INTELLIGENCE CARD                                     --}}
+        {{-- ═══════════════════════════════════════════════════════════ --}}
+        <div class="row mb-3" id="salesIntelligenceSection">
+            <div class="col-12">
+                <div class="card" id="salesIntelligenceCard" style="border-top: 3px solid #4B49AC;">
+                    <div class="card-header d-flex justify-content-between align-items-center"
+                        style="background:#f4f4fb; cursor:pointer;" id="salesIntelligenceHeader">
+                        <h3 class="card-title mb-0" style="color:#4B49AC; font-weight:700;">
+                            <i class="fas fa-chart-line mr-2"></i> Sales Intelligence
+                        </h3>
+                        <div class="d-flex align-items-center" style="gap:8px;">
+                            {{-- View toggle --}}
+                            <div class="btn-group btn-group-sm" id="siViewToggle" style="display:none !important;">
+                                <button type="button" class="btn btn-outline-secondary active" id="siTableViewBtn"
+                                    title="Table view">
+                                    <i class="fas fa-table"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" id="siChartViewBtn"
+                                    title="Chart view">
+                                    <i class="fas fa-chart-bar"></i>
+                                </button>
+                            </div>
+                            <button type="button" class="btn btn-tool" id="siCollapseBtn">
+                                <i class="fas fa-chevron-up"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card-body" id="salesIntelligenceBody">
+
+                        {{-- Loading state --}}
+                        <div id="siLoading" class="text-center py-4">
+                            <i class="fas fa-spinner fa-spin text-primary" style="font-size:1.5rem;"></i>
+                            <p class="text-muted mt-2 mb-0">Loading client intelligence...</p>
+                        </div>
+
+                        {{-- Error state --}}
+                        <div id="siError" class="alert alert-warning d-none py-2 px-3">
+                            <i class="fas fa-exclamation-triangle mr-2"></i>
+                            <span id="siErrorMsg">Unable to load sales intelligence.</span>
+                        </div>
+
+                        {{-- Content (hidden until loaded) --}}
+                        <div id="siContent" style="display:none;">
+
+                            {{-- Top row: Probability + Expected Revenue + Profit --}}
+                            <div class="row mb-3" id="siMetricsRow">
+
+                                {{-- Probability --}}
+                                <div class="col-6 col-md-3 mb-2">
+                                    <div class="p-3 rounded text-center"
+                                        style="background:#f0f0fb; border:1px solid #dddcf5;">
+                                        <div
+                                            style="font-size:0.7rem; font-weight:700; text-transform:uppercase;
+                                    letter-spacing:0.08em; color:#4B49AC; margin-bottom:4px;">
+                                            Win Probability
+                                        </div>
+                                        <div id="siProbabilityValue"
+                                            style="font-size:2rem; font-weight:800; color:#4B49AC; line-height:1;">
+                                            —
+                                        </div>
+                                        <div id="siProbabilityBasis" style="font-size:0.7rem; color:#888; margin-top:4px;">
+                                            —
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {{-- Confidence --}}
+                                <div class="col-6 col-md-3 mb-2">
+                                    <div class="p-3 rounded text-center"
+                                        style="background:#f0f0fb; border:1px solid #dddcf5;">
+                                        <div
+                                            style="font-size:0.7rem; font-weight:700; text-transform:uppercase;
+                                    letter-spacing:0.08em; color:#4B49AC; margin-bottom:4px;">
+                                            Confidence
+                                        </div>
+                                        <div id="siConfidenceValue" style="font-size:2rem; font-weight:800; line-height:1;">
+                                            —
+                                        </div>
+                                        <div id="siConfidenceBasis" style="font-size:0.7rem; color:#888; margin-top:4px;">
+                                            —
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {{-- Expected Revenue --}}
+                                <div class="col-6 col-md-3 mb-2">
+                                    <div class="p-3 rounded text-center"
+                                        style="background:#f0f0fb; border:1px solid #dddcf5;">
+                                        <div
+                                            style="font-size:0.7rem; font-weight:700; text-transform:uppercase;
+                                    letter-spacing:0.08em; color:#4B49AC; margin-bottom:4px;">
+                                            Expected Revenue
+                                        </div>
+                                        <div id="siExpectedRevenue"
+                                            style="font-size:1.4rem; font-weight:800; color:#28a745; line-height:1;">
+                                            —
+                                        </div>
+                                        <div style="font-size:0.7rem; color:#888; margin-top:4px;">
+                                            Quoted × Probability
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {{-- Expected Profit --}}
+                                <div class="col-6 col-md-3 mb-2">
+                                    <div class="p-3 rounded text-center"
+                                        style="background:#f0f0fb; border:1px solid #dddcf5;">
+                                        <div
+                                            style="font-size:0.7rem; font-weight:700; text-transform:uppercase;
+                                    letter-spacing:0.08em; color:#4B49AC; margin-bottom:4px;">
+                                            Expected Profit
+                                        </div>
+                                        <div id="siExpectedProfit"
+                                            style="font-size:1.4rem; font-weight:800; line-height:1;">
+                                            —
+                                        </div>
+                                        <div id="siProfitMargin" style="font-size:0.7rem; color:#888; margin-top:4px;">
+                                            —
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>{{-- END metrics row --}}
+
+                            {{-- TABLE VIEW --}}
+                            <div id="siTableView">
+
+                                {{-- Service History --}}
+                                <div class="mb-3">
+                                    <div
+                                        style="font-size:0.75rem; font-weight:700; text-transform:uppercase;
+                                letter-spacing:0.08em; color:#4B49AC; border-bottom:2px solid #4B49AC;
+                                padding-bottom:4px; margin-bottom:8px;">
+                                        Client Service History
+                                    </div>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-bordered mb-0" style="font-size:0.82rem;">
+                                            <thead style="background:#f4f4fb;">
+                                                <tr>
+                                                    <th>Service</th>
+                                                    <th class="text-center">Offered</th>
+                                                    <th class="text-center">Won</th>
+                                                    <th class="text-center">Lost/Cancelled</th>
+                                                    <th class="text-center">Win Rate</th>
+                                                    <th>Last Offer</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="siServiceHistoryBody">
+                                                <tr>
+                                                    <td colspan="6" class="text-center text-muted">
+                                                        Loading...
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                {{-- Recent Quotes --}}
+                                <div>
+                                    <div
+                                        style="font-size:0.75rem; font-weight:700; text-transform:uppercase;
+                                letter-spacing:0.08em; color:#4B49AC; border-bottom:2px solid #4B49AC;
+                                padding-bottom:4px; margin-bottom:8px;">
+                                        Recent Quote History
+                                        <span id="siQuoteCount" class="badge badge-secondary ml-1"
+                                            style="font-size:0.65rem; font-weight:600;">0</span>
+                                    </div>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-bordered mb-0" style="font-size:0.82rem;">
+                                            <thead style="background:#f4f4fb;">
+                                                <tr>
+                                                    <th>Quote No</th>
+                                                    <th>Date</th>
+                                                    <th>Service</th>
+                                                    <th>Status</th>
+                                                    <th>Sales Person</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="siRecentQuotesBody">
+                                                <tr>
+                                                    <td colspan="5" class="text-center text-muted">
+                                                        Loading...
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                            </div>{{-- END siTableView --}}
+
+                            {{-- CHART VIEW --}}
+                            <div id="siChartView" style="display:none;">
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <div
+                                            style="font-size:0.75rem; font-weight:700; text-transform:uppercase;
+                                    letter-spacing:0.08em; color:#4B49AC; margin-bottom:8px;">
+                                            Win / Loss Ratio
+                                        </div>
+                                        <canvas id="siWinLossChart" height="200"></canvas>
+                                    </div>
+                                    <div class="col-md-8 mb-3">
+                                        <div
+                                            style="font-size:0.75rem; font-weight:700; text-transform:uppercase;
+                                    letter-spacing:0.08em; color:#4B49AC; margin-bottom:8px;">
+                                            Service Performance
+                                        </div>
+                                        <canvas id="siServiceChart" height="200"></canvas>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-12">
+                                        <div
+                                            style="font-size:0.75rem; font-weight:700; text-transform:uppercase;
+                                    letter-spacing:0.08em; color:#4B49AC; margin-bottom:8px;">
+                                            Quote Activity (Last 12 Months)
+                                        </div>
+                                        <canvas id="siTrendChart" height="100"></canvas>
+                                    </div>
+                                </div>
+                            </div>{{-- END siChartView --}}
+
+                        </div>{{-- END siContent --}}
+
+                    </div>{{-- END card-body --}}
+                </div>{{-- END card --}}
+            </div>
+        </div>
+
         <div class="row">
             <!-- LEFT COLUMN -->
             <div class="col-md-4">
@@ -71,7 +304,8 @@
                                 <input type="text" class="form-control form-control-sm" id="salesPersonDisplay"
                                     value="{{ $quotation->username ?? '' }}" readonly
                                     placeholder="Search by name or code...">
-                                <input type="hidden" id="salesPersonCode" value="{{ $quotation->SalesPersonCode ?? '' }}">
+                                <input type="hidden" id="salesPersonCode"
+                                    value="{{ $quotation->SalesPersonCode ?? '' }}">
                                 <ul id="salesPersonSuggestions" class="list-group"
                                     style="
                                     display:none; position:absolute; z-index:9999;
@@ -731,8 +965,8 @@
                                     </label>
                                     <div class="col-sm-8">
                                         <input type="text" class="form-control form-control-sm"
-                                            id="customerCountryDisplay"
-                                            value="{{ $quotation->countryname ?? '' }}" readonly>
+                                            id="customerCountryDisplay" value="{{ $quotation->countryname ?? '' }}"
+                                            readonly>
                                         <div id="customerCountryEditWrap" style="display:none;">
                                             <select class="form-control form-control-sm" id="customerCountrySelect">
                                                 <option value="">-- Select --</option>
@@ -1152,8 +1386,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                        MODALS
-                                                                        ============================================ -->
+                                                                                MODALS
+                                                                                ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1820,7 +2054,8 @@
                             <div class="cc-info-col">
                                 <div class="cc-info-row">
                                     <span class="cc-lbl">Service Type</span>
-                                    <span class="cc-val" id="ccServiceType">{{ $quotation->ServiceVertical ?? '' }}</span>
+                                    <span class="cc-val"
+                                        id="ccServiceType">{{ $quotation->ServiceVertical ?? '' }}</span>
                                 </div>
                                 <div class="cc-info-row">
                                     <span class="cc-lbl cc-lbl-required">*&nbsp;Job No</span>
@@ -2069,7 +2304,7 @@
                                 <option value="equipment">Equipment Type</option> {{-- NEW --}}
                             </select>
                             <input type="text" class="cc-input" id="ccSearchValue" style="width:200px;"
-                                placeholder="">
+                                placeholder=""> 
                             <button type="button" class="cc-btn-search-go" id="ccSearchGoBtn">Search</button>
                             <button type="button" class="cc-btn-add-filter" id="ccAddFilterBtn">Add filter</button>
                         </div>
@@ -2141,10 +2376,11 @@
 
 @section('css')
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -2587,9 +2823,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -3513,6 +3749,515 @@
 
             console.log('Booking Quotation Edit - Page Loaded');
 
+            // ═══════════════════════════════════════════════════════════
+            // SALES INTELLIGENCE
+            // ═══════════════════════════════════════════════════════════
+            (function() {
+
+                // Values already available on the page from PHP/JS
+                const SI_COMPANY = '{{ addslashes(trim($quotation->pri_partnermaster_name ?? '')) }}';
+                const SI_SERVICE = '{{ addslashes(trim($quotation->SVName ?? '')) }}';
+                const SI_OFFICE = '{{ addslashes(trim($officeShortCode ?? '')) }}';
+                const SI_CURRENCY = '{{ addslashes(trim($quotation->QuoteCurr ?? 'USD')) }}';
+
+                // Chart instances — kept so we can destroy before re-render
+                let siWinLossChartInst = null;
+                let siServiceChartInst = null;
+                let siTrendChartInst = null;
+                let siDataLoaded = false;
+
+                // ── Collapse toggle ───────────────────────────────────────
+                $('#salesIntelligenceHeader').on('click', function(e) {
+                    if ($(e.target).closest('button, .btn-group').length) return;
+                    const $body = $('#salesIntelligenceBody');
+                    const $icon = $('#siCollapseBtn i');
+                    $body.slideToggle(200);
+                    $icon.toggleClass('fa-chevron-up fa-chevron-down');
+                });
+
+                $('#siCollapseBtn').on('click', function(e) {
+                    e.stopPropagation();
+                    const $body = $('#salesIntelligenceBody');
+                    const $icon = $(this).find('i');
+                    $body.slideToggle(200);
+                    $icon.toggleClass('fa-chevron-up fa-chevron-down');
+                });
+
+                // ── View toggle ───────────────────────────────────────────
+                $('#siTableViewBtn').on('click', function() {
+                    $(this).addClass('active');
+                    $('#siChartViewBtn').removeClass('active');
+                    $('#siTableView').show();
+                    $('#siChartView').hide();
+                });
+
+                $('#siChartViewBtn').on('click', function() {
+                    $(this).addClass('active');
+                    $('#siTableViewBtn').removeClass('active');
+                    $('#siTableView').hide();
+                    $('#siChartView').show();
+                    // Render charts only when first switched to chart view
+                    if (siDataLoaded) renderCharts(window._siComputedData);
+                });
+
+                // ── Helpers ───────────────────────────────────────────────
+                function fmtCurrency(val, currency) {
+                    return new Intl.NumberFormat('en-US', {
+                        style: 'currency',
+                        currency: currency || 'USD',
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                    }).format(val);
+                }
+
+                function statusGroup(status) {
+                    if (['Won', 'Completed'].includes(status)) return 'won';
+                    if (['Lost', 'Cancelled'].includes(status)) return 'lost';
+                    if (['In Progress'].includes(status)) return 'open';
+                    return 'other';
+                }
+
+                // ── Probability engine ────────────────────────────────────
+                // Returns { probability: float|null, confidence: string, basis: string }
+                function computeProbability(allQuotes, targetService) {
+                    const closed = allQuotes.filter(q => ['Won', 'Completed', 'Lost', 'Cancelled'].includes(q
+                        .Status));
+
+                    // Insufficient data rule — minimum 3 closed quotes required
+                    if (closed.length < 3) {
+                        return {
+                            probability: null,
+                            confidence: 'Insufficient data',
+                            basis: closed.length + ' closed quote(s) — need at least 3',
+                            color: '#aaa',
+                        };
+                    }
+
+                    // Base win rate across all services
+                    const won = closed.filter(q => statusGroup(q.Status) === 'won').length;
+                    const baseRate = won / closed.length;
+
+                    // Service-specific win rate (weighted 60%)
+                    const svcQuotes = closed.filter(q => q.Service === targetService);
+                    let serviceRate = baseRate; // fallback to base if no service history
+                    if (svcQuotes.length >= 2) {
+                        const svcWon = svcQuotes.filter(q => statusGroup(q.Status) === 'won').length;
+                        serviceRate = svcWon / svcQuotes.length;
+                    }
+                    let probability = (baseRate * 0.4) + (serviceRate * 0.6);
+
+                    // Recency adjustment — days since most recent quote
+                    const dates = allQuotes.map(q => new Date(q.Date)).filter(d => !isNaN(d));
+                    const lastDate = dates.length ? new Date(Math.max(...dates)) : null;
+                    if (lastDate) {
+                        const daysSince = Math.floor((new Date() - lastDate) / 86400000);
+                        if (daysSince < 30) probability = Math.min(1, probability + 0.05);
+                        else if (daysSince > 180) probability = Math.max(0, probability - 0.10);
+                    }
+
+                    // Confidence tier
+                    let confidence, confColor;
+                    if (closed.length >= 10) {
+                        confidence = 'High';
+                        confColor = '#28a745';
+                    } else if (closed.length >= 5) {
+                        confidence = 'Medium';
+                        confColor = '#fd7e14';
+                    } else {
+                        confidence = 'Low';
+                        confColor = '#dc3545';
+                    }
+
+                    return {
+                        probability: Math.round(probability * 1000) / 10, // 1 decimal place
+                        confidence,
+                        confColor,
+                        basis: `Based on ${closed.length} closed quotes (${won} won)`,
+                    };
+                }
+
+                // ── Service history aggregation ───────────────────────────
+                function buildServiceHistory(allQuotes) {
+                    const map = {};
+                    allQuotes.forEach(function(q) {
+                        const svc = q.Service || 'Unknown';
+                        if (!map[svc]) map[svc] = {
+                            offered: 0,
+                            won: 0,
+                            lost: 0,
+                            lastDate: null
+                        };
+                        map[svc].offered++;
+                        const grp = statusGroup(q.Status);
+                        if (grp === 'won') map[svc].won++;
+                        if (grp === 'lost') map[svc].lost++;
+                        const d = new Date(q.Date);
+                        if (!isNaN(d) && (!map[svc].lastDate || d > map[svc].lastDate)) {
+                            map[svc].lastDate = d;
+                        }
+                    });
+                    return map;
+                }
+
+                // ── Render metrics ────────────────────────────────────────
+                function renderMetrics(prob, quotedRevenue, quotedCost, currency) {
+                    if (prob.probability === null) {
+                        $('#siProbabilityValue').text('N/A').css('color', '#aaa');
+                        $('#siProbabilityBasis').text(prob.basis);
+                        $('#siConfidenceValue').text('N/A').css('color', '#aaa');
+                        $('#siConfidenceBasis').text('Insufficient history');
+                        $('#siExpectedRevenue').text('N/A');
+                        $('#siExpectedProfit').text('N/A');
+                        $('#siProfitMargin').text('—');
+                        return;
+                    }
+
+                    const pct = prob.probability;
+                    const expectedRev = (quotedRevenue * pct) / 100;
+                    const profit = quotedRevenue - quotedCost;
+                    const expectedProfit = (profit * pct) / 100;
+                    const margin = quotedRevenue > 0 ?
+                        ((profit / quotedRevenue) * 100).toFixed(2) :
+                        null;
+
+                    $('#siProbabilityValue').text(pct.toFixed(1) + '%').css('color', '#4B49AC');
+                    $('#siProbabilityBasis').text(prob.basis);
+
+                    $('#siConfidenceValue').text(prob.confidence).css('color', prob.confColor);
+                    $('#siConfidenceBasis').text(closed => prob.basis);
+                    $('#siConfidenceBasis').text('');
+
+                    $('#siExpectedRevenue')
+                        .text(fmtCurrency(expectedRev, currency))
+                        .css('color', expectedRev >= 0 ? '#28a745' : '#dc3545');
+
+                    $('#siExpectedProfit')
+                        .text(fmtCurrency(expectedProfit, currency))
+                        .css('color', expectedProfit >= 0 ? '#28a745' : '#dc3545');
+
+                    $('#siProfitMargin').text(
+                        margin !== null ?
+                        'Margin: ' + margin + '%' :
+                        quotedCost === 0 ? 'No cost data' : '—'
+                    );
+                }
+
+                // ── Render service history table ──────────────────────────
+                function renderServiceHistory(svcMap) {
+                    const $tbody = $('#siServiceHistoryBody').empty();
+                    const rows = Object.entries(svcMap).sort((a, b) => b[1].offered - a[1].offered);
+
+                    if (!rows.length) {
+                        $tbody.html('<tr><td colspan="6" class="text-center text-muted">No history</td></tr>');
+                        return;
+                    }
+
+                    rows.forEach(function([svc, data]) {
+                        const winRate = data.offered > 0 ?
+                            ((data.won / data.offered) * 100).toFixed(1) + '%' :
+                            '—';
+                        const winColor = data.offered > 0 ?
+                            (data.won / data.offered >= 0.5 ? '#28a745' : '#dc3545') :
+                            '#aaa';
+                        const lastDate = data.lastDate ?
+                            data.lastDate.toLocaleDateString('en-GB') :
+                            '—';
+                        $tbody.append(`
+                <tr>
+                    <td>${svc}</td>
+                    <td class="text-center">${data.offered}</td>
+                    <td class="text-center">${data.won}</td>
+                    <td class="text-center">${data.lost}</td>
+                    <td class="text-center font-weight-bold" style="color:${winColor};">
+                        ${winRate}
+                    </td>
+                    <td>${lastDate}</td>
+                </tr>
+            `);
+                    });
+                }
+
+                // ── Render recent quotes table ────────────────────────────
+                function renderRecentQuotes(allQuotes) {
+                    const STATUS_COLORS = {
+                        'Won': 'success',
+                        'Completed': 'success',
+                        'Lost': 'danger',
+                        'Cancelled': 'danger',
+                        'In Progress': 'primary',
+                        'Failed Int.': 'warning',
+                        'Failed Progress': 'secondary',
+                    };
+
+                    const $tbody = $('#siRecentQuotesBody').empty();
+                    const sorted = [...allQuotes].sort((a, b) => new Date(b.Date) - new Date(a.Date));
+                    const recent = sorted.slice(0, 10);
+
+                    $('#siQuoteCount').text(allQuotes.length + ' total');
+
+                    if (!recent.length) {
+                        $tbody.html(
+                            '<tr><td colspan="5" class="text-center text-muted">No quotes found</td></tr>');
+                        return;
+                    }
+
+                    recent.forEach(function(q) {
+                        const badgeType = STATUS_COLORS[q.Status] || 'secondary';
+                        $tbody.append(`
+                <tr>
+                    <td><strong>${q.QuoteNo}</strong></td>
+                    <td>${q.Date || '—'}</td>
+                    <td>${q.Service || '—'}</td>
+                    <td>
+                        <span class="badge badge-${badgeType}">${q.Status}</span>
+                    </td>
+                    <td>${q.SalesPerson || '—'}</td>
+                </tr>
+            `);
+                    });
+                }
+
+                // ── Render charts ─────────────────────────────────────────
+                function renderCharts(data) {
+                    if (!data) return;
+
+                    const {
+                        allQuotes,
+                        svcMap
+                    } = data;
+
+                    // -- Win/Loss doughnut --
+                    const won = allQuotes.filter(q => statusGroup(q.Status) === 'won').length;
+                    const lost = allQuotes.filter(q => statusGroup(q.Status) === 'lost').length;
+                    const open = allQuotes.filter(q => statusGroup(q.Status) === 'open').length;
+                    const other = allQuotes.length - won - lost - open;
+
+                    if (siWinLossChartInst) siWinLossChartInst.destroy();
+                    siWinLossChartInst = new Chart(
+                        document.getElementById('siWinLossChart').getContext('2d'), {
+                            type: 'doughnut',
+                            data: {
+                                labels: ['Won / Completed', 'Lost / Cancelled', 'In Progress', 'Other'],
+                                datasets: [{
+                                    data: [won, lost, open, other],
+                                    backgroundColor: ['#28a745', '#dc3545', '#4B49AC', '#adb5bd'],
+                                    borderWidth: 1,
+                                }],
+                            },
+                            options: {
+                                responsive: true,
+                                plugins: {
+                                    legend: {
+                                        position: 'bottom',
+                                        labels: {
+                                            font: {
+                                                size: 11
+                                            }
+                                        }
+                                    }
+                                },
+                            },
+                        });
+
+                    // -- Service bar --
+                    const svcLabels = Object.keys(svcMap);
+                    const svcWon = svcLabels.map(s => svcMap[s].won);
+                    const svcLost = svcLabels.map(s => svcMap[s].lost);
+                    const svcOpen = svcLabels.map(s =>
+                        svcMap[s].offered - svcMap[s].won - svcMap[s].lost
+                    );
+
+                    if (siServiceChartInst) siServiceChartInst.destroy();
+                    siServiceChartInst = new Chart(
+                        document.getElementById('siServiceChart').getContext('2d'), {
+                            type: 'bar',
+                            data: {
+                                labels: svcLabels,
+                                datasets: [{
+                                        label: 'Won',
+                                        data: svcWon,
+                                        backgroundColor: '#28a745'
+                                    },
+                                    {
+                                        label: 'Lost',
+                                        data: svcLost,
+                                        backgroundColor: '#dc3545'
+                                    },
+                                    {
+                                        label: 'In Progress',
+                                        data: svcOpen,
+                                        backgroundColor: '#4B49AC'
+                                    },
+                                ],
+                            },
+                            options: {
+                                responsive: true,
+                                scales: {
+                                    x: {
+                                        stacked: true
+                                    },
+                                    y: {
+                                        stacked: true,
+                                        beginAtZero: true
+                                    }
+                                },
+                                plugins: {
+                                    legend: {
+                                        position: 'bottom',
+                                        labels: {
+                                            font: {
+                                                size: 11
+                                            }
+                                        }
+                                    }
+                                },
+                            },
+                        });
+
+                    // -- Monthly trend line (last 12 months) --
+                    const now = new Date();
+                    const months = [];
+                    const monthly = {};
+                    for (let i = 11; i >= 0; i--) {
+                        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                        const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+                        months.push(key);
+                        monthly[key] = {
+                            total: 0,
+                            won: 0
+                        };
+                    }
+                    allQuotes.forEach(function(q) {
+                        const d = new Date(q.Date);
+                        if (isNaN(d)) return;
+                        const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+                        if (monthly[key]) {
+                            monthly[key].total++;
+                            if (statusGroup(q.Status) === 'won') monthly[key].won++;
+                        }
+                    });
+
+                    if (siTrendChartInst) siTrendChartInst.destroy();
+                    siTrendChartInst = new Chart(
+                        document.getElementById('siTrendChart').getContext('2d'), {
+                            type: 'line',
+                            data: {
+                                labels: months,
+                                datasets: [{
+                                        label: 'Total Quotes',
+                                        data: months.map(m => monthly[m].total),
+                                        borderColor: '#4B49AC',
+                                        backgroundColor: 'rgba(75,73,172,0.08)',
+                                        tension: 0.3,
+                                        fill: true,
+                                    },
+                                    {
+                                        label: 'Won',
+                                        data: months.map(m => monthly[m].won),
+                                        borderColor: '#28a745',
+                                        backgroundColor: 'rgba(40,167,69,0.08)',
+                                        tension: 0.3,
+                                        fill: true,
+                                    },
+                                ],
+                            },
+                            options: {
+                                responsive: true,
+                                scales: {
+                                    y: {
+                                        beginAtZero: true
+                                    }
+                                },
+                                plugins: {
+                                    legend: {
+                                        position: 'bottom',
+                                        labels: {
+                                            font: {
+                                                size: 11
+                                            }
+                                        }
+                                    }
+                                },
+                            },
+                        });
+                }
+
+                // ── Main load function ────────────────────────────────────
+                function loadSalesIntelligence() {
+                    if (!SI_COMPANY || !SI_OFFICE) {
+                        $('#siLoading').hide();
+                        $('#siError').removeClass('d-none');
+                        $('#siErrorMsg').text('Client or office information not available.');
+                        return;
+                    }
+
+                    $.ajax({
+                        url: '{{ route('quotation.sales-intelligence') }}',
+                        type: 'GET',
+                        data: {
+                            office_code: SI_OFFICE,
+                            customer: SI_COMPANY
+                        },
+                        success: function(response) {
+                            $('#siLoading').hide();
+
+                            if (!response.success || !response.data.length) {
+                                $('#siError').removeClass('d-none');
+                                $('#siErrorMsg').text('No quote history found for this client.');
+                                return;
+                            }
+
+                            const allQuotes = response.data;
+
+                            // Read quoted revenue + cost from the page (already calculated)
+                            const parsePageFloat = function(selector) {
+                                const raw = $(selector).val() || '0';
+                                return parseFloat(raw.replace(/[^0-9.\-]/g, '')) || 0;
+                            };
+                            const quotedRevenue = parsePageFloat('#quotedRevenue');
+                            const quotedCost = parsePageFloat('#totalCostBaseAmount') ||
+                                parsePageFloat('#costTotalHeaderAmount');
+
+                            // Compute
+                            const prob = computeProbability(allQuotes, SI_SERVICE);
+                            const svcMap = buildServiceHistory(allQuotes);
+
+                            // Store for chart re-render on tab switch
+                            window._siComputedData = {
+                                allQuotes,
+                                svcMap
+                            };
+                            siDataLoaded = true;
+
+                            // Render
+                            renderMetrics(prob, quotedRevenue, quotedCost, SI_CURRENCY);
+                            renderServiceHistory(svcMap);
+                            renderRecentQuotes(allQuotes);
+
+                            // Show view toggle + content
+                            $('#siViewToggle').css('display', 'flex !important')
+                                .attr('style', 'display:flex !important; gap:4px;');
+                            $('#siContent').show();
+                        },
+                        error: function(xhr) {
+                            $('#siLoading').hide();
+                            $('#siError').removeClass('d-none');
+                            $('#siErrorMsg').text(
+                                xhr.responseJSON?.message ||
+                                'Failed to load sales intelligence.'
+                            );
+                        },
+                    });
+                }
+
+                // Delay slightly so page charges load first (they populate #quotedRevenue)
+                setTimeout(loadSalesIntelligence, 1200);
+
+            })();
+            // ═══════════════════════════════════════════════════════════
+            // END SALES INTELLIGENCE
+            // ═══════════════════════════════════════════════════════════
+
             // ============================================================
             // COPIED FLAG — highlight mandatory empty fields after duplication
             // ============================================================
@@ -3897,7 +4642,7 @@
                                 const code = item.IncoTermCode || '';
                                 $sel.append(
                                     `<option value="${code}">${code} — ${item.Name}</option>`
-                                    );
+                                );
                             });
                             incoTermsLoaded = true;
 
