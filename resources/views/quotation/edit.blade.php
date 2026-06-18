@@ -6323,26 +6323,25 @@
             $(document).on('click', '.delete-revenue-charge, .delete-cost-charge', function() {
                 const chargeId = $(this).data('id');
                 if (!confirm('Are you sure you want to delete this charge?')) return;
-
+            
                 $.ajax({
-                    url: '{{ route('quotation.charge.delete') }}',
+                    url: '{{ route('quotation.charges.bulk-delete') }}',
                     type: 'POST',
                     data: {
                         _token: '{{ csrf_token() }}',
-                        booking_no: bookingNo,
-                        office_code: officeCode,
-                        quote_charge_id: chargeId
+                        quotation_id: quotationId,
+                        charge_ids: [chargeId],
                     },
                     success: function(response) {
                         if (response.success) {
-                            showNotification('Charge deleted successfully', 'success');
+                            showNotification(response.message || 'Charge deleted successfully', 'success');
                             loadCharges();
                         } else {
-                            showNotification(response.message, 'error');
+                            showNotification(response.message || 'Failed to delete charge', 'error');
                         }
                     },
-                    error: function() {
-                        showNotification('Failed to delete charge', 'error');
+                    error: function(xhr) {
+                        showNotification(xhr.responseJSON?.message || 'Failed to delete charge', 'error');
                     }
                 });
             });
