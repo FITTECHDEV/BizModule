@@ -1613,48 +1613,52 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
         'salesIntelligence',
     ])->name('quotation.sales-intelligence');
 
-    // ============================================
-    // WILDCARD ROUTES — must be last
-    // {id} in a GET route matches ANY path segment.
-    // Nothing with a static segment may come after /quotation/{id}.
-    // ============================================
-    Route::post('/quotation/{id}/generate-pdf', [App\Http\Controllers\QuotationController::class, 'generatePdf'])->name(
-        'quotation.generate-pdf',
-    );
-    Route::post('/quotation/{quoteno}/duplicate', [
+    Route::get('/quotation/status-reset', [
         App\Http\Controllers\QuotationController::class,
-        'processDuplicate',
-    ])->name('quotation.processDuplicate');
-    Route::post('/quotation/{bookingno}/copy', [App\Http\Controllers\QuotationController::class, 'copy'])->name(
-        'quotation.copy',
+        'showStatusResetForm',
+    ])->name('quotation.status-reset.form');
+    Route::post('/quotation/status-reset', [App\Http\Controllers\QuotationController::class, 'resetStatus'])->name(
+        'quotation.status-reset',
     );
-
-    Route::get('/quotation/{id}/versions', [
-        App\Http\Controllers\QuotationController::class,
-        'getQuotationVersions',
-    ])->name('quotation.versions');
-    Route::get('/quotation/{id}/download-pdf/{version}', [
-        App\Http\Controllers\QuotationController::class,
-        'downloadPdf',
-    ])->name('quotation.download-pdf');
-    Route::get('/quotation/{id}/edit', [App\Http\Controllers\QuotationController::class, 'edit'])->name(
-        'quotation.edit',
-    );
-    Route::post('/quotation/{id}/update', [App\Http\Controllers\QuotationController::class, 'update'])->name(
-        'quotation.update',
-    );
-
-    // ⚠️ ABSOLUTE LAST — catches /quotation/<anything>
-    Route::get('/quotation/{id}', [App\Http\Controllers\QuotationController::class, 'view'])->name('quotation.view');
-
-    // ============================================
-    // CRM SYNC
-    // ============================================
-    Route::get('/crm/sync/history', [App\Http\Controllers\CrmSyncController::class, 'history'])->name(
-        'crm.sync.history',
-    );
-    Route::post('/crm/sync/run', [App\Http\Controllers\CrmSyncController::class, 'run'])->name('crm.sync.run');
 });
+
+// ============================================
+// WILDCARD ROUTES — must be last
+// {id} in a GET route matches ANY path segment.
+// Nothing with a static segment may come after /quotation/{id}.
+// ============================================
+Route::post('/quotation/{id}/generate-pdf', [App\Http\Controllers\QuotationController::class, 'generatePdf'])->name(
+    'quotation.generate-pdf',
+);
+Route::post('/quotation/{quoteno}/duplicate', [
+    App\Http\Controllers\QuotationController::class,
+    'processDuplicate',
+])->name('quotation.processDuplicate');
+Route::post('/quotation/{bookingno}/copy', [App\Http\Controllers\QuotationController::class, 'copy'])->name(
+    'quotation.copy',
+);
+
+Route::get('/quotation/{id}/versions', [App\Http\Controllers\QuotationController::class, 'getQuotationVersions'])->name(
+    'quotation.versions',
+);
+Route::get('/quotation/{id}/download-pdf/{version}', [
+    App\Http\Controllers\QuotationController::class,
+    'downloadPdf',
+])->name('quotation.download-pdf');
+Route::get('/quotation/{id}/edit', [App\Http\Controllers\QuotationController::class, 'edit'])->name('quotation.edit');
+Route::post('/quotation/{id}/update', [App\Http\Controllers\QuotationController::class, 'update'])->name(
+    'quotation.update',
+);
+
+// ⚠️ ABSOLUTE LAST — catches /quotation/<anything>
+Route::get('/quotation/{id}', [App\Http\Controllers\QuotationController::class, 'view'])->name('quotation.view');
+
+// ============================================
+// CRM SYNC
+// ============================================
+Route::get('/crm/sync/history', [App\Http\Controllers\CrmSyncController::class, 'history'])->name('crm.sync.history');
+Route::post('/crm/sync/run', [App\Http\Controllers\CrmSyncController::class, 'run'])->name('crm.sync.run');
+
 Route::post('/quotation/booking-integration-response', [
     App\Http\Controllers\QuotationController::class,
     'handleBookingIntegrationResponse',
@@ -2014,3 +2018,7 @@ Route::get('/debug-azure-files/{prefix}', function ($prefix) {
 Route::get('/zra', [App\Http\Controllers\ZraController::class, 'index'])
     ->name('zra.index')
     ->middleware('auth');
+Route::get('/zra/get-stats', [App\Http\Controllers\ZraController::class, 'getStats'])->middleware('auth');
+Route::post('/zra/update-invoice', [App\Http\Controllers\ZraController::class, 'updateInvoice'])->middleware('auth');
+Route::get('/zra/re-trigger/{docNo}', [App\Http\Controllers\ZraController::class, 'reTrigger'])->middleware('auth');
+Route::get('/datatables/zra', [App\Http\Controllers\ZraController::class, 'datatable'])->middleware('auth');

@@ -3,7 +3,7 @@
 
 @section('content')
     <div class="container-fluid px-2 px-sm-3 mt-4">
-        <h1 class="mb-3 mb-md-4 fs-3 fs-md-2">Login Tracker Dashboard</h1>
+        {{-- <h1 class="mb-3 mb-md-4 fs-3 fs-md-2">Login Tracker Dashboard</h1> --}}
 
         @include('logintracker.partials.alerts')
 
@@ -15,7 +15,8 @@
         {{-- Summary Cards --}}
         <div class="row g-2 g-md-3 mb-3 mb-md-4">
             <div class="col-12 col-sm-6 col-lg-3">
-                <div class="card bg-info text-white shadow h-100 stats-card">
+                <div class="card bg-info text-white shadow h-100 stats-card filter-card" data-filter="all"
+                    style="cursor: pointer;">
                     <div class="card-body p-3 p-md-4 d-flex flex-column justify-content-between">
                         <h5 class="card-title mb-2 mb-md-3 fw-normal">Total Users</h5>
                         <p class="stats-number mb-0" id="total-users">{{ $total_users ?? 0 }}</p>
@@ -24,36 +25,32 @@
             </div>
 
             <div class="col-12 col-sm-6 col-lg-3">
-                <a href="{{ route('reporting.users.active-this-month') }}" class="text-decoration-none">
-                    <div class="card bg-success text-white shadow card-hover h-100 stats-card">
-                        <div class="card-body p-3 p-md-4 d-flex flex-column justify-content-between">
-                            <h5 class="card-title mb-2 mb-md-3 fw-normal">Active This Month</h5>
-                            <p class="stats-number mb-0" id="active-this-month">{{ $active_this_month ?? 0 }}</p>
-                        </div>
+                <div class="card bg-success text-white shadow card-hover h-100 stats-card filter-card"
+                    data-filter="active_this_month" style="cursor: pointer;">
+                    <div class="card-body p-3 p-md-4 d-flex flex-column justify-content-between">
+                        <h5 class="card-title mb-2 mb-md-3 fw-normal">Active This Month</h5>
+                        <p class="stats-number mb-0" id="active-this-month">{{ $active_this_month ?? 0 }}</p>
                     </div>
-                </a>
+                </div>
             </div>
 
             <div class="col-12 col-sm-6 col-lg-3">
-                <a href="{{ route('reporting.users.active-last-month') }}" class="text-decoration-none">
-                    <div class="card bg-primary text-white shadow card-hover h-100 stats-card">
-                        <div class="card-body p-3 p-md-4 d-flex flex-column justify-content-between">
-                            <h5 class="card-title mb-2 mb-md-3 fw-normal">Active Last Month</h5>
-                            <p class="stats-number mb-0" id="active-last-month">{{ $active_last_month ?? 0 }}</p>
-                        </div>
+                <div class="card bg-primary text-white shadow card-hover h-100 stats-card filter-card" data-filter="active_last_month" style="cursor: pointer;">
+                    <div class="card-body p-3 p-md-4 d-flex flex-column justify-content-between">
+                        <h5 class="card-title mb-2 mb-md-3 fw-normal">Active Last Month</h5>
+                        <p class="stats-number mb-0" id="active-last-month">{{ $active_last_month ?? 0 }}</p>
                     </div>
-                </a>
+                </div>
             </div>
 
             <div class="col-12 col-sm-6 col-lg-3">
-                <a href="{{ route('reporting.users.inactive') }}" class="text-decoration-none">
-                    <div class="card bg-danger text-white shadow card-hover h-100 stats-card">
-                        <div class="card-body p-3 p-md-4 d-flex flex-column justify-content-between">
-                            <h5 class="card-title mb-2 mb-md-3 fw-normal">Inactive Users</h5>
-                            <p class="stats-number mb-0" id="inactive-users">{{ $inactive_users ?? 0 }}</p>
-                        </div>
+                <div class="card bg-danger text-white shadow card-hover h-100 stats-card filter-card" data-filter="inactive"
+                    style="cursor: pointer;">
+                    <div class="card-body p-3 p-md-4 d-flex flex-column justify-content-between">
+                        <h5 class="card-title mb-2 mb-md-3 fw-normal">Inactive Users</h5>
+                        <p class="stats-number mb-0" id="inactive-users">{{ $inactive_users ?? 0 }}</p>
                     </div>
-                </a>
+                </div>
             </div>
         </div>
 
@@ -206,6 +203,12 @@
         .card-hover:hover {
             transform: translateY(-4px);
             box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15) !important;
+        }
+
+        .filter-card--active {
+            outline: 3px solid #fff;
+            outline-offset: 3px;
+            box-shadow: 0 0 0 5px rgba(0, 0, 0, 0.25) !important;
         }
 
         /* Table Styling */
@@ -522,6 +525,7 @@
             let perPage = parseInt("{{ request('per_page', 17) }}") || 17;
             let searchTerm = "{{ request('search', '') }}";
             let isLoading = false;
+            let activeFilter = null;
 
             /**
              * Update the table information text at the bottom
@@ -651,7 +655,7 @@
                         if (lastShownPage > 0 && pageNum > lastShownPage + 1) {
                             const $ellipsis = $(
                                 '<li class="page-item ellipsis disabled"><a class="page-link">...</a></li>'
-                                );
+                            );
                             page.$li.before($ellipsis);
                         }
 
@@ -684,7 +688,8 @@
                     data: {
                         page: page,
                         per_page: perPage,
-                        search: searchTerm
+                        search: searchTerm,
+                        filter: activeFilter
                     },
                     success: function(response) {
                         $('#total-users').text(response.total_users || 0);
@@ -711,20 +716,20 @@
 
                                 if (lastLoginDate) {
                                     lastLoginDesktop = lastLoginDate.toLocaleDateString(
-                                    'en-GB', {
-                                        day: 'numeric',
-                                        month: 'short',
-                                        year: 'numeric',
-                                        hour: '2-digit',
-                                        minute: '2-digit'
-                                    }).replace(',', '');
+                                        'en-GB', {
+                                            day: 'numeric',
+                                            month: 'short',
+                                            year: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                        }).replace(',', '');
 
                                     lastLoginMobile = lastLoginDate.toLocaleDateString(
-                                    'en-GB', {
-                                        day: 'numeric',
-                                        month: 'short',
-                                        year: 'numeric'
-                                    });
+                                        'en-GB', {
+                                            day: 'numeric',
+                                            month: 'short',
+                                            year: 'numeric'
+                                        });
                                 }
 
                                 const viewBtn = userId ?
@@ -747,7 +752,7 @@
                         } else {
                             tbody.append(
                                 '<tr><td colspan="5" class="text-center text-muted py-4">No users found.</td></tr>'
-                                );
+                            );
                         }
 
                         updateTableInfo(from, to, totalRecords);
@@ -764,7 +769,7 @@
                         const tbody = $('#user-table-body');
                         tbody.html(
                             '<tr><td colspan="5" class="text-center text-danger py-4">Error loading data. Please try again.</td></tr>'
-                            );
+                        );
                     },
                     complete: function() {
                         $('#loading').hide();
@@ -798,6 +803,27 @@
             });
 
             /**
+             * Event: Filter card click
+             */
+            $(document).on('click', '.filter-card', function() {
+                const filter = $(this).data('filter');
+
+                if (filter === 'all' || filter === activeFilter) {
+                    activeFilter = null;
+                } else {
+                    activeFilter = filter;
+                }
+
+                $('.filter-card').removeClass('filter-card--active');
+                if (activeFilter) {
+                    $(`.filter-card[data-filter="${activeFilter}"]`).addClass('filter-card--active');
+                }
+
+                currentPage = 1;
+                loadData(currentPage);
+            });
+
+            /**
              * Event: Pagination click
              */
             $(document).on('click', '#pagination-container a.page-link', function(e) {
@@ -807,7 +833,7 @@
                 const $parent = $(this).parent();
 
                 if (!href || $parent.hasClass('disabled') || $parent.hasClass('active') || $(this)
-                .text() === '...') {
+                    .text() === '...') {
                     return;
                 }
 

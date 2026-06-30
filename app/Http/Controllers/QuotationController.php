@@ -10338,4 +10338,62 @@ class QuotationController extends Controller
             ]);
         }
     }
+
+    public function showStatusResetForm()
+    {
+        return view('quotation.status-reset');
+    }
+
+    public function resetStatus(Request $request)
+{
+    $request->validate([
+        'quote_no'     => 'required|string|max:50',
+        'current_status' => 'required|in:Won,Failed Int.',
+    ]);
+
+    $quoteNo = trim($request->quote_no);
+    $currentStatus = $request->current_status;
+
+    // Check if quotation exists and has the given status
+    $quotation = DB::table('Quote_QuotationInfo')
+        ->where('QuoteNo', $quoteNo)
+        ->first(['ID', 'QuoteNo', 'QuoteStatus', 'status']);
+
+    if (!$quotation) {
+        return back()->withErrors(['quote_no' => 'Quotation not found.'])->withInput();
+    }
+
+    // Verify the current status matches the user's selection
+    $actualStatus = $quotation->QuoteStatus ?? $quotation->status;
+    if ($actualStatus !== $currentStatus) {
+        return back()->withErrors(['current_status' => "The quote is currently '{$actualStatus}', not '{$currentStatus}'."])->withInput();
+    }
+
+    // Perform the update
+    $updated = DB::table('Quote_QuotationInfo')
+        ->where('QuoteNo', $quoteNo)
+        ->update([
+            'QuoteStatus' => 'In Progress',
+            'status'      => 'In Progress',
+            'LastModifiedBy' => auth()->user()->displayName ?? auth()->user()->Email ?? 'system',
+            'updatedon'   => now(),
+        ]);
+
+    // Optional: clear any failure remarks if it was Failed Int.
+    if ($currentStatus === 'Failed Int.') {
+        DB::table('Quote_QuotationInfo')
+            ->where('QuoteNo', $quoteNo)
+            ->update(['QuoteStatusDescription' => null]); // clear error history
+    }
+
+    Log::info('Status reset', [
+        'quote_no' => $quoteNo,
+        'from'     => $currentStatus,
+        'to'       => 'In Progress',
+        'by'       => auth()->user()->Email ?? 'system',
+    ]);
+
+    return redirect()->route('quotation.status-reset.form')
+        ->with('success', "Quote {$quoteNo} has been moved from '{$currentStatus}' back to 'In Progress'.");
+}
 }
