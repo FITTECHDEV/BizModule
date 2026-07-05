@@ -3710,70 +3710,55 @@
                 originalDestCountryName = $('#destCountryDisplay').val();
                 $('#shipmentModeSelect, #transportModeSelect').prop('disabled', false);
 
-
-                if (!incoTermsLoaded) {
-                    const savedIncoTerm = $('#incoTermCode').val();
-                    $.ajax({
-                        url: '{{ route('quotation.inco-terms') }}',
-                        type: 'GET',
-                        success: function(r) {
-                            const $sel = $('#incoTermSelect').empty().append(
-                                '<option value="">-- Select --</option>');
-                            (r.success ? r.data : []).forEach(function(item) {
-                                const code = item.IncoTermCode || '';
-                                $sel.append(
-                                    `<option value="${code}">${code} — ${item.Name}</option>`
-                                );
-                            });
-                            incoTermsLoaded = true;
-                            console.log('IncoTerm savedIncoTerm:', savedIncoTerm);
-                            console.log('IncoTerm options available:', $sel.find('option').map(
-                                function() {
-                                    return $(this).val();
-                                }).get());
-                            if (savedIncoTerm) {
-                                $sel.val(savedIncoTerm);
-                                if (!$sel.val()) {
-                                    // Fallback: match by option text (handles case where DB stores name not code)
-                                    $sel.find('option').each(function() {
-                                        const optVal = $(this).val();
-                                        const optText = $(this).text();
-                                        if (optVal === savedIncoTerm ||
-                                            optText.indexOf(savedIncoTerm) !== -1 ||
-                                            savedIncoTerm.indexOf(optVal) === 0) {
-                                            $sel.val(optVal);
-                                            return false;
-                                        }
-                                    });
-                                }
+            const savedIncoTerm = $('#incoTermCode').val() || $('#incoTermDisplay').val();
+            
+            if (!incoTermsLoaded) {
+                $.ajax({
+                    url: '{{ route('quotation.inco-terms') }}',
+                    type: 'GET',
+                    success: function(r) {
+                        const $sel = $('#incoTermSelect').empty()
+                            .append('<option value="">-- Select --</option>');
+                        (r.success ? r.data : []).forEach(function(item) {
+                            const code = item.IncoTermCode || '';
+                            $sel.append(`<option value="${code}">${code} — ${item.Name}</option>`);
+                        });
+                        incoTermsLoaded = true;
+            
+                        if (savedIncoTerm) {
+                            $sel.val(savedIncoTerm);
+                            // Fallback: match by partial text if exact code match fails
+                            if (!$sel.val()) {
+                                $sel.find('option').each(function() {
+                                    if ($(this).text().indexOf(savedIncoTerm) !== -1) {
+                                        $sel.val($(this).val());
+                                        return false;
+                                    }
+                                });
                             }
-
-                            $('#incoTermDisplay').addClass('d-none');
-                            $sel.removeClass('d-none').prop('disabled', false);
                         }
-                    });
-                } else {
-                    const savedIncoTerm = $('#incoTermCode').val() || $('#incoTermDisplay').val();
-                    if (savedIncoTerm) {
-                        $('#incoTermSelect').val(savedIncoTerm);
-                        if (!$('#incoTermSelect').val()) {
-                            // Fallback: match by option text (handles case where DB stores name not code)
-                            $('#incoTermSelect option').each(function() {
-                                const optVal = $(this).val();
-                                const optText = $(this).text();
-                                if (optVal === savedIncoTerm ||
-                                    optText.indexOf(savedIncoTerm) !== -1 ||
-                                    savedIncoTerm.indexOf(optVal) === 0) {
-                                    $('#incoTermSelect').val(optVal);
-                                    return false;
-                                }
-                            });
-                        }
+            
+                        // Only swap display → select AFTER options are loaded and pre-selected
+                        $('#incoTermDisplay').addClass('d-none');
+                        $sel.removeClass('d-none').prop('disabled', false);
                     }
-
-                    $('#incoTermDisplay').addClass('d-none');
-                    $('#incoTermSelect').removeClass('d-none').prop('disabled', false);
+                });
+            } else {
+                const $sel = $('#incoTermSelect');
+                if (savedIncoTerm) {
+                    $sel.val(savedIncoTerm);
+                    if (!$sel.val()) {
+                        $sel.find('option').each(function() {
+                            if ($(this).text().indexOf(savedIncoTerm) !== -1) {
+                                $sel.val($(this).val());
+                                return false;
+                            }
+                        });
+                    }
                 }
+                $('#incoTermDisplay').addClass('d-none');
+                $sel.removeClass('d-none').prop('disabled', false);
+            }
 
                 // Snapshot display values before any async loads mutate the DOM
                 originalServiceClass = $('#serviceClassCode').val() || $('#serviceClassDisplay').val();
@@ -5416,26 +5401,25 @@
             $(document).on('click', '.delete-revenue-charge, .delete-cost-charge', function() {
                 const chargeId = $(this).data('id');
                 if (!confirm('Are you sure you want to delete this charge?')) return;
-
+            
                 $.ajax({
-                    url: '{{ route('quotation.charge.delete') }}',
+                    url: '{{ route('quotation.charges.bulk-delete') }}',
                     type: 'POST',
                     data: {
                         _token: '{{ csrf_token() }}',
-                        booking_no: bookingNo,
-                        office_code: officeCode,
-                        quote_charge_id: chargeId
+                        quotation_id: quotationId,
+                        charge_ids: [chargeId],
                     },
                     success: function(response) {
                         if (response.success) {
-                            showNotification('Charge deleted successfully', 'success');
+                            showNotification(response.message || 'Charge deleted successfully', 'success');
                             loadCharges();
                         } else {
-                            showNotification(response.message, 'error');
+                            showNotification(response.message || 'Failed to delete charge', 'error');
                         }
                     },
-                    error: function() {
-                        showNotification('Failed to delete charge', 'error');
+                    error: function(xhr) {
+                        showNotification(xhr.responseJSON?.message || 'Failed to delete charge', 'error');
                     }
                 });
             });

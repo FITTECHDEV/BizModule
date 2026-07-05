@@ -309,7 +309,7 @@
                     <h3 class="card-title mb-0">
                         <i class="fas fa-paper-plane mr-2"></i>Request Office Quotation
                     </h3>
-                    <div class="card-tools">
+                    <div class="card-tools ml-auto">
                         <button type="button" class="btn btn-tool" data-card-widget="collapse">
                             <i class="fas fa-chevron-up"></i>
                         </button>
