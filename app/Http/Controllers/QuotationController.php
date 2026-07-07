@@ -8551,6 +8551,10 @@ class QuotationController extends Controller
             'quotation_id' => 'required|string',
             'shipment_mode' => 'required|string',
             'transport_mode' => 'required|string',
+            'pol_code' => 'nullable|string',
+            'pod_code' => 'nullable|string',
+            'place_of_receipt_code' => 'nullable|string',
+            'place_of_delivery_code' => 'nullable|string',
         ]);
 
         $submittedBy = auth()->user()->displayName ?? (auth()->user()->Email ?? 'system');
@@ -8563,6 +8567,10 @@ class QuotationController extends Controller
             'QuotationID' => $request->quotation_id,
             'CountryOfOriginCode' => $request->origincountry ?? '',
             'CountryOfDestinationCode' => $request->destinationcountry ?? '',
+            'POLCode' => $request->pol_code ?? '',
+            'PODCode' => $request->pod_code ?? '',
+            'PlaceOfReceiptCode' => $request->place_of_receipt_code ?? '',
+            'PlaceOfDeliveryCode' => $request->place_of_delivery_code ?? '',
             'IncoTermCode' => $request->incoterm ?? '',
             'ShipmentModeCode' => $request->shipment_mode,
             'TransportModeCode' => $request->transport_mode,
@@ -10345,55 +10353,269 @@ class QuotationController extends Controller
     }
 
     public function resetStatus(Request $request)
-{
-    $request->validate([
-        'quote_no'     => 'required|string|max:50',
-        'current_status' => 'required|in:Won,Failed Int.',
-    ]);
-
-    $quoteNo = trim($request->quote_no);
-    $currentStatus = $request->current_status;
-
-    // Check if quotation exists and has the given status
-    $quotation = DB::table('Quote_QuotationInfo')
-        ->where('QuoteNo', $quoteNo)
-        ->first(['ID', 'QuoteNo', 'QuoteStatus', 'status']);
-
-    if (!$quotation) {
-        return back()->withErrors(['quote_no' => 'Quotation not found.'])->withInput();
-    }
-
-    // Verify the current status matches the user's selection
-    $actualStatus = $quotation->QuoteStatus ?? $quotation->status;
-    if ($actualStatus !== $currentStatus) {
-        return back()->withErrors(['current_status' => "The quote is currently '{$actualStatus}', not '{$currentStatus}'."])->withInput();
-    }
-
-    // Perform the update
-    $updated = DB::table('Quote_QuotationInfo')
-        ->where('QuoteNo', $quoteNo)
-        ->update([
-            'QuoteStatus' => 'In Progress',
-            'status'      => 'In Progress',
-            'LastModifiedBy' => auth()->user()->displayName ?? auth()->user()->Email ?? 'system',
-            'updatedon'   => now(),
+    {
+        $request->validate([
+            'quote_no' => 'required|string|max:50',
+            'current_status' => 'required|in:Won,Failed Int.',
         ]);
 
-    // Optional: clear any failure remarks if it was Failed Int.
-    if ($currentStatus === 'Failed Int.') {
-        DB::table('Quote_QuotationInfo')
+        $quoteNo = trim($request->quote_no);
+        $currentStatus = $request->current_status;
+
+        // Check if quotation exists and has the given status
+        $quotation = DB::table('Quote_QuotationInfo')
             ->where('QuoteNo', $quoteNo)
-            ->update(['QuoteStatusDescription' => null]); // clear error history
+            ->first(['ID', 'QuoteNo', 'QuoteStatus', 'status']);
+
+        if (!$quotation) {
+            return back()
+                ->withErrors(['quote_no' => 'Quotation not found.'])
+                ->withInput();
+        }
+
+        // Verify the current status matches the user's selection
+        $actualStatus = $quotation->QuoteStatus ?? $quotation->status;
+        if ($actualStatus !== $currentStatus) {
+            return back()
+                ->withErrors(['current_status' => "The quote is currently '{$actualStatus}', not '{$currentStatus}'."])
+                ->withInput();
+        }
+
+        // Perform the update
+        $updated = DB::table('Quote_QuotationInfo')
+            ->where('QuoteNo', $quoteNo)
+            ->update([
+                'QuoteStatus' => 'In Progress',
+                'status' => 'In Progress',
+                'LastModifiedBy' => auth()->user()->displayName ?? (auth()->user()->Email ?? 'system'),
+                'updatedon' => now(),
+            ]);
+
+        // Optional: clear any failure remarks if it was Failed Int.
+        if ($currentStatus === 'Failed Int.') {
+            DB::table('Quote_QuotationInfo')
+                ->where('QuoteNo', $quoteNo)
+                ->update(['QuoteStatusDescription' => null]); // clear error history
+        }
+
+        Log::info('Status reset', [
+            'quote_no' => $quoteNo,
+            'from' => $currentStatus,
+            'to' => 'In Progress',
+            'by' => auth()->user()->Email ?? 'system',
+        ]);
+
+        return redirect()
+            ->route('quotation.status-reset.form')
+            ->with('success', "Quote {$quoteNo} has been moved from '{$currentStatus}' back to 'In Progress'.");
     }
 
-    Log::info('Status reset', [
-        'quote_no' => $quoteNo,
-        'from'     => $currentStatus,
-        'to'       => 'In Progress',
-        'by'       => auth()->user()->Email ?? 'system',
-    ]);
+    /**
+     * Returns the current approval status for a quotation.
+     *
+     * TODO: Replace with sp_Quote_ApprovalStatus once the DBA delivers the SP.
+     * Expected SP output shape (agreed contract):
+     *   status, required, approvedCount, approvers[] = {userId, name, status, date, comments}
+     */
+    public function getApprovalStatus($id)
+    {
+        // Once the SP exists, this becomes:
+        // $result = DB::select('EXEC sp_Quote_ApprovalStatus @QuotationID = ?', [$id]);
+        // ...map and return real data.
 
-    return redirect()->route('quotation.status-reset.form')
-        ->with('success', "Quote {$quoteNo} has been moved from '{$currentStatus}' back to 'In Progress'.");
-}
+        return response()->json(
+            [
+                'success' => false,
+                'message' => 'Approval status is not available yet — backend implementation pending.',
+                'data' => null,
+            ],
+            200,
+        );
+    }
+
+    /**
+     * Submits a quotation for approval.
+     *
+     * TODO: Replace with sp_Quote_ApprovalRequest once the DBA delivers the SP.
+     * Expected inputs: QuotationID, SubmittedBy (Auth::id()).
+     */
+    public function sendForApproval(Request $request, int $id)
+    {
+        Log::info('sendForApproval: triggered', ['quotationId' => $id]);
+
+        // TODO: replace with sp_ApprovalRequest call
+        // $approvers = DB::select('EXEC sp_ApprovalRequest @QuotationID = ?', [$id]);
+
+        $mockApprovers = [
+            [
+                'userId' => 1,
+                'name' => 'Imran',
+                'email' => 'imran@freight-in-time.com',
+            ],
+        ];
+
+        // TODO: replace mock quotation data with real lookup
+        $quotation = [
+            'quotationId' => $id,
+            'quoteNo' => 'QT-2026-' . str_pad($id, 4, '0', STR_PAD_LEFT),
+            'customer' => 'Pending SP',
+            'revenue' => 0,
+            'cost' => 0,
+            'profit' => 0,
+            'margin' => 0,
+            'currency' => 'USD',
+        ];
+
+        // TODO: resolve real PDF path from quotation record
+        $pdfPath = '';
+
+        $emailService = new \App\Services\ApprovalEmailService();
+        $results = $emailService->sendApprovalEmails($quotation, $mockApprovers, $pdfPath);
+
+        $allSent = collect($results)->every(fn($r) => $r['status'] === 'Sent');
+
+        return response()->json([
+            'success' => $allSent,
+            'message' => $allSent
+                ? 'Approval emails sent successfully.'
+                : 'Some approval emails failed. Check logs for details.',
+            'data' => $results,
+        ]);
+    }
+
+    /**
+     * Approvals Dashboard — lists all open/closed approval requests.
+     *
+     * TODO: Replace mock data with sp_Quote_ApprovalSummary once approved (see progress table #6).
+     * Expected SP output per row: requestId, quoteNo, customer, submittedBy,
+     * submittedDate, required, approvedCount, status, officeCode.
+     */
+    public function approvalsDashboard(Request $request)
+    {
+        // Once the SP exists, replace mock with sp_Quote_ApprovalSummary results
+        $mockRows = [
+            [
+                'requestId' => 1,
+                'quoteNo' => 'QT-2026-0001',
+                'customer' => 'Acme Logistics',
+                'submittedBy' => 'jane.doe',
+                'submittedDate' => '2026-06-25',
+                'required' => 2,
+                'approvedCount' => 1,
+                'status' => 'Pending Approval',
+                'officeCode' => 'NBO',
+            ],
+            [
+                'requestId' => 2,
+                'quoteNo' => 'QT-2026-0002',
+                'customer' => 'Globex Freight',
+                'submittedBy' => 'john.smith',
+                'submittedDate' => '2026-06-20',
+                'required' => 2,
+                'approvedCount' => 2,
+                'status' => 'Approved',
+                'officeCode' => 'MBA',
+            ],
+        ];
+
+        // fix: counts derived from the same rows — once SP lands, SP should
+        // ideally return these counts directly rather than recomputing client-side
+        $counts = [
+            'pending' => collect($mockRows)->where('status', 'Pending Approval')->count(),
+            'approved' => collect($mockRows)->where('status', 'Approved')->count(),
+            'rejected' => collect($mockRows)->where('status', 'Rejected')->count(),
+            'total' => count($mockRows),
+        ];
+
+        return view('quotation.approvals-dashboard', [
+            'rows' => $mockRows,
+            'counts' => $counts,
+        ]);
+    }
+
+    /**
+     * Submits an Approve/Reject decision from the dashboard.
+     *
+     * TODO: Replace with sp_Quote_ApprovalDecision once approved (see progress table #6).
+     * Server-side SP must validate the logged-in user is a configured approver
+     * for this request — UI-side disabling is not a security control.
+     */
+    public function submitApprovalDecision(Request $request, $requestId)
+    {
+        $request->validate([
+            'decision' => 'required|in:Approved,Rejected',
+            'comments' => 'nullable|string|max:1000',
+        ]);
+
+        // Once the SP exists:
+        // DB::statement('EXEC sp_Quote_ApprovalDecision @ApprovalRequestID = ?, @ApproverUserID = ?, @Decision = ?, @Comments = ?', [
+        //     $requestId, Auth::id(), $request->decision, $request->comments,
+        // ]);
+
+        return response()->json(
+            [
+                'success' => false,
+                'message' => 'Approval decision is not available yet — backend implementation pending.',
+            ],
+            200,
+        );
+    }
+
+    /**
+     * Show the approval decision page.
+     * Reached via email link — action and approver pre-filled from query params.
+     * Auth middleware ensures the approver is logged in before they can act.
+     */
+    public function approvePage(Request $request, int $id)
+    {
+        // TODO: Replace mock with real quotation lookup once SP contract is confirmed
+        $quotation = [
+            'quotationId' => $id,
+            'quoteNo' => 'QT-2026-' . str_pad($id, 4, '0', STR_PAD_LEFT),
+            'customer' => 'Pending SP',
+            'revenue' => 0,
+            'cost' => 0,
+            'profit' => 0,
+            'margin' => 0,
+            'currency' => 'USD',
+        ];
+
+        return view('quotation.approve', [
+            'quotation' => $quotation,
+            'action' => $request->query('action', 'approve'),
+            'approverId' => $request->query('approver', auth()->id()),
+        ]);
+    }
+
+    /**
+     * Handle Approve/Reject decision from the approval page.
+     *
+     * TODO: Replace stub with sp_ApprovalStatus call once DBA delivers SP.
+     * Expected inputs to SP: QuotationID, ApproverUserID, Decision, Comments.
+     */
+    public function approvalDecision(Request $request, int $id)
+    {
+        $request->validate([
+            'decision' => 'required|in:Approved,Rejected',
+            'approver_id' => 'required|integer',
+            'comments' => 'nullable|string|max:1000',
+        ]);
+
+        Log::info('approvalDecision: decision received', [
+            'quotationId' => $id,
+            'approverId' => $request->approver_id,
+            'decision' => $request->decision,
+        ]);
+
+        // TODO: wire to SP once delivered
+        // DB::statement('EXEC sp_ApprovalStatus @QuotationID = ?, @ApproverUserID = ?, @Decision = ?, @Comments = ?', [
+        //     $id, $request->approver_id, $request->decision, $request->comments,
+        // ]);
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Approval decision is not available yet — SP pending from DBA.',
+            'data' => null,
+        ]);
+    }
 }

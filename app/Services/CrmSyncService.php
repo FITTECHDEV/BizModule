@@ -169,14 +169,24 @@ class CrmSyncService
                     'count' => count($populatedColumns),
                 ]);
 
-                Log::info('CRM Sync - Raw JSON', [
+                $spPayload = $this->buildSpPayload($data);
+                $modifiedJson = json_encode($spPayload);
+
+                Log::info('CRM Sync - Raw JSON (modified)', [
                     'bookingno' => $bno,
-                    'json' => $row->bookingdetailsjson,
+                    'json' => $modifiedJson,
                 ]);
 
                 $stmt = $scmPdo->prepare('EXEC dbo.sp_Quote_QuotationCreate ?');
-                $stmt->execute([$row->bookingdetailsjson]);
+                $stmt->execute([$modifiedJson]);
 
+                if (!empty($data['createdon'])) {
+                    DB::connection(self::SCM_CONNECTION)
+                        ->table('Quote_QuotationInfo')
+                        ->where('bookingno', $bno)
+                        ->update(['CreatedOn' => $this->parseDate($data['createdon'])]);
+                }
+                
                 $action = $existing ? 'updated' : 'inserted';
                 $existing ? $updated++ : $inserted++;
                 $processedBookingNos[] = $bno;
@@ -363,6 +373,71 @@ class CrmSyncService
 
             // ── Audit ────────────────────────────────────────────────
             'LastModifiedBy' => 'crm_sync',
+        ];
+    }
+
+    private function buildSpPayload(array $d): array
+    {
+        return [
+            'bookingno' => $d['bookingno'] ?? null,
+            'campaign_id' => $d['campaign_id'] ?? null,
+            'campaign' => $d['campaign'] ?? null,
+            'source_id' => $d['source_id'] ?? null,
+            'source' => $d['source'] ?? null,
+            'medium_id' => $d['medium_id'] ?? null,
+            'medium' => $d['medium'] ?? null,
+            'user_id' => $d['user_id'] ?? null,
+            'partner_id' => $d['partner_id'] ?? null,
+            'userlogin' => $d['userlogin'] ?? null,
+            'salespersoncode' => $d['salespersoncode'] ?? null,
+            'team_id' => $d['team_id'] ?? null,
+            'teamname' => $d['teamname'] ?? null,
+            'company_id' => $d['company_id'] ?? null,
+            'company' => $d['company'] ?? null,
+            'stage_id' => $d['stage_id'] ?? null,
+            'stage' => $d['stage'] ?? null,
+            'companyname' => $d['companyname'] ?? null,
+            'contactperson_tittle' => $d['contactperson_tittle'] ?? null,
+            'address_state' => $d['address_state'] ?? null,
+            'country_id' => $d['country_id'] ?? null,
+            'address_countrycode' => $d['address_countrycode'] ?? null,
+            'address_country' => $d['address_country'] ?? null,
+            'contactperson_phone' => $d['contactperson_phone'] ?? null,
+            'contactperson_email' => $d['contactperson_email'] ?? null,
+            'description' => $d['description'] ?? null,
+            'contactperson' => $d['contactperson'] ?? null,
+            'contactpersondesignation' => $d['contactpersondesignation'] ?? null,
+            'address_steet1' => $d['address_steet1'] ?? null,
+            'address_steet2' => $d['address_steet2'] ?? null,
+            'address_zip' => $d['address_zip'] ?? null,
+            'address_city' => $d['address_city'] ?? null,
+            'expected_revenue' => $d['expected_revenue'] ?? null,
+            'createdon' => $d['createdon'] ?? null,
+            'lastmodifiedon' => $d['lastmodifiedon'] ?? null,
+            'industry_type_id' => $d['industry_type_id'] ?? null,
+            'industryname' => $d['industryname'] ?? null,
+            'industrycode' => $d['industrycode'] ?? null,
+            'service_vertical_id' => $d['service_vertical_id'] ?? null,
+            'servicevertical' => $d['servicevertical'] ?? null,
+            'serviceprocess' => $d['serviceprocess'] ?? null,
+            'origin_country_id' => $d['origin_country_id'] ?? null,
+            'countryoforigincode' => $d['countryoforigincode'] ?? null,
+            'countryoforigin' => $d['countryoforigin'] ?? null,
+            'dest_country_id' => $d['dest_country_id'] ?? null,
+            'countryofdestinationcode' => $d['countryofdestinationcode'] ?? null,
+            'countryofdestination' => $d['countryofdestination'] ?? null,
+            'commodity' => $d['commodity'] ?? null,
+            'cargo_volume' => $d['cargo_volume'] ?? 0,
+            'shipment_mode_id' => $d['shipment_mode_id'] ?? null,
+            'shipmentmode' => $d['shipmentmode'] ?? null,
+            'inco_term_id' => $d['inco_term_id'] ?? null,
+            'incoterm' => $d['incoterm'] ?? null,
+            'scope_volume_id' => $d['scope_volume_id'] ?? null,
+            'scopeofvolume' => $d['scopeofvolume'] ?? null,
+            'serviceclass' => $d['serviceclass'] ?? null,
+            'serviceclasscode' => $d['serviceclasscode'] ?? null,
+            'containerdetails' => $d['containerdetails'] ?? null,
+            'ContainerList' => $d['ContainerList'] ?? [],
         ];
     }
 

@@ -352,125 +352,6 @@
                     </div>
                 </div>
 
-                <!-- Shipment Details -->
-                <div class="card card-primary" id="shipmentDetailsCard">
-                    <div class="card-header">
-                        <h3 class="card-title">Shipment Details</h3>
-                        <div class="card-tools">
-                            <button type="button" class="btn btn-tool" data-card-widget="collapse">
-                                <i class="fas fa-chevron-up"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <div class="form-group row">
-                            <label class="col-sm-5 col-form-label">Service</label>
-                            <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->ServiceVertical ?? '' }}" readonly>
-                            </div>
-                        </div>
-                        <div class="form-group row">
-                            <label class="col-sm-5 col-form-label">Process</label>
-                            <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->process ?? '' }}" readonly>
-                            </div>
-                        </div>
-                        {{-- Origin Country field: --}}
-                        <div class="form-group row">
-                            <label class="col-sm-5 col-form-label">Origin Country</label>
-                            <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm" id="originCountryDisplay"
-                                    value="{{ $quotation->origincountry ?? '' }}" readonly>
-                                <div id="originCountryEditWrap" style="display:none;">
-                                    {{-- REMOVED: <input type="text" id="originCountrySearch"> --}}
-                                    <select class="form-control form-control-sm" id="originCountrySelect">
-                                        <option value="">-- Select --</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-
-                        {{-- Destination Country field: --}}
-                        <div class="form-group row">
-                            <label class="col-sm-5 col-form-label">Destination Country</label>
-                            <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm" id="destCountryDisplay"
-                                    value="{{ $quotation->destinationcountry ?? '' }}" readonly>
-                                <div id="destCountryEditWrap" style="display:none;">
-                                    {{-- REMOVED: <input type="text" id="destCountrySearch"> --}}
-                                    <select class="form-control form-control-sm" id="destCountrySelect">
-                                        <option value="">-- Select --</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                        {{-- InCo Terms --}}
-                        <div class="form-group row">
-                            <label class="col-sm-5 col-form-label">InCO Terms</label>
-                            <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm" id="incoTermDisplay"
-                                    value="{{ $quotation->incoterm ?? '' }}" readonly>
-                                <input type="hidden" id="incoTermCode" value="{{ $quotation->incoterm ?? '' }}">
-
-                                <select class="form-control form-control-sm d-none" id="incoTermSelect" disabled>
-                                    <option value="">-- Select --</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-group row">
-                            <label class="col-sm-5 col-form-label">Shipment Mode</label>
-                            <div class="col-sm-7">
-                                <select class="form-control form-control-sm" id="shipmentModeSelect" name="shipment_mode"
-                                    disabled>
-                                    <option value="">-- Loading... --</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-group row">
-                            <label class="col-sm-5 col-form-label">Transport Mode</label>
-                            <div class="col-sm-7">
-                                <select class="form-control form-control-sm" id="transportModeSelect"
-                                    name="transport_mode" disabled>
-                                    <option value="">-- Loading... --</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-group row mb-0">
-                            <label class="col-sm-5 col-form-label">Service Class</label>
-                            <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm" id="serviceClassDisplay"
-                                    value="{{ $quotation->ServiceClass ?? '' }}" readonly>
-                                <select class="form-control form-control-sm d-none" id="serviceClassSelect" disabled>
-                                    <option value="">-- Select --</option>
-                                </select>
-                                {{-- keep this hidden field for the save payload --}}
-                                <input type="hidden" id="serviceClassCode"
-                                    value="{{ $quotation->ServiceClassCode ?? ($quotation->ServiceClass ?? '') }}">
-                            </div>
-                        </div>
-
-                        <div class="row mt-3 pt-2" style="border-top: 1px solid #dee2e6;">
-                            <div class="col-md-12 text-right">
-                                @if (!$isBookingCreated)
-                                    <button type="button" class="btn btn-warning btn-sm" id="editShipmentDetailsBtn">
-                                        <i class="fas fa-edit mr-1"></i> Edit
-                                    </button>
-                                @endif
-                                <button type="button" class="btn btn-primary btn-sm" id="saveShipmentDetailsBtn"
-                                    style="display:none">
-                                    <i class="fas fa-save mr-1"></i> Save
-                                </button>
-                                <button type="button" class="btn btn-secondary btn-sm" id="cancelShipmentDetailsBtn"
-                                    style="display:none">
-                                    <i class="fas fa-times mr-1"></i> Cancel
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Cargo Details -->
                 <div class="card card-primary" id="cargoDetailsCard">
                     <div class="card-header">
@@ -772,6 +653,120 @@
                                         Cancel
                                     </button>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- ── APPROVAL CARD ───────────────────────────────────────────────────── --}}
+                <div class="card card-primary" id="approvalCard">
+                    <div class="card-header d-flex justify-content-between align-items-center py-2">
+                        <h3 class="card-title mb-0">
+                            <i class="fas fa-check-double mr-2"></i>Approval
+                        </h3>
+                        <div class="d-flex align-items-center ml-auto">
+                            <button type="button" class="btn btn-email-quote btn-sm mr-2" id="sendForApprovalBtn">
+                                <i class="fas fa-paper-plane mr-1"></i> Send for Approval
+                            </button>
+                            <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                <i class="fas fa-chevron-up"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+
+                        <div id="approvalEmptyState" class="text-center text-muted py-2">
+                            <i class="fas fa-info-circle mr-1"></i> Not yet sent for approval.
+                        </div>
+
+                        <div id="approvalLoading" class="text-center py-2" style="display:none;">
+                            <i class="fas fa-spinner fa-spin text-primary"></i>
+                        </div>
+
+                        <div id="approvalUnavailable" class="alert alert-secondary py-2 px-3 mb-0"
+                            style="display:none; font-size:0.85rem;">
+                            <i class="fas fa-tools mr-1"></i> <span id="approvalUnavailableMsg"></span>
+                        </div>
+
+                        <div id="approvalContent" style="display:none;">
+
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span id="approvalStatusBadge" class="badge badge-secondary px-2 py-1"
+                                    style="font-size:0.8rem;">—</span>
+                                <span class="text-muted" style="font-size:0.8rem;" id="approvalProgressLabel">0 of 0
+                                    Approved</span>
+                            </div>
+
+                            <div class="progress mb-3" style="height: 8px;">
+                                <div id="approvalProgressBar" class="progress-bar bg-success" role="progressbar"
+                                    style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+
+                            <table class="table table-sm table-borderless mb-0" id="approvalApproverTable">
+                                <tbody></tbody>
+                            </table>
+
+                        </div>
+
+                    </div>
+                </div>
+
+                {{-- ── AUDIT INFORMATION ───────────────────────────────────────────────────── --}}
+                <div class="card card-primary" id="auditInformationCard">
+                    <div class="card-header d-flex justify-content-between align-items-center py-2">
+                        <h3 class="card-title mb-0">
+                            <i class="fas fa-history mr-2"></i>Audit Information
+                        </h3>
+                        <div class="d-flex align-items-center ml-auto">
+                            <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                <i class="fas fa-chevron-up"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group row">
+                            <label class="col-sm-5 col-form-label">Created On</label>
+                            <div class="col-sm-7">
+                                <input type="text" class="form-control form-control-sm"
+                                    value="{{ $quotation->CreatedOn ? date('d/m/Y H:i', strtotime($quotation->CreatedOn)) : '-' }}"
+                                    readonly>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="col-sm-5 col-form-label">Created By</label>
+                            <div class="col-sm-7">
+                                <input type="text" class="form-control form-control-sm"
+                                    value="{{ $quotation->CreatedBy ?? '-' }}" readonly>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="col-sm-5 col-form-label">Last Modified On</label>
+                            <div class="col-sm-7">
+                                <input type="text" class="form-control form-control-sm"
+                                    value="{{ $quotation->updatedon ? date('d/m/Y H:i', strtotime($quotation->updatedon)) : '-' }}"
+                                    readonly>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="col-sm-5 col-form-label">Last Modified By</label>
+                            <div class="col-sm-7">
+                                <input type="text" class="form-control form-control-sm"
+                                    value="{{ $quotation->LastModifiedBy ?? '-' }}" readonly>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="col-sm-5 col-form-label">Marked WON on</label>
+                            <div class="col-sm-7">
+                                <input type="text" class="form-control form-control-sm"
+                                    value="{{ $quotation->WonDate ? date('d/m/Y H:i', strtotime($quotation->WonDate)) : '-' }}"
+                                    readonly>
+                            </div>
+                        </div>
+                        <div class="form-group row mb-0">
+                            <label class="col-sm-5 col-form-label">Marked WON By</label>
+                            <div class="col-sm-7">
+                                <input type="text" class="form-control form-control-sm"
+                                    value="{{ $quotation->WonBy ?? '-' }}" readonly>
                             </div>
                         </div>
                     </div>
@@ -1193,6 +1188,187 @@
                     </div>
                 </div>
 
+
+                <!-- Shipment Details -->
+                <div class="card card-primary" id="shipmentDetailsCard">
+                    <div class="card-header">
+                        <h3 class="card-title">Shipment Details</h3>
+                        <div class="card-tools">
+                            <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                <i class="fas fa-chevron-up"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group row">
+                            <label class="col-sm-5 col-form-label">Service</label>
+                            <div class="col-sm-7">
+                                <input type="text" class="form-control form-control-sm"
+                                    value="{{ $quotation->ServiceVertical ?? '' }}" readonly>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="col-sm-5 col-form-label">Process</label>
+                            <div class="col-sm-7">
+                                <input type="text" class="form-control form-control-sm"
+                                    value="{{ $quotation->process ?? '' }}" readonly>
+                            </div>
+                        </div>
+                        {{-- Origin Country field: --}}
+                        <div class="form-group row">
+                            <label class="col-sm-5 col-form-label">Origin Country</label>
+                            <div class="col-sm-7">
+                                <input type="text" class="form-control form-control-sm" id="originCountryDisplay"
+                                    value="{{ $quotation->origincountry ?? '' }}" readonly>
+                                <div id="originCountryEditWrap" style="display:none;">
+                                    {{-- REMOVED: <input type="text" id="originCountrySearch"> --}}
+                                    <select class="form-control form-control-sm" id="originCountrySelect">
+                                        <option value="">-- Select --</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Destination Country field: --}}
+                        <div class="form-group row">
+                            <label class="col-sm-5 col-form-label">Destination Country</label>
+                            <div class="col-sm-7">
+                                <input type="text" class="form-control form-control-sm" id="destCountryDisplay"
+                                    value="{{ $quotation->destinationcountry ?? '' }}" readonly>
+                                <div id="destCountryEditWrap" style="display:none;">
+                                    {{-- REMOVED: <input type="text" id="destCountrySearch"> --}}
+                                    <select class="form-control form-control-sm" id="destCountrySelect">
+                                        <option value="">-- Select --</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        {{-- InCo Terms --}}
+                        <div class="form-group row">
+                            <label class="col-sm-5 col-form-label">InCO Terms</label>
+                            <div class="col-sm-7">
+                                <input type="text" class="form-control form-control-sm" id="incoTermDisplay"
+                                    value="{{ $quotation->incoterm ?? '' }}" readonly>
+                                <input type="hidden" id="incoTermCode" value="{{ $quotation->incoterm ?? '' }}">
+
+                                <select class="form-control form-control-sm d-none" id="incoTermSelect" disabled>
+                                    <option value="">-- Select --</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="col-sm-5 col-form-label">Shipment Mode</label>
+                            <div class="col-sm-7">
+                                <select class="form-control form-control-sm" id="shipmentModeSelect" name="shipment_mode"
+                                    disabled>
+                                    <option value="">-- Loading... --</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="col-sm-5 col-form-label">Transport Mode</label>
+                            <div class="col-sm-7">
+                                <select class="form-control form-control-sm" id="transportModeSelect"
+                                    name="transport_mode" disabled>
+                                    <option value="">-- Loading... --</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group row mb-0">
+                            <label class="col-sm-5 col-form-label">Service Class</label>
+                            <div class="col-sm-7">
+                                <input type="text" class="form-control form-control-sm" id="serviceClassDisplay"
+                                    value="{{ $quotation->ServiceClass ?? '' }}" readonly>
+                                <select class="form-control form-control-sm d-none" id="serviceClassSelect" disabled>
+                                    <option value="">-- Select --</option>
+                                </select>
+                                {{-- keep this hidden field for the save payload --}}
+                                <input type="hidden" id="serviceClassCode"
+                                    value="{{ $quotation->ServiceClassCode ?? ($quotation->ServiceClass ?? '') }}">
+                            </div>
+                        </div>
+
+                        {{-- Port of Loading --}}
+                        <div class="form-group row">
+                            <label class="col-sm-5 col-form-label">Port of Loading</label>
+                            <div class="col-sm-7">
+                                <input type="text" class="form-control form-control-sm" id="polDisplay"
+                                    value="{{ $quotation->PortOfLoadingCode ?? '' }}" readonly>
+                                <div id="polEditWrap" style="display:none;">
+                                    <input type="text" class="form-control form-control-sm" id="polSearch"
+                                        placeholder="Type to search..." autocomplete="off">
+                                    <input type="hidden" id="polCode"
+                                        value="{{ $quotation->PortOfLoadingCode ?? '' }}">
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Port of Discharge --}}
+                        <div class="form-group row">
+                            <label class="col-sm-5 col-form-label">Port of Discharge</label>
+                            <div class="col-sm-7">
+                                <input type="text" class="form-control form-control-sm" id="podDisplay"
+                                    value="{{ $quotation->PortOfDischargeCode ?? '' }}" readonly>
+                                <div id="podEditWrap" style="display:none;">
+                                    <input type="text" class="form-control form-control-sm" id="podSearch"
+                                        placeholder="Type to search..." autocomplete="off">
+                                    <input type="hidden" id="podCode"
+                                        value="{{ $quotation->PortOfDischargeCode ?? '' }}">
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Place of Receipt --}}
+                        <div class="form-group row">
+                            <label class="col-sm-5 col-form-label">Place of Receipt</label>
+                            <div class="col-sm-7">
+                                <input type="text" class="form-control form-control-sm" id="placeOfReceiptDisplay"
+                                    value="{{ $quotation->PlaceOfReceiptCode ?? '' }}" readonly>
+                                <div id="placeOfReceiptEditWrap" style="display:none;">
+                                    <input type="text" class="form-control form-control-sm" id="placeOfReceiptSearch"
+                                        placeholder="Type to search..." autocomplete="off">
+                                    <input type="hidden" id="placeOfReceiptCode"
+                                        value="{{ $quotation->PlaceOfReceiptCode ?? '' }}">
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Place of Delivery --}}
+                        <div class="form-group row">
+                            <label class="col-sm-5 col-form-label">Place of Delivery</label>
+                            <div class="col-sm-7">
+                                <input type="text" class="form-control form-control-sm" id="placeOfDeliveryDisplay"
+                                    value="{{ $quotation->PlaceOfDeliveryCode ?? '' }}" readonly>
+                                <div id="placeOfDeliveryEditWrap" style="display:none;">
+                                    <input type="text" class="form-control form-control-sm" id="placeOfDeliverySearch"
+                                        placeholder="Type to search..." autocomplete="off">
+                                    <input type="hidden" id="placeOfDeliveryCode"
+                                        value="{{ $quotation->PlaceOfDeliveryCode ?? '' }}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-3 pt-2" style="border-top: 1px solid #dee2e6;">
+                            <div class="col-md-12 text-right">
+                                @if (!$isBookingCreated)
+                                    <button type="button" class="btn btn-warning btn-sm" id="editShipmentDetailsBtn">
+                                        <i class="fas fa-edit mr-1"></i> Edit
+                                    </button>
+                                @endif
+                                <button type="button" class="btn btn-primary btn-sm" id="saveShipmentDetailsBtn"
+                                    style="display:none">
+                                    <i class="fas fa-save mr-1"></i> Save
+                                </button>
+                                <button type="button" class="btn btn-secondary btn-sm" id="cancelShipmentDetailsBtn"
+                                    style="display:none">
+                                    <i class="fas fa-times mr-1"></i> Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
                 <!-- Revenue Section -->
                 <div class="card card-success">
                     <div class="card-header d-flex justify-content-between align-items-center">
@@ -1298,8 +1474,8 @@
                                 <div class="form-group row">
                                     <label class="col-sm-5 col-form-label">Expected Revenue</label>
                                     <div class="col-sm-7">
-                                        <input type="text" class="form-control form-control-sm" id="expectedRevenue"
-                                            value="0.00" readonly>
+                                        <input type="text" class="form-control form-control-sm"
+                                            id="expectedRevenue" value="0.00" readonly>
                                     </div>
                                 </div>
                                 <div class="form-group row">
@@ -1386,8 +1562,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                MODALS
-                                                                                ============================================ -->
+                                                                                                                                                MODALS
+                                                                                                                                                ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -2057,14 +2233,48 @@
                                     <span class="cc-val"
                                         id="ccServiceType">{{ $quotation->ServiceVertical ?? '' }}</span>
                                 </div>
+                                {{-- Source toggle --}}
                                 <div class="cc-info-row">
+                                    <span class="cc-lbl">Quotation Source</span>
+                                    <div class="d-flex" style="gap:16px;">
+                                        <label class="d-flex align-items-center mb-0"
+                                            style="gap:6px; font-size:0.85rem; cursor:pointer;">
+                                            <input type="radio" name="ccSourceType" id="ccSourceJob"
+                                                value="job" checked>
+                                            Existing Job
+                                        </label>
+                                        <label class="d-flex align-items-center mb-0"
+                                            style="gap:6px; font-size:0.85rem; cursor:pointer;">
+                                            <input type="radio" name="ccSourceType" id="ccSourceTemplate"
+                                                value="template">
+                                            Standard Template
+                                        </label>
+                                    </div>
+                                </div>
+
+                                {{-- Existing Job dropdown --}}
+                                <div class="cc-info-row" id="ccJobSourceRow">
                                     <span class="cc-lbl cc-lbl-required">*&nbsp;Job No</span>
-                                    <div class="cc-input-group">
-                                        <input type="text" class="cc-input cc-input-highlight" id="ccJobNo"
-                                            placeholder="Enter Job No…" autocomplete="off">
-                                        <button type="button" class="cc-search-icon-btn" id="ccJobNoSearchBtn">
+                                    <div class="cc-input-group" style="flex:1;">
+                                        <select class="cc-input cc-input-highlight" id="ccJobSelect"
+                                            style="width:100%; height:28px;">
+                                            <option value="">-- Select Job --</option>
+                                        </select>
+                                        <button type="button" class="cc-search-icon-btn" id="ccJobNoSearchBtn"
+                                            title="Advanced search">
                                             <i class="fas fa-search"></i>
                                         </button>
+                                    </div>
+                                </div>
+
+                                {{-- Standard Template dropdown --}}
+                                <div class="cc-info-row" id="ccTemplateSourceRow" style="display:none;">
+                                    <span class="cc-lbl cc-lbl-required">*&nbsp;Template</span>
+                                    <div class="cc-input-group" style="flex:1;">
+                                        <select class="cc-input cc-input-highlight" id="ccTemplateSelect"
+                                            style="width:100%; height:28px;" disabled>
+                                            <option value="">-- Not available yet --</option>
+                                        </select>
                                     </div>
                                 </div>
                                 <div class="cc-info-row" id="ccClientRow" style="display:none;">
@@ -2304,7 +2514,7 @@
                                 <option value="equipment">Equipment Type</option> {{-- NEW --}}
                             </select>
                             <input type="text" class="cc-input" id="ccSearchValue" style="width:200px;"
-                                placeholder=""> 
+                                placeholder="">
                             <button type="button" class="cc-btn-search-go" id="ccSearchGoBtn">Search</button>
                             <button type="button" class="cc-btn-add-filter" id="ccAddFilterBtn">Add filter</button>
                         </div>
@@ -2379,8 +2589,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -2823,9 +3033,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -4584,6 +4794,26 @@
             $('#editShipmentDetailsBtn').on('click', function() {
                 originalShipmentMode = $('#shipmentModeSelect').val();
                 originalTransportMode = $('#transportModeSelect').val();
+                originalPol = $('#polCode').val();
+                originalPod = $('#podCode').val();
+                originalPlaceOfReceipt = $('#placeOfReceiptCode').val();
+                originalPlaceOfDelivery = $('#placeOfDeliveryCode').val();
+
+                $('#polSearch').val($('#polDisplay').val());
+                $('#podSearch').val($('#podDisplay').val());
+                $('#placeOfReceiptSearch').val($('#placeOfReceiptDisplay').val());
+                $('#placeOfDeliverySearch').val($('#placeOfDeliveryDisplay').val());
+
+
+                // Show edit wrappers, hide display fields
+                $('#polDisplay, #podDisplay, #placeOfReceiptDisplay, #placeOfDeliveryDisplay').hide();
+                $('#polEditWrap, #podEditWrap, #placeOfReceiptEditWrap, #placeOfDeliveryEditWrap').show();
+
+                // Initialize autocomplete for each field (reuse existing function)
+                initLocationAutocomplete('polSearch', 'polCode');
+                initLocationAutocomplete('podSearch', 'podCode');
+                initLocationAutocomplete('placeOfReceiptSearch', 'placeOfReceiptCode');
+                initLocationAutocomplete('placeOfDeliverySearch', 'placeOfDeliveryCode');
 
                 // Sync IncoTerm display → select before snapshotting
                 const $incoSel = $('#incoTermSelect');
@@ -4627,8 +4857,6 @@
                 originalDestCountryName = $('#destCountryDisplay').val();
                 $('#shipmentModeSelect, #transportModeSelect').prop('disabled', false);
 
-
-                // AFTER
                 const savedIncoTerm = $('#incoTermCode').val() || $('#incoTermDisplay').val();
 
                 if (!incoTermsLoaded) {
@@ -4713,6 +4941,26 @@
                 $('#originCountrySelect').val(originalOriginCountry);
                 $('#destCountrySelect').val(originalDestCountry);
 
+                // Restore display and hidden values
+                $('#polCode').val(originalPol);
+                $('#podCode').val(originalPod);
+                $('#placeOfReceiptCode').val(originalPlaceOfReceipt);
+                $('#placeOfDeliveryCode').val(originalPlaceOfDelivery);
+
+                $('#polDisplay').val(originalPol).show();
+                $('#podDisplay').val(originalPod).show();
+                $('#placeOfReceiptDisplay').val(originalPlaceOfReceipt).show();
+                $('#placeOfDeliveryDisplay').val(originalPlaceOfDelivery).show();
+
+                $('#polEditWrap, #podEditWrap, #placeOfReceiptEditWrap, #placeOfDeliveryEditWrap').hide();
+
+                // Destroy autocomplete instances to clean up
+                ['polSearch', 'podSearch', 'placeOfReceiptSearch', 'placeOfDeliverySearch'].forEach(
+                    function(id) {
+                        const $el = $('#' + id);
+                        if ($el.hasClass('ui-autocomplete-input')) $el.autocomplete('destroy');
+                    });
+
                 $('#shipmentModeSelect, #transportModeSelect').prop('disabled', true);
 
                 $('#incoTermSelect').addClass('d-none').prop('disabled', true);
@@ -4761,6 +5009,10 @@
                         origincountry: originCountry,
                         destinationcountry: destCountry,
                         service_class: serviceClass,
+                        pol_code: $('#polCode').val(),
+                        pod_code: $('#podCode').val(),
+                        place_of_receipt_code: $('#placeOfReceiptCode').val(),
+                        place_of_delivery_code: $('#placeOfDeliveryCode').val(),
                     },
                     beforeSend: function() {
                         $('#saveShipmentDetailsBtn').prop('disabled', true)
@@ -4800,6 +5052,24 @@
                                 'd-none'); // code, same as page load
                             originalServiceClass = serviceClass;
                             originalServiceClassDisplay = serviceClass;
+
+                            // Switch POL/POD/Receipt/Delivery back to display mode
+                            $('#polDisplay').val($('#polCode').val()).show();
+                            $('#podDisplay').val($('#podCode').val()).show();
+                            $('#placeOfReceiptDisplay').val($('#placeOfReceiptCode').val())
+                                .show();
+                            $('#placeOfDeliveryDisplay').val($('#placeOfDeliveryCode').val())
+                                .show();
+                            $('#polEditWrap, #podEditWrap, #placeOfReceiptEditWrap, #placeOfDeliveryEditWrap')
+                                .hide();
+
+                            ['polSearch', 'podSearch', 'placeOfReceiptSearch',
+                                'placeOfDeliverySearch'
+                            ].forEach(function(id) {
+                                const $el = $('#' + id);
+                                if ($el.hasClass('ui-autocomplete-input')) $el
+                                    .autocomplete('destroy');
+                            });
 
                             $('#saveShipmentDetailsBtn, #cancelShipmentDetailsBtn').hide();
                             $('#editShipmentDetailsBtn').show();
@@ -6323,7 +6593,7 @@
             $(document).on('click', '.delete-revenue-charge, .delete-cost-charge', function() {
                 const chargeId = $(this).data('id');
                 if (!confirm('Are you sure you want to delete this charge?')) return;
-            
+
                 $.ajax({
                     url: '{{ route('quotation.charges.bulk-delete') }}',
                     type: 'POST',
@@ -6334,14 +6604,17 @@
                     },
                     success: function(response) {
                         if (response.success) {
-                            showNotification(response.message || 'Charge deleted successfully', 'success');
+                            showNotification(response.message || 'Charge deleted successfully',
+                                'success');
                             loadCharges();
                         } else {
-                            showNotification(response.message || 'Failed to delete charge', 'error');
+                            showNotification(response.message || 'Failed to delete charge',
+                                'error');
                         }
                     },
                     error: function(xhr) {
-                        showNotification(xhr.responseJSON?.message || 'Failed to delete charge', 'error');
+                        showNotification(xhr.responseJSON?.message || 'Failed to delete charge',
+                            'error');
                     }
                 });
             });
@@ -7354,6 +7627,118 @@
                 });
             });
 
+            // ============================================
+            // APPROVAL
+            // Backend (sp_Quote_ApprovalStatus / sp_Quote_ApprovalRequest) not yet
+            // implemented — controller currently returns {success:false, message:'...pending...'}.
+            // This UI calls the real endpoints; once the SP lands, only the controller
+            // body changes — nothing here needs to change.
+            // ============================================
+
+            function approvalStatusBadgeClass(status) {
+                if (status === 'Approved') return 'badge-success';
+                if (status === 'Rejected') return 'badge-danger';
+                if (status === 'Pending Approval') return 'badge-warning';
+                return 'badge-secondary';
+            }
+
+            function approverRowBadgeClass(status) {
+                if (status === 'Approved') return 'badge-success';
+                if (status === 'Rejected') return 'badge-danger';
+                return 'badge-secondary';
+            }
+
+            function renderApprovalStatus(data) {
+                $('#approvalEmptyState, #approvalUnavailable').hide();
+                $('#approvalContent').show();
+
+                $('#approvalStatusBadge')
+                    .removeClass()
+                    .addClass('badge px-2 py-1 ' + approvalStatusBadgeClass(data.status))
+                    .text(data.status);
+
+                const pct = data.required > 0 ? Math.min(100, (data.approvedCount / data.required) * 100) : 0;
+                $('#approvalProgressBar').css('width', pct + '%');
+                $('#approvalProgressLabel').text(`${data.approvedCount} of ${data.required} Approved`);
+
+                const $tbody = $('#approvalApproverTable tbody').empty();
+                (data.approvers || []).forEach(function(a) {
+                    $tbody.append(`
+            <tr>
+                <td style="font-size:0.85rem;">${a.name}</td>
+                <td class="text-right">
+                    <span class="badge ${approverRowBadgeClass(a.status)}" style="font-size:0.7rem;">${a.status}</span>
+                    ${a.date ? `<small class="text-muted ml-1">${a.date}</small>` : ''}
+                </td>
+            </tr>
+        `);
+                });
+
+                $('#sendForApprovalBtn').prop('disabled', data.status !== 'Draft' && data.status !== undefined);
+            }
+
+            function loadApprovalStatus() {
+                $('#approvalEmptyState, #approvalContent, #approvalUnavailable').hide();
+                $('#approvalLoading').show();
+
+                $.ajax({
+                    url: '{{ route('quotation.approval.status', $quotation->ID ?? 0) }}',
+                    type: 'GET',
+                    success: function(response) {
+                        $('#approvalLoading').hide();
+                        if (response.success && response.data && response.data.status) {
+                            renderApprovalStatus(response.data);
+                        } else if (response.message) {
+                            // Backend explicitly says "not implemented yet" — show that, not a fake state
+                            $('#approvalUnavailableMsg').text(response.message);
+                            $('#approvalUnavailable').show();
+                        } else {
+                            $('#approvalEmptyState').show();
+                        }
+                    },
+                    error: function(xhr) {
+                        $('#approvalLoading').hide();
+                        $('#approvalUnavailableMsg').text(xhr.responseJSON?.message ||
+                            'Unable to load approval status.');
+                        $('#approvalUnavailable').show();
+                    }
+                });
+            }
+
+            $('#sendForApprovalBtn').on('click', function() {
+                $.ajax({
+                    url: '{{ route('quotation.approval.send', $quotation->ID ?? 0) }}',
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}'
+                    },
+                    beforeSend: function() {
+                        $('#sendForApprovalBtn').prop('disabled', true)
+                            .html('<i class="fas fa-spinner fa-spin mr-1"></i> Sending...');
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            showNotification(response.message || 'Sent for approval',
+                                'success');
+                            loadApprovalStatus();
+                        } else {
+                            showNotification(response.message ||
+                                'Send for Approval is not yet available', 'warning');
+                        }
+                    },
+                    error: function(xhr) {
+                        showNotification(xhr.responseJSON?.message ||
+                            'Failed to send for approval', 'error');
+                    },
+                    complete: function() {
+                        $('#sendForApprovalBtn').html(
+                            '<i class="fas fa-paper-plane mr-1"></i> Send for Approval');
+                        $('#sendForApprovalBtn').prop('disabled', false);
+                    }
+                });
+            });
+
+            loadApprovalStatus();
 
             // ============================================
             // CREATE BOOKING MODAL
@@ -9809,6 +10194,7 @@
             let ccCurrentPage = 1;
             let ccPageSize = 10;
             let ccSelectedJobRow = null;
+            let ccJobMap = {};
 
             const ccTableState = {
                 ccRevenueBody: {
@@ -9826,25 +10212,87 @@
             // ── Open modal ────────────────────────────────────────────────────────────
             $('#openCopyChargesBtn').on('click', function() {
                 resetCopyChargesModal();
+                $('#ccSourceJob').prop('checked', true);
+                $('#ccJobSourceRow').show();
+                $('#ccTemplateSourceRow').hide();
                 $('#copyChargesModal').modal('show');
+                loadCcJobDropdown();
             });
+
 
             // ── Open job search ───────────────────────────────────────────────────────
             $('#ccJobNoSearchBtn').on('click', function() {
-                const jobNo = $('#ccJobNo').val().trim();
-
-                // If a job number is already typed, search directly — skip the Search modal
-                if (jobNo) {
-                    triggerJobNoLoad();
-                    return;
-                }
-
-                // No job number entered — open the Search modal as before
                 ccSelectedJobRow = null;
                 $('#ccSearchOkBtn').prop('disabled', true);
                 resetSearchModal();
                 $('#ccSearchModal').css('z-index', 1060).modal('show');
             });
+
+            // ── Job No type-ahead — mirrors initSalesPersonAutocomplete / initCompanyAutocomplete ──
+            function initCcJobNoAutocomplete() {
+                const $input = $('#ccJobNo');
+
+                if ($input.hasClass('ui-autocomplete-input')) {
+                    $input.autocomplete('destroy');
+                }
+
+                $input.autocomplete({
+                    minLength: 2,
+                    delay: 300,
+                    appendTo: $input.closest('.cc-info-row'),
+                    source: function(request, response) {
+                        $.ajax({
+                            url: CC_SEARCH_URL,
+                            type: 'GET',
+                            data: {
+                                office_code: officeCode,
+                                quote_no: request.term
+                            },
+                            success: function(res) {
+                                if (!res.success || !res.data || !res.data.length) {
+                                    response([{
+                                        label: 'No jobs found for "' + request
+                                            .term + '"',
+                                        value: request.term,
+                                        disabled: true
+                                    }]);
+                                    return;
+                                }
+                                response(res.data.map(function(row) {
+                                    return {
+                                        label: (row.QuoteNo || '') + ' — ' + (
+                                            row.CompanyName || ''),
+                                        value: row.QuoteNo || '',
+                                        row: row
+                                    };
+                                }));
+                            },
+                            error: function() {
+                                response([{
+                                    label: 'Error loading jobs',
+                                    value: '',
+                                    disabled: true
+                                }]);
+                            }
+                        });
+                    },
+                    select: function(event, ui) {
+                        if (ui.item.disabled) {
+                            event.preventDefault();
+                            return false;
+                        }
+                        $input.val(ui.item.value);
+                        ccSelectedJobRow = ui.item.row;
+                        loadJobCharges(ui.item.row);
+                        return false;
+                    }
+                }).autocomplete('instance')._renderItem = function(ul, item) {
+                    return $('<li>')
+                        .addClass(item.disabled ? 'ui-state-disabled' : '')
+                        .append($('<div>').text(item.label))
+                        .appendTo(ul);
+                };
+            }
 
             // ── Search ────────────────────────────────────────────────────────────────
             $('#ccSearchGoBtn').on('click', function() {
@@ -10000,67 +10448,6 @@
                 });
             }
 
-            // function runSearch() {
-            //     const filterField = $('#ccSearchField').val();
-            //     const filterValue = $('#ccSearchValue').val().trim();
-
-            //     // Value is required; filter field is optional (no field = search by quote number)
-            //     if (!filterValue) {
-            //         showNotification('Please enter a search value', 'warning');
-            //         $('#ccSearchValue').focus();
-            //         return;
-            //     }
-
-            //     const fieldMap = {
-            //         customer: 'customer',
-            //         origin: 'origin',
-            //         destination: 'destination',
-            //         incoterm: 'incoterm',
-            //         por: 'por',
-            //         pod: 'pod',
-            //         equipment: 'equipment'
-            //     };
-
-            //     const params = {
-            //         office_code: officeCode
-            //     };
-
-            //     // No filter field selected → treat input as a direct quote number search
-            //     if (!filterField) {
-            //         params.quote_no = filterValue;
-            //     } else {
-            //         const paramKey = fieldMap[filterField];
-            //         if (paramKey) params[paramKey] = filterValue;
-            //     }
-
-            //     $.ajax({
-            //         url: CC_SEARCH_URL,
-            //         type: 'GET',
-            //         data: params,
-            //         beforeSend: function() {
-            //             $('#ccSearchGoBtn').prop('disabled', true)
-            //                 .html('<i class="fas fa-spinner fa-spin mr-1"></i> Searching...');
-            //             $('#ccSearchResultsBody').html(
-            //                 '<tr><td colspan="8" class="cc-empty-msg"><i class="fas fa-spinner fa-spin"></i> Searching...</td></tr>'
-            //             );
-            //         },
-            //         complete: function() {
-            //             $('#ccSearchGoBtn').prop('disabled', false).html('Search');
-            //         },
-            //         success: function(response) {
-            //             ccSearchResults = response.success ? (response.data || []) : [];
-            //             ccCurrentPage = 1;
-            //             renderSearchPage();
-            //         },
-            //         error: function(xhr) {
-            //             ccSearchResults = [];
-            //             renderSearchPage();
-            //             const msg = xhr.responseJSON?.message || 'Search failed. Please try again.';
-            //             showNotification(msg, 'error');
-            //         }
-            //     });
-            // }
-
             // ── Search pagination ─────────────────────────────────────────────────────
             $(document).on('click', '.cc-page-btn', function() {
                 const action = $(this).data('action');
@@ -10137,7 +10524,13 @@
             // ── Search Ok ─────────────────────────────────────────────────────────────
             $('#ccSearchOkBtn').on('click', function() {
                 if (!ccSelectedJobRow) return;
-                $('#ccJobNo').val(ccSelectedJobRow.QuoteNo);
+                ccJobMap[ccSelectedJobRow.id] = ccSelectedJobRow;
+                if (!$(`#ccJobSelect option[value="${ccSelectedJobRow.id}"]`).length) {
+                    $('#ccJobSelect').append(
+                        `<option value="${ccSelectedJobRow.id}">${ccSelectedJobRow.QuoteNo} — ${ccSelectedJobRow.CompanyName || ''}</option>`
+                    );
+                }
+                $('#ccJobSelect').val(ccSelectedJobRow.id);
                 $('#ccSearchModal').modal('hide');
                 loadJobCharges(ccSelectedJobRow);
             });
@@ -10398,41 +10791,41 @@
             });
 
             // ── Job No direct entry — load charges on Enter or blur ───────────────────
-            $('#ccJobNo').on('keypress', function(e) {
-                if (e.which === 13) triggerJobNoLoad();
-            });
-            $('#ccJobNo').on('blur', function() {
-                if ($(this).val().trim()) triggerJobNoLoad();
-            });
+            // $('#ccJobNo').on('keypress', function(e) {
+            //     if (e.which === 13) triggerJobNoLoad();
+            // });
+            // $('#ccJobNo').on('blur', function() {
+            //     if ($(this).val().trim()) triggerJobNoLoad();
+            // });
 
-            function triggerJobNoLoad() {
-                const jobNo = $('#ccJobNo').val().trim();
-                if (!jobNo) return;
+            // function triggerJobNoLoad() {
+            //     const jobNo = $('#ccJobNo').val().trim();
+            //     if (!jobNo) return;
 
-                // Search by quote number to get the quotation ID, then load charges
-                $.ajax({
-                    url: CC_SEARCH_URL,
-                    type: 'GET',
-                    data: {
-                        office_code: officeCode,
-                        quote_no: jobNo
-                    },
-                    success: function(response) {
-                        if (response.success && response.data && response.data.length > 0) {
-                            // Exact match first, fallback to first result
-                            const match = response.data.find(r => r.QuoteNo === jobNo) || response.data[
-                                0];
-                            ccSelectedJobRow = match;
-                            loadJobCharges(match);
-                        } else {
-                            showNotification('No quote found for: ' + jobNo, 'warning');
-                        }
-                    },
-                    error: function() {
-                        showNotification('Failed to search for Job No', 'error');
-                    }
-                });
-            }
+            //     // Search by quote number to get the quotation ID, then load charges
+            //     $.ajax({
+            //         url: CC_SEARCH_URL,
+            //         type: 'GET',
+            //         data: {
+            //             office_code: officeCode,
+            //             quote_no: jobNo
+            //         },
+            //         success: function(response) {
+            //             if (response.success && response.data && response.data.length > 0) {
+            //                 // Exact match first, fallback to first result
+            //                 const match = response.data.find(r => r.QuoteNo === jobNo) || response.data[
+            //                     0];
+            //                 ccSelectedJobRow = match;
+            //                 loadJobCharges(match);
+            //             } else {
+            //                 showNotification('No quote found for: ' + jobNo, 'warning');
+            //             }
+            //         },
+            //         error: function() {
+            //             showNotification('Failed to search for Job No', 'error');
+            //         }
+            //     });
+            // }
 
             // ── Search results sorting ────────────────────────────────────────────────
             let ccSortCol = null;
@@ -10482,10 +10875,68 @@
                 `;
             }
 
+            function loadCcJobDropdown() {
+                const $select = $('#ccJobSelect');
+                $select.prop('disabled', true).empty().append('<option value="">Loading...</option>');
+                ccJobMap = {};
+
+                $.ajax({
+                    url: CC_SEARCH_URL,
+                    type: 'GET',
+                    data: {
+                        office_code: officeCode
+                    },
+                    success: function(res) {
+                        $select.empty().append('<option value="">-- Select Job --</option>');
+                        if (res.success && res.data && res.data.length) {
+                            res.data.forEach(function(row) {
+                                ccJobMap[row.id] = row;
+                                const label = [row.QuoteNo, row.CompanyName,
+                                    (row.Origin && row.Destination) ? (row.Origin + ' → ' +
+                                        row.Destination) : '',
+                                    row.ServiceVertical || row.process || ''
+                                ].filter(Boolean).join(' | ');
+                                $select.append(`<option value="${row.id}">${label}</option>`);
+                            });
+                        } else {
+                            $select.append('<option value="" disabled>No jobs found</option>');
+                        }
+                    },
+                    error: function() {
+                        $select.empty().append(
+                            '<option value="" disabled>Failed to load jobs</option>');
+                    },
+                    complete: function() {
+                        $select.prop('disabled', false);
+                    }
+                });
+            }
+
+            $(document).on('change', '#ccJobSelect', function() {
+                const jobId = $(this).val();
+                if (!jobId || !ccJobMap[jobId]) return;
+                ccSelectedJobRow = ccJobMap[jobId];
+                loadJobCharges(ccSelectedJobRow);
+            });
+
+            $(document).on('change', 'input[name="ccSourceType"]', function() {
+                if ($('#ccSourceJob').is(':checked')) {
+                    $('#ccJobSourceRow').show();
+                    $('#ccTemplateSourceRow').hide();
+                    $('#ccTemplateSelect').val('');
+                } else {
+                    $('#ccJobSourceRow').hide();
+                    $('#ccTemplateSourceRow').show();
+                    $('#ccJobSelect').val('');
+                }
+                resetCopyChargesModal();
+            });
+
             // ── Helpers ───────────────────────────────────────────────────────────────
             function resetCopyChargesModal() {
                 $('#copyChargesModal .cc-modal-dialog').removeClass('cc-expanded cc-charges-loaded');
-                $('#ccJobNo').val('');
+                $('#ccJobSelect').val('');
+                $('#ccTemplateSelect').val('');
                 $('#ccJobDetails, #ccJobDetailsCost').hide();
                 $('#ccClientRow, #ccShipperRow, #ccConsigneeRow, #ccPolRow, #ccPodRow').hide();
                 $('#ccClient, #ccShipper, #ccConsignee, #ccPortOfLoading, #ccPortOfDischarge').text('');

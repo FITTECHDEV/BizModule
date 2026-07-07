@@ -34,6 +34,19 @@
                 </div>
             </div>
 
+            {{-- 1c. Pending Approval --}}
+            <div class="col-6 col-md-4 col-lg mb-2">
+                <div class="small-box bg-orange card-filter-trigger compact-card" data-filter="pending_approval">
+                    <div class="inner">
+                        <h3 id="stat-pending-approval">{{ $stats['pending_approval'] ?? 0 }}</h3>
+                        <p>Pending Approval</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-hourglass-half"></i>
+                    </div>
+                </div>
+            </div>
+
             {{-- 2. Won --}}
             <div class="col-6 col-md-4 col-lg mb-2">
                 <div class="small-box bg-success card-filter-trigger compact-card" data-filter="won">
@@ -872,6 +885,7 @@
                 $('#stat-total').text(stats.total || 0);
                 $('#stat-in-progress').text(stats.in_progress || 0);
                 $('#stat-in-progress-request').text(stats.in_progress_request || 0);
+                $('#stat-pending-approval').text(stats.pending_approval || 0);
                 $('#stat-won').text(stats.won || 0);
                 $('#stat-completed').text(stats.completed || 0);
                 $('#stat-lost-canceled').text(stats.lost_canceled || 0);
