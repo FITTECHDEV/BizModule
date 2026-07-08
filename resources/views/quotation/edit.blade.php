@@ -1523,6 +1523,9 @@
                                 <button type="button" class="btn btn-danger ml-2" id="openBulkDeleteBtn">
                                     <i class="fas fa-trash"></i> Delete Charges
                                 </button>
+                                <button type="button" class="btn btn-info ml-2" id="openContractTemplateBtn">
+                                    <i class="fas fa-file-contract"></i> Load Contract Template
+                                </button>
                                 <button type="button" class="btn btn-success ml-2 d-none" id="confirmBulkDeleteBtn">
                                     <i class="fas fa-check"></i> Confirm Delete
                                 </button>

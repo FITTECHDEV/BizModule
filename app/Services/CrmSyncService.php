@@ -186,7 +186,7 @@ class CrmSyncService
                         ->where('bookingno', $bno)
                         ->update(['CreatedOn' => $this->parseDate($data['createdon'])]);
                 }
-                
+
                 $action = $existing ? 'updated' : 'inserted';
                 $existing ? $updated++ : $inserted++;
                 $processedBookingNos[] = $bno;

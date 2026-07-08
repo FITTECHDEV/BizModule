@@ -379,8 +379,23 @@ return [
                     'active' => ['quotation/website-requests'],
                     'can' => 'view-quotation',
                 ],
+                [
+                    'text' => 'Approvals',
+                    'url' => 'quotation/approvals',
+                    'icon' => 'fas fa-fw fa-check-double',
+                    'active' => ['quotation/approvals'],
+                    'can' => 'view-quotation',
+                ],
+                [
+                    'text' => 'Contract Templates',
+                    'url' => 'quotation/contract-templates',
+                    'icon' => 'fas fa-fw fa-file-contract',
+                    'active' => ['quotation/contract-templates'],
+                    'can' => 'view-quotation',
+                ],
             ],
         ],
+
         // ↓ NEW ENTRY ↓
         [
             'text' => 'Z-REPORT RUNNER',
