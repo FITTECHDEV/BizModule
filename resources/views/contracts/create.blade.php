@@ -11,7 +11,11 @@
 
         {{-- STEP 1: Contract header --}}
         <div class="ctr-box mb-3">
-            <div class="ctr-box-title">Contract Information</div>
+            <div class="ctr-box-title d-flex align-items-center">
+                <span>Contract Information</span>
+                <button type="button" class="btn btn-sm btn-outline-primary ml-auto" id="ctrSaveHeaderBtn">Save Contract
+                    Info</button>
+            </div>
             <div class="ctr-grid">
                 <div class="ctr-field">
                     <label class="ctr-lbl ctr-required">Contract No</label>
@@ -56,7 +60,8 @@
         <div class="ctr-box mb-3">
             <div class="ctr-box-title d-flex align-items-center">
                 <span>Services</span>
-                <button type="button" class="btn btn-sm btn-primary ml-auto" id="ctrAddServiceBtn">+ Add Service</button>
+                <button type="button" class="btn btn-sm btn-primary ml-auto" id="ctrAddServiceBtn" disabled
+                    title="Save Contract Info first">+ Add Service</button>
             </div>
 
             <div id="ctrServiceForm" class="ctr-subform mb-3" style="display:none;">
@@ -317,9 +322,29 @@
             padding: 3px 5px;
         }
 
+        .ctr-slab-above-label {
+            font-style: italic;
+            color: #6c757d;
+            padding-left: 4px;
+        }
+
         .ctr-slab-row-remove {
             cursor: pointer;
             color: #dc3545;
+        }
+
+        .ctr-formula-cols {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .ctr-formula-col select {
+            height: auto;
+        }
+
+        .ctr-fb-reset {
+            font-size: .75rem;
         }
     </style>
 @stop
@@ -357,6 +382,8 @@
                     services: []
                 }
             };
+
+            state.contractSaved = !!existing; // hydrated draft already has a saved header
 
             var serviceSeq = 0;
             var chargeSeq = 0;
@@ -611,6 +638,105 @@
                     '</div>';
             }
 
+            var FORMULA_FIELDS = [{
+                    label: 'Activity Days',
+                    token: '[ActivityDays]'
+                },
+                {
+                    label: 'Assessable Value',
+                    token: '[AssessableValue]'
+                },
+                {
+                    label: 'Chargeable Weight',
+                    token: '[ChargeableWeight]'
+                },
+                {
+                    label: 'Commercial Invoice Value',
+                    token: '[CommercialInvoiceValue]'
+                },
+                {
+                    label: 'Declaration',
+                    token: '[Declaration]'
+                },
+                {
+                    label: 'Delivery Address Count',
+                    token: '[DeliveryAddressCount]'
+                }
+            ];
+            var FORMULA_OPERATORS = [{
+                    label: 'Plus +',
+                    token: '+'
+                },
+                {
+                    label: 'Minus -',
+                    token: '-'
+                },
+                {
+                    label: 'Multiply *',
+                    token: '*'
+                },
+                {
+                    label: 'Divide /',
+                    token: '/'
+                },
+                {
+                    label: 'CurvedBraceStart (',
+                    token: '('
+                },
+                {
+                    label: 'CurvedBraceEnd )',
+                    token: ')'
+                }
+            ];
+            var FORMULA_FUNCTIONS = [{
+                    label: 'Ceiling',
+                    token: 'CEILING('
+                },
+                {
+                    label: 'Floor',
+                    token: 'FLOOR('
+                }
+            ];
+
+            function formulaOptionsHtml(list) {
+                return list.map(function(o) {
+                    return '<option value="' + o.token + '">' + o.label + '</option>';
+                }).join('');
+            }
+
+            function formulaBuilderHtml() {
+                return '<div class="ctr-formula-builder">' +
+                    '<div class="ctr-formula-cols">' +
+                    '<div class="ctr-formula-col">' +
+                    '<label class="ctr-lbl">Select Formula</label>' +
+                    '<select multiple size="6" class="form-control form-control-sm ctr-fb-fields">' +
+                    formulaOptionsHtml(FORMULA_FIELDS) + '</select>' +
+                    '<button type="button" class="btn btn-xs btn-outline-primary mt-1 ctr-fb-add-field">Add</button>' +
+                    '</div>' +
+                    '<div class="ctr-formula-col">' +
+                    '<label class="ctr-lbl">Select Operator</label>' +
+                    '<select multiple size="6" class="form-control form-control-sm ctr-fb-operators">' +
+                    formulaOptionsHtml(FORMULA_OPERATORS) + '</select>' +
+                    '<button type="button" class="btn btn-xs btn-outline-primary mt-1 ctr-fb-add-operator">Add</button>' +
+                    '</div>' +
+                    '<div class="ctr-formula-col">' +
+                    '<label class="ctr-lbl">Select Function</label>' +
+                    '<select multiple size="6" class="form-control form-control-sm ctr-fb-functions">' +
+                    formulaOptionsHtml(FORMULA_FUNCTIONS) + '</select>' +
+                    '<button type="button" class="btn btn-xs btn-outline-primary mt-1 ctr-fb-add-function">Add</button>' +
+                    '</div>' +
+                    '</div>' +
+                    '<div class="ctr-field ctr-field-wide mt-2">' +
+                    '<div class="d-flex align-items-center">' +
+                    '<label class="ctr-lbl ctr-required mb-0">Formula</label>' +
+                    '<a href="#" class="ctr-fb-reset ml-auto">Reset</a>' +
+                    '</div>' +
+                    '<textarea class="form-control form-control-sm ctr-cf-formula" rows="2" ' +
+                    'placeholder="e.g. [ChargeableWeight]+([AssessableValue]*0.25)"></textarea>' +
+                    '</div>' +
+                    '</div>';
+            }
+
             function rateAreaHtml(rateType) {
                 if (rateType === 'Single') {
                     return '<div class="ctr-field" style="max-width:200px;">' +
@@ -621,37 +747,58 @@
                     return '<div class="ctr-slab-wrap">' +
                         '<table class="ctr-slab-table"><thead><tr><th>Up To</th><th>Value</th><th></th></tr></thead>' +
                         '<tbody class="ctr-slab-rows">' +
-                        '<tr><td><input type="number" class="form-control form-control-sm ctr-slab-upto" placeholder="e.g. 200"></td>' +
-                        '<td><input type="number" step="0.01" class="form-control form-control-sm ctr-slab-value"></td>' +
-                        '<td><span class="ctr-slab-row-remove">&times;</span></td></tr>' +
+                        slabRowHtml(true) + // first row, "Above" by default until a 2nd row is added
                         '</tbody></table>' +
                         '<button type="button" class="btn btn-xs btn-outline-primary ctr-slab-add-row mt-1">+ Add Slab</button>' +
-                        '<div class="ctr-field mt-2" style="max-width:200px;">' +
-                        '<label class="ctr-lbl ctr-required">Above (final tier value)</label>' +
-                        '<input type="number" step="0.01" class="form-control form-control-sm ctr-slab-above"></div>' +
                         '</div>';
                 }
                 if (rateType === 'Formula') {
-                    return '<div class="ctr-field ctr-field-wide">' +
-                        '<label class="ctr-lbl ctr-required">Formula</label>' +
-                        '<textarea class="form-control form-control-sm ctr-cf-formula" rows="2" placeholder="e.g. rate * weight + fuel_surcharge"></textarea></div>';
+                    return formulaBuilderHtml();
                 }
                 return '';
             }
 
+            function slabRowHtml(isAbove) {
+                return '<tr' + (isAbove ? ' class="ctr-slab-above-row"' : '') + '>' +
+                    '<td>' + (isAbove ?
+                        '<span class="ctr-slab-above-label">Above</span>' :
+                        '<input type="number" class="form-control form-control-sm ctr-slab-upto" placeholder="e.g. 200">'
+                    ) + '</td>' +
+                    '<td><input type="number" step="0.01" class="form-control form-control-sm ctr-slab-value"></td>' +
+                    '<td>' + (isAbove ? '' : '<span class="ctr-slab-row-remove">&times;</span>') + '</td>' +
+                    '</tr>';
+            }
+
             function addSlabRow(wrap) {
                 var tbody = wrap.querySelector('.ctr-slab-rows');
-                var tr = document.createElement('tr');
-                tr.innerHTML =
-                    '<td><input type="number" class="form-control form-control-sm ctr-slab-upto" placeholder="e.g. 500"></td>' +
+                var lastRow = tbody.querySelector('.ctr-slab-above-row');
+
+                // convert the previous "Above" row into a normal bounded tier
+                if (lastRow) {
+                    var value = lastRow.querySelector('.ctr-slab-value').value;
+                    var normalRow = document.createElement('tr');
+                    normalRow.innerHTML =
+                        '<td><input type="number" class="form-control form-control-sm ctr-slab-upto" placeholder="e.g. 500"></td>' +
+                        '<td><input type="number" step="0.01" class="form-control form-control-sm ctr-slab-value" value="' +
+                        value + '"></td>' +
+                        '<td><span class="ctr-slab-row-remove">&times;</span></td>';
+                    lastRow.replaceWith(normalRow);
+                }
+
+                // append the new row as the new "Above"
+                var newRow = document.createElement('tr');
+                newRow.className = 'ctr-slab-above-row';
+                newRow.innerHTML =
+                    '<td><span class="ctr-slab-above-label">Above</span></td>' +
                     '<td><input type="number" step="0.01" class="form-control form-control-sm ctr-slab-value"></td>' +
-                    '<td><span class="ctr-slab-row-remove">&times;</span></td>';
-                tbody.appendChild(tr);
+                    '<td></td>';
+                tbody.appendChild(newRow);
             }
 
             function bindChargeFormEvents(svcId, wrap) {
                 wrap.querySelector('.ctr-cf-ratetype').addEventListener('change', function() {
                     wrap.querySelector('.ctr-cf-ratearea').innerHTML = rateAreaHtml(this.value);
+                    if (this.value === 'Formula') bindFormulaBuilderEvents(wrap);
                 });
 
                 wrap.querySelector('.ctr-cf-cancel').addEventListener('click', function() {
@@ -661,6 +808,29 @@
 
                 wrap.querySelector('.ctr-cf-save').addEventListener('click', function() {
                     saveCharge(svcId, wrap);
+                });
+            }
+
+            function appendFormulaToken(wrap, token) {
+                var ta = wrap.querySelector('.ctr-cf-formula');
+                if (!ta || !token) return;
+                ta.value += token;
+                ta.focus();
+            }
+
+            function bindFormulaBuilderEvents(wrap) {
+                wrap.querySelector('.ctr-fb-add-field').addEventListener('click', function() {
+                    appendFormulaToken(wrap, wrap.querySelector('.ctr-fb-fields').value);
+                });
+                wrap.querySelector('.ctr-fb-add-operator').addEventListener('click', function() {
+                    appendFormulaToken(wrap, wrap.querySelector('.ctr-fb-operators').value);
+                });
+                wrap.querySelector('.ctr-fb-add-function').addEventListener('click', function() {
+                    appendFormulaToken(wrap, wrap.querySelector('.ctr-fb-functions').value);
+                });
+                wrap.querySelector('.ctr-fb-reset').addEventListener('click', function(e) {
+                    e.preventDefault();
+                    wrap.querySelector('.ctr-cf-formula').value = '';
                 });
             }
 
@@ -709,25 +879,35 @@
                 } else if (rateType === 'Slab Based' || rateType === 'Step Up') {
                     var rows = wrap.querySelectorAll('.ctr-slab-rows tr');
                     var slabs = [];
+                    var valid = true;
                     rows.forEach(function(row) {
-                        var upto = row.querySelector('.ctr-slab-upto').value;
+                        var isAbove = row.classList.contains('ctr-slab-above-row');
                         var value = row.querySelector('.ctr-slab-value').value;
-                        if (upto !== '' && value !== '') {
+                        if (isAbove) {
+                            if (value === '') {
+                                valid = false;
+                                return;
+                            }
+                            slabs.push({
+                                upto: null,
+                                value: parseFloat(value)
+                            });
+                        } else {
+                            var upto = row.querySelector('.ctr-slab-upto').value;
+                            if (upto === '' || value === '') {
+                                valid = false;
+                                return;
+                            }
                             slabs.push({
                                 upto: parseFloat(upto),
                                 value: parseFloat(value)
                             });
                         }
                     });
-                    var aboveVal = wrap.querySelector('.ctr-slab-above').value;
-                    if (!slabs.length || aboveVal === '') {
-                        alert('Please add at least one slab row and the Above value.');
+                    if (!valid || !slabs.length) {
+                        alert('Please fill all slab rows (each needs a value; non-final rows also need "Up To").');
                         return;
                     }
-                    slabs.push({
-                        upto: null,
-                        value: parseFloat(aboveVal)
-                    }); // null upto = "Above"
                     charge.rateSlab = slabs;
                 } else if (rateType === 'Formula') {
                     var formulaVal = wrap.querySelector('.ctr-cf-formula').value.trim();
@@ -744,12 +924,8 @@
                 renderCharges(svc);
             }
 
-            // ------------------------------------------------------------
-            // STEP 4: Save Contract — whole tree to session via ContractController::store
-            // ------------------------------------------------------------
-            document.getElementById('ctrSaveContractBtn').addEventListener('click', function() {
-                var btn = this;
-                var payload = {
+            function collectHeaderPayload() {
+                return {
                     contract_no: document.getElementById('ctrContractNo').value.trim(),
                     contract_type: document.getElementById('ctrContractType').value,
                     status: document.getElementById('ctrStatus').value,
@@ -758,16 +934,23 @@
                     description: document.getElementById('ctrDescription').value.trim(),
                     remark: document.getElementById('ctrRemark').value.trim()
                 };
+            }
 
-                var missing = ['contract_no', 'contract_type', 'status', 'effective_from', 'effective_to']
+            function validateHeader(payload) {
+                return ['contract_no', 'contract_type', 'status', 'effective_from', 'effective_to']
                     .filter(function(k) {
                         return !payload[k];
                     });
+            }
+
+            function saveDraft(btn, requireServices, onSuccess) {
+                var payload = collectHeaderPayload();
+                var missing = validateHeader(payload);
                 if (missing.length) {
                     alert('Please fill required Contract fields: ' + missing.join(', '));
                     return;
                 }
-                if (!state.contract.services.length) {
+                if (requireServices && !state.contract.services.length) {
                     alert('Add at least one Service before saving.');
                     return;
                 }
@@ -779,6 +962,7 @@
                 });
                 formData.append('services', JSON.stringify(state.contract.services));
 
+                var originalText = btn.textContent;
                 btn.disabled = true;
                 btn.textContent = 'Saving...';
 
@@ -794,16 +978,37 @@
                     })
                     .then(function(res) {
                         if (!res.success) throw new Error(res.message || 'Save failed');
-                        alert(res.message || 'Contract saved.');
+                        alert(res.message || 'Saved.');
+                        if (onSuccess) onSuccess();
                     })
                     .catch(function(err) {
                         console.error('[Contract] save failed:', err);
-                        alert('Failed to save contract: ' + err.message);
+                        alert('Failed to save: ' + err.message);
                     })
                     .finally(function() {
                         btn.disabled = false;
-                        btn.textContent = 'Save Contract';
+                        btn.textContent = originalText;
                     });
+            }
+
+            document.getElementById('ctrSaveHeaderBtn').addEventListener('click', function() {
+                var btn = this;
+                saveDraft(btn, false, function() {
+                    state.contractSaved = true;
+                    document.getElementById('ctrAddServiceBtn').disabled = false;
+                    document.getElementById('ctrAddServiceBtn').removeAttribute('title');
+                });
+            });
+
+            // ------------------------------------------------------------
+            // STEP 4: Save Contract — whole tree to session via ContractController::store
+            // ------------------------------------------------------------
+            document.getElementById('ctrSaveContractBtn').addEventListener('click', function() {
+                if (!state.contractSaved) {
+                    alert('Please click "Save Contract Info" first.');
+                    return;
+                }
+                saveDraft(this, true);
             });
 
             // ------------------------------------------------------------
@@ -819,6 +1024,7 @@
                 document.getElementById('ctrRemark').value = existing.remark || '';
                 state.contract.services = existing.services || [];
                 serviceSeq = state.contract.services.length;
+                document.getElementById('ctrAddServiceBtn').disabled = false;
             }
 
             renderServices();

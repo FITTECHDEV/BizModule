@@ -1677,7 +1677,7 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
         ->name('contracts.')
         ->group(function () {
             Route::get('/create', [App\Http\Controllers\ContractController::class, 'create'])->name('create');
-            Route::post('/', [App\Http\Controllers\ContractController::class, 'store'])->name('store');
+            Route::post('/{contract}', [App\Http\Controllers\ContractController::class, 'store'])->name('store');
             Route::get('/{contract}', [App\Http\Controllers\ContractController::class, 'show'])->name('show');
         });
 });
