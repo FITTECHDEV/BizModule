@@ -60,7 +60,7 @@
             </div>
 
             <div id="ctrServiceForm" class="ctr-subform mb-3" style="display:none;">
-                <div class="ctr-grid">
+                <div class="ctr-grid-2">
                     <div class="ctr-field"><label class="ctr-lbl ctr-required">Service</label>
                         <select class="form-control form-control-sm" id="ctrSvcService">
                             <option value="">-- Select --</option>
@@ -100,14 +100,6 @@
                             <option>Bulk</option>
                         </select>
                     </div>
-                    <div class="ctr-field"><label class="ctr-lbl">Movement Type</label>
-                        <select class="form-control form-control-sm" id="ctrSvcMovementType">
-                            <option value="">-- Select --</option>
-                            <option>Port to Port</option>
-                            <option>Door to Door</option>
-                            <option>Port to Door</option>
-                        </select>
-                    </div>
                     <div class="ctr-field"><label class="ctr-lbl ctr-required">Shipment Mode</label>
                         <select class="form-control form-control-sm" id="ctrSvcShipmentMode">
                             <option value="">-- Select --</option>
@@ -116,6 +108,15 @@
                             <option>Road</option>
                         </select>
                     </div>
+                    <div class="ctr-field"><label class="ctr-lbl">Movement Type</label>
+                        <select class="form-control form-control-sm" id="ctrSvcMovementType">
+                            <option value="">-- Select --</option>
+                            <option>Port to Port</option>
+                            <option>Door to Door</option>
+                            <option>Port to Door</option>
+                        </select>
+                    </div>
+                    <div class="ctr-field"></div>
                     <div class="ctr-field"><label class="ctr-lbl ctr-required">Country of Origin</label>
                         <input type="text" class="form-control form-control-sm" id="ctrSvcCountryOrigin">
                     </div>
@@ -190,6 +191,16 @@
 
         .ctr-field-wide {
             grid-column: span 3;
+        }
+
+        .ctr-grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px 16px;
+        }
+
+        .ctr-grid-2 .ctr-field-wide {
+            grid-column: span 2;
         }
 
         .ctr-lbl {
@@ -548,7 +559,7 @@
             }
 
             function chargeFormHtml(svcId) {
-                return '<div class="ctr-grid">' +
+                return '<div class="ctr-grid-2">' +
                     '<div class="ctr-field"><label class="ctr-lbl ctr-required">Charge Nature</label>' +
                     '<select class="form-control form-control-sm ctr-cf-nature">' +
                     '<option value="Revenue">Revenue</option><option value="Cost">Cost</option>' +
@@ -562,7 +573,7 @@
                     '</select></div>' +
                     '<div class="ctr-field"><label class="ctr-lbl ctr-required">Charge Code</label>' +
                     '<input type="text" class="form-control form-control-sm ctr-cf-code"></div>' +
-                    '<div class="ctr-field ctr-field-wide"><label class="ctr-lbl ctr-required">Charge Description</label>' +
+                    '<div class="ctr-field"><label class="ctr-lbl ctr-required">Charge Description</label>' +
                     '<input type="text" class="form-control form-control-sm ctr-cf-desc"></div>' +
                     '<div class="ctr-field"><label class="ctr-lbl ctr-required">Charge Based On</label>' +
                     '<select class="form-control form-control-sm ctr-cf-basedon">' +
@@ -579,11 +590,12 @@
                         return '<option>' + c + '</option>';
                     }).join('') +
                     '</select></div>' +
+                    '<div class="ctr-field"></div>' +
                     '<div class="ctr-field"><label class="ctr-lbl">Min Amount</label>' +
                     '<input type="number" step="0.01" class="form-control form-control-sm ctr-cf-min"></div>' +
                     '<div class="ctr-field"><label class="ctr-lbl">Max Amount</label>' +
                     '<input type="number" step="0.01" class="form-control form-control-sm ctr-cf-max"></div>' +
-                    '<div class="ctr-field"><label class="ctr-lbl ctr-required">Rate Type</label>' +
+                    '<div class="ctr-field ctr-field-wide"><label class="ctr-lbl ctr-required">Rate Type</label>' +
                     '<select class="form-control form-control-sm ctr-cf-ratetype">' +
                     '<option value="">-- Select --</option>' +
                     RATE_TYPES.map(function(r) {
