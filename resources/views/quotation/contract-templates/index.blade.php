@@ -7,7 +7,7 @@
 @stop
 
 @section('content')
-    <div class="container-fluid">
+    <div class="container-fluid" id="contractTemplateContent">
 
         {{-- Added based on stakeholder meeting requirement --}}
         {{-- STEP 2: Contract selection by Name / Description (dropdown), not just Contract Number --}}
@@ -31,24 +31,12 @@
                             id="ctfContractNumber">-</span></div>
                     <div class="cc-info-row"><span class="cc-lbl">Contract Name</span><span class="cc-val"
                             id="ctfContractName">-</span></div>
-                    <div class="cc-info-row"><span class="cc-lbl">Contract Description</span><span class="cc-val"
-                            id="ctfContractDesc">-</span></div>
-                    <div class="cc-info-row"><span class="cc-lbl">Contract Type</span><span class="cc-val"
-                            id="ctfContractType">-</span></div>
-                    <div class="cc-info-row"><span class="cc-lbl">Valid From</span><span class="cc-val"
-                            id="ctfValidFrom">-</span></div>
                 </div>
                 <div class="cc-info-col">
+                    <div class="cc-info-row"><span class="cc-lbl">Valid From</span><span class="cc-val"
+                            id="ctfValidFrom">-</span></div>
                     <div class="cc-info-row"><span class="cc-lbl">Valid To</span><span class="cc-val"
                             id="ctfValidTo">-</span></div>
-                    <div class="cc-info-row"><span class="cc-lbl">Country of Origin</span><span class="cc-val"
-                            id="ctfCountryOrigin">-</span></div>
-                    <div class="cc-info-row"><span class="cc-lbl">Country of Destination</span><span class="cc-val"
-                            id="ctfCountryDest">-</span></div>
-                    <div class="cc-info-row"><span class="cc-lbl">Service Type</span><span class="cc-val"
-                            id="ctfServiceType">-</span></div>
-                    <div class="cc-info-row"><span class="cc-lbl">Process Type</span><span class="cc-val"
-                            id="ctfProcessType">-</span></div>
                 </div>
             </div>
         </div>
@@ -64,18 +52,12 @@
                             id="ctfShipper">-</span></div>
                     <div class="cc-info-row"><span class="cc-lbl">Consignee</span><span class="cc-val"
                             id="ctfConsignee">-</span></div>
-                    <div class="cc-info-row"><span class="cc-lbl">Notify Party</span><span class="cc-val"
-                            id="ctfNotifyParty">-</span></div>
                 </div>
                 <div class="cc-info-col">
                     <div class="cc-info-row"><span class="cc-lbl">Port of Loading</span><span class="cc-val"
                             id="ctfPol">-</span></div>
                     <div class="cc-info-row"><span class="cc-lbl">Port of Discharge</span><span class="cc-val"
                             id="ctfPod">-</span></div>
-                    <div class="cc-info-row"><span class="cc-lbl">Final Destination</span><span class="cc-val"
-                            id="ctfFinalDest">-</span></div>
-                    <div class="cc-info-row"><span class="cc-lbl">Origin / Destination</span><span class="cc-val"
-                            id="ctfOriginDest">-</span></div>
                 </div>
             </div>
         </div>
@@ -85,10 +67,10 @@
             <div class="cc-box-title">Shipment Information</div>
             <div class="cc-info-grid">
                 <div class="cc-info-col">
-                    <div class="cc-info-row"><span class="cc-lbl">Weight</span><span class="cc-val"
-                            id="ctfWeight">-</span></div>
-                    <div class="cc-info-row"><span class="cc-lbl">Volume</span><span class="cc-val"
-                            id="ctfVolume">-</span></div>
+                    <div class="cc-info-row"><span class="cc-lbl">Weight</span><span class="cc-val" id="ctfWeight">-</span>
+                    </div>
+                    <div class="cc-info-row"><span class="cc-lbl">Volume</span><span class="cc-val" id="ctfVolume">-</span>
+                    </div>
                 </div>
                 <div class="cc-info-col">
                     <div class="cc-info-row"><span class="cc-lbl">Container</span><span class="cc-val"
@@ -139,11 +121,6 @@
             {{-- STEP 16: Save Contract — only selected charges are persisted into the mock contract object --}}
             <div class="d-flex justify-content-end mb-4">
                 <button type="button" class="btn btn-success" id="ctSaveContractBtn">Save Contract</button>
-            </div>
-
-            <div class="cc-box mb-4" id="ctSavePreviewBox" style="display:none;">
-                <div class="cc-box-title">Saved Contract Preview</div>
-                <pre id="ctSavePreview" class="cc-json-preview"></pre>
             </div>
         </div>
         {{-- End: Added based on stakeholder meeting requirement --}}
@@ -222,6 +199,15 @@
             border: 1px solid #dee2e6;
             border-radius: 4px;
             overflow: hidden;
+        }
+
+        #contractTemplateContent {
+            max-width: 100%;
+        }
+
+        #ctRevenueGroups {
+            max-height: 500px;
+            overflow-y: auto;
         }
 
         .cc-section-block-header {
@@ -318,6 +304,28 @@
             text-align: center;
         }
 
+        .cc-table th:nth-child(5),
+        .cc-table td:nth-child(5),
+        .cc-table th:nth-child(8),
+        .cc-table td:nth-child(8) {
+            min-width: 75px;
+        }
+
+        .cc-table th:nth-child(6),
+        .cc-table td:nth-child(6),
+        .cc-table th:nth-child(7),
+        .cc-table td:nth-child(7) {
+            min-width: 165px;
+        }
+
+        .cc-plain-input {
+            width: 60px;
+            border: 1px solid #ced4da;
+            border-radius: 3px;
+            font-size: 0.78rem;
+            padding: 2px 5px;
+        }
+
         .cc-empty-msg {
             text-align: center;
             color: #888;
@@ -340,43 +348,34 @@
             display: flex;
             align-items: center;
             gap: 6px;
+            white-space: nowrap;
         }
 
         .cc-cost-input {
-            width: 70px;
+            width: 90px;
             border: 1px solid #ced4da;
             border-radius: 3px;
             font-size: 0.78rem;
             padding: 2px 5px;
         }
 
-        .cc-cost-toggle {
-            display: inline-flex;
+        .cc-type-select {
+            width: 90px;
+            flex-shrink: 0;
             border: 1px solid #4B49AC;
             border-radius: 3px;
-            overflow: hidden;
-            flex-shrink: 0;
-        }
-
-        .cc-toggle-btn {
-            border: none;
-            background: #fff;
             color: #4B49AC;
-            font-size: 0.7rem;
-            padding: 2px 6px;
+            background: #fff;
+            font-size: 0.75rem;
+            padding: 3px 4px;
             cursor: pointer;
-        }
-
-        .cc-toggle-btn.active {
-            background: #4B49AC;
-            color: #fff;
         }
     </style>
 @stop
 
 @section('js')
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        (function() {
 
             // ============================================================
             // Added based on stakeholder meeting requirement
@@ -802,18 +801,41 @@
                 contract: null
             };
 
+            // Shipment context passed from the Quotation Edit page's "Load Contract Template" link
+            var shipmentContext = @json($shipment ?? []);
+            // Template already linked to this quotation (set previously via store())
+            var existingLink = @json($existing ?? null);
+
+            function contractMatchesShipment(c) {
+                if (!shipmentContext) return true;
+                var matches = true;
+                if (shipmentContext.service) {
+                    matches = matches && c.serviceType.toLowerCase() === shipmentContext.service.toLowerCase();
+                }
+                if (shipmentContext.origin) {
+                    matches = matches && c.countryOrigin.toLowerCase() === shipmentContext.origin.toLowerCase();
+                }
+                if (shipmentContext.destination) {
+                    matches = matches && c.countryDestination.toLowerCase() === shipmentContext.destination
+                        .toLowerCase();
+                }
+                return matches;
+            }
+
+            var matchingContracts = mockContracts.filter(contractMatchesShipment);
+            var contractsToShow = matchingContracts.length ? matchingContracts : mockContracts;
+
             // ------------------------------------------------------------
             // STEP 2: Contract Name / Description dropdown selector
             // ------------------------------------------------------------
             var contractSelect = document.getElementById('ctContractSelect');
 
-            mockContracts.forEach(function(c) {
+            contractsToShow.forEach(function(c) {
                 var opt = document.createElement('option');
                 opt.value = c.id;
                 opt.textContent = c.contractName + ' (' + c.contractNumber + ') — ' + c.contractDescription;
                 contractSelect.appendChild(opt);
             });
-
             contractSelect.addEventListener('change', function() {
                 if (contractSelect.value) selectContract(contractSelect.value);
             });
@@ -847,29 +869,19 @@
                 document.getElementById('ctPartyRouteBox').classList.add('is-visible');
                 document.getElementById('ctShipmentBox').classList.add('is-visible');
                 document.getElementById('ctChargesArea').classList.add('is-visible');
-                document.getElementById('ctSavePreviewBox').classList.remove('is-visible');
 
                 // STEP 1
                 document.getElementById('ctfContractNumber').textContent = contract.contractNumber;
                 document.getElementById('ctfContractName').textContent = contract.contractName;
-                document.getElementById('ctfContractDesc').textContent = contract.contractDescription;
-                document.getElementById('ctfContractType').textContent = contract.contractType;
                 document.getElementById('ctfValidFrom').textContent = contract.validFrom;
                 document.getElementById('ctfValidTo').textContent = contract.validTo;
-                document.getElementById('ctfCountryOrigin').textContent = contract.countryOrigin;
-                document.getElementById('ctfCountryDest').textContent = contract.countryDestination;
-                document.getElementById('ctfServiceType').textContent = contract.serviceType;
-                document.getElementById('ctfProcessType').textContent = contract.processType;
 
                 // STEP 3
                 document.getElementById('ctfClient').textContent = contract.client;
                 document.getElementById('ctfShipper').textContent = contract.shipper;
                 document.getElementById('ctfConsignee').textContent = contract.consignee;
-                document.getElementById('ctfNotifyParty').textContent = contract.notifyParty;
                 document.getElementById('ctfPol').textContent = contract.pol;
                 document.getElementById('ctfPod').textContent = contract.pod;
-                document.getElementById('ctfFinalDest').textContent = contract.finalDestination;
-                document.getElementById('ctfOriginDest').textContent = contract.originDestination;
 
                 // STEP 4
                 document.getElementById('ctfWeight').textContent = contract.shipment.weight + ' KG';
@@ -966,26 +978,44 @@
                                     '<td>' + r.code + '</td>' +
                                     '<td>' + r.desc + '</td>' +
                                     '<td>' + r.basedOn + '</td>' +
-                                    '<td>' + qty + '</td>' +
+                                    '<td><input type="number" step="0.01" class="cc-plain-input cc-qty-input" data-kind="' +
+                                    kind + '" data-index="' + rowIndex + '" value="' + qty + '"></td>' +
                                     '<td>' +
                                     '<div class="cc-cost-cell">' +
                                     '<input type="number" step="0.01" class="cc-cost-input" data-kind="' +
                                     kind + '" data-index="' + rowIndex + '" value="' + r.cost + '">' +
-                                    '<div class="cc-cost-toggle" data-kind="' + kind +
-                                    '" data-index="' +
-                                    rowIndex + '">' +
-                                    '<button type="button" class="cc-toggle-btn' + (r.costType !==
-                                        'percentage' ? ' active' : '') +
-                                    '" data-type="fixed">Fixed</button>' +
-                                    '<button type="button" class="cc-toggle-btn' + (r.costType ===
-                                        'percentage' ? ' active' : '') +
-                                    '" data-type="percentage">%</button>' +
-                                    '</div>' +
+                                    '<select class="cc-type-select cc-cost-type-select" data-kind="' +
+                                    kind +
+                                    '" data-index="' + rowIndex + '">' +
+                                    '<option value="fixed"' + (r.costType !== 'percentage' ? ' selected' :
+                                        '') +
+                                    '>Fixed</option>' +
+                                    '<option value="percentage"' + (r.costType === 'percentage' ?
+                                        ' selected' :
+                                        '') +
+                                    '>%</option>' +
+                                    '</select>' +
                                     '</div>' +
                                     '</td>' +
-                                    '<td>' + (r.markupType === 'percentage' ? r.markup + '%' : r.markup
-                                        .toFixed(2)) + '</td>' +
-                                    '<td class="cc-sell-val">' + sell.toFixed(2) + '</td>' +
+                                    '<td>' +
+                                    '<div class="cc-cost-cell">' +
+                                    '<input type="number" step="0.01" class="cc-cost-input cc-markup-input" data-kind="' +
+                                    kind + '" data-index="' + rowIndex + '" value="' + r.markup + '">' +
+                                    '<select class="cc-type-select cc-markup-type-select" data-kind="' +
+                                    kind +
+                                    '" data-index="' + rowIndex + '">' +
+                                    '<option value="fixed"' + (r.markupType !== 'percentage' ? ' selected' :
+                                        '') +
+                                    '>Fixed</option>' +
+                                    '<option value="percentage"' + (r.markupType === 'percentage' ?
+                                        ' selected' : '') +
+                                    '>%</option>' +
+                                    '</select>' +
+                                    '</div>' +
+                                    '</td>' +
+                                    '<td><input type="number" step="0.01" class="cc-plain-input cc-sell-input" data-kind="' +
+                                    kind + '" data-index="' + rowIndex + '" value="' + sell.toFixed(2) +
+                                    '"></td>' +
                                     '<td class="cc-amount-val">' + amount.toFixed(2) + '</td>' +
                                     '</tr>';
                             }).join('') :
@@ -1001,6 +1031,9 @@
 
             // STEP 10: quantity is derived from shipment info based on "Based On", never typed
             function qtyFor(row) {
+                if (row.qtyOverride !== undefined && row.qtyOverride !== null && row.qtyOverride !== '') {
+                    return row.qtyOverride;
+                }
                 var s = state.contract.shipment;
                 switch (row.basedOn) {
                     case 'KG':
@@ -1050,37 +1083,74 @@
             // so the input never loses focus while typing).
             // ------------------------------------------------------------
             document.addEventListener('input', function(e) {
-                if (e.target.classList.contains('cc-cost-input')) {
-                    var kind = e.target.getAttribute('data-kind');
-                    var idx = parseInt(e.target.getAttribute('data-index'), 10);
-                    state.contract[kind][idx].cost = parseFloat(e.target.value) || 0;
+                var target = e.target;
+                var kind = target.getAttribute('data-kind');
+                var idx = parseInt(target.getAttribute('data-index'), 10);
+
+                if (target.classList.contains('cc-cost-input') && !target.classList.contains(
+                        'cc-markup-input')) {
+                    state.contract[kind][idx].cost = parseFloat(target.value) || 0;
                     updateRowDerived(kind, idx);
+                    return;
+                }
+
+                if (target.classList.contains('cc-qty-input')) {
+                    state.contract[kind][idx].qtyOverride = parseFloat(target.value) || 0;
+                    updateRowDerived(kind, idx);
+                    return;
+                }
+
+                if (target.classList.contains('cc-markup-input')) {
+                    state.contract[kind][idx].markup = parseFloat(target.value) || 0;
+                    updateRowDerived(kind, idx, 'markup');
+                    return;
+                }
+
+                if (target.classList.contains('cc-sell-input')) {
+                    var row = state.contract[kind][idx];
+                    var sellVal = parseFloat(target.value) || 0;
+                    row.markupType = 'fixed';
+                    row.markup = round2(sellVal - actualCost(row));
+                    updateRowDerived(kind, idx, 'sell');
+                    return;
                 }
             });
 
-            document.addEventListener('click', function(e) {
-                var btn = e.target.closest('.cc-toggle-btn');
-                if (!btn) return;
-                var toggle = btn.closest('.cc-cost-toggle');
-                var kind = toggle.getAttribute('data-kind');
-                var idx = parseInt(toggle.getAttribute('data-index'), 10);
-                var newType = btn.getAttribute('data-type');
-                state.contract[kind][idx].costType = newType;
-                toggle.querySelectorAll('.cc-toggle-btn').forEach(function(b) {
-                    b.classList.toggle('active', b.getAttribute('data-type') === newType);
-                });
-                updateRowDerived(kind, idx);
+            document.addEventListener('change', function(e) {
+                var target = e.target;
+                if (target.classList.contains('cc-cost-type-select')) {
+                    var kind = target.getAttribute('data-kind');
+                    var idx = parseInt(target.getAttribute('data-index'), 10);
+                    state.contract[kind][idx].costType = target.value;
+                    updateRowDerived(kind, idx);
+                    return;
+                }
+                if (target.classList.contains('cc-markup-type-select')) {
+                    var kind = target.getAttribute('data-kind');
+                    var idx = parseInt(target.getAttribute('data-index'), 10);
+                    state.contract[kind][idx].markupType = target.value;
+                    updateRowDerived(kind, idx);
+                    return;
+                }
             });
 
-            function updateRowDerived(kind, idx) {
+            function updateRowDerived(kind, idx, changedField) {
                 var row = state.contract[kind][idx];
-                var sell = computeSell(row);
                 var qty = qtyFor(row);
+                var sell = changedField === 'sell' ? computeSell(row) : computeSell(row);
                 var amount = round2(sell * qty);
                 var tr = document.querySelector('tr[data-key="' + kind + '-' + idx + '"]');
                 if (tr) {
-                    tr.querySelector('.cc-sell-val').textContent = sell.toFixed(2);
-                    tr.querySelector('.cc-amount-val').textContent = amount.toFixed(2);
+                    if (changedField !== 'sell') {
+                        var sellInput = tr.querySelector('.cc-sell-input');
+                        if (sellInput) sellInput.value = sell.toFixed(2);
+                    }
+                    if (changedField !== 'markup') {
+                        var markupInput = tr.querySelector('.cc-markup-input');
+                        if (markupInput) markupInput.value = row.markup;
+                    }
+                    var amountCell = tr.querySelector('.cc-amount-val');
+                    if (amountCell) amountCell.textContent = amount.toFixed(2);
                 }
                 updateGroupTotal(kind, row.group);
                 recalcTotals();
@@ -1124,41 +1194,90 @@
             // would receive, and the same shape a Quotation Edit screen
             // would later read Revenue/Cost cards from (STEP 17).
             // ------------------------------------------------------------
-            document.getElementById('ctSaveContractBtn').addEventListener('click', function() {
-                var payload = {
-                    contractNumber: state.contract.contractNumber,
-                    contractName: state.contract.contractName,
-                    contractDescription: state.contract.contractDescription,
-                    contractType: state.contract.contractType,
-                    validFrom: state.contract.validFrom,
-                    validTo: state.contract.validTo,
-                    baseCurrency: state.contract.baseCurrency,
-                    party: {
-                        client: state.contract.client,
-                        shipper: state.contract.shipper,
-                        consignee: state.contract.consignee,
-                        notifyParty: state.contract.notifyParty,
-                        pol: state.contract.pol,
-                        pod: state.contract.pod,
-                        finalDestination: state.contract.finalDestination
-                    },
-                    shipment: state.contract.shipment,
-                    revenueCharges: state.contract.revenue.filter(function(r) {
-                        return r.selected;
-                    }),
-                    costCharges: state.contract.cost.filter(function(r) {
-                        return r.selected;
+            function refreshQuotationCards() {
+                fetch('{{ route('quotation.contract-template.charges', $quotationId) }}')
+                    .then(function(r) {
+                        return r.json();
                     })
-                };
+                    .then(function(res) {
+                        if (!res.success || !res.data) return;
+                        var revEl = document.getElementById('revenueTotalHeaderAmount');
+                        var costEl = document.getElementById('costTotalHeaderAmount');
+                        var quotedRevEl = document.getElementById('quotedRevenue');
+                        var quotedMarginEl = document.getElementById('quotedMargin');
+                        if (revEl) revEl.textContent = res.data.revenue_total.toFixed(2);
+                        if (costEl) costEl.textContent = res.data.cost_total.toFixed(2);
+                        if (quotedRevEl) quotedRevEl.value = res.data.revenue_total.toFixed(2);
+                        if (quotedMarginEl) quotedMarginEl.value = res.data.margin.toFixed(2);
+                    })
+                    .catch(function(err) {
+                        console.error('[ContractTemplate] charges refresh failed:', err);
+                    });
+            }
 
-                // TODO (backend integration): replace with
-                // fetch('/api/contracts', { method: 'POST', body: JSON.stringify(payload) })
-                document.getElementById('ctSavePreview').textContent = JSON.stringify(payload, null, 2);
-                document.getElementById('ctSavePreviewBox').classList.add('is-visible');
+            document.getElementById('ctSaveContractBtn').addEventListener('click', function() {
+                var saveBtn = this;
+                var revenueTotal = parseFloat(document.getElementById('ctSummaryRevenue').textContent) || 0;
+                var costTotal = parseFloat(document.getElementById('ctSummaryCost').textContent) || 0;
+                var margin = round2(revenueTotal - costTotal);
+
+                function serializeSelected(kind) {
+                    return state.contract[kind].filter(function(r) {
+                        return r.selected;
+                    }).map(function(r) {
+                        var qty = qtyFor(r);
+                        var sell = computeSell(r);
+                        return Object.assign({}, r, {
+                            qty: qty,
+                            sell: sell,
+                            amount: round2(sell * qty)
+                        });
+                    });
+                }
+
+                var formData = new FormData();
+                formData.append('_token', document.querySelector('meta[name="csrf-token"]').content);
+                formData.append('contract_template_id', state.contract.id);
+                formData.append('contract_template_name', state.contract.contractName);
+                formData.append('markup_type', 'Fixed');
+                formData.append('amount', margin);
+                formData.append('percentage', '');
+                formData.append('revenue_charges', JSON.stringify(serializeSelected('revenue')));
+                formData.append('cost_charges', JSON.stringify(serializeSelected('cost')));
+                formData.append('revenue_total', revenueTotal);
+                formData.append('cost_total', costTotal);
+                formData.append('margin', margin);
+
+                saveBtn.disabled = true;
+                saveBtn.textContent = 'Saving...';
+
+                fetch('{{ route('quotation.contract-template.store', $quotationId) }}', {
+                        method: 'POST',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: formData
+                    })
+                    .then(function(r) {
+                        return r.json();
+                    })
+                    .then(function(res) {
+                        if (!res.success) throw new Error(res.message || 'Save failed');
+                        refreshQuotationCards();
+                        var modalEl = document.getElementById('contractTemplateModal');
+                        if (window.jQuery && modalEl) {
+                            window.jQuery(modalEl).modal('hide');
+                        }
+                    })
+                    .catch(function(err) {
+                        console.error('[Contract] save failed:', err);
+                        alert('Failed to save contract. Please try again.');
+                    })
+                    .finally(function() {
+                        saveBtn.disabled = false;
+                        saveBtn.textContent = 'Save Contract';
+                    });
             });
-
-            // Preselect the first contract so the presentation opens populated
-            selectContract(mockContracts[0].id);
-        });
+        })();
     </script>
 @stop

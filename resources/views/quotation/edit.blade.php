@@ -1523,8 +1523,9 @@
                                 <button type="button" class="btn btn-danger ml-2" id="openBulkDeleteBtn">
                                     <i class="fas fa-trash"></i> Delete Charges
                                 </button>
-                                <button type="button" class="btn btn-info ml-2" id="openContractTemplateBtn">
-                                    <i class="fas fa-file-contract"></i> Load Contract Template
+                                <button type="button" class="btn btn-info ml-2" id="openContractTemplateBtn"
+                                    data-toggle="modal" data-target="#contractTemplateModal">
+                                    <i class="fas fa-file-contract"></i> Workbook
                                 </button>
                                 <button type="button" class="btn btn-success ml-2 d-none" id="confirmBulkDeleteBtn">
                                     <i class="fas fa-check"></i> Confirm Delete
@@ -1565,8 +1566,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                MODALS
-                                                                                                                                                ============================================ -->
+                                                                                                                                                                        MODALS
+                                                                                                                                                                        ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -2212,6 +2213,20 @@
             </div>
         </div>
 
+        <div class="modal fade" id="contractTemplateModal" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog modal-xl" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Workbook</h5>
+                        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                    </div>
+                    <div class="modal-body" id="contractTemplateModalBody">
+                        <div class="text-center py-4"><i class="fas fa-spinner fa-spin"></i> Loading...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="modal fade" id="copyChargesModal" tabindex="-1" role="dialog" aria-hidden="true">
             <div class="modal-dialog modal-xl cc-modal-dialog" role="document">
                 <div class="modal-content cc-modal-content">
@@ -2592,8 +2607,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -3036,9 +3051,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -5300,7 +5315,7 @@
                     data: {
                         booking_no: bookingNo,
                         office_code: officeCode,
-                        quotation_id: quotationId,
+                        quotation_id: quotationId
                     },
                     beforeSend: function() {
                         $('#revenueChargesTable, #costChargesTable').html(
@@ -5311,9 +5326,7 @@
                         if (response.success) {
                             revenueCharges = response.revenue || [];
                             costCharges = response.cost || [];
-                            renderRevenueCharges();
-                            renderCostCharges();
-                            updateSummary();
+                            loadContractTemplateCharges(); // append template rows, then render
                         } else {
                             showNotification('Failed to load charges', 'error');
                         }
@@ -5323,6 +5336,48 @@
                         $('#revenueChargesTable, #costChargesTable').html(
                             '<tr><td colspan="6" class="text-center text-danger">Failed to load</td></tr>'
                         );
+                    }
+                });
+            }
+
+            function loadContractTemplateCharges() {
+                $.ajax({
+                    url: '{{ route('quotation.contract-template.charges', $quotation->ID) }}',
+                    type: 'GET',
+                    success: function(response) {
+                        if (response.success && response.data) {
+                            (response.data.revenue_charges || []).forEach(function(item) {
+                                revenueCharges.push({
+                                    id: null,
+                                    chargeName: item.desc,
+                                    rate: item.rate,
+                                    quantity: 1,
+                                    basedOnAndUOM: item.basedOn,
+                                    chgCurr: item.currency,
+                                    amtInChgCurr: item.sell,
+                                    amtInBaseCurr: item.sell,
+                                    source: 'template'
+                                });
+                            });
+                            (response.data.cost_charges || []).forEach(function(item) {
+                                costCharges.push({
+                                    id: null,
+                                    chargeName: item.desc,
+                                    rate: item.rate,
+                                    quantity: 1,
+                                    basedOnAndUOM: item.basedOn,
+                                    chgCurr: item.currency,
+                                    amtInChgCurr: item.sell,
+                                    amtInBaseCurr: item.sell,
+                                    source: 'template'
+                                });
+                            });
+                        }
+                    },
+                    complete: function() {
+                        renderRevenueCharges();
+                        renderCostCharges();
+                        updateSummary();
                     }
                 });
             }
@@ -6806,7 +6861,7 @@
                         totalBaseAmount += parseFloat(charge.amtInBaseCurr || 0);
                         tbody.append(`
                         <tr>
-                           <td class="text-center bulk-delete-col" style="display:none;">
+                            <td class="text-center bulk-delete-col" style="display:none;">
                                 <input type="checkbox" class="charge-row-check"
                                     data-type="revenue" data-id="${charge.id}">
                             </td>
@@ -6818,14 +6873,16 @@
                             <td class="text-right">${parseFloat(charge.amtInChgCurr  || 0).toFixed(2)}</td>
                             <td class="text-right">${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
                             <td class="text-center">
-                                <button type="button" class="btn btn-warning btn-action edit-revenue-charge"
-                                    data-index="${index}" data-id="${charge.id}">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                                <button type="button" class="btn btn-danger btn-action delete-revenue-charge"
-                                    data-index="${index}" data-id="${charge.id}">
-                                    <i class="fas fa-trash"></i>
-                                </button>
+                                ${charge.source === 'template' ? '<span class="badge badge-info">Template</span>' : `
+                                            <button type="button" class="btn btn-warning btn-action edit-cost-charge"
+                                                data-index="${index}" data-id="${charge.id}">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-danger btn-action delete-cost-charge"
+                                                data-index="${index}" data-id="${charge.id}">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        `}
                             </td>
                         </tr>
                     `);
@@ -11033,5 +11090,80 @@
                 syncCcModalExpansion();
             });
         }); // end document.ready
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            fetch('{{ route('quotation.contract-template.charges', $quotation->ID) }}')
+                .then(function(r) {
+                    return r.json();
+                })
+                .then(function(res) {
+                    if (!res.success || !res.data) return;
+                    document.getElementById('revenueTotalHeaderAmount').textContent = res.data.revenue_total
+                        .toFixed(2);
+                    document.getElementById('costTotalHeaderAmount').textContent = res.data.cost_total.toFixed(
+                        2);
+                    document.getElementById('quotedRevenue').value = res.data.revenue_total.toFixed(2);
+                    document.getElementById('quotedMargin').value = res.data.margin.toFixed(2);
+                })
+                .catch(function(err) {
+                    console.error('[ContractTemplate] charges fetch failed:', err);
+                });
+        });
+    </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var modal = document.getElementById('contractTemplateModal');
+            var body = document.getElementById('contractTemplateModalBody');
+            var stylesInjected = false;
+
+            $(modal).on('show.bs.modal', function() {
+                body.innerHTML =
+                    '<div class="text-center py-4"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+
+                var url = '{{ route('quotation.contract-template.edit', request()->route('id')) }}' +
+                    '?quote_no={{ urlencode($quotation->QuoteNo ?? '') }}' +
+                    '&service={{ urlencode($quotation->ServiceVertical ?? '') }}' +
+                    '&origin={{ urlencode($quotation->origincountry ?? '') }}' +
+                    '&destination={{ urlencode($quotation->destinationcountry ?? '') }}';
+
+                fetch(url)
+                    .then(function(r) {
+                        return r.text();
+                    })
+                    .then(function(html) {
+                        var doc = new DOMParser().parseFromString(html, 'text/html');
+                        var content = doc.getElementById('contractTemplateContent');
+
+                        if (!content) {
+                            body.innerHTML =
+                            '<div class="alert alert-warning">Content not found.</div>';
+                            return;
+                        }
+
+                        if (!stylesInjected) {
+                            doc.querySelectorAll('style').forEach(function(styleTag) {
+                                document.head.appendChild(styleTag.cloneNode(true));
+                            });
+                            stylesInjected = true;
+                        }
+
+                        body.innerHTML = '<div class="card"><div class="card-body"></div></div>';
+                        body.querySelector('.card-body').appendChild(content);
+
+                        doc.querySelectorAll('script').forEach(function(oldScript) {
+                            var newScript = document.createElement('script');
+                            newScript.textContent = oldScript.textContent;
+                            document.body.appendChild(newScript);
+                        });
+                    })
+                    .catch(function(err) {
+                        console.error('[Workbook] load failed:', err);
+                        body.innerHTML =
+                            '<div class="alert alert-danger">Failed to load. Please try again.</div>';
+                    });
+            });
+        });
     </script>
 @stop
