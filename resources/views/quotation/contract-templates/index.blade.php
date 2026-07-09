@@ -151,6 +151,10 @@
             letter-spacing: 0.03em;
         }
 
+        #contractTemplateModal .modal-dialog {
+            max-width: 1140px;
+        }
+
         .cc-info-grid {
             display: flex;
             gap: 24px;
@@ -315,7 +319,7 @@
         .cc-table td:nth-child(6),
         .cc-table th:nth-child(7),
         .cc-table td:nth-child(7) {
-            min-width: 165px;
+            min-width: 200px;
         }
 
         .cc-plain-input {

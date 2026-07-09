@@ -10,6 +10,7 @@ use App\Http\Controllers\AzureUserManagementController;
 use App\Http\Controllers\OdooSyncController;
 use App\Http\Controllers\ShipmentReportController;
 use App\Http\Controllers\ScmProfitIntegrationController;
+use App\Http\Controllers\ApprovalController;
 
 use App\Models\Category;
 use App\Models\Office;
@@ -1620,6 +1621,65 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
     Route::post('/quotation/status-reset', [App\Http\Controllers\QuotationController::class, 'resetStatus'])->name(
         'quotation.status-reset',
     );
+
+    Route::get('/quotation/{id}/approval-status', [
+        App\Http\Controllers\QuotationController::class,
+        'getApprovalStatus',
+    ])->name('quotation.approval.status');
+
+    Route::post('/quotation/{id}/send-for-approval', [
+        App\Http\Controllers\QuotationController::class,
+        'sendForApproval',
+    ])->name('quotation.approval.send');
+
+    // fix: add approvals dashboard route — separate from per-quote approval endpoints
+    Route::get('/quotation/approvals', [App\Http\Controllers\QuotationController::class, 'approvalsDashboard'])->name(
+        'quotation.approvals',
+    );
+
+    Route::post('/quotation/approvals/{requestId}/decision', [
+        App\Http\Controllers\QuotationController::class,
+        'submitApprovalDecision',
+    ])->name('quotation.approvals.decision');
+
+    // Approval page — reached via email link
+    Route::get('/quotation/{id}/approve', [App\Http\Controllers\QuotationController::class, 'approvePage'])
+        ->name('quotation.approve.page')
+        ->middleware('auth');
+
+    // Decision submission from approval page
+    Route::post('/quotation/{id}/approval-decision', [
+        App\Http\Controllers\QuotationController::class,
+        'approvalDecision',
+    ])
+        ->name('quotation.approval.decision')
+        ->middleware('auth');
+
+    // Route::get('quotation/contract-templates', [App\Http\Controllers\ContractTemplateController::class, 'index'])->name(
+    //     'quotation.contract-templates',
+    // );
+
+    Route::get('/quotation/{quotation}/contract-template', [
+        App\Http\Controllers\ContractTemplateController::class,
+        'edit',
+    ])->name('quotation.contract-template.edit');
+    Route::post('/quotation/{quotation}/contract-template', [
+        App\Http\Controllers\ContractTemplateController::class,
+        'store',
+    ])->name('quotation.contract-template.store');
+
+    Route::get('/quotation/{quotation}/contract-template/charges', [
+        App\Http\Controllers\ContractTemplateController::class,
+        'charges',
+    ])->name('quotation.contract-template.charges');
+
+    Route::prefix('contracts')
+        ->name('contracts.')
+        ->group(function () {
+            Route::get('/create', [App\Http\Controllers\ContractController::class, 'create'])->name('create');
+            Route::post('/', [App\Http\Controllers\ContractController::class, 'store'])->name('store');
+            Route::get('/{contract}', [App\Http\Controllers\ContractController::class, 'show'])->name('show');
+        });
 });
 
 // ============================================
@@ -2022,3 +2082,6 @@ Route::get('/zra/get-stats', [App\Http\Controllers\ZraController::class, 'getSta
 Route::post('/zra/update-invoice', [App\Http\Controllers\ZraController::class, 'updateInvoice'])->middleware('auth');
 Route::get('/zra/re-trigger/{docNo}', [App\Http\Controllers\ZraController::class, 'reTrigger'])->middleware('auth');
 Route::get('/datatables/zra', [App\Http\Controllers\ZraController::class, 'datatable'])->middleware('auth');
+Route::get('/approval/{id}/approve', [ApprovalController::class, 'approve'])
+    ->name('approval.approve')
+    ->middleware('signed'); // rejects invalid/expired signatures automatically
