@@ -9,6 +9,26 @@
 @section('content')
     <div class="container-fluid" id="contractCreateContent">
 
+        {{-- Dashboard stats --}}
+        <div class="ctr-stat-grid mb-3">
+            <div class="ctr-stat-card ctr-stat-active">
+                <div class="ctr-stat-value">{{ $stats['active'] }}</div>
+                <div class="ctr-stat-label">Active</div>
+            </div>
+            <div class="ctr-stat-card ctr-stat-pending">
+                <div class="ctr-stat-value">{{ $stats['pending_approval'] }}</div>
+                <div class="ctr-stat-label">Pending Approval</div>
+            </div>
+            <div class="ctr-stat-card ctr-stat-approval">
+                <div class="ctr-stat-value">{{ $stats['approval'] }}</div>
+                <div class="ctr-stat-label">Approval</div>
+            </div>
+            <div class="ctr-stat-card ctr-stat-total">
+                <div class="ctr-stat-value">{{ $stats['total'] }}</div>
+                <div class="ctr-stat-label">Total</div>
+            </div>
+        </div>
+
         {{-- STEP 1: Contract header --}}
         <div class="ctr-box mb-3">
             <div class="ctr-box-title d-flex align-items-center">
@@ -65,7 +85,9 @@
             </div>
 
             <div id="ctrServiceForm" class="ctr-subform mb-3" style="display:none;">
-                <div class="ctr-grid-2">
+
+                <div class="ctr-subsection-title">Service Details</div>
+                <div class="ctr-grid-2 mb-3">
                     <div class="ctr-field"><label class="ctr-lbl ctr-required">Service</label>
                         <select class="form-control form-control-sm" id="ctrSvcService">
                             <option value="">-- Select --</option>
@@ -122,25 +144,36 @@
                         </select>
                     </div>
                     <div class="ctr-field"></div>
+                </div>
+
+                <div class="ctr-subsection-title">Origin Details</div>
+                <div class="ctr-grid-2 mb-3">
                     <div class="ctr-field"><label class="ctr-lbl ctr-required">Country of Origin</label>
                         <input type="text" class="form-control form-control-sm" id="ctrSvcCountryOrigin">
-                    </div>
-                    <div class="ctr-field"><label class="ctr-lbl ctr-required">Country of Destination</label>
-                        <input type="text" class="form-control form-control-sm" id="ctrSvcCountryDestination">
                     </div>
                     <div class="ctr-field"><label class="ctr-lbl">Port of Loading</label>
                         <input type="text" class="form-control form-control-sm" id="ctrSvcPol">
                     </div>
-                    <div class="ctr-field"><label class="ctr-lbl">Port of Discharge</label>
-                        <input type="text" class="form-control form-control-sm" id="ctrSvcPod">
-                    </div>
                     <div class="ctr-field"><label class="ctr-lbl">Place of Receipt</label>
                         <input type="text" class="form-control form-control-sm" id="ctrSvcPlaceOfReceipt">
+                    </div>
+                    <div class="ctr-field"></div>
+                </div>
+
+                <div class="ctr-subsection-title">Destination Details</div>
+                <div class="ctr-grid-2 mb-3">
+                    <div class="ctr-field"><label class="ctr-lbl ctr-required">Country of Destination</label>
+                        <input type="text" class="form-control form-control-sm" id="ctrSvcCountryDestination">
+                    </div>
+                    <div class="ctr-field"><label class="ctr-lbl">Port of Discharge</label>
+                        <input type="text" class="form-control form-control-sm" id="ctrSvcPod">
                     </div>
                     <div class="ctr-field"><label class="ctr-lbl">Place of Delivery</label>
                         <input type="text" class="form-control form-control-sm" id="ctrSvcPlaceOfDelivery">
                     </div>
+                    <div class="ctr-field"></div>
                 </div>
+
                 <div class="d-flex justify-content-end mt-2">
                     <button type="button" class="btn btn-sm btn-secondary mr-2" id="ctrCancelServiceBtn">Cancel</button>
                     <button type="button" class="btn btn-sm btn-success" id="ctrSaveServiceBtn">Save Service</button>
@@ -213,6 +246,17 @@
             color: #495057;
             margin-bottom: 2px;
             display: block;
+        }
+
+        .ctr-subsection-title {
+            font-size: .8rem;
+            font-weight: 700;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: .02em;
+            margin-bottom: 8px;
+            padding-bottom: 4px;
+            border-bottom: 1px solid #e2e2ec;
         }
 
         .ctr-required::after {
@@ -345,6 +389,67 @@
 
         .ctr-fb-reset {
             font-size: .75rem;
+        }
+
+        .ctr-stat-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+        }
+
+        .ctr-stat-card {
+            border-radius: 6px;
+            padding: 20px;
+            background: #fff;
+            border: 1px solid #dee2e6;
+            border-left: 4px solid #4B49AC;
+        }
+
+        .ctr-stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #212529;
+        }
+
+        .ctr-stat-label {
+            font-size: .82rem;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: .03em;
+            margin-top: 4px;
+        }
+
+        .ctr-stat-active {
+            border-left-color: #28a745;
+        }
+
+        .ctr-stat-pending {
+            border-left-color: #ffc107;
+        }
+
+        .ctr-stat-approval {
+            border-left-color: #6c757d;
+            opacity: .6;
+        }
+
+        .ctr-stat-total {
+            border-left-color: #4B49AC;
+        }
+
+        @media (max-width: 768px) {
+            .ctr-stat-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .ctr-formula-cols {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .ctr-formula-col select[multiple] {
+            height: auto;
         }
     </style>
 @stop
@@ -622,13 +727,14 @@
                     '<input type="number" step="0.01" class="form-control form-control-sm ctr-cf-min"></div>' +
                     '<div class="ctr-field"><label class="ctr-lbl">Max Amount</label>' +
                     '<input type="number" step="0.01" class="form-control form-control-sm ctr-cf-max"></div>' +
-                    '<div class="ctr-field ctr-field-wide"><label class="ctr-lbl ctr-required">Rate Type</label>' +
+                    '<div class="ctr-field"><label class="ctr-lbl ctr-required">Rate Type</label>' +
                     '<select class="form-control form-control-sm ctr-cf-ratetype">' +
                     '<option value="">-- Select --</option>' +
                     RATE_TYPES.map(function(r) {
                         return '<option>' + r + '</option>';
                     }).join('') +
                     '</select></div>' +
+                    '<div class="ctr-field ctr-cf-inline-rate"></div>' +
                     '</div>' +
                     '<div class="ctr-cf-ratearea mt-2"></div>' +
                     '<div class="d-flex justify-content-end mt-2">' +
@@ -734,15 +840,24 @@
                     '<textarea class="form-control form-control-sm ctr-cf-formula" rows="2" ' +
                     'placeholder="e.g. [ChargeableWeight]+([AssessableValue]*0.25)"></textarea>' +
                     '</div>' +
+                    '<div class="ctr-field mt-2" style="max-width:220px;">' +
+                    '<label class="ctr-lbl">Rate Type</label>' +
+                    '<select class="form-control form-control-sm ctr-fb-ratetype">' +
+                    '<option value="Single">Single</option><option value="Slab Based">Slab Based</option>' +
+                    '</select></div>' +
+                    '<div class="ctr-fb-ratearea mt-2"></div>' +
                     '</div>';
             }
 
-            function rateAreaHtml(rateType) {
+            function inlineRateHtml(rateType) {
                 if (rateType === 'Single') {
-                    return '<div class="ctr-field" style="max-width:200px;">' +
-                        '<label class="ctr-lbl ctr-required">Rate</label>' +
-                        '<input type="number" step="0.01" class="form-control form-control-sm ctr-cf-rate"></div>';
+                    return '<label class="ctr-lbl ctr-required">Rate</label>' +
+                        '<input type="number" step="0.01" class="form-control form-control-sm ctr-cf-rate">';
                 }
+                return '';
+            }
+
+            function rateAreaHtml(rateType) {
                 if (rateType === 'Slab Based' || rateType === 'Step Up') {
                     return '<div class="ctr-slab-wrap">' +
                         '<table class="ctr-slab-table"><thead><tr><th>Up To</th><th>Value</th><th></th></tr></thead>' +
@@ -795,8 +910,24 @@
                 tbody.appendChild(newRow);
             }
 
+            function renderFormulaRateArea(wrap, rateType) {
+                var area = wrap.querySelector('.ctr-fb-ratearea');
+                if (rateType === 'Slab Based') {
+                    area.innerHTML = '<div class="ctr-slab-wrap">' +
+                        '<table class="ctr-slab-table"><thead><tr><th>Up To</th><th>Value</th><th></th></tr></thead>' +
+                        '<tbody class="ctr-slab-rows">' + slabRowHtml(true) + '</tbody></table>' +
+                        '<button type="button" class="btn btn-xs btn-outline-primary ctr-slab-add-row mt-1">+ Add Slab</button>' +
+                        '</div>';
+                } else {
+                    area.innerHTML = '<div class="ctr-field" style="max-width:200px;">' +
+                        '<label class="ctr-lbl ctr-required">Rate</label>' +
+                        '<input type="number" step="0.01" class="form-control form-control-sm ctr-formula-rate"></div>';
+                }
+            }
+
             function bindChargeFormEvents(svcId, wrap) {
                 wrap.querySelector('.ctr-cf-ratetype').addEventListener('change', function() {
+                    wrap.querySelector('.ctr-cf-inline-rate').innerHTML = inlineRateHtml(this.value);
                     wrap.querySelector('.ctr-cf-ratearea').innerHTML = rateAreaHtml(this.value);
                     if (this.value === 'Formula') bindFormulaBuilderEvents(wrap);
                 });
@@ -832,6 +963,12 @@
                     e.preventDefault();
                     wrap.querySelector('.ctr-cf-formula').value = '';
                 });
+
+                var rtSelect = wrap.querySelector('.ctr-fb-ratetype');
+                rtSelect.addEventListener('change', function() {
+                    renderFormulaRateArea(wrap, this.value);
+                });
+                renderFormulaRateArea(wrap, rtSelect.value); // init default (Single)
             }
 
             function saveCharge(svcId, wrap) {
@@ -866,7 +1003,10 @@
                     rateType: rateType,
                     rate: null,
                     rateSlab: null,
-                    formula: null
+                    formula: null,
+                    formulaRateType: null,
+                    formulaRate: null,
+                    formulaSlab: null
                 };
 
                 if (rateType === 'Single') {
@@ -916,6 +1056,51 @@
                         return;
                     }
                     charge.formula = formulaVal;
+
+                    var formulaRateType = wrap.querySelector('.ctr-fb-ratetype').value;
+                    charge.formulaRateType = formulaRateType;
+
+                    if (formulaRateType === 'Slab Based') {
+                        var fRows = wrap.querySelectorAll('.ctr-fb-ratearea .ctr-slab-rows tr');
+                        var fSlabs = [];
+                        var fValid = true;
+                        fRows.forEach(function(row) {
+                            var isAbove = row.classList.contains('ctr-slab-above-row');
+                            var value = row.querySelector('.ctr-slab-value').value;
+                            if (isAbove) {
+                                if (value === '') {
+                                    fValid = false;
+                                    return;
+                                }
+                                fSlabs.push({
+                                    upto: null,
+                                    value: parseFloat(value)
+                                });
+                            } else {
+                                var upto = row.querySelector('.ctr-slab-upto').value;
+                                if (upto === '' || value === '') {
+                                    fValid = false;
+                                    return;
+                                }
+                                fSlabs.push({
+                                    upto: parseFloat(upto),
+                                    value: parseFloat(value)
+                                });
+                            }
+                        });
+                        if (!fValid || !fSlabs.length) {
+                            alert('Please fill all Formula slab rows.');
+                            return;
+                        }
+                        charge.formulaSlab = fSlabs;
+                    } else {
+                        var fRateVal = wrap.querySelector('.ctr-formula-rate').value;
+                        if (fRateVal === '') {
+                            alert('Rate is required for the Formula rate type.');
+                            return;
+                        }
+                        charge.formulaRate = parseFloat(fRateVal);
+                    }
                 }
 
                 svc.charges.push(charge);

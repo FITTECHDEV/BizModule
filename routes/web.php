@@ -1594,21 +1594,6 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
         'getRequestOfficeHistory',
     ])->name('quotation.request-office-history');
 
-    Route::get('/quotation/website-requests', [App\Http\Controllers\WebsiteQuotationController::class, 'index'])->name(
-        'quotation.website-requests',
-    );
-
-    // WEBSITE QUOTATION REQUESTS
-    // ============================================
-    Route::get('/quotation/website-requests', [App\Http\Controllers\WebsiteQuotationController::class, 'index'])->name(
-        'quotation.website-requests',
-    );
-
-    Route::get('/quotation/website-requests/portal', [
-        App\Http\Controllers\WebsiteQuotationController::class,
-        'portal',
-    ])->name('quotation.website-requests.portal');
-
     Route::get('/quotation/sales-intelligence', [
         App\Http\Controllers\QuotationController::class,
         'salesIntelligence',
@@ -1680,6 +1665,21 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
             Route::post('/{contract}', [App\Http\Controllers\ContractController::class, 'store'])->name('store');
             Route::get('/{contract}', [App\Http\Controllers\ContractController::class, 'show'])->name('show');
         });
+
+    Route::get('/quotation/website-requests', [App\Http\Controllers\WebsiteQuotationController::class, 'index'])->name(
+        'quotation.website-requests',
+    );
+
+    // WEBSITE QUOTATION REQUESTS
+    // ============================================
+    Route::get('/quotation/website-requests', [App\Http\Controllers\WebsiteQuotationController::class, 'index'])->name(
+        'quotation.website-requests',
+    );
+
+    Route::get('/quotation/website-requests/portal', [
+        App\Http\Controllers\WebsiteQuotationController::class,
+        'portal',
+    ])->name('quotation.website-requests.portal');
 });
 
 // ============================================

@@ -22,7 +22,7 @@
             </div>
         </div>
 
-        {{-- STEP 1: Contract master info card --}}
+        {{-- STEP 1 & 3: Combined Contract + Party & Route info card --}}
         <div class="cc-box mb-3" id="ctContractInfoBox" style="display:none;">
             <div class="cc-box-title">Contract Information</div>
             <div class="cc-info-grid">
@@ -31,20 +31,11 @@
                             id="ctfContractNumber">-</span></div>
                     <div class="cc-info-row"><span class="cc-lbl">Contract Name</span><span class="cc-val"
                             id="ctfContractName">-</span></div>
-                </div>
-                <div class="cc-info-col">
                     <div class="cc-info-row"><span class="cc-lbl">Valid From</span><span class="cc-val"
                             id="ctfValidFrom">-</span></div>
                     <div class="cc-info-row"><span class="cc-lbl">Valid To</span><span class="cc-val"
                             id="ctfValidTo">-</span></div>
                 </div>
-            </div>
-        </div>
-
-        {{-- STEP 3: Auto-populated party / route info --}}
-        <div class="cc-box mb-3" id="ctPartyRouteBox" style="display:none;">
-            <div class="cc-box-title">Party &amp; Route Information</div>
-            <div class="cc-info-grid">
                 <div class="cc-info-col">
                     <div class="cc-info-row"><span class="cc-lbl">Client</span><span class="cc-val" id="ctfClient">-</span>
                     </div>
@@ -152,7 +143,8 @@
         }
 
         #contractTemplateModal .modal-dialog {
-            max-width: 1140px;
+            max-width: 1400px;
+            width: 95%;
         }
 
         .cc-info-grid {
@@ -324,10 +316,12 @@
 
         .cc-plain-input {
             width: 60px;
+            min-width: 44px;
             border: 1px solid #ced4da;
             border-radius: 3px;
             font-size: 0.78rem;
             padding: 2px 5px;
+            box-sizing: content-box;
         }
 
         .cc-empty-msg {
@@ -870,7 +864,6 @@
                 contractSelect.value = contract.id;
 
                 document.getElementById('ctContractInfoBox').classList.add('is-visible');
-                document.getElementById('ctPartyRouteBox').classList.add('is-visible');
                 document.getElementById('ctShipmentBox').classList.add('is-visible');
                 document.getElementById('ctChargesArea').classList.add('is-visible');
 
@@ -907,9 +900,6 @@
             // with checkboxes and an inline-editable Cost column
             // ------------------------------------------------------------
             function actualCost(row) {
-                if (row.costType === 'percentage') {
-                    return round2(row.rate * ((row.cost || 0) / 100));
-                }
                 return row.cost || 0;
             }
 
@@ -985,21 +975,8 @@
                                     '<td><input type="number" step="0.01" class="cc-plain-input cc-qty-input" data-kind="' +
                                     kind + '" data-index="' + rowIndex + '" value="' + qty + '"></td>' +
                                     '<td>' +
-                                    '<div class="cc-cost-cell">' +
                                     '<input type="number" step="0.01" class="cc-cost-input" data-kind="' +
                                     kind + '" data-index="' + rowIndex + '" value="' + r.cost + '">' +
-                                    '<select class="cc-type-select cc-cost-type-select" data-kind="' +
-                                    kind +
-                                    '" data-index="' + rowIndex + '">' +
-                                    '<option value="fixed"' + (r.costType !== 'percentage' ? ' selected' :
-                                        '') +
-                                    '>Fixed</option>' +
-                                    '<option value="percentage"' + (r.costType === 'percentage' ?
-                                        ' selected' :
-                                        '') +
-                                    '>%</option>' +
-                                    '</select>' +
-                                    '</div>' +
                                     '</td>' +
                                     '<td>' +
                                     '<div class="cc-cost-cell">' +
@@ -1019,7 +996,8 @@
                                     '</td>' +
                                     '<td><input type="number" step="0.01" class="cc-plain-input cc-sell-input" data-kind="' +
                                     kind + '" data-index="' + rowIndex + '" value="' + sell.toFixed(2) +
-                                    '"></td>' +
+                                    '" style="width:' + Math.max(4, sell.toFixed(2).length + 2) +
+                                    'ch"></td>' +
                                     '<td class="cc-amount-val">' + amount.toFixed(2) + '</td>' +
                                     '</tr>';
                             }).join('') :
@@ -1056,6 +1034,13 @@
 
             function slug(str) {
                 return str.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+            }
+
+            // Grows the Sell input to fit its content instead of clipping digits
+            function sizeSellInput(el) {
+                if (!el) return;
+                var len = (el.value || '').length;
+                el.style.width = Math.max(4, len + 2) + 'ch';
             }
 
             // Group collapse/expand
@@ -1115,6 +1100,7 @@
                     var sellVal = parseFloat(target.value) || 0;
                     row.markupType = 'fixed';
                     row.markup = round2(sellVal - actualCost(row));
+                    sizeSellInput(target);
                     updateRowDerived(kind, idx, 'sell');
                     return;
                 }
@@ -1122,13 +1108,6 @@
 
             document.addEventListener('change', function(e) {
                 var target = e.target;
-                if (target.classList.contains('cc-cost-type-select')) {
-                    var kind = target.getAttribute('data-kind');
-                    var idx = parseInt(target.getAttribute('data-index'), 10);
-                    state.contract[kind][idx].costType = target.value;
-                    updateRowDerived(kind, idx);
-                    return;
-                }
                 if (target.classList.contains('cc-markup-type-select')) {
                     var kind = target.getAttribute('data-kind');
                     var idx = parseInt(target.getAttribute('data-index'), 10);
@@ -1147,7 +1126,10 @@
                 if (tr) {
                     if (changedField !== 'sell') {
                         var sellInput = tr.querySelector('.cc-sell-input');
-                        if (sellInput) sellInput.value = sell.toFixed(2);
+                        if (sellInput) {
+                            sellInput.value = sell.toFixed(2);
+                            sizeSellInput(sellInput);
+                        }
                     }
                     if (changedField !== 'markup') {
                         var markupInput = tr.querySelector('.cc-markup-input');

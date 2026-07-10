@@ -25,7 +25,16 @@ class ContractController extends Controller
         $contractId = $request->query('draft', Str::uuid()->toString());
         $existing = Session::get($this->sessionKey($contractId));
 
-        return view('contracts.create', compact('contractId', 'existing'));
+        // Mock counts — replace with real Contract::query() aggregates once
+        // contracts are persisted to a DB table instead of session drafts.
+        $stats = [
+            'active' => 12,
+            'pending_approval' => 4,
+            'approval' => 0,
+            'total' => 16,
+        ];
+
+        return view('contracts.create', compact('contractId', 'existing', 'stats'));
     }
 
     /**
@@ -40,17 +49,23 @@ class ContractController extends Controller
         $services = json_decode($request->input('services', '[]'), true);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Services payload was not valid JSON. Nothing was saved.',
-            ], 422);
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => 'Services payload was not valid JSON. Nothing was saved.',
+                ],
+                422,
+            );
         }
 
         if (!is_array($services)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Services payload must be an array. Nothing was saved.',
-            ], 422);
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => 'Services payload must be an array. Nothing was saved.',
+                ],
+                422,
+            );
         }
 
         Session::put($this->sessionKey($contract), [
