@@ -14,7 +14,7 @@ class StoreContractRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'contract_no' => ['required', 'string', 'max:50'],
+            // 'contract_no' => ['required', 'string', 'max:50'],
             'contract_type' => ['required', 'string', 'in:Tariff,Long Term'],
             'status' => ['required', 'string'],
             'effective_from' => ['required', 'date'],

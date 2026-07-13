@@ -1664,6 +1664,28 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
             Route::get('/create', [App\Http\Controllers\ContractController::class, 'create'])->name('create');
             Route::post('/{contract}', [App\Http\Controllers\ContractController::class, 'store'])->name('store');
             Route::get('/{contract}', [App\Http\Controllers\ContractController::class, 'show'])->name('show');
+
+            Route::prefix('masters')->group(function () {
+                Route::get('inco-terms', [App\Http\Controllers\ContractController::class, 'getIncoTerms']);
+                Route::get('countries', [App\Http\Controllers\ContractController::class, 'getCountries']);
+                Route::get('shipment-modes', [App\Http\Controllers\ContractController::class, 'getShipmentModes']);
+                Route::get('transport-modes', [App\Http\Controllers\ContractController::class, 'getTransportModes']);
+                Route::get('equipment-types', [App\Http\Controllers\ContractController::class, 'getEquipmentTypes']);
+                Route::get('charge-codes', [App\Http\Controllers\ContractController::class, 'getChargeCodes']);
+                Route::get('based-on', [App\Http\Controllers\ContractController::class, 'getBasedOnList']);
+                Route::get('based-on-uom', [App\Http\Controllers\ContractController::class, 'getBasedOnUOM']);
+                Route::get('currencies', [App\Http\Controllers\ContractController::class, 'getCurrencies']);
+                Route::get('exchange-rate', [App\Http\Controllers\ContractController::class, 'getExchangeRate']);
+                Route::get('locations', [App\Http\Controllers\ContractController::class, 'getLocations']);
+                Route::get('services', [App\Http\Controllers\ContractController::class, 'getServices']);
+                Route::get('processes', [App\Http\Controllers\ContractController::class, 'getProcesses']);
+                Route::get('shipment-types', [App\Http\Controllers\ContractController::class, 'getShipmentTypes']);
+                Route::get('movement-types', [App\Http\Controllers\ContractController::class, 'getMovementTypes']);
+                Route::get('charge-categories', [
+                    App\Http\Controllers\ContractController::class,
+                    'getChargeCategories',
+                ]);
+            });
         });
 
     Route::get('/quotation/website-requests', [App\Http\Controllers\WebsiteQuotationController::class, 'index'])->name(

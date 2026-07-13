@@ -11,17 +11,21 @@
 
         {{-- Dashboard stats --}}
         <div class="ctr-stat-grid mb-3">
-            <div class="ctr-stat-card ctr-stat-active">
-                <div class="ctr-stat-value">{{ $stats['active'] }}</div>
-                <div class="ctr-stat-label">Active</div>
-            </div>
             <div class="ctr-stat-card ctr-stat-pending">
+                <div class="ctr-stat-value">{{ $stats['pending'] }}</div>
+                <div class="ctr-stat-label">Pending</div>
+            </div>
+            <div class="ctr-stat-card ctr-stat-pending-approval">
                 <div class="ctr-stat-value">{{ $stats['pending_approval'] }}</div>
                 <div class="ctr-stat-label">Pending Approval</div>
             </div>
-            <div class="ctr-stat-card ctr-stat-approval">
-                <div class="ctr-stat-value">{{ $stats['approval'] }}</div>
-                <div class="ctr-stat-label">Approval</div>
+            <div class="ctr-stat-card ctr-stat-authorized">
+                <div class="ctr-stat-value">{{ $stats['authorized'] }}</div>
+                <div class="ctr-stat-label">Authorized</div>
+            </div>
+            <div class="ctr-stat-card ctr-stat-renewal">
+                <div class="ctr-stat-value">{{ $stats['renewal_due'] }}</div>
+                <div class="ctr-stat-label">Renewal Due</div>
             </div>
             <div class="ctr-stat-card ctr-stat-total">
                 <div class="ctr-stat-value">{{ $stats['total'] }}</div>
@@ -37,10 +41,8 @@
                     Info</button>
             </div>
             <div class="ctr-grid">
-                <div class="ctr-field">
-                    <label class="ctr-lbl ctr-required">Contract No</label>
-                    <input type="text" class="form-control form-control-sm" id="ctrContractNo">
-                </div>
+                <input type="hidden" id="ctrContractNo" value="">
+
                 <div class="ctr-field">
                     <label class="ctr-lbl ctr-required">Contract Type</label>
                     <select class="form-control form-control-sm" id="ctrContractType">
@@ -49,14 +51,8 @@
                         <option value="Long Term">Long Term</option>
                     </select>
                 </div>
-                <div class="ctr-field">
-                    <label class="ctr-lbl ctr-required">Status</label>
-                    <select class="form-control form-control-sm" id="ctrStatus">
-                        <option value="Draft">Draft</option>
-                        <option value="Active">Active</option>
-                        <option value="Inactive">Inactive</option>
-                    </select>
-                </div>
+
+                <input type="hidden" id="ctrStatus" value="Draft">
                 <div class="ctr-field">
                     <label class="ctr-lbl ctr-required">Effective From</label>
                     <input type="date" class="form-control form-control-sm" id="ctrEffectiveFrom">
@@ -76,7 +72,7 @@
             </div>
         </div>
 
-        {{-- STEP 2: Services list + inline Add Service form (embedded, not a new window) --}}
+        {{-- STEP 2: Services list + inline Add Service form --}}
         <div class="ctr-box mb-3">
             <div class="ctr-box-title d-flex align-items-center">
                 <span>Services</span>
@@ -91,28 +87,16 @@
                     <div class="ctr-field"><label class="ctr-lbl ctr-required">Service</label>
                         <select class="form-control form-control-sm" id="ctrSvcService">
                             <option value="">-- Select --</option>
-                            <option>Freight Forwarding</option>
-                            <option>Customs Clearance</option>
-                            <option>Transportation</option>
-                            <option>Warehousing</option>
                         </select>
                     </div>
                     <div class="ctr-field"><label class="ctr-lbl ctr-required">Process</label>
                         <select class="form-control form-control-sm" id="ctrSvcProcess">
                             <option value="">-- Select --</option>
-                            <option>Import</option>
-                            <option>Export</option>
-                            <option>Cross Trade</option>
                         </select>
                     </div>
                     <div class="ctr-field"><label class="ctr-lbl">IncoTerm</label>
                         <select class="form-control form-control-sm" id="ctrSvcIncoTerm">
                             <option value="">-- Select --</option>
-                            <option>EXW</option>
-                            <option>FOB</option>
-                            <option>CIF</option>
-                            <option>DDP</option>
-                            <option>FCA</option>
                         </select>
                     </div>
                     <div class="ctr-field"><label class="ctr-lbl">Service Class</label>
@@ -121,26 +105,16 @@
                     <div class="ctr-field"><label class="ctr-lbl ctr-required">Shipment Type</label>
                         <select class="form-control form-control-sm" id="ctrSvcShipmentType">
                             <option value="">-- Select --</option>
-                            <option>FCL</option>
-                            <option>LCL</option>
-                            <option>Air</option>
-                            <option>Bulk</option>
                         </select>
                     </div>
                     <div class="ctr-field"><label class="ctr-lbl ctr-required">Shipment Mode</label>
                         <select class="form-control form-control-sm" id="ctrSvcShipmentMode">
                             <option value="">-- Select --</option>
-                            <option>Sea</option>
-                            <option>Air</option>
-                            <option>Road</option>
                         </select>
                     </div>
                     <div class="ctr-field"><label class="ctr-lbl">Movement Type</label>
                         <select class="form-control form-control-sm" id="ctrSvcMovementType">
                             <option value="">-- Select --</option>
-                            <option>Port to Port</option>
-                            <option>Door to Door</option>
-                            <option>Port to Door</option>
                         </select>
                     </div>
                     <div class="ctr-field"></div>
@@ -149,13 +123,19 @@
                 <div class="ctr-subsection-title">Origin Details</div>
                 <div class="ctr-grid-2 mb-3">
                     <div class="ctr-field"><label class="ctr-lbl ctr-required">Country of Origin</label>
-                        <input type="text" class="form-control form-control-sm" id="ctrSvcCountryOrigin">
+                        <select class="form-control form-control-sm" id="ctrSvcCountryOrigin">
+                            <option value="">-- Select --</option>
+                        </select>
                     </div>
                     <div class="ctr-field"><label class="ctr-lbl">Port of Loading</label>
-                        <input type="text" class="form-control form-control-sm" id="ctrSvcPol">
+                        <input type="text" class="form-control form-control-sm" id="ctrSvcPol"
+                            placeholder="Type to search..." autocomplete="off">
+                        <input type="hidden" id="ctrSvcPolCode">
                     </div>
                     <div class="ctr-field"><label class="ctr-lbl">Place of Receipt</label>
-                        <input type="text" class="form-control form-control-sm" id="ctrSvcPlaceOfReceipt">
+                        <input type="text" class="form-control form-control-sm" id="ctrSvcPlaceOfReceipt"
+                            placeholder="Type to search..." autocomplete="off">
+                        <input type="hidden" id="ctrSvcPlaceOfReceiptCode">
                     </div>
                     <div class="ctr-field"></div>
                 </div>
@@ -163,13 +143,19 @@
                 <div class="ctr-subsection-title">Destination Details</div>
                 <div class="ctr-grid-2 mb-3">
                     <div class="ctr-field"><label class="ctr-lbl ctr-required">Country of Destination</label>
-                        <input type="text" class="form-control form-control-sm" id="ctrSvcCountryDestination">
+                        <select class="form-control form-control-sm" id="ctrSvcCountryDestination">
+                            <option value="">-- Select --</option>
+                        </select>
                     </div>
                     <div class="ctr-field"><label class="ctr-lbl">Port of Discharge</label>
-                        <input type="text" class="form-control form-control-sm" id="ctrSvcPod">
+                        <input type="text" class="form-control form-control-sm" id="ctrSvcPod"
+                            placeholder="Type to search..." autocomplete="off">
+                        <input type="hidden" id="ctrSvcPodCode">
                     </div>
                     <div class="ctr-field"><label class="ctr-lbl">Place of Delivery</label>
-                        <input type="text" class="form-control form-control-sm" id="ctrSvcPlaceOfDelivery">
+                        <input type="text" class="form-control form-control-sm" id="ctrSvcPlaceOfDelivery"
+                            placeholder="Type to search..." autocomplete="off">
+                        <input type="hidden" id="ctrSvcPlaceOfDeliveryCode">
                     </div>
                     <div class="ctr-field"></div>
                 </div>
@@ -189,7 +175,7 @@
         </div>
     </div>
 
-    {{-- Charge row template (cloned via JS, never referenced directly) --}}
+    {{-- Charge row template --}}
     <template id="ctrChargeRowTemplate">
         <tr>
             <td class="ctr-nature-cell"></td>
@@ -204,6 +190,7 @@
 @stop
 
 @section('css')
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
     <style>
         .ctr-box {
             border: 1px solid #dee2e6;
@@ -377,23 +364,13 @@
             color: #dc3545;
         }
 
-        .ctr-formula-cols {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-        }
-
-        .ctr-formula-col select {
-            height: auto;
-        }
-
         .ctr-fb-reset {
             font-size: .75rem;
         }
 
         .ctr-stat-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(5, 1fr);
             gap: 16px;
         }
 
@@ -419,17 +396,20 @@
             margin-top: 4px;
         }
 
-        .ctr-stat-active {
-            border-left-color: #28a745;
+        .ctr-stat-pending {
+            border-left-color: #6c757d;
         }
 
-        .ctr-stat-pending {
+        .ctr-stat-pending-approval {
             border-left-color: #ffc107;
         }
 
-        .ctr-stat-approval {
-            border-left-color: #6c757d;
-            opacity: .6;
+        .ctr-stat-authorized {
+            border-left-color: #28a745;
+        }
+
+        .ctr-stat-renewal {
+            border-left-color: #dc3545;
         }
 
         .ctr-stat-total {
@@ -455,26 +435,19 @@
 @stop
 
 @section('js')
+    <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
     <script>
         (function() {
+            // ── PHP‑passed variables ──────────────────────────────────────────────
             var CONTRACT_ID = @json($contractId);
             var STORE_URL = @json(route('contracts.store', $contractId ?? ''));
+            var OFFICE_CODE = @json($officeCode ?? ''); // from controller
 
-            // ------------------------------------------------------------
-            // Mock option lists (hardcoded per current phase — real lookups
-            // will replace these once backend SPs exist)
-            // ------------------------------------------------------------
-            var CHARGE_CATEGORIES = [
-                'General / Port Charges', 'Freight / Carrier Related Charges',
-                'Dangerous Goods Charges', 'Delivery / Pickup Related Charges',
-                'Documentation Charges', 'Customs Charges', 'Agency Charges', 'Product Charges'
-            ];
-            var CHARGE_BASED_ON = ['KG', 'CBM', 'Container', 'Shipment', 'Package'];
-            var CURRENCIES = ['USD', 'KES', 'UGX', 'TZS'];
-            var RATE_TYPES = ['Single', 'Slab Based', 'Step Up', 'Formula'];
+            // ── Master data endpoints ─────────────────────────────────────────────
+            var MASTER_BASE = '/contracts/masters';
 
+            // ── State ──────────────────────────────────────────────────────────────
             var existing = @json($existing ?? null);
-
             var state = {
                 contract: existing || {
                     contractNo: '',
@@ -487,20 +460,171 @@
                     services: []
                 }
             };
-
-            state.contractSaved = !!existing; // hydrated draft already has a saved header
+            state.contractSaved = !!existing;
 
             var serviceSeq = 0;
             var chargeSeq = 0;
 
-            // ------------------------------------------------------------
-            // STEP 2: Add Service (embedded form, no new window)
-            // ------------------------------------------------------------
+            // ── Helper: fetch master list ─────────────────────────────────────────
+            function fetchMasterList(endpoint, params) {
+                var url = MASTER_BASE + '/' + endpoint;
+                var qs = params ? '?' + $.param(params) : '';
+                return $.ajax({
+                    url: url + qs,
+                    type: 'GET',
+                    dataType: 'json'
+                });
+            }
+
+            // ── Helper: populate a select from API response ──────────────────────
+            function populateSelect($select, data, valueField, labelField) {
+                $select.empty().append('<option value="">-- Select --</option>');
+                if (!data || !data.length) {
+                    $select.append('<option value="" disabled>No options available</option>');
+                    return;
+                }
+                data.forEach(function(item) {
+                    var val = item[valueField] || '';
+                    var label = item[labelField] || val;
+                    $select.append('<option value="' + val + '">' + label + '</option>');
+                });
+            }
+
+            // ── Populate service form dropdowns ──────────────────────────────────
+            function populateServiceFormMasters() {
+                // Service
+                fetchMasterList('services').done(function(res) {
+                    if (res.success) populateSelect($('#ctrSvcService'), res.data, 'Code', 'Name');
+                });
+                // Process
+                fetchMasterList('processes').done(function(res) {
+                    if (res.success) populateSelect($('#ctrSvcProcess'), res.data, 'Code', 'Name');
+                });
+                // IncoTerm
+                fetchMasterList('inco-terms').done(function(res) {
+                    if (res.success) populateSelect($('#ctrSvcIncoTerm'), res.data, 'IncoTermCode',
+                        'IncoTermCode');
+                });
+                // Shipment Type
+                fetchMasterList('shipment-types').done(function(res) {
+                    if (res.success) populateSelect($('#ctrSvcShipmentType'), res.data, 'Code', 'Name');
+                });
+                // Shipment Mode
+                fetchMasterList('shipment-modes').done(function(res) {
+                    if (res.success) populateSelect($('#ctrSvcShipmentMode'), res.data, 'Code', 'Code');
+                });
+                // Movement Type
+                fetchMasterList('movement-types').done(function(res) {
+                    if (res.success) populateSelect($('#ctrSvcMovementType'), res.data, 'Code', 'Name');
+                });
+                // Countries
+                fetchMasterList('countries').done(function(res) {
+                    // res is an array directly
+                    if (Array.isArray(res)) {
+                        populateSelect($('#ctrSvcCountryOrigin'), res, 'CountryCode', 'CountryName');
+                        populateSelect($('#ctrSvcCountryDestination'), res, 'CountryCode', 'CountryName');
+                    }
+                });
+            }
+
+            // ── Location autocomplete (jQuery UI) ────────────────────────────────
+            function initLocationAutocomplete(inputId, codeInputId) {
+                var $input = $('#' + inputId);
+                var $codeInput = $('#' + codeInputId);
+                if ($input.hasClass('ui-autocomplete-input')) {
+                    $input.autocomplete('destroy');
+                }
+                $input.autocomplete({
+                    minLength: 2,
+                    delay: 300,
+                    source: function(request, response) {
+                        fetchMasterList('locations', {
+                                filter: request.term,
+                                include_country: 0
+                            })
+                            .done(function(res) {
+                                if (res.success && res.locations.length) {
+                                    response(res.locations.map(function(l) {
+                                        return {
+                                            label: l.LocationCode + ' — ' + l.LocationName,
+                                            value: l.LocationName,
+                                            code: l.LocationCode
+                                        };
+                                    }));
+                                } else {
+                                    response([{
+                                        label: 'No locations found',
+                                        value: '',
+                                        disabled: true
+                                    }]);
+                                }
+                            })
+                            .fail(function() {
+                                response([{
+                                    label: 'Error loading locations',
+                                    value: '',
+                                    disabled: true
+                                }]);
+                            });
+                    },
+                    select: function(event, ui) {
+                        if (ui.item.disabled) {
+                            event.preventDefault();
+                            return false;
+                        }
+                        $input.val(ui.item.value);
+                        $codeInput.val(ui.item.code);
+                        return false;
+                    }
+                });
+            }
+
+            // ── Charge form: populate masters ────────────────────────────────────
+            function loadChargeFormMasters(wrap) {
+                // Charge Category
+                fetchMasterList('charge-categories').done(function(res) {
+                    if (res.success) populateSelect($(wrap).find('.ctr-cf-category'), res.data, 'Code', 'Name');
+                });
+                // Based On
+                fetchMasterList('based-on').done(function(res) {
+                    if (res.success) populateSelect($(wrap).find('.ctr-cf-basedon'), res.based_on_list, 'Code',
+                        'Name');
+                });
+                // Currency (needs office_id – we'll pass the office code as a param)
+                // For now, we'll fetch currencies with a dummy office_id; later use real office.
+                // You can get the office from the user or pass from controller.
+                // For demo, we'll call with office_id = OFFICE_CODE (if it's a UUID) or fallback.
+                var officeId = OFFICE_CODE || '';
+                fetchMasterList('currencies', {
+                    office_id: officeId
+                }).done(function(res) {
+                    if (res.success) {
+                        var $sel = $(wrap).find('.ctr-cf-currency');
+                        $sel.empty().append('<option value="">-- Select --</option>');
+                        res.currencies.forEach(function(c) {
+                            $sel.append('<option value="' + c.CurrencyCode + '">' + c.CurrencyCode +
+                                '</option>');
+                        });
+                    }
+                });
+            }
+
+            // ── Service form visibility and population ──────────────────────────
             var svcForm = document.getElementById('ctrServiceForm');
 
             document.getElementById('ctrAddServiceBtn').addEventListener('click', function() {
                 svcForm.style.display = 'block';
+                // Populate dropdowns if not already populated
+                if (!$('#ctrSvcService option').length) {
+                    populateServiceFormMasters();
+                }
+                // Init location autocomplete for the fields
+                initLocationAutocomplete('ctrSvcPol', 'ctrSvcPolCode');
+                initLocationAutocomplete('ctrSvcPod', 'ctrSvcPodCode');
+                initLocationAutocomplete('ctrSvcPlaceOfReceipt', 'ctrSvcPlaceOfReceiptCode');
+                initLocationAutocomplete('ctrSvcPlaceOfDelivery', 'ctrSvcPlaceOfDeliveryCode');
             });
+
             document.getElementById('ctrCancelServiceBtn').addEventListener('click', function() {
                 svcForm.style.display = 'none';
                 clearServiceForm();
@@ -513,8 +637,14 @@
                 ].forEach(function(id) {
                     document.getElementById(id).value = '';
                 });
+                // Clear hidden codes
+                ['ctrSvcPolCode', 'ctrSvcPodCode', 'ctrSvcPlaceOfReceiptCode', 'ctrSvcPlaceOfDeliveryCode'].forEach(
+                    function(id) {
+                        document.getElementById(id).value = '';
+                    });
             }
 
+            // ── Save Service ──────────────────────────────────────────────────────
             document.getElementById('ctrSaveServiceBtn').addEventListener('click', function() {
                 var required = {
                     service: document.getElementById('ctrSvcService').value,
@@ -544,10 +674,10 @@
                     shipmentMode: required.shipmentMode,
                     countryOrigin: required.countryOrigin,
                     countryDestination: required.countryDestination,
-                    pol: document.getElementById('ctrSvcPol').value.trim(),
-                    pod: document.getElementById('ctrSvcPod').value.trim(),
-                    placeOfReceipt: document.getElementById('ctrSvcPlaceOfReceipt').value.trim(),
-                    placeOfDelivery: document.getElementById('ctrSvcPlaceOfDelivery').value.trim(),
+                    pol: document.getElementById('ctrSvcPolCode').value.trim(),
+                    pod: document.getElementById('ctrSvcPodCode').value.trim(),
+                    placeOfReceipt: document.getElementById('ctrSvcPlaceOfReceiptCode').value.trim(),
+                    placeOfDelivery: document.getElementById('ctrSvcPlaceOfDeliveryCode').value.trim(),
                     charges: []
                 });
 
@@ -556,9 +686,7 @@
                 renderServices();
             });
 
-            // ------------------------------------------------------------
-            // Render Services list + per-service embedded Add Charge form
-            // ------------------------------------------------------------
+            // ── Render services & charges ────────────────────────────────────────
             function renderServices() {
                 var list = document.getElementById('ctrServicesList');
                 var empty = document.getElementById('ctrServicesEmpty');
@@ -596,55 +724,6 @@
                 });
             }
 
-            document.addEventListener('click', function(e) {
-                var header = e.target.closest('.ctr-service-header');
-                if (header && !e.target.closest('.ctr-remove-svc')) {
-                    var body = document.getElementById('body-' + header.getAttribute('data-svc'));
-                    header.classList.toggle('collapsed');
-                    body.classList.toggle('collapsed');
-                    return;
-                }
-
-                var removeBtn = e.target.closest('.ctr-remove-svc');
-                if (removeBtn) {
-                    var svcId = removeBtn.getAttribute('data-svc');
-                    state.contract.services = state.contract.services.filter(function(s) {
-                        return s.id !== svcId;
-                    });
-                    renderServices();
-                    return;
-                }
-
-                var addChargeBtn = e.target.closest('.ctr-add-charge-btn');
-                if (addChargeBtn) {
-                    openChargeForm(addChargeBtn.getAttribute('data-svc'));
-                    return;
-                }
-
-                var removeChargeBtn = e.target.closest('.ctr-remove-charge');
-                if (removeChargeBtn) {
-                    var svc = findService(removeChargeBtn.getAttribute('data-svc'));
-                    var chargeId = removeChargeBtn.getAttribute('data-charge');
-                    svc.charges = svc.charges.filter(function(c) {
-                        return c.id !== chargeId;
-                    });
-                    renderCharges(svc);
-                    return;
-                }
-
-                var slabAddBtn = e.target.closest('.ctr-slab-add-row');
-                if (slabAddBtn) {
-                    addSlabRow(slabAddBtn.closest('.ctr-slab-wrap'));
-                    return;
-                }
-
-                var slabRemoveBtn = e.target.closest('.ctr-slab-row-remove');
-                if (slabRemoveBtn) {
-                    slabRemoveBtn.closest('tr').remove();
-                    return;
-                }
-            });
-
             function findService(svcId) {
                 return state.contract.services.filter(function(s) {
                     return s.id === svcId;
@@ -678,16 +757,14 @@
                 });
             }
 
-            // ------------------------------------------------------------
-            // STEP 3: Add Charge — embedded inside the service card
-            // (not a separate window), RateType-conditional inputs
-            // ------------------------------------------------------------
+            // ── Open Charge Form ──────────────────────────────────────────────────
             function openChargeForm(svcId) {
                 var wrap = document.getElementById('chargeform-' + svcId);
                 if (!wrap) return;
                 wrap.style.display = 'block';
                 wrap.innerHTML = chargeFormHtml(svcId);
                 bindChargeFormEvents(svcId, wrap);
+                loadChargeFormMasters(wrap);
             }
 
             function chargeFormHtml(svcId) {
@@ -699,9 +776,6 @@
                     '<div class="ctr-field"><label class="ctr-lbl ctr-required">Charge Category</label>' +
                     '<select class="form-control form-control-sm ctr-cf-category">' +
                     '<option value="">-- Select --</option>' +
-                    CHARGE_CATEGORIES.map(function(c) {
-                        return '<option>' + c + '</option>';
-                    }).join('') +
                     '</select></div>' +
                     '<div class="ctr-field"><label class="ctr-lbl ctr-required">Charge Code</label>' +
                     '<input type="text" class="form-control form-control-sm ctr-cf-code"></div>' +
@@ -710,17 +784,12 @@
                     '<div class="ctr-field"><label class="ctr-lbl ctr-required">Charge Based On</label>' +
                     '<select class="form-control form-control-sm ctr-cf-basedon">' +
                     '<option value="">-- Select --</option>' +
-                    CHARGE_BASED_ON.map(function(b) {
-                        return '<option>' + b + '</option>';
-                    }).join('') +
                     '</select></div>' +
                     '<div class="ctr-field"><label class="ctr-lbl">Based On UOM</label>' +
                     '<input type="text" class="form-control form-control-sm ctr-cf-uom"></div>' +
                     '<div class="ctr-field"><label class="ctr-lbl ctr-required">Currency</label>' +
                     '<select class="form-control form-control-sm ctr-cf-currency">' +
-                    CURRENCIES.map(function(c) {
-                        return '<option>' + c + '</option>';
-                    }).join('') +
+                    '<option value="">-- Select --</option>' +
                     '</select></div>' +
                     '<div class="ctr-field"></div>' +
                     '<div class="ctr-field"><label class="ctr-lbl">Min Amount</label>' +
@@ -730,9 +799,10 @@
                     '<div class="ctr-field"><label class="ctr-lbl ctr-required">Rate Type</label>' +
                     '<select class="form-control form-control-sm ctr-cf-ratetype">' +
                     '<option value="">-- Select --</option>' +
-                    RATE_TYPES.map(function(r) {
-                        return '<option>' + r + '</option>';
-                    }).join('') +
+                    '<option value="Single">Single</option>' +
+                    '<option value="Slab Based">Slab Based</option>' +
+                    '<option value="Step Up">Step Up</option>' +
+                    '<option value="Formula">Formula</option>' +
                     '</select></div>' +
                     '<div class="ctr-field ctr-cf-inline-rate"></div>' +
                     '</div>' +
@@ -744,31 +814,8 @@
                     '</div>';
             }
 
-            var FORMULA_FIELDS = [{
-                    label: 'Activity Days',
-                    token: '[ActivityDays]'
-                },
-                {
-                    label: 'Assessable Value',
-                    token: '[AssessableValue]'
-                },
-                {
-                    label: 'Chargeable Weight',
-                    token: '[ChargeableWeight]'
-                },
-                {
-                    label: 'Commercial Invoice Value',
-                    token: '[CommercialInvoiceValue]'
-                },
-                {
-                    label: 'Declaration',
-                    token: '[Declaration]'
-                },
-                {
-                    label: 'Delivery Address Count',
-                    token: '[DeliveryAddressCount]'
-                }
-            ];
+            // ── Rate Type conditional UI (slabs, formula) ──────────────────────
+            var FORMULA_FIELDS = [];
             var FORMULA_OPERATORS = [{
                     label: 'Plus +',
                     token: '+'
@@ -862,7 +909,7 @@
                     return '<div class="ctr-slab-wrap">' +
                         '<table class="ctr-slab-table"><thead><tr><th>Up To</th><th>Value</th><th></th></tr></thead>' +
                         '<tbody class="ctr-slab-rows">' +
-                        slabRowHtml(true) + // first row, "Above" by default until a 2nd row is added
+                        slabRowHtml(true) +
                         '</tbody></table>' +
                         '<button type="button" class="btn btn-xs btn-outline-primary ctr-slab-add-row mt-1">+ Add Slab</button>' +
                         '</div>';
@@ -887,8 +934,6 @@
             function addSlabRow(wrap) {
                 var tbody = wrap.querySelector('.ctr-slab-rows');
                 var lastRow = tbody.querySelector('.ctr-slab-above-row');
-
-                // convert the previous "Above" row into a normal bounded tier
                 if (lastRow) {
                     var value = lastRow.querySelector('.ctr-slab-value').value;
                     var normalRow = document.createElement('tr');
@@ -899,8 +944,6 @@
                         '<td><span class="ctr-slab-row-remove">&times;</span></td>';
                     lastRow.replaceWith(normalRow);
                 }
-
-                // append the new row as the new "Above"
                 var newRow = document.createElement('tr');
                 newRow.className = 'ctr-slab-above-row';
                 newRow.innerHTML =
@@ -926,18 +969,18 @@
             }
 
             function bindChargeFormEvents(svcId, wrap) {
-                wrap.querySelector('.ctr-cf-ratetype').addEventListener('change', function() {
-                    wrap.querySelector('.ctr-cf-inline-rate').innerHTML = inlineRateHtml(this.value);
-                    wrap.querySelector('.ctr-cf-ratearea').innerHTML = rateAreaHtml(this.value);
+                $(wrap).find('.ctr-cf-ratetype').on('change', function() {
+                    $(wrap).find('.ctr-cf-inline-rate').html(inlineRateHtml(this.value));
+                    $(wrap).find('.ctr-cf-ratearea').html(rateAreaHtml(this.value));
                     if (this.value === 'Formula') bindFormulaBuilderEvents(wrap);
                 });
 
-                wrap.querySelector('.ctr-cf-cancel').addEventListener('click', function() {
+                $(wrap).find('.ctr-cf-cancel').on('click', function() {
                     wrap.style.display = 'none';
                     wrap.innerHTML = '';
                 });
 
-                wrap.querySelector('.ctr-cf-save').addEventListener('click', function() {
+                $(wrap).find('.ctr-cf-save').on('click', function() {
                     saveCharge(svcId, wrap);
                 });
             }
@@ -950,25 +993,24 @@
             }
 
             function bindFormulaBuilderEvents(wrap) {
-                wrap.querySelector('.ctr-fb-add-field').addEventListener('click', function() {
-                    appendFormulaToken(wrap, wrap.querySelector('.ctr-fb-fields').value);
+                $(wrap).find('.ctr-fb-add-field').on('click', function() {
+                    appendFormulaToken(wrap, $(wrap).find('.ctr-fb-fields').val());
                 });
-                wrap.querySelector('.ctr-fb-add-operator').addEventListener('click', function() {
-                    appendFormulaToken(wrap, wrap.querySelector('.ctr-fb-operators').value);
+                $(wrap).find('.ctr-fb-add-operator').on('click', function() {
+                    appendFormulaToken(wrap, $(wrap).find('.ctr-fb-operators').val());
                 });
-                wrap.querySelector('.ctr-fb-add-function').addEventListener('click', function() {
-                    appendFormulaToken(wrap, wrap.querySelector('.ctr-fb-functions').value);
+                $(wrap).find('.ctr-fb-add-function').on('click', function() {
+                    appendFormulaToken(wrap, $(wrap).find('.ctr-fb-functions').val());
                 });
-                wrap.querySelector('.ctr-fb-reset').addEventListener('click', function(e) {
+                $(wrap).find('.ctr-fb-reset').on('click', function(e) {
                     e.preventDefault();
                     wrap.querySelector('.ctr-cf-formula').value = '';
                 });
-
                 var rtSelect = wrap.querySelector('.ctr-fb-ratetype');
-                rtSelect.addEventListener('change', function() {
+                $(rtSelect).on('change', function() {
                     renderFormulaRateArea(wrap, this.value);
                 });
-                renderFormulaRateArea(wrap, rtSelect.value); // init default (Single)
+                renderFormulaRateArea(wrap, rtSelect.value);
             }
 
             function saveCharge(svcId, wrap) {
@@ -1045,7 +1087,7 @@
                         }
                     });
                     if (!valid || !slabs.length) {
-                        alert('Please fill all slab rows (each needs a value; non-final rows also need "Up To").');
+                        alert('Please fill all slab rows.');
                         return;
                     }
                     charge.rateSlab = slabs;
@@ -1056,10 +1098,8 @@
                         return;
                     }
                     charge.formula = formulaVal;
-
                     var formulaRateType = wrap.querySelector('.ctr-fb-ratetype').value;
                     charge.formulaRateType = formulaRateType;
-
                     if (formulaRateType === 'Slab Based') {
                         var fRows = wrap.querySelectorAll('.ctr-fb-ratearea .ctr-slab-rows tr');
                         var fSlabs = [];
@@ -1109,6 +1149,7 @@
                 renderCharges(svc);
             }
 
+            // ── Header save ──────────────────────────────────────────────────────
             function collectHeaderPayload() {
                 return {
                     contract_no: document.getElementById('ctrContractNo').value.trim(),
@@ -1122,7 +1163,7 @@
             }
 
             function validateHeader(payload) {
-                return ['contract_no', 'contract_type', 'status', 'effective_from', 'effective_to']
+                return ['contract_type', 'effective_from', 'effective_to']
                     .filter(function(k) {
                         return !payload[k];
                     });
@@ -1159,11 +1200,24 @@
                         body: formData
                     })
                     .then(function(r) {
-                        return r.json();
+                        return r.json().then(function(body) {
+                            return {
+                                ok: r.ok,
+                                status: r.status,
+                                body: body
+                            };
+                        });
                     })
-                    .then(function(res) {
-                        if (!res.success) throw new Error(res.message || 'Save failed');
-                        alert(res.message || 'Saved.');
+                    .then(function(result) {
+                        if (!result.ok || !result.body.success) {
+                            var msg = result.body.message || 'Save failed';
+                            if (result.body.errors) {
+                                var details = Object.values(result.body.errors).flat().join('\n');
+                                msg += '\n\n' + details;
+                            }
+                            throw new Error(msg);
+                        }
+                        alert(result.body.message || 'Saved.');
                         if (onSuccess) onSuccess();
                     })
                     .catch(function(err) {
@@ -1185,9 +1239,6 @@
                 });
             });
 
-            // ------------------------------------------------------------
-            // STEP 4: Save Contract — whole tree to session via ContractController::store
-            // ------------------------------------------------------------
             document.getElementById('ctrSaveContractBtn').addEventListener('click', function() {
                 if (!state.contractSaved) {
                     alert('Please click "Save Contract Info" first.');
@@ -1196,9 +1247,57 @@
                 saveDraft(this, true);
             });
 
-            // ------------------------------------------------------------
-            // Hydrate from an existing draft, if any
-            // ------------------------------------------------------------
+            // ── Click delegation for service/charge actions ──────────────────────
+            document.addEventListener('click', function(e) {
+                var header = e.target.closest('.ctr-service-header');
+                if (header && !e.target.closest('.ctr-remove-svc')) {
+                    var body = document.getElementById('body-' + header.getAttribute('data-svc'));
+                    header.classList.toggle('collapsed');
+                    body.classList.toggle('collapsed');
+                    return;
+                }
+
+                var removeBtn = e.target.closest('.ctr-remove-svc');
+                if (removeBtn) {
+                    var svcId = removeBtn.getAttribute('data-svc');
+                    state.contract.services = state.contract.services.filter(function(s) {
+                        return s.id !== svcId;
+                    });
+                    renderServices();
+                    return;
+                }
+
+                var addChargeBtn = e.target.closest('.ctr-add-charge-btn');
+                if (addChargeBtn) {
+                    openChargeForm(addChargeBtn.getAttribute('data-svc'));
+                    return;
+                }
+
+                var removeChargeBtn = e.target.closest('.ctr-remove-charge');
+                if (removeChargeBtn) {
+                    var svc = findService(removeChargeBtn.getAttribute('data-svc'));
+                    var chargeId = removeChargeBtn.getAttribute('data-charge');
+                    svc.charges = svc.charges.filter(function(c) {
+                        return c.id !== chargeId;
+                    });
+                    renderCharges(svc);
+                    return;
+                }
+
+                var slabAddBtn = e.target.closest('.ctr-slab-add-row');
+                if (slabAddBtn) {
+                    addSlabRow(slabAddBtn.closest('.ctr-slab-wrap'));
+                    return;
+                }
+
+                var slabRemoveBtn = e.target.closest('.ctr-slab-row-remove');
+                if (slabRemoveBtn) {
+                    slabRemoveBtn.closest('tr').remove();
+                    return;
+                }
+            });
+
+            // ── Hydrate from existing draft ──────────────────────────────────────
             if (existing) {
                 document.getElementById('ctrContractNo').value = existing.contract_no || '';
                 document.getElementById('ctrContractType').value = existing.contract_type || '';
@@ -1212,7 +1311,11 @@
                 document.getElementById('ctrAddServiceBtn').disabled = false;
             }
 
+            // ── Initial render ─────────────────────────────────────────────────────
             renderServices();
+            // Pre‑populate service form dropdowns in background (if not already)
+            populateServiceFormMasters();
+
         })();
     </script>
 @stop
