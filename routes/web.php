@@ -1661,10 +1661,12 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
     Route::prefix('contracts')
         ->name('contracts.')
         ->group(function () {
+            // ── 1. STATIC ROUTES (no dynamic parameters) ──
             Route::get('/create', [App\Http\Controllers\ContractController::class, 'create'])->name('create');
-            Route::post('/{contract}', [App\Http\Controllers\ContractController::class, 'store'])->name('store');
-            Route::get('/{contract}', [App\Http\Controllers\ContractController::class, 'show'])->name('show');
-
+            Route::get('search-services', [App\Http\Controllers\ContractController::class, 'searchServices'])->name(
+                'search-services',
+            );
+            // ── 2. MASTER ROUTES (also static) ──
             Route::prefix('masters')->group(function () {
                 Route::get('inco-terms', [App\Http\Controllers\ContractController::class, 'getIncoTerms']);
                 Route::get('countries', [App\Http\Controllers\ContractController::class, 'getCountries']);
@@ -1686,6 +1688,10 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
                     'getChargeCategories',
                 ]);
             });
+
+            // ── 3. WILDCARD ROUTES (catch-all) ──
+            Route::post('/{contract}', [App\Http\Controllers\ContractController::class, 'store'])->name('store');
+            Route::get('/{contract}', [App\Http\Controllers\ContractController::class, 'show'])->name('show');
         });
 
     Route::get('/quotation/website-requests', [App\Http\Controllers\WebsiteQuotationController::class, 'index'])->name(

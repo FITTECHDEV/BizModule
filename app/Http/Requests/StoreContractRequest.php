@@ -16,6 +16,7 @@ class StoreContractRequest extends FormRequest
         return [
             // 'contract_no' => ['required', 'string', 'max:50'],
             'contract_type' => ['required', 'string', 'in:Tariff,Long Term'],
+            'contract_name' => ['required', 'string', 'max:500'],
             'status' => ['required', 'string'],
             'effective_from' => ['required', 'date'],
             'effective_to' => ['required', 'date', 'after_or_equal:effective_from'],

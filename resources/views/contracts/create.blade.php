@@ -52,6 +52,11 @@
                     </select>
                 </div>
 
+                <div class="ctr-field ctr-field-wide">
+                    <label class="ctr-lbl ctr-required">Contract Name</label>
+                    <input type="text" class="form-control form-control-sm" id="ctrContractName">
+                </div>
+
                 <input type="hidden" id="ctrStatus" value="Draft">
                 <div class="ctr-field">
                     <label class="ctr-lbl ctr-required">Effective From</label>
@@ -158,6 +163,18 @@
                         <input type="hidden" id="ctrSvcPlaceOfDeliveryCode">
                     </div>
                     <div class="ctr-field"></div>
+                </div>
+
+                <div class="ctr-field ctr-field-wide mt-3" id="existingContractSearchWrap" style="display:none;">
+                    <div class="d-flex align-items-center">
+                        <button type="button" class="btn btn-sm btn-outline-info mr-2" id="ctrSearchExistingBtn">
+                            <i class="fas fa-search mr-1"></i> Search Existing
+                        </button>
+                        <select class="form-control form-control-sm" id="ctrExistingContractSelect" style="flex:1;">
+                            <option value="">-- No results --</option>
+                        </select>
+                        <input type="hidden" id="ctrSelectedServiceFilterId">
+                    </div>
                 </div>
 
                 <div class="d-flex justify-content-end mt-2">
@@ -424,7 +441,7 @@
 
         .ctr-formula-cols {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: repeat(3, 1fr);
             gap: 16px;
         }
 
@@ -519,10 +536,9 @@
                 });
                 // Countries
                 fetchMasterList('countries').done(function(res) {
-                    // res is an array directly
                     if (Array.isArray(res)) {
-                        populateSelect($('#ctrSvcCountryOrigin'), res, 'CountryCode', 'CountryName');
-                        populateSelect($('#ctrSvcCountryDestination'), res, 'CountryCode', 'CountryName');
+                        populateSelect($('#ctrSvcCountryOrigin'), res, 'CountCode', 'CountryName');
+                        populateSelect($('#ctrSvcCountryDestination'), res, 'CountCode', 'CountryName');
                     }
                 });
             }
@@ -1152,8 +1168,8 @@
             // ── Header save ──────────────────────────────────────────────────────
             function collectHeaderPayload() {
                 return {
-                    contract_no: document.getElementById('ctrContractNo').value.trim(),
                     contract_type: document.getElementById('ctrContractType').value,
+                    contract_name: document.getElementById('ctrContractName').value.trim(),
                     status: document.getElementById('ctrStatus').value,
                     effective_from: document.getElementById('ctrEffectiveFrom').value,
                     effective_to: document.getElementById('ctrEffectiveTo').value,
@@ -1163,7 +1179,7 @@
             }
 
             function validateHeader(payload) {
-                return ['contract_type', 'effective_from', 'effective_to']
+                return ['contract_type', 'contract_name', 'effective_from', 'effective_to']
                     .filter(function(k) {
                         return !payload[k];
                     });
@@ -1236,6 +1252,12 @@
                     state.contractSaved = true;
                     document.getElementById('ctrAddServiceBtn').disabled = false;
                     document.getElementById('ctrAddServiceBtn').removeAttribute('title');
+
+                    // Update the URL so a page refresh reloads this same draft instead
+                    // of generating a brand-new session slot.
+                    var url = new URL(window.location.href);
+                    url.searchParams.set('draft', CONTRACT_ID);
+                    window.history.replaceState({}, '', url);
                 });
             });
 
@@ -1301,6 +1323,7 @@
             if (existing) {
                 document.getElementById('ctrContractNo').value = existing.contract_no || '';
                 document.getElementById('ctrContractType').value = existing.contract_type || '';
+                document.getElementById('ctrContractName').value = existing.contract_name || '';
                 document.getElementById('ctrStatus').value = existing.status || 'Draft';
                 document.getElementById('ctrEffectiveFrom').value = existing.effective_from || '';
                 document.getElementById('ctrEffectiveTo').value = existing.effective_to || '';
@@ -1310,6 +1333,134 @@
                 serviceSeq = state.contract.services.length;
                 document.getElementById('ctrAddServiceBtn').disabled = false;
             }
+
+            // Show the search row only after mandatory fields are filled
+            $('#ctrSvcService, #ctrSvcProcess, #ctrSvcCountryOrigin, #ctrSvcCountryDestination').on('change keyup',
+                function() {
+                    var svc = $('#ctrSvcService').val();
+                    var proc = $('#ctrSvcProcess').val();
+                    var origin = $('#ctrSvcCountryOrigin').val();
+                    var dest = $('#ctrSvcCountryDestination').val();
+                    if (svc && proc && origin && dest) {
+                        $('#existingContractSearchWrap').show();
+                    } else {
+                        $('#existingContractSearchWrap').hide();
+                    }
+                });
+
+            // Search button click
+            $('#ctrSearchExistingBtn').on('click', function() {
+                var params = {
+                    service: $('#ctrSvcService').val(),
+                    process: $('#ctrSvcProcess').val(),
+                    origin: $('#ctrSvcCountryOrigin').val(),
+                    destination: $('#ctrSvcCountryDestination').val(),
+                    incoterm: $('#ctrSvcIncoTerm').val(),
+                    pol: $('#ctrSvcPolCode').val(),
+                    pod: $('#ctrSvcPodCode').val(),
+                    por: $('#ctrSvcPlaceOfReceiptCode').val(),
+                    podel: $('#ctrSvcPlaceOfDeliveryCode').val()
+                };
+
+                // Validate mandatory fields
+                if (!params.service || !params.process || !params.origin || !params.destination) {
+                    alert('Please fill Service, Process, Origin and Destination first.');
+                    return;
+                }
+
+                var $btn = $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
+                var $select = $('#ctrExistingContractSelect');
+
+                $.get('{{ route('contracts.search-services') }}', params, function(response) {
+                    if (!response.success) {
+                        alert(response.message || 'Search failed.');
+                        return;
+                    }
+
+                    $select.empty();
+                    if (response.exact_matches.length === 0 && response.other_matches.length === 0) {
+                        $select.append('<option value="">No matching contracts found</option>');
+                        return;
+                    }
+
+                    if (response.exact_matches.length) {
+                        var group = $('<optgroup label="Exact Matches">');
+                        response.exact_matches.forEach(function(c) {
+                            group.append($('<option>', {
+                                value: c.ServiceFilterId,
+                                text: c.ContractNo + ' – ' + c.ContractName,
+                                data: {
+                                    contract: c.ContractNo,
+                                    name: c.ContractName,
+                                    service: c.Service,
+                                    process: c.Process,
+                                    origin: c.COO,
+                                    destination: c.COD,
+                                    incoterm: c.IncoTerm || '',
+                                    pol: c.POL || '',
+                                    pod: c.POD || '',
+                                    por: c.POR || '',
+                                    podel: c.PlaceOfDelivery || ''
+                                }
+                            }));
+                        });
+                        $select.append(group);
+                    }
+
+                    if (response.other_matches.length) {
+                        var group = $('<optgroup label="Other Matches">');
+                        response.other_matches.forEach(function(c) {
+                            group.append($('<option>', {
+                                value: c.ServiceFilterId,
+                                text: c.ContractNo + ' – ' + c.ContractName,
+                                data: {
+                                    contract: c.ContractNo,
+                                    name: c.ContractName,
+                                    service: c.Service,
+                                    process: c.Process,
+                                    origin: c.COO,
+                                    destination: c.COD,
+                                    incoterm: c.IncoTerm || '',
+                                    pol: c.POL || '',
+                                    pod: c.POD || '',
+                                    por: c.POR || '',
+                                    podel: c.PlaceOfDelivery || ''
+                                }
+                            }));
+                        });
+                        $select.append(group);
+                    }
+
+                    // Auto-select first result (optional)
+                    if ($select.find('option').length > 1) {
+                        $select.val($select.find('option:eq(1)').val());
+                        $('#ctrSelectedServiceFilterId').val($select.val());
+                    }
+                }).always(function() {
+                    $btn.prop('disabled', false).html(
+                        '<i class="fas fa-search mr-1"></i> Search Existing');
+                });
+            });
+
+            // When user selects a result, populate the form fields
+            $('#ctrExistingContractSelect').on('change', function() {
+                var $option = $(this).find('option:selected');
+                if (!$option.val()) return;
+
+                var data = $option.data();
+                $('#ctrSelectedServiceFilterId').val($option.val());
+
+                // Auto-fill optional fields from the selected contract
+                $('#ctrSvcIncoTerm').val(data.incoterm || '');
+                $('#ctrSvcPol').val(data.pol || '');
+                $('#ctrSvcPolCode').val(data.pol || '');
+                $('#ctrSvcPod').val(data.pod || '');
+                $('#ctrSvcPodCode').val(data.pod || '');
+                $('#ctrSvcPlaceOfReceipt').val(data.por || '');
+                $('#ctrSvcPlaceOfReceiptCode').val(data.por || '');
+                $('#ctrSvcPlaceOfDelivery').val(data.podel || '');
+                $('#ctrSvcPlaceOfDeliveryCode').val(data.podel || '');
+            });
 
             // ── Initial render ─────────────────────────────────────────────────────
             renderServices();

@@ -440,6 +440,176 @@
                     </div>
                 </div>
 
+                <!-- Shipment Details -->
+<div class="card card-primary" id="shipmentDetailsCard">
+    <div class="card-header">
+        <h3 class="card-title">Shipment Details</h3>
+        <div class="card-tools">
+            <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                <i class="fas fa-chevron-up"></i>
+            </button>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <!-- LEFT SUB-COLUMN -->
+            <div class="col-md-6">
+                <div class="form-group row">
+                    <label class="col-sm-5 col-form-label">Service</label>
+                    <div class="col-sm-7">
+                        <input type="text" class="form-control form-control-sm"
+                            value="{{ $quotation->ServiceVertical ?? '' }}" readonly>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <label class="col-sm-5 col-form-label">Process</label>
+                    <div class="col-sm-7">
+                        <input type="text" class="form-control form-control-sm"
+                            value="{{ $quotation->process ?? '' }}" readonly>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <label class="col-sm-5 col-form-label">Origin Country</label>
+                    <div class="col-sm-7">
+                        <input type="text" class="form-control form-control-sm" id="originCountryDisplay"
+                            value="{{ $quotation->origincountry ?? '' }}" readonly>
+                        <div id="originCountryEditWrap" style="display:none;">
+                            <select class="form-control form-control-sm" id="originCountrySelect">
+                                <option value="">-- Select --</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <label class="col-sm-5 col-form-label">Destination Country</label>
+                    <div class="col-sm-7">
+                        <input type="text" class="form-control form-control-sm" id="destCountryDisplay"
+                            value="{{ $quotation->destinationcountry ?? '' }}" readonly>
+                        <div id="destCountryEditWrap" style="display:none;">
+                            <select class="form-control form-control-sm" id="destCountrySelect">
+                                <option value="">-- Select --</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <label class="col-sm-5 col-form-label">InCO Terms</label>
+                    <div class="col-sm-7">
+                        <input type="text" class="form-control form-control-sm" id="incoTermDisplay"
+                            value="{{ $quotation->incoterm ?? '' }}" readonly>
+                        <input type="hidden" id="incoTermCode" value="{{ $quotation->incoterm ?? '' }}">
+                        <select class="form-control form-control-sm d-none" id="incoTermSelect" disabled>
+                            <option value="">-- Select --</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group row mb-0">
+                    <label class="col-sm-5 col-form-label">Shipment Mode</label>
+                    <div class="col-sm-7">
+                        <select class="form-control form-control-sm" id="shipmentModeSelect" name="shipment_mode"
+                            disabled>
+                            <option value="">-- Loading... --</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT SUB-COLUMN -->
+            <div class="col-md-6">
+                <div class="form-group row">
+                    <label class="col-sm-5 col-form-label">Transport Mode</label>
+                    <div class="col-sm-7">
+                        <select class="form-control form-control-sm" id="transportModeSelect"
+                            name="transport_mode" disabled>
+                            <option value="">-- Loading... --</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <label class="col-sm-5 col-form-label">Service Class</label>
+                    <div class="col-sm-7">
+                        <input type="text" class="form-control form-control-sm" id="serviceClassDisplay"
+                            value="{{ $quotation->ServiceClass ?? '' }}" readonly>
+                        <select class="form-control form-control-sm d-none" id="serviceClassSelect" disabled>
+                            <option value="">-- Select --</option>
+                        </select>
+                        <input type="hidden" id="serviceClassCode"
+                            value="{{ $quotation->ServiceClassCode ?? ($quotation->ServiceClass ?? '') }}">
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <label class="col-sm-5 col-form-label">Port of Loading</label>
+                    <div class="col-sm-7">
+                        <input type="text" class="form-control form-control-sm" id="polDisplay"
+                            value="{{ $quotation->PortOfLoadingCode ?? '' }}" readonly>
+                        <div id="polEditWrap" style="display:none;">
+                            <input type="text" class="form-control form-control-sm" id="polSearch"
+                                placeholder="Type to search..." autocomplete="off">
+                            <input type="hidden" id="polCode" value="{{ $quotation->PortOfLoadingCode ?? '' }}">
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <label class="col-sm-5 col-form-label">Port of Discharge</label>
+                    <div class="col-sm-7">
+                        <input type="text" class="form-control form-control-sm" id="podDisplay"
+                            value="{{ $quotation->PortOfDischargeCode ?? '' }}" readonly>
+                        <div id="podEditWrap" style="display:none;">
+                            <input type="text" class="form-control form-control-sm" id="podSearch"
+                                placeholder="Type to search..." autocomplete="off">
+                            <input type="hidden" id="podCode" value="{{ $quotation->PortOfDischargeCode ?? '' }}">
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <label class="col-sm-5 col-form-label">Place of Receipt</label>
+                    <div class="col-sm-7">
+                        <input type="text" class="form-control form-control-sm" id="placeOfReceiptDisplay"
+                            value="{{ $quotation->PlaceOfReceiptCode ?? '' }}" readonly>
+                        <div id="placeOfReceiptEditWrap" style="display:none;">
+                            <input type="text" class="form-control form-control-sm" id="placeOfReceiptSearch"
+                                placeholder="Type to search..." autocomplete="off">
+                            <input type="hidden" id="placeOfReceiptCode"
+                                value="{{ $quotation->PlaceOfReceiptCode ?? '' }}">
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group row mb-0">
+                    <label class="col-sm-5 col-form-label">Place of Delivery</label>
+                    <div class="col-sm-7">
+                        <input type="text" class="form-control form-control-sm" id="placeOfDeliveryDisplay"
+                            value="{{ $quotation->PlaceOfDeliveryCode ?? '' }}" readonly>
+                        <div id="placeOfDeliveryEditWrap" style="display:none;">
+                            <input type="text" class="form-control form-control-sm" id="placeOfDeliverySearch"
+                                placeholder="Type to search..." autocomplete="off">
+                            <input type="hidden" id="placeOfDeliveryCode"
+                                value="{{ $quotation->PlaceOfDeliveryCode ?? '' }}">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-3 pt-2" style="border-top: 1px solid #dee2e6;">
+            <div class="col-md-12 text-right">
+                @if (!$isBookingCreated)
+                    <button type="button" class="btn btn-warning btn-sm" id="editShipmentDetailsBtn">
+                        <i class="fas fa-edit mr-1"></i> Edit
+                    </button>
+                @endif
+                <button type="button" class="btn btn-primary btn-sm" id="saveShipmentDetailsBtn"
+                    style="display:none">
+                    <i class="fas fa-save mr-1"></i> Save
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm" id="cancelShipmentDetailsBtn"
+                    style="display:none">
+                    <i class="fas fa-times mr-1"></i> Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
                 <!-- Quotation Document (with Generate Quote button in title bar + T&C in body) -->
                 <div class="card card-primary">
                     <div class="card-header d-flex justify-content-between align-items-center">
@@ -1187,187 +1357,6 @@
                         </div>
                     </div>
                 </div>
-
-
-                <!-- Shipment Details -->
-                <div class="card card-primary" id="shipmentDetailsCard">
-                    <div class="card-header">
-                        <h3 class="card-title">Shipment Details</h3>
-                        <div class="card-tools">
-                            <button type="button" class="btn btn-tool" data-card-widget="collapse">
-                                <i class="fas fa-chevron-up"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <div class="form-group row">
-                            <label class="col-sm-5 col-form-label">Service</label>
-                            <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->ServiceVertical ?? '' }}" readonly>
-                            </div>
-                        </div>
-                        <div class="form-group row">
-                            <label class="col-sm-5 col-form-label">Process</label>
-                            <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->process ?? '' }}" readonly>
-                            </div>
-                        </div>
-                        {{-- Origin Country field: --}}
-                        <div class="form-group row">
-                            <label class="col-sm-5 col-form-label">Origin Country</label>
-                            <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm" id="originCountryDisplay"
-                                    value="{{ $quotation->origincountry ?? '' }}" readonly>
-                                <div id="originCountryEditWrap" style="display:none;">
-                                    {{-- REMOVED: <input type="text" id="originCountrySearch"> --}}
-                                    <select class="form-control form-control-sm" id="originCountrySelect">
-                                        <option value="">-- Select --</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-
-                        {{-- Destination Country field: --}}
-                        <div class="form-group row">
-                            <label class="col-sm-5 col-form-label">Destination Country</label>
-                            <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm" id="destCountryDisplay"
-                                    value="{{ $quotation->destinationcountry ?? '' }}" readonly>
-                                <div id="destCountryEditWrap" style="display:none;">
-                                    {{-- REMOVED: <input type="text" id="destCountrySearch"> --}}
-                                    <select class="form-control form-control-sm" id="destCountrySelect">
-                                        <option value="">-- Select --</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                        {{-- InCo Terms --}}
-                        <div class="form-group row">
-                            <label class="col-sm-5 col-form-label">InCO Terms</label>
-                            <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm" id="incoTermDisplay"
-                                    value="{{ $quotation->incoterm ?? '' }}" readonly>
-                                <input type="hidden" id="incoTermCode" value="{{ $quotation->incoterm ?? '' }}">
-
-                                <select class="form-control form-control-sm d-none" id="incoTermSelect" disabled>
-                                    <option value="">-- Select --</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-group row">
-                            <label class="col-sm-5 col-form-label">Shipment Mode</label>
-                            <div class="col-sm-7">
-                                <select class="form-control form-control-sm" id="shipmentModeSelect" name="shipment_mode"
-                                    disabled>
-                                    <option value="">-- Loading... --</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-group row">
-                            <label class="col-sm-5 col-form-label">Transport Mode</label>
-                            <div class="col-sm-7">
-                                <select class="form-control form-control-sm" id="transportModeSelect"
-                                    name="transport_mode" disabled>
-                                    <option value="">-- Loading... --</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-group row mb-0">
-                            <label class="col-sm-5 col-form-label">Service Class</label>
-                            <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm" id="serviceClassDisplay"
-                                    value="{{ $quotation->ServiceClass ?? '' }}" readonly>
-                                <select class="form-control form-control-sm d-none" id="serviceClassSelect" disabled>
-                                    <option value="">-- Select --</option>
-                                </select>
-                                {{-- keep this hidden field for the save payload --}}
-                                <input type="hidden" id="serviceClassCode"
-                                    value="{{ $quotation->ServiceClassCode ?? ($quotation->ServiceClass ?? '') }}">
-                            </div>
-                        </div>
-
-                        {{-- Port of Loading --}}
-                        <div class="form-group row">
-                            <label class="col-sm-5 col-form-label">Port of Loading</label>
-                            <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm" id="polDisplay"
-                                    value="{{ $quotation->PortOfLoadingCode ?? '' }}" readonly>
-                                <div id="polEditWrap" style="display:none;">
-                                    <input type="text" class="form-control form-control-sm" id="polSearch"
-                                        placeholder="Type to search..." autocomplete="off">
-                                    <input type="hidden" id="polCode"
-                                        value="{{ $quotation->PortOfLoadingCode ?? '' }}">
-                                </div>
-                            </div>
-                        </div>
-
-                        {{-- Port of Discharge --}}
-                        <div class="form-group row">
-                            <label class="col-sm-5 col-form-label">Port of Discharge</label>
-                            <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm" id="podDisplay"
-                                    value="{{ $quotation->PortOfDischargeCode ?? '' }}" readonly>
-                                <div id="podEditWrap" style="display:none;">
-                                    <input type="text" class="form-control form-control-sm" id="podSearch"
-                                        placeholder="Type to search..." autocomplete="off">
-                                    <input type="hidden" id="podCode"
-                                        value="{{ $quotation->PortOfDischargeCode ?? '' }}">
-                                </div>
-                            </div>
-                        </div>
-
-                        {{-- Place of Receipt --}}
-                        <div class="form-group row">
-                            <label class="col-sm-5 col-form-label">Place of Receipt</label>
-                            <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm" id="placeOfReceiptDisplay"
-                                    value="{{ $quotation->PlaceOfReceiptCode ?? '' }}" readonly>
-                                <div id="placeOfReceiptEditWrap" style="display:none;">
-                                    <input type="text" class="form-control form-control-sm" id="placeOfReceiptSearch"
-                                        placeholder="Type to search..." autocomplete="off">
-                                    <input type="hidden" id="placeOfReceiptCode"
-                                        value="{{ $quotation->PlaceOfReceiptCode ?? '' }}">
-                                </div>
-                            </div>
-                        </div>
-
-                        {{-- Place of Delivery --}}
-                        <div class="form-group row">
-                            <label class="col-sm-5 col-form-label">Place of Delivery</label>
-                            <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm" id="placeOfDeliveryDisplay"
-                                    value="{{ $quotation->PlaceOfDeliveryCode ?? '' }}" readonly>
-                                <div id="placeOfDeliveryEditWrap" style="display:none;">
-                                    <input type="text" class="form-control form-control-sm" id="placeOfDeliverySearch"
-                                        placeholder="Type to search..." autocomplete="off">
-                                    <input type="hidden" id="placeOfDeliveryCode"
-                                        value="{{ $quotation->PlaceOfDeliveryCode ?? '' }}">
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row mt-3 pt-2" style="border-top: 1px solid #dee2e6;">
-                            <div class="col-md-12 text-right">
-                                @if (!$isBookingCreated)
-                                    <button type="button" class="btn btn-warning btn-sm" id="editShipmentDetailsBtn">
-                                        <i class="fas fa-edit mr-1"></i> Edit
-                                    </button>
-                                @endif
-                                <button type="button" class="btn btn-primary btn-sm" id="saveShipmentDetailsBtn"
-                                    style="display:none">
-                                    <i class="fas fa-save mr-1"></i> Save
-                                </button>
-                                <button type="button" class="btn btn-secondary btn-sm" id="cancelShipmentDetailsBtn"
-                                    style="display:none">
-                                    <i class="fas fa-times mr-1"></i> Cancel
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
 
                 <!-- Revenue Section -->
                 <div class="card card-success">
