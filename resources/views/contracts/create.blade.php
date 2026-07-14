@@ -52,7 +52,7 @@
                     </select>
                 </div>
 
-                <div class="ctr-field ctr-field-wide">
+                <div class="ctr-field ctr-field-span2">
                     <label class="ctr-lbl ctr-required">Contract Name</label>
                     <input type="text" class="form-control form-control-sm" id="ctrContractName">
                 </div>
@@ -233,6 +233,10 @@
 
         .ctr-field-wide {
             grid-column: span 3;
+        }
+
+        .ctr-field-span2 {
+            grid-column: span 2;
         }
 
         .ctr-grid-2 {
@@ -479,6 +483,48 @@
             };
             state.contractSaved = !!existing;
 
+            // ── Local draft autosave (prevents data loss on refresh) ─────────────
+            var LOCAL_DRAFT_KEY = 'ctr_draft_' + CONTRACT_ID;
+
+            function collectLocalDraftPayload() {
+                return {
+                    contractType: document.getElementById('ctrContractType').value,
+                    contractName: document.getElementById('ctrContractName').value,
+                    effectiveFrom: document.getElementById('ctrEffectiveFrom').value,
+                    effectiveTo: document.getElementById('ctrEffectiveTo').value,
+                    description: document.getElementById('ctrDescription').value,
+                    remark: document.getElementById('ctrRemark').value,
+                    services: state.contract.services,
+                    contractSaved: state.contractSaved
+                };
+            }
+
+            function saveLocalDraft() {
+                try {
+                    localStorage.setItem(LOCAL_DRAFT_KEY, JSON.stringify(collectLocalDraftPayload()));
+                } catch (e) {
+                    console.error('[Contract] local draft save failed:', e);
+                }
+            }
+
+            function clearLocalDraft() {
+                try {
+                    localStorage.removeItem(LOCAL_DRAFT_KEY);
+                } catch (e) {
+                    console.error('[Contract] local draft clear failed:', e);
+                }
+            }
+
+            function loadLocalDraft() {
+                try {
+                    var raw = localStorage.getItem(LOCAL_DRAFT_KEY);
+                    return raw ? JSON.parse(raw) : null;
+                } catch (e) {
+                    console.error('[Contract] local draft load failed:', e);
+                    return null;
+                }
+            }
+
             var serviceSeq = 0;
             var chargeSeq = 0;
 
@@ -700,6 +746,7 @@
                 clearServiceForm();
                 svcForm.style.display = 'none';
                 renderServices();
+                saveLocalDraft();
             });
 
             // ── Render services & charges ────────────────────────────────────────
@@ -1163,6 +1210,7 @@
                 wrap.style.display = 'none';
                 wrap.innerHTML = '';
                 renderCharges(svc);
+                saveLocalDraft();
             }
 
             // ── Header save ──────────────────────────────────────────────────────
@@ -1258,15 +1306,21 @@
                     var url = new URL(window.location.href);
                     url.searchParams.set('draft', CONTRACT_ID);
                     window.history.replaceState({}, '', url);
+                    saveLocalDraft();
                 });
             });
+
+            $('#ctrContractType, #ctrContractName, #ctrEffectiveFrom, #ctrEffectiveTo, #ctrDescription, #ctrRemark')
+                .on('change input', saveLocalDraft);
 
             document.getElementById('ctrSaveContractBtn').addEventListener('click', function() {
                 if (!state.contractSaved) {
                     alert('Please click "Save Contract Info" first.');
                     return;
                 }
-                saveDraft(this, true);
+                saveDraft(this, true, function() {
+                    clearLocalDraft();
+                });
             });
 
             // ── Click delegation for service/charge actions ──────────────────────
@@ -1286,6 +1340,7 @@
                         return s.id !== svcId;
                     });
                     renderServices();
+                    saveLocalDraft();
                     return;
                 }
 
@@ -1303,6 +1358,7 @@
                         return c.id !== chargeId;
                     });
                     renderCharges(svc);
+                    saveLocalDraft();
                     return;
                 }
 
@@ -1320,6 +1376,8 @@
             });
 
             // ── Hydrate from existing draft ──────────────────────────────────────
+            var localDraft = loadLocalDraft();
+
             if (existing) {
                 document.getElementById('ctrContractNo').value = existing.contract_no || '';
                 document.getElementById('ctrContractType').value = existing.contract_type || '';
@@ -1332,6 +1390,22 @@
                 state.contract.services = existing.services || [];
                 serviceSeq = state.contract.services.length;
                 document.getElementById('ctrAddServiceBtn').disabled = false;
+            }
+
+            if (localDraft) {
+                document.getElementById('ctrContractType').value = localDraft.contractType || '';
+                document.getElementById('ctrContractName').value = localDraft.contractName || '';
+                document.getElementById('ctrEffectiveFrom').value = localDraft.effectiveFrom || '';
+                document.getElementById('ctrEffectiveTo').value = localDraft.effectiveTo || '';
+                document.getElementById('ctrDescription').value = localDraft.description || '';
+                document.getElementById('ctrRemark').value = localDraft.remark || '';
+                state.contract.services = localDraft.services || [];
+                state.contractSaved = !!localDraft.contractSaved;
+                serviceSeq = state.contract.services.length;
+                if (state.contractSaved) {
+                    document.getElementById('ctrAddServiceBtn').disabled = false;
+                    document.getElementById('ctrAddServiceBtn').removeAttribute('title');
+                }
             }
 
             // Show the search row only after mandatory fields are filled
