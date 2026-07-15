@@ -37,6 +37,20 @@ class ContractController extends Controller
         return view('contracts.create', compact('contractId', 'existing', 'stats', 'officeCode'));
     }
 
+    public function newDraft(): JsonResponse
+    {
+        $contractId = Str::uuid()->toString();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'contract_id' => $contractId,
+                'store_url' => route('contracts.store', $contractId),
+                'services_store_url' => route('contracts.services.store', $contractId),
+            ],
+        ]);
+    }
+
     /**
      * GET /contracts/list
      * Row-level data for the Contract Management landing table — same SP
@@ -71,7 +85,6 @@ class ContractController extends Controller
 
         return response()->json(['success' => true, 'data' => $contracts]);
     }
-
 
     /**
      * Pulls real Authorized-contract data via sp_Contract_List (UsedFor=List).
@@ -134,17 +147,6 @@ class ContractController extends Controller
     public function store(StoreContractRequest $request, string $contract): JsonResponse
     {
         $validated = $request->validated();
-        $services = json_decode($request->input('services', '[]'), true);
-
-        if (json_last_error() !== JSON_ERROR_NONE || !is_array($services)) {
-            return response()->json(
-                [
-                    'success' => false,
-                    'message' => 'Services payload must be valid JSON array.',
-                ],
-                422,
-            );
-        }
 
         $draft = Session::get($this->sessionKey($contract));
         $action = isset($draft['contract_id']) ? 'Update' : 'Add';
@@ -184,99 +186,111 @@ class ContractController extends Controller
         $draft['contract_no'] = $contractNo;
         Session::put($this->sessionKey($contract), $draft);
 
-        DB::beginTransaction();
+        return response()->json([
+            'success' => true,
+            'message' => "Contract {$contractNo} saved successfully.",
+            'data' => [
+                'contract_no' => $contractNo,
+                'contract_id' => $contractId,
+            ],
+        ]);
+    }
 
-        try {
-            foreach ($services as $service) {
-                $servicePayload = [
-                    'OperationType' => 'ContractServiceDetails',
-                    'Action' => 'Add',
-                    'SubmittedBy' => auth()->user()->name ?? 'system',
-                    'SubmittedDatetime' => now()->format('Y-m-d H:i:s'),
-                    'ContractInfoID' => $contractId, // ✅ changed
-                    'ServiceAndFilterID' => null, // ✅ changed
-                    'Service' => $service['service'],
-                    'Process' => $service['process'],
-                    'IncoTerm' => $service['incoterm'] ?? '',
-                    'COO' => $service['countryOrigin'] ?? '',
-                    'COD' => $service['countryDestination'] ?? '',
-                    'POR' => $service['placeOfReceipt'] ?? '',
-                    'POE' => $service['placeOfDelivery'] ?? '',
-                    'POL' => $service['pol'] ?? '',
-                    'POD' => $service['pod'] ?? '',
-                    'ServiceClass' => $service['serviceClass'] ?? '',
-                    'ShipmentMode' => $service['shipmentMode'] ?? '',
-                    'ShipmentType' => $service['shipmentType'] ?? '',
-                    'MovementType' => $service['movementType'] ?? '',
-                    // Add any other fields the SP expects (check its WITH clause)
-                ];
+    public function storeService(Request $request, string $contract): JsonResponse
+    {
+        $draft = Session::get($this->sessionKey($contract));
 
-                $beforeCallTimestamp = now();
-                $serviceResult = $this->callContractSP('sp_Contractinfo_ServiceDetails', $servicePayload);
-
-                if (!$serviceResult['success']) {
-                    throw new \Exception('Failed to save service: ' . ($serviceResult['message'] ?? 'Unknown error'));
-                }
-
-                $serviceFilterId = $serviceResult['service_filter_id'];
-
-                if (!empty($service['charges'])) {
-                    foreach ($service['charges'] as $charge) {
-                        $chargePayload = [
-                            'OperationType' => 'ServiceBasedCharges',
-                            'SubmittedDatetime' => now()->format('Y-m-d H:i:s'),
-                            'SubmittedBy' => auth()->user()->name ?? 'system',
-                            'Action' => 'Add',
-                            'ContractInfoID' => $contractId,
-                            'ServiceAndFilterID' => $serviceFilterId,
-                            'ServiceChargeID' => null, // null for Add
-                            'ChargeCode' => $charge['chargeCode'],
-                            'ChargeBasedon' => $charge['chargeBasedOn'], // note lowercase 'o'
-                            'ChargeBasedOnUOM' => $charge['chargeBasedOnUOM'] ?? '',
-                            'ChargeCurr' => $charge['chargeCurr'],
-                            'MinAmount' => $charge['minAmount'] ?? 0.0,
-                            'MaxAmount' => $charge['maxAmount'] ?? 0.0,
-                            'RateType' => $charge['rateType'],
-                            'Rate' => $charge['rate'] ?? 0.0,
-                            'Formula' => $charge['formula'] ?? '',
-                            'RateSlabJson' => $charge['rateSlab'] ? json_encode($charge['rateSlab']) : '',
-                            'Comments' => '',
-                        ];
-
-                        $chargeResult = $this->callContractSP('sp_Contractinfo_ServiceCharges', $chargePayload);
-
-                        if (!$chargeResult['success']) {
-                            throw new \Exception(
-                                'Failed to save charge: ' . ($chargeResult['message'] ?? 'Unknown error'),
-                            );
-                        }
-                    }
-                }
-            }
-
-            DB::commit();
-
-            Session::forget($this->sessionKey($contract));
-
-            return response()->json([
-                'success' => true,
-                'message' => "Contract {$contractNo} saved successfully.",
-                'data' => [
-                    'contract_no' => $contractNo,
-                    'contract_id' => $contractId,
-                ],
-            ]);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Contract save failed: ' . $e->getMessage());
+        if (empty($draft['contract_id'])) {
             return response()->json(
-                [
-                    'success' => false,
-                    'message' => 'Failed to save contract: ' . $e->getMessage(),
-                ],
-                500,
+                ['success' => false, 'message' => 'Save Contract Info before adding services.'],
+                422,
             );
         }
+
+        $service = $request->all();
+
+        $servicePayload = [
+            'OperationType' => 'ContractServiceDetails',
+            'Action' => 'Add',
+            'SubmittedBy' => auth()->user()->name ?? 'system',
+            'SubmittedDatetime' => now()->format('Y-m-d H:i:s'),
+            'ContractInfoID' => $draft['contract_id'],
+            'ServiceAndFilterID' => null,
+            'Service' => $service['service'] ?? '',
+            'Process' => $service['process'] ?? '',
+            'IncoTerm' => $service['incoterm'] ?? '',
+            'COO' => $service['countryOrigin'] ?? '',
+            'COD' => $service['countryDestination'] ?? '',
+            'POR' => $service['placeOfReceipt'] ?? '',
+            'POE' => $service['placeOfDelivery'] ?? '',
+            'POL' => $service['pol'] ?? '',
+            'POD' => $service['pod'] ?? '',
+            'ServiceClass' => $service['serviceClass'] ?? '',
+            'ShipmentMode' => $service['shipmentMode'] ?? '',
+            'ShipmentType' => $service['shipmentType'] ?? '',
+            'MovementType' => $service['movementType'] ?? '',
+        ];
+
+        $result = $this->callContractSP('sp_Contractinfo_ServiceDetails', $servicePayload);
+
+        if (!$result['success']) {
+            return response()->json(
+                ['success' => false, 'message' => 'Failed to save service: ' . ($result['message'] ?? 'Unknown error')],
+                422,
+            );
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Service saved.',
+            'data' => ['service_filter_id' => $result['service_filter_id']],
+        ]);
+    }
+
+    public function storeCharge(Request $request, string $contract, string $serviceFilterId): JsonResponse
+    {
+        $draft = Session::get($this->sessionKey($contract));
+
+        if (empty($draft['contract_id'])) {
+            return response()->json(
+                ['success' => false, 'message' => 'Save Contract Info before adding charges.'],
+                422,
+            );
+        }
+
+        $charge = $request->all();
+
+        $chargePayload = [
+            'OperationType' => 'ServiceBasedCharges',
+            'SubmittedDatetime' => now()->format('Y-m-d H:i:s'),
+            'SubmittedBy' => auth()->user()->name ?? 'system',
+            'Action' => 'Add',
+            'ContractInfoID' => $draft['contract_id'],
+            'ServiceAndFilterID' => $serviceFilterId,
+            'ServiceChargeID' => null,
+            'ChargeCode' => $charge['chargeCode'] ?? '',
+            'ChargeBasedon' => $charge['chargeBasedOn'] ?? '',
+            'ChargeBasedOnUOM' => $charge['chargeBasedOnUOM'] ?? '',
+            'ChargeCurr' => $charge['chargeCurr'] ?? '',
+            'MinAmount' => $charge['minAmount'] ?? 0.0,
+            'MaxAmount' => $charge['maxAmount'] ?? 0.0,
+            'RateType' => $charge['rateType'] ?? '',
+            'Rate' => $charge['rate'] ?? 0.0,
+            'Formula' => $charge['formula'] ?? '',
+            'RateSlabJson' => !empty($charge['rateSlab']) ? json_encode($charge['rateSlab']) : '',
+            'Comments' => '',
+        ];
+
+        $result = $this->callContractSP('sp_Contractinfo_ServiceCharges', $chargePayload);
+
+        if (!$result['success']) {
+            return response()->json(
+                ['success' => false, 'message' => 'Failed to save charge: ' . ($result['message'] ?? 'Unknown error')],
+                422,
+            );
+        }
+
+        return response()->json(['success' => true, 'message' => 'Charge saved.']);
     }
 
     private function getUserOfficeCode(): string

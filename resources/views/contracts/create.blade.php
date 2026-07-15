@@ -2,10 +2,6 @@
 
 @section('title', 'Create Contract')
 
-@section('content_header')
-    <h1 class="h3 mb-0">Create Contract</h1>
-@stop
-
 @section('content')
     <div class="container-fluid" id="contractCreateContent">
 
@@ -51,56 +47,60 @@
             </table>
         </div>{{-- /ctrListSection --}}
 
-        <div id="ctrContractInfoSection" style="display:none;">
-            {{-- STEP 1: Contract header --}}
-            <div class="ctr-box mb-3">
-                <div class="ctr-box-title d-flex align-items-center">
-                    <span>Contract Information</span>
-                    <button type="button" class="btn btn-sm btn-outline-primary ml-auto" id="ctrSaveHeaderBtn">Save
-                        Contract
-                        Info</button>
-                </div>
-                <div class="ctr-grid">
-                    <input type="hidden" id="ctrContractNo" value="">
+        <div class="modal fade" id="ctrContractInfoModal" tabindex="-1" role="dialog">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Contract Information</h5>
+                        <button type="button" class="close" data-dismiss="modal"
+                            aria-label="Close"><span>&times;</span></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="ctr-box-title d-flex align-items-center">
+                            <span>Contract Information</span>
+                            <button type="button" class="btn btn-sm btn-outline-primary ml-auto" id="ctrSaveHeaderBtn">Save
+                                Contract
+                                Info</button>
+                        </div>
+                        <div class="ctr-grid">
+                            <input type="hidden" id="ctrContractNo" value="">
 
-                    <div class="ctr-field">
-                        <label class="ctr-lbl ctr-required">Contract Type</label>
-                        <select class="form-control form-control-sm" id="ctrContractType">
-                            <option value="">-- Select --</option>
-                            <option value="Tariff">Tariff</option>
-                            <option value="Long Term">Long Term</option>
-                        </select>
-                    </div>
+                            <div class="ctr-field">
+                                <label class="ctr-lbl ctr-required">Contract Type</label>
+                                <select class="form-control form-control-sm" id="ctrContractType">
+                                    <option value="">-- Select --</option>
+                                    <option value="Tariff">Tariff</option>
+                                    <option value="Long Term">Long Term</option>
+                                </select>
+                            </div>
 
-                    <div class="ctr-field ctr-field-span2">
-                        <label class="ctr-lbl ctr-required">Contract Name</label>
-                        <input type="text" class="form-control form-control-sm" id="ctrContractName">
-                    </div>
+                            <div class="ctr-field ctr-field-span2">
+                                <label class="ctr-lbl ctr-required">Contract Name</label>
+                                <input type="text" class="form-control form-control-sm" id="ctrContractName">
+                            </div>
 
-                    <input type="hidden" id="ctrStatus" value="Draft">
-                    <div class="ctr-field">
-                        <label class="ctr-lbl ctr-required">Effective From</label>
-                        <input type="date" class="form-control form-control-sm" id="ctrEffectiveFrom">
-                    </div>
-                    <div class="ctr-field">
-                        <label class="ctr-lbl ctr-required">Effective To</label>
-                        <input type="date" class="form-control form-control-sm" id="ctrEffectiveTo">
-                    </div>
-                    <div class="ctr-field ctr-field-wide">
-                        <label class="ctr-lbl">Description</label>
-                        <input type="text" class="form-control form-control-sm" id="ctrDescription">
-                    </div>
-                    <div class="ctr-field ctr-field-wide">
-                        <label class="ctr-lbl">Remark</label>
-                        <input type="text" class="form-control form-control-sm" id="ctrRemark">
+                            <input type="hidden" id="ctrStatus" value="Draft">
+                            <div class="ctr-field">
+                                <label class="ctr-lbl ctr-required">Effective From</label>
+                                <input type="date" class="form-control form-control-sm" id="ctrEffectiveFrom">
+                            </div>
+                            <div class="ctr-field">
+                                <label class="ctr-lbl ctr-required">Effective To</label>
+                                <input type="date" class="form-control form-control-sm" id="ctrEffectiveTo">
+                            </div>
+                            <div class="ctr-field ctr-field-wide">
+                                <label class="ctr-lbl">Remark</label>
+                                <input type="text" class="form-control form-control-sm" id="ctrRemark">
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>{{-- /ctrContractInfoSection --}}
+        </div>
 
         {{-- Services now lives inside a modal, opened after Contract Info is saved --}}
         <div class="modal fade" id="ctrServicesModal" tabindex="-1" role="dialog">
-            <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title">Services</h5>
@@ -110,7 +110,8 @@
                     <div class="modal-body">
                         <div class="ctr-box-title d-flex align-items-center">
                             <span>Services</span>
-                            <button type="button" class="btn btn-sm btn-primary ml-auto" id="ctrAddServiceBtn">+ Add
+                            <button type="button" class="btn btn-sm btn-primary ml-auto" id="ctrAddServiceBtn">+
+                                Add
                                 Service</button>
                         </div>
 
@@ -175,7 +176,8 @@
                                 </div>
                                 <div>
                                     <div class="ctr-subsection-title">Destination Details</div>
-                                    <div class="ctr-field mb-2"><label class="ctr-lbl">Country of Destination</label>
+                                    <div class="ctr-field mb-2"><label class="ctr-lbl">Country of
+                                            Destination</label>
                                         <select class="form-control form-control-sm" id="ctrSvcCountryDestination">
                                             <option value="">-- Select --</option>
                                         </select>
@@ -220,6 +222,9 @@
                         <div id="ctrServicesList"></div>
                         <div class="ctr-empty-msg" id="ctrServicesEmpty">No services added yet.</div>
                     </div>{{-- /modal-body --}}
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-success" id="ctrDoneBtn">Done</button>
+                    </div>
                 </div>{{-- /modal-content --}}
             </div>{{-- /modal-dialog --}}
         </div>{{-- /ctrServicesModal --}}
@@ -495,8 +500,12 @@
             // ── PHP‑passed variables ──────────────────────────────────────────────
             var CONTRACT_ID = @json($contractId);
             var STORE_URL = @json(route('contracts.store', $contractId ?? ''));
+            var SERVICES_STORE_URL = @json(route('contracts.services.store', $contractId ?? ''));
             var CONTRACTS_LIST_URL = @json(route('contracts.list'));
             var OFFICE_CODE = @json($officeCode ?? '');
+
+            var CREATE_URL = @json(route('contracts.create'));
+            var NEW_DRAFT_URL = @json(route('contracts.new-draft'));
 
             // ── Master data endpoints ─────────────────────────────────────────────
             var MASTER_BASE = '/contracts/masters';
@@ -533,7 +542,6 @@
                     contractName: document.getElementById('ctrContractName').value,
                     effectiveFrom: document.getElementById('ctrEffectiveFrom').value,
                     effectiveTo: document.getElementById('ctrEffectiveTo').value,
-                    description: document.getElementById('ctrDescription').value,
                     remark: document.getElementById('ctrRemark').value,
                     services: state.contract.services,
                     contractSaved: state.contractSaved
@@ -595,33 +603,8 @@
             }
 
             function showSection(id) {
-                ['ctrListSection', 'ctrContractInfoSection'].forEach(function(s) {
-                    document.getElementById(s).style.display = (s === id) ? 'block' : 'none';
-                });
+                document.getElementById('ctrListSection').style.display = (id === 'ctrListSection') ? 'block' : 'none';
             }
-
-            function loadContractsList() {
-                $.get(CONTRACTS_LIST_URL, function(res) {
-                    var $tbody = $('#ctrContractsTableBody').empty();
-                    if (!res.success || !res.data.length) {
-                        $tbody.append(
-                            '<tr><td colspan="5" class="text-center text-muted">No contracts found.</td></tr>'
-                        );
-                        return;
-                    }
-                    res.data.forEach(function(c) {
-                        $tbody.append('<tr><td>' + c.contractNo + '</td><td>' + c.contractName +
-                            '</td><td>' +
-                            c.effectiveFrom + '</td><td>' + c.effectiveTo + '</td><td>' + c.status +
-                            '</td></tr>');
-                    });
-                }).fail(function() {
-                    $('#ctrContractsTableBody').html(
-                        '<tr><td colspan="5" class="text-center text-danger">Failed to load contracts.</td></tr>'
-                    );
-                });
-            }
-
 
             function loadContractsList() {
                 $.get(CONTRACTS_LIST_URL, function(res) {
@@ -646,7 +629,38 @@
             }
 
             document.getElementById('ctrNewContractBtn').addEventListener('click', function() {
-                showSection('ctrContractInfoSection');
+                var btn = this;
+                btn.disabled = true;
+                $.get(NEW_DRAFT_URL, function(res) {
+                    if (!res.success) {
+                        alert('Could not start a new contract. Please try again.');
+                        return;
+                    }
+                    CONTRACT_ID = res.data.contract_id;
+                    STORE_URL = res.data.store_url;
+                    SERVICES_STORE_URL = res.data.services_store_url;
+                    state.contract = {
+                        contractNo: '',
+                        contractType: '',
+                        status: 'Draft',
+                        effectiveFrom: '',
+                        effectiveTo: '',
+                        description: '',
+                        remark: '',
+                        services: []
+                    };
+                    state.contractSaved = false;
+                    document.getElementById('ctrContractType').value = '';
+                    document.getElementById('ctrContractName').value = '';
+                    document.getElementById('ctrEffectiveFrom').value = '';
+                    document.getElementById('ctrEffectiveTo').value = '';
+                    document.getElementById('ctrRemark').value = '';
+                    $('#ctrContractInfoModal').modal('show');
+                }).fail(function() {
+                    alert('Could not start a new contract. Please try again.');
+                }).always(function() {
+                    btn.disabled = false;
+                });
             });
 
             // ── Populate service form dropdowns ──────────────────────────────────
@@ -781,18 +795,17 @@
             // ── Service form visibility and population ──────────────────────────
             var svcForm = document.getElementById('ctrServiceForm');
 
-            document.getElementById('ctrAddServiceBtn').addEventListener('click', function() {
+            function openServiceForm() {
                 svcForm.style.display = 'block';
-                // Populate dropdowns if not already populated
                 if (!$('#ctrSvcService option').length) {
                     populateServiceFormMasters();
                 }
-                // Init location autocomplete for the fields
                 initLocationAutocomplete('ctrSvcPol', 'ctrSvcPolCode');
                 initLocationAutocomplete('ctrSvcPod', 'ctrSvcPodCode');
                 initLocationAutocomplete('ctrSvcPlaceOfReceipt', 'ctrSvcPlaceOfReceiptCode');
                 initLocationAutocomplete('ctrSvcPlaceOfDelivery', 'ctrSvcPlaceOfDeliveryCode');
-            });
+            }
+            document.getElementById('ctrAddServiceBtn').addEventListener('click', openServiceForm);
 
             document.getElementById('ctrCancelServiceBtn').addEventListener('click', function() {
                 svcForm.style.display = 'none';
@@ -832,7 +845,6 @@
                 var countryOrigin = document.getElementById('ctrSvcCountryOrigin').value.trim();
                 var countryDestination = document.getElementById('ctrSvcCountryDestination').value.trim();
 
-                // Mirrors sp_Contractinfo_ServiceDetails: COO required for Export/Local, COD required for Import
                 if (['Export', 'Local'].indexOf(required.process) !== -1 && !countryOrigin) {
                     alert('Country of Origin is required when Process is Export or Local.');
                     return;
@@ -842,9 +854,7 @@
                     return;
                 }
 
-                serviceSeq += 1;
-                state.contract.services.push({
-                    id: 'svc_' + serviceSeq,
+                var payload = {
                     service: required.service,
                     process: required.process,
                     incoterm: document.getElementById('ctrSvcIncoTerm').value,
@@ -857,14 +867,43 @@
                     pol: document.getElementById('ctrSvcPolCode').value.trim(),
                     pod: document.getElementById('ctrSvcPodCode').value.trim(),
                     placeOfReceipt: document.getElementById('ctrSvcPlaceOfReceiptCode').value.trim(),
-                    placeOfDelivery: document.getElementById('ctrSvcPlaceOfDeliveryCode').value.trim(),
-                    charges: []
-                });
+                    placeOfDelivery: document.getElementById('ctrSvcPlaceOfDeliveryCode').value.trim()
+                };
 
-                clearServiceForm();
-                svcForm.style.display = 'none';
-                renderServices();
-                saveLocalDraft();
+                var btn = this;
+                var originalText = btn.textContent;
+                btn.disabled = true;
+                btn.textContent = 'Saving...';
+
+                $.ajax({
+                    url: SERVICES_STORE_URL,
+                    type: 'POST',
+                    data: $.extend({
+                        _token: document.querySelector('meta[name="csrf-token"]').content
+                    }, payload),
+                    dataType: 'json'
+                }).done(function(res) {
+                    if (!res.success) {
+                        alert('Failed to save service: ' + (res.message || 'Unknown error'));
+                        return;
+                    }
+                    serviceSeq += 1;
+                    payload.id = 'svc_' + serviceSeq;
+                    payload.serviceFilterId = res.data.service_filter_id;
+                    payload.charges = [];
+                    state.contract.services.push(payload);
+
+                    clearServiceForm();
+                    svcForm.style.display = 'none';
+                    renderServices();
+                    saveLocalDraft();
+                }).fail(function(xhr) {
+                    var msg = (xhr.responseJSON && xhr.responseJSON.message) || 'Save failed.';
+                    alert('Failed to save service: ' + msg);
+                }).always(function() {
+                    btn.disabled = false;
+                    btn.textContent = originalText;
+                });
             });
 
             // ── Render services & charges ────────────────────────────────────────
@@ -1196,6 +1235,12 @@
 
             function saveCharge(svcId, wrap) {
                 var svc = findService(svcId);
+
+                if (!svc.serviceFilterId) {
+                    alert('This service has not finished saving yet. Please wait and try again.');
+                    return;
+                }
+
                 var rateType = wrap.querySelector('.ctr-cf-ratetype').value;
                 var required = {
                     category: wrap.querySelector('.ctr-cf-category').value,
@@ -1213,7 +1258,6 @@
                 }
 
                 var charge = {
-                    id: 'chg_' + (++chargeSeq),
                     chargeNature: wrap.querySelector('.ctr-cf-nature').value,
                     chargeCategory: required.category,
                     chargeCode: required.code,
@@ -1324,11 +1368,40 @@
                     }
                 }
 
-                svc.charges.push(charge);
-                wrap.style.display = 'none';
-                wrap.innerHTML = '';
-                renderCharges(svc);
-                saveLocalDraft();
+                var saveBtn = wrap.querySelector('.ctr-cf-save');
+                var originalText = saveBtn.textContent;
+                saveBtn.disabled = true;
+                saveBtn.textContent = 'Saving...';
+
+                var chargeUrl = '/contracts/' + encodeURIComponent(CONTRACT_ID) +
+                    '/services/' + encodeURIComponent(svc.serviceFilterId) + '/charges';
+
+                $.ajax({
+                    url: chargeUrl,
+                    type: 'POST',
+                    data: $.extend({
+                        _token: document.querySelector('meta[name="csrf-token"]').content
+                    }, charge),
+                    dataType: 'json'
+                }).done(function(res) {
+                    if (!res.success) {
+                        alert('Failed to save charge: ' + (res.message || 'Unknown error'));
+                        return;
+                    }
+                    chargeSeq += 1;
+                    charge.id = 'chg_' + chargeSeq;
+                    svc.charges.push(charge);
+                    wrap.style.display = 'none';
+                    wrap.innerHTML = '';
+                    renderCharges(svc);
+                    saveLocalDraft();
+                }).fail(function(xhr) {
+                    var msg = (xhr.responseJSON && xhr.responseJSON.message) || 'Save failed.';
+                    alert('Failed to save charge: ' + msg);
+                }).always(function() {
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = originalText;
+                });
             }
 
             // ── Header save ──────────────────────────────────────────────────────
@@ -1339,7 +1412,6 @@
                     status: document.getElementById('ctrStatus').value,
                     effective_from: document.getElementById('ctrEffectiveFrom').value,
                     effective_to: document.getElementById('ctrEffectiveTo').value,
-                    description: document.getElementById('ctrDescription').value.trim(),
                     remark: document.getElementById('ctrRemark').value.trim()
                 };
             }
@@ -1349,6 +1421,12 @@
                     .filter(function(k) {
                         return !payload[k];
                     });
+            }
+
+            function validateServicesHaveCharges() {
+                return state.contract.services.filter(function(svc) {
+                    return !svc.charges.length;
+                });
             }
 
             function saveDraft(btn, requireServices, onSuccess) {
@@ -1424,14 +1502,40 @@
                     window.history.replaceState({}, '', url);
                     saveLocalDraft();
 
-                    showSection(
-                        null); // hides both list + contract-info; modal is now the only active surface
+                    $('#ctrContractInfoModal').modal('hide');
                     $('#ctrServicesModal').modal('show');
+                    openServiceForm();
                 });
             });
 
-            $('#ctrContractType, #ctrContractName, #ctrEffectiveFrom, #ctrEffectiveTo, #ctrDescription, #ctrRemark')
+            document.getElementById('ctrDoneBtn').addEventListener('click', function() {
+                if (!state.contract.services.length) {
+                    alert('Add at least one Service before finishing.');
+                    return;
+                }
+
+                var servicesMissingCharges = validateServicesHaveCharges();
+                if (servicesMissingCharges.length) {
+                    var names = servicesMissingCharges.map(function(s) {
+                        return s.service + ' — ' + s.process;
+                    }).join(', ');
+                    alert('Every service must have at least one Charge before finishing. Missing charges for: ' +
+                        names);
+                    return;
+                }
+
+                clearLocalDraft();
+                $('#ctrServicesModal').modal('hide');
+                showSection('ctrListSection');
+                loadContractsList();
+            });
+
+            $('#ctrContractType, #ctrContractName, #ctrEffectiveFrom, #ctrEffectiveTo, #ctrRemark')
                 .on('change input', saveLocalDraft);
+
+            $('#ctrContractInfoModal .close, #ctrServicesModal .close').on('click', function() {
+                $(this).closest('.modal').modal('hide');
+            });
 
             // ── Click delegation for service/charge actions ──────────────────────
             document.addEventListener('click', function(e) {
@@ -1495,7 +1599,6 @@
                 document.getElementById('ctrStatus').value = existing.status || 'Draft';
                 document.getElementById('ctrEffectiveFrom').value = existing.effective_from || '';
                 document.getElementById('ctrEffectiveTo').value = existing.effective_to || '';
-                document.getElementById('ctrDescription').value = existing.description || '';
                 document.getElementById('ctrRemark').value = existing.remark || '';
                 state.contract.services = existing.services || [];
                 serviceSeq = state.contract.services.length;
@@ -1507,7 +1610,6 @@
                 document.getElementById('ctrContractName').value = localDraft.contractName || '';
                 document.getElementById('ctrEffectiveFrom').value = localDraft.effectiveFrom || '';
                 document.getElementById('ctrEffectiveTo').value = localDraft.effectiveTo || '';
-                document.getElementById('ctrDescription').value = localDraft.description || '';
                 document.getElementById('ctrRemark').value = localDraft.remark || '';
                 state.contract.services = localDraft.services || [];
                 state.contractSaved = !!localDraft.contractSaved;
