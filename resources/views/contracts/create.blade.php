@@ -639,6 +639,8 @@
                     CONTRACT_ID = res.data.contract_id;
                     STORE_URL = res.data.store_url;
                     SERVICES_STORE_URL = res.data.services_store_url;
+                    LOCAL_DRAFT_KEY = 'ctr_draft_' + CONTRACT_ID; // was: computed once, never updated
+
                     state.contract = {
                         contractNo: '',
                         contractType: '',
@@ -650,11 +652,18 @@
                         services: []
                     };
                     state.contractSaved = false;
+
                     document.getElementById('ctrContractType').value = '';
                     document.getElementById('ctrContractName').value = '';
                     document.getElementById('ctrEffectiveFrom').value = '';
                     document.getElementById('ctrEffectiveTo').value = '';
                     document.getElementById('ctrRemark').value = '';
+
+                    // NEW: clear any leftover service/charge UI from the previous contract
+                    svcForm.style.display = 'none';
+                    clearServiceForm();
+                    renderServices();
+
                     $('#ctrContractInfoModal').modal('show');
                 }).fail(function() {
                     alert('Could not start a new contract. Please try again.');
@@ -819,11 +828,15 @@
                 ].forEach(function(id) {
                     document.getElementById(id).value = '';
                 });
-                // Clear hidden codes
                 ['ctrSvcPolCode', 'ctrSvcPodCode', 'ctrSvcPlaceOfReceiptCode', 'ctrSvcPlaceOfDeliveryCode'].forEach(
                     function(id) {
                         document.getElementById(id).value = '';
                     });
+
+                // NEW: reset existing-contract search state
+                document.getElementById('ctrSelectedServiceFilterId').value = '';
+                $('#ctrExistingContractSelect').empty().append('<option value="">-- No results --</option>');
+                $('#existingContractSearchWrap').hide();
             }
 
             // ── Save Service ──────────────────────────────────────────────────────
