@@ -38,6 +38,42 @@ class ContractController extends Controller
     }
 
     /**
+     * GET /contracts/list
+     * Row-level data for the Contract Management landing table — same SP
+     * and mode as computeDashboardStats(), but returns actual rows instead
+     * of aggregate counts. Only Authorized contracts are returned; this is
+     * an sp_Contract_List ceiling, not a filter applied here.
+     */
+    public function listContracts(ContractListClient $client): JsonResponse
+    {
+        $payload = ContractListMapper::build('List', [], auth()->user()->name ?? '');
+
+        try {
+            $result = $client->call($payload);
+        } catch (\RuntimeException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+
+        if (!$result['ok']) {
+            return response()->json(['success' => false, 'message' => $result['message']], 422);
+        }
+
+        $contracts = array_map(function ($row) {
+            return [
+                'id' => $row[0],
+                'contractNo' => $row[1],
+                'contractName' => $row[2],
+                'effectiveFrom' => $row[3],
+                'effectiveTo' => $row[4],
+                'status' => $row[5],
+            ];
+        }, $result['rows']);
+
+        return response()->json(['success' => true, 'data' => $contracts]);
+    }
+
+
+    /**
      * Pulls real Authorized-contract data via sp_Contract_List (UsedFor=List).
      *
      * KNOWN LIMITATION: sp_Contract_List's List-mode query is hardcoded to
@@ -162,19 +198,20 @@ class ContractController extends Controller
                     'Service' => $service['service'],
                     'Process' => $service['process'],
                     'IncoTerm' => $service['incoterm'] ?? '',
-                    'COO' => $service['countryOrigin'],
-                    'COD' => $service['countryDestination'],
+                    'COO' => $service['countryOrigin'] ?? '',
+                    'COD' => $service['countryDestination'] ?? '',
                     'POR' => $service['placeOfReceipt'] ?? '',
                     'POE' => $service['placeOfDelivery'] ?? '',
                     'POL' => $service['pol'] ?? '',
                     'POD' => $service['pod'] ?? '',
                     'ServiceClass' => $service['serviceClass'] ?? '',
-                    'ShipmentMode' => $service['shipmentMode'],
-                    'ShipmentType' => $service['shipmentType'],
+                    'ShipmentMode' => $service['shipmentMode'] ?? '',
+                    'ShipmentType' => $service['shipmentType'] ?? '',
                     'MovementType' => $service['movementType'] ?? '',
                     // Add any other fields the SP expects (check its WITH clause)
                 ];
 
+                $beforeCallTimestamp = now();
                 $serviceResult = $this->callContractSP('sp_Contractinfo_ServiceDetails', $servicePayload);
 
                 if (!$serviceResult['success']) {

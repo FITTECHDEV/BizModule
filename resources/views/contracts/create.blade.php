@@ -9,188 +9,221 @@
 @section('content')
     <div class="container-fluid" id="contractCreateContent">
 
-        {{-- Dashboard stats --}}
-        <div class="ctr-stat-grid mb-3">
-            <div class="ctr-stat-card ctr-stat-pending">
-                <div class="ctr-stat-value">{{ $stats['pending'] }}</div>
-                <div class="ctr-stat-label">Pending</div>
-            </div>
-            <div class="ctr-stat-card ctr-stat-pending-approval">
-                <div class="ctr-stat-value">{{ $stats['pending_approval'] }}</div>
-                <div class="ctr-stat-label">Pending Approval</div>
-            </div>
-            <div class="ctr-stat-card ctr-stat-authorized">
-                <div class="ctr-stat-value">{{ $stats['authorized'] }}</div>
-                <div class="ctr-stat-label">Authorized</div>
-            </div>
-            <div class="ctr-stat-card ctr-stat-renewal">
-                <div class="ctr-stat-value">{{ $stats['renewal_due'] }}</div>
-                <div class="ctr-stat-label">Renewal Due</div>
-            </div>
-            <div class="ctr-stat-card ctr-stat-total">
-                <div class="ctr-stat-value">{{ $stats['total'] }}</div>
-                <div class="ctr-stat-label">Total</div>
-            </div>
-        </div>
-
-        {{-- STEP 1: Contract header --}}
-        <div class="ctr-box mb-3">
-            <div class="ctr-box-title d-flex align-items-center">
-                <span>Contract Information</span>
-                <button type="button" class="btn btn-sm btn-outline-primary ml-auto" id="ctrSaveHeaderBtn">Save Contract
-                    Info</button>
-            </div>
-            <div class="ctr-grid">
-                <input type="hidden" id="ctrContractNo" value="">
-
-                <div class="ctr-field">
-                    <label class="ctr-lbl ctr-required">Contract Type</label>
-                    <select class="form-control form-control-sm" id="ctrContractType">
-                        <option value="">-- Select --</option>
-                        <option value="Tariff">Tariff</option>
-                        <option value="Long Term">Long Term</option>
-                    </select>
+        <div id="ctrListSection">
+            {{-- Dashboard stats --}}
+            <div class="ctr-stat-grid mb-3">
+                <div class="ctr-stat-card ctr-stat-pending">
+                    <div class="ctr-stat-value">{{ $stats['pending'] }}</div>
+                    <div class="ctr-stat-label">Pending</div>
                 </div>
-
-                <div class="ctr-field ctr-field-span2">
-                    <label class="ctr-lbl ctr-required">Contract Name</label>
-                    <input type="text" class="form-control form-control-sm" id="ctrContractName">
+                <div class="ctr-stat-card ctr-stat-pending-approval">
+                    <div class="ctr-stat-value">{{ $stats['pending_approval'] }}</div>
+                    <div class="ctr-stat-label">Pending Approval</div>
                 </div>
-
-                <input type="hidden" id="ctrStatus" value="Draft">
-                <div class="ctr-field">
-                    <label class="ctr-lbl ctr-required">Effective From</label>
-                    <input type="date" class="form-control form-control-sm" id="ctrEffectiveFrom">
+                <div class="ctr-stat-card ctr-stat-authorized">
+                    <div class="ctr-stat-value">{{ $stats['authorized'] }}</div>
+                    <div class="ctr-stat-label">Authorized</div>
                 </div>
-                <div class="ctr-field">
-                    <label class="ctr-lbl ctr-required">Effective To</label>
-                    <input type="date" class="form-control form-control-sm" id="ctrEffectiveTo">
+                <div class="ctr-stat-card ctr-stat-renewal">
+                    <div class="ctr-stat-value">{{ $stats['renewal_due'] }}</div>
+                    <div class="ctr-stat-label">Renewal Due</div>
                 </div>
-                <div class="ctr-field ctr-field-wide">
-                    <label class="ctr-lbl">Description</label>
-                    <input type="text" class="form-control form-control-sm" id="ctrDescription">
-                </div>
-                <div class="ctr-field ctr-field-wide">
-                    <label class="ctr-lbl">Remark</label>
-                    <input type="text" class="form-control form-control-sm" id="ctrRemark">
+                <div class="ctr-stat-card ctr-stat-total">
+                    <div class="ctr-stat-value">{{ $stats['total'] }}</div>
+                    <div class="ctr-stat-label">Total</div>
                 </div>
             </div>
-        </div>
 
-        {{-- STEP 2: Services list + inline Add Service form --}}
-        <div class="ctr-box mb-3">
-            <div class="ctr-box-title d-flex align-items-center">
-                <span>Services</span>
-                <button type="button" class="btn btn-sm btn-primary ml-auto" id="ctrAddServiceBtn" disabled
-                    title="Save Contract Info first">+ Add Service</button>
+            <div class="d-flex justify-content-end mb-3">
+                <button type="button" class="btn btn-primary" id="ctrNewContractBtn">+ New</button>
             </div>
+            <table class="table table-sm table-bordered" id="ctrContractsTable">
+                <thead>
+                    <tr>
+                        <th>Contract No</th>
+                        <th>Name</th>
+                        <th>Effective From</th>
+                        <th>Effective To</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="ctrContractsTableBody"></tbody>
+            </table>
+        </div>{{-- /ctrListSection --}}
 
-            <div id="ctrServiceForm" class="ctr-subform mb-3" style="display:none;">
+        <div id="ctrContractInfoSection" style="display:none;">
+            {{-- STEP 1: Contract header --}}
+            <div class="ctr-box mb-3">
+                <div class="ctr-box-title d-flex align-items-center">
+                    <span>Contract Information</span>
+                    <button type="button" class="btn btn-sm btn-outline-primary ml-auto" id="ctrSaveHeaderBtn">Save
+                        Contract
+                        Info</button>
+                </div>
+                <div class="ctr-grid">
+                    <input type="hidden" id="ctrContractNo" value="">
 
-                <div class="ctr-subsection-title">Service Details</div>
-                <div class="ctr-grid-2 mb-3">
-                    <div class="ctr-field"><label class="ctr-lbl ctr-required">Service</label>
-                        <select class="form-control form-control-sm" id="ctrSvcService">
+                    <div class="ctr-field">
+                        <label class="ctr-lbl ctr-required">Contract Type</label>
+                        <select class="form-control form-control-sm" id="ctrContractType">
                             <option value="">-- Select --</option>
+                            <option value="Tariff">Tariff</option>
+                            <option value="Long Term">Long Term</option>
                         </select>
                     </div>
-                    <div class="ctr-field"><label class="ctr-lbl ctr-required">Process</label>
-                        <select class="form-control form-control-sm" id="ctrSvcProcess">
-                            <option value="">-- Select --</option>
-                        </select>
-                    </div>
-                    <div class="ctr-field"><label class="ctr-lbl">IncoTerm</label>
-                        <select class="form-control form-control-sm" id="ctrSvcIncoTerm">
-                            <option value="">-- Select --</option>
-                        </select>
-                    </div>
-                    <div class="ctr-field"><label class="ctr-lbl">Service Class</label>
-                        <input type="text" class="form-control form-control-sm" id="ctrSvcServiceClass">
-                    </div>
-                    <div class="ctr-field"><label class="ctr-lbl ctr-required">Shipment Type</label>
-                        <select class="form-control form-control-sm" id="ctrSvcShipmentType">
-                            <option value="">-- Select --</option>
-                        </select>
-                    </div>
-                    <div class="ctr-field"><label class="ctr-lbl ctr-required">Shipment Mode</label>
-                        <select class="form-control form-control-sm" id="ctrSvcShipmentMode">
-                            <option value="">-- Select --</option>
-                        </select>
-                    </div>
-                    <div class="ctr-field"><label class="ctr-lbl">Movement Type</label>
-                        <select class="form-control form-control-sm" id="ctrSvcMovementType">
-                            <option value="">-- Select --</option>
-                        </select>
-                    </div>
-                    <div class="ctr-field"></div>
-                </div>
 
-                <div class="ctr-subsection-title">Origin Details</div>
-                <div class="ctr-grid-2 mb-3">
-                    <div class="ctr-field"><label class="ctr-lbl ctr-required">Country of Origin</label>
-                        <select class="form-control form-control-sm" id="ctrSvcCountryOrigin">
-                            <option value="">-- Select --</option>
-                        </select>
+                    <div class="ctr-field ctr-field-span2">
+                        <label class="ctr-lbl ctr-required">Contract Name</label>
+                        <input type="text" class="form-control form-control-sm" id="ctrContractName">
                     </div>
-                    <div class="ctr-field"><label class="ctr-lbl">Port of Loading</label>
-                        <input type="text" class="form-control form-control-sm" id="ctrSvcPol"
-                            placeholder="Type to search..." autocomplete="off">
-                        <input type="hidden" id="ctrSvcPolCode">
-                    </div>
-                    <div class="ctr-field"><label class="ctr-lbl">Place of Receipt</label>
-                        <input type="text" class="form-control form-control-sm" id="ctrSvcPlaceOfReceipt"
-                            placeholder="Type to search..." autocomplete="off">
-                        <input type="hidden" id="ctrSvcPlaceOfReceiptCode">
-                    </div>
-                    <div class="ctr-field"></div>
-                </div>
 
-                <div class="ctr-subsection-title">Destination Details</div>
-                <div class="ctr-grid-2 mb-3">
-                    <div class="ctr-field"><label class="ctr-lbl ctr-required">Country of Destination</label>
-                        <select class="form-control form-control-sm" id="ctrSvcCountryDestination">
-                            <option value="">-- Select --</option>
-                        </select>
+                    <input type="hidden" id="ctrStatus" value="Draft">
+                    <div class="ctr-field">
+                        <label class="ctr-lbl ctr-required">Effective From</label>
+                        <input type="date" class="form-control form-control-sm" id="ctrEffectiveFrom">
                     </div>
-                    <div class="ctr-field"><label class="ctr-lbl">Port of Discharge</label>
-                        <input type="text" class="form-control form-control-sm" id="ctrSvcPod"
-                            placeholder="Type to search..." autocomplete="off">
-                        <input type="hidden" id="ctrSvcPodCode">
+                    <div class="ctr-field">
+                        <label class="ctr-lbl ctr-required">Effective To</label>
+                        <input type="date" class="form-control form-control-sm" id="ctrEffectiveTo">
                     </div>
-                    <div class="ctr-field"><label class="ctr-lbl">Place of Delivery</label>
-                        <input type="text" class="form-control form-control-sm" id="ctrSvcPlaceOfDelivery"
-                            placeholder="Type to search..." autocomplete="off">
-                        <input type="hidden" id="ctrSvcPlaceOfDeliveryCode">
+                    <div class="ctr-field ctr-field-wide">
+                        <label class="ctr-lbl">Description</label>
+                        <input type="text" class="form-control form-control-sm" id="ctrDescription">
                     </div>
-                    <div class="ctr-field"></div>
-                </div>
-
-                <div class="ctr-field ctr-field-wide mt-3" id="existingContractSearchWrap" style="display:none;">
-                    <div class="d-flex align-items-center">
-                        <button type="button" class="btn btn-sm btn-outline-info mr-2" id="ctrSearchExistingBtn">
-                            <i class="fas fa-search mr-1"></i> Search Existing
-                        </button>
-                        <select class="form-control form-control-sm" id="ctrExistingContractSelect" style="flex:1;">
-                            <option value="">-- No results --</option>
-                        </select>
-                        <input type="hidden" id="ctrSelectedServiceFilterId">
+                    <div class="ctr-field ctr-field-wide">
+                        <label class="ctr-lbl">Remark</label>
+                        <input type="text" class="form-control form-control-sm" id="ctrRemark">
                     </div>
-                </div>
-
-                <div class="d-flex justify-content-end mt-2">
-                    <button type="button" class="btn btn-sm btn-secondary mr-2" id="ctrCancelServiceBtn">Cancel</button>
-                    <button type="button" class="btn btn-sm btn-success" id="ctrSaveServiceBtn">Save Service</button>
                 </div>
             </div>
+        </div>{{-- /ctrContractInfoSection --}}
 
-            <div id="ctrServicesList"></div>
-            <div class="ctr-empty-msg" id="ctrServicesEmpty">No services added yet.</div>
-        </div>
+        {{-- Services now lives inside a modal, opened after Contract Info is saved --}}
+        <div class="modal fade" id="ctrServicesModal" tabindex="-1" role="dialog">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Services</h5>
+                        <button type="button" class="close" data-dismiss="modal"
+                            aria-label="Close"><span>&times;</span></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="ctr-box-title d-flex align-items-center">
+                            <span>Services</span>
+                            <button type="button" class="btn btn-sm btn-primary ml-auto" id="ctrAddServiceBtn">+ Add
+                                Service</button>
+                        </div>
 
-        <div class="d-flex justify-content-end mb-4">
-            <button type="button" class="btn btn-success" id="ctrSaveContractBtn">Save Contract</button>
-        </div>
-    </div>
+                        <div id="ctrServiceForm" class="ctr-subform mb-3" style="display:none;">
+
+                            <div class="ctr-subsection-title">Service Details</div>
+                            <div class="ctr-grid-2 mb-3">
+                                <div class="ctr-field"><label class="ctr-lbl ctr-required">Service</label>
+                                    <select class="form-control form-control-sm" id="ctrSvcService">
+                                        <option value="">-- Select --</option>
+                                    </select>
+                                </div>
+                                <div class="ctr-field"><label class="ctr-lbl ctr-required">Process</label>
+                                    <select class="form-control form-control-sm" id="ctrSvcProcess">
+                                        <option value="">-- Select --</option>
+                                    </select>
+                                </div>
+                                <div class="ctr-field"><label class="ctr-lbl">IncoTerm</label>
+                                    <select class="form-control form-control-sm" id="ctrSvcIncoTerm">
+                                        <option value="">-- Select --</option>
+                                    </select>
+                                </div>
+                                <div class="ctr-field"><label class="ctr-lbl">Service Class</label>
+                                    <input type="text" class="form-control form-control-sm" id="ctrSvcServiceClass">
+                                </div>
+                                <div class="ctr-field"><label class="ctr-lbl">Shipment Type</label>
+                                    <select class="form-control form-control-sm" id="ctrSvcShipmentType">
+                                        <option value="">-- Select --</option>
+                                    </select>
+                                </div>
+                                <div class="ctr-field"><label class="ctr-lbl">Shipment Mode</label>
+                                    <select class="form-control form-control-sm" id="ctrSvcShipmentMode">
+                                        <option value="">-- Select --</option>
+                                    </select>
+                                </div>
+                                <div class="ctr-field"><label class="ctr-lbl">Movement Type</label>
+                                    <select class="form-control form-control-sm" id="ctrSvcMovementType">
+                                        <option value="">-- Select --</option>
+                                    </select>
+                                </div>
+                                <div class="ctr-field"></div>
+                            </div>
+
+                            <div class="ctr-grid-2 mb-3">
+                                <div>
+                                    <div class="ctr-subsection-title">Origin Details</div>
+                                    <div class="ctr-field mb-2"><label class="ctr-lbl">Country of Origin</label>
+                                        <select class="form-control form-control-sm" id="ctrSvcCountryOrigin">
+                                            <option value="">-- Select --</option>
+                                        </select>
+                                    </div>
+                                    <div class="ctr-field mb-2"><label class="ctr-lbl">Port of Loading</label>
+                                        <input type="text" class="form-control form-control-sm" id="ctrSvcPol"
+                                            placeholder="Type to search..." autocomplete="off">
+                                        <input type="hidden" id="ctrSvcPolCode">
+                                    </div>
+                                    <div class="ctr-field"><label class="ctr-lbl">Place of Receipt</label>
+                                        <input type="text" class="form-control form-control-sm"
+                                            id="ctrSvcPlaceOfReceipt" placeholder="Type to search..." autocomplete="off">
+                                        <input type="hidden" id="ctrSvcPlaceOfReceiptCode">
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="ctr-subsection-title">Destination Details</div>
+                                    <div class="ctr-field mb-2"><label class="ctr-lbl">Country of Destination</label>
+                                        <select class="form-control form-control-sm" id="ctrSvcCountryDestination">
+                                            <option value="">-- Select --</option>
+                                        </select>
+                                    </div>
+                                    <div class="ctr-field mb-2"><label class="ctr-lbl">Port of Discharge</label>
+                                        <input type="text" class="form-control form-control-sm" id="ctrSvcPod"
+                                            placeholder="Type to search..." autocomplete="off">
+                                        <input type="hidden" id="ctrSvcPodCode">
+                                    </div>
+                                    <div class="ctr-field"><label class="ctr-lbl">Place of Delivery</label>
+                                        <input type="text" class="form-control form-control-sm"
+                                            id="ctrSvcPlaceOfDelivery" placeholder="Type to search..."
+                                            autocomplete="off">
+                                        <input type="hidden" id="ctrSvcPlaceOfDeliveryCode">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="ctr-field ctr-field-wide mt-3" id="existingContractSearchWrap"
+                                style="display:none;">
+                                <div class="d-flex align-items-center">
+                                    <button type="button" class="btn btn-sm btn-outline-info mr-2"
+                                        id="ctrSearchExistingBtn">
+                                        <i class="fas fa-search mr-1"></i> Search Existing
+                                    </button>
+                                    <select class="form-control form-control-sm" id="ctrExistingContractSelect"
+                                        style="flex:1;">
+                                        <option value="">-- No results --</option>
+                                    </select>
+                                    <input type="hidden" id="ctrSelectedServiceFilterId">
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-end mt-2">
+                                <button type="button" class="btn btn-sm btn-secondary mr-2"
+                                    id="ctrCancelServiceBtn">Cancel</button>
+                                <button type="button" class="btn btn-sm btn-success" id="ctrSaveServiceBtn">Save
+                                    Service</button>
+                            </div>
+                        </div>
+
+                        <div id="ctrServicesList"></div>
+                        <div class="ctr-empty-msg" id="ctrServicesEmpty">No services added yet.</div>
+                    </div>{{-- /modal-body --}}
+                </div>{{-- /modal-content --}}
+            </div>{{-- /modal-dialog --}}
+        </div>{{-- /ctrServicesModal --}}
+    </div>{{-- /contractCreateContent --}}
 
     {{-- Charge row template --}}
     <template id="ctrChargeRowTemplate">
@@ -462,10 +495,18 @@
             // ── PHP‑passed variables ──────────────────────────────────────────────
             var CONTRACT_ID = @json($contractId);
             var STORE_URL = @json(route('contracts.store', $contractId ?? ''));
-            var OFFICE_CODE = @json($officeCode ?? ''); // from controller
+            var CONTRACTS_LIST_URL = @json(route('contracts.list'));
+            var OFFICE_CODE = @json($officeCode ?? '');
 
             // ── Master data endpoints ─────────────────────────────────────────────
             var MASTER_BASE = '/contracts/masters';
+
+            var SERVICE_PROCESS_MAP = {
+                'Air': ['Export', 'Import'],
+                'Sea': ['Export', 'Import'],
+                'Road': ['Local']
+            };
+            var ALL_PROCESSES = [];
 
             // ── State ──────────────────────────────────────────────────────────────
             var existing = @json($existing ?? null);
@@ -553,6 +594,61 @@
                 });
             }
 
+            function showSection(id) {
+                ['ctrListSection', 'ctrContractInfoSection'].forEach(function(s) {
+                    document.getElementById(s).style.display = (s === id) ? 'block' : 'none';
+                });
+            }
+
+            function loadContractsList() {
+                $.get(CONTRACTS_LIST_URL, function(res) {
+                    var $tbody = $('#ctrContractsTableBody').empty();
+                    if (!res.success || !res.data.length) {
+                        $tbody.append(
+                            '<tr><td colspan="5" class="text-center text-muted">No contracts found.</td></tr>'
+                        );
+                        return;
+                    }
+                    res.data.forEach(function(c) {
+                        $tbody.append('<tr><td>' + c.contractNo + '</td><td>' + c.contractName +
+                            '</td><td>' +
+                            c.effectiveFrom + '</td><td>' + c.effectiveTo + '</td><td>' + c.status +
+                            '</td></tr>');
+                    });
+                }).fail(function() {
+                    $('#ctrContractsTableBody').html(
+                        '<tr><td colspan="5" class="text-center text-danger">Failed to load contracts.</td></tr>'
+                    );
+                });
+            }
+
+
+            function loadContractsList() {
+                $.get(CONTRACTS_LIST_URL, function(res) {
+                    var $tbody = $('#ctrContractsTableBody').empty();
+                    if (!res.success || !res.data.length) {
+                        $tbody.append(
+                            '<tr><td colspan="5" class="text-center text-muted">No contracts found.</td></tr>'
+                        );
+                        return;
+                    }
+                    res.data.forEach(function(c) {
+                        $tbody.append('<tr><td>' + c.contractNo + '</td><td>' + c.contractName +
+                            '</td><td>' +
+                            c.effectiveFrom + '</td><td>' + c.effectiveTo + '</td><td>' + c.status +
+                            '</td></tr>');
+                    });
+                }).fail(function() {
+                    $('#ctrContractsTableBody').html(
+                        '<tr><td colspan="5" class="text-center text-danger">Failed to load contracts.</td></tr>'
+                    );
+                });
+            }
+
+            document.getElementById('ctrNewContractBtn').addEventListener('click', function() {
+                showSection('ctrContractInfoSection');
+            });
+
             // ── Populate service form dropdowns ──────────────────────────────────
             function populateServiceFormMasters() {
                 // Service
@@ -561,7 +657,10 @@
                 });
                 // Process
                 fetchMasterList('processes').done(function(res) {
-                    if (res.success) populateSelect($('#ctrSvcProcess'), res.data, 'Code', 'Name');
+                    if (res.success) {
+                        ALL_PROCESSES = res.data;
+                        populateSelect($('#ctrSvcProcess'), res.data, 'Code', 'Name');
+                    }
                 });
                 // IncoTerm
                 fetchMasterList('inco-terms').done(function(res) {
@@ -647,6 +746,14 @@
                 fetchMasterList('charge-categories').done(function(res) {
                     if (res.success) populateSelect($(wrap).find('.ctr-cf-category'), res.data, 'Code', 'Name');
                 });
+                // Charge Code
+                fetchMasterList('charge-codes', {
+                    office_code: OFFICE_CODE,
+                    charge_type: $(wrap).find('.ctr-cf-nature').val() || 'Revenue'
+                }).done(function(res) {
+                    if (res.success) populateSelect($(wrap).find('.ctr-cf-code'), res.charge_codes, 'Code',
+                        'Description');
+                });
                 // Based On
                 fetchMasterList('based-on').done(function(res) {
                     if (res.success) populateSelect($(wrap).find('.ctr-cf-basedon'), res.based_on_list, 'Code',
@@ -710,17 +817,28 @@
             document.getElementById('ctrSaveServiceBtn').addEventListener('click', function() {
                 var required = {
                     service: document.getElementById('ctrSvcService').value,
-                    process: document.getElementById('ctrSvcProcess').value,
-                    shipmentType: document.getElementById('ctrSvcShipmentType').value,
-                    shipmentMode: document.getElementById('ctrSvcShipmentMode').value,
-                    countryOrigin: document.getElementById('ctrSvcCountryOrigin').value.trim(),
-                    countryDestination: document.getElementById('ctrSvcCountryDestination').value.trim()
+                    process: document.getElementById('ctrSvcProcess').value
                 };
                 var missing = Object.keys(required).filter(function(k) {
                     return !required[k];
                 });
                 if (missing.length) {
                     alert('Please fill required Service fields: ' + missing.join(', '));
+                    return;
+                }
+
+                var shipmentType = document.getElementById('ctrSvcShipmentType').value;
+                var shipmentMode = document.getElementById('ctrSvcShipmentMode').value;
+                var countryOrigin = document.getElementById('ctrSvcCountryOrigin').value.trim();
+                var countryDestination = document.getElementById('ctrSvcCountryDestination').value.trim();
+
+                // Mirrors sp_Contractinfo_ServiceDetails: COO required for Export/Local, COD required for Import
+                if (['Export', 'Local'].indexOf(required.process) !== -1 && !countryOrigin) {
+                    alert('Country of Origin is required when Process is Export or Local.');
+                    return;
+                }
+                if (required.process === 'Import' && !countryDestination) {
+                    alert('Country of Destination is required when Process is Import.');
                     return;
                 }
 
@@ -731,11 +849,11 @@
                     process: required.process,
                     incoterm: document.getElementById('ctrSvcIncoTerm').value,
                     serviceClass: document.getElementById('ctrSvcServiceClass').value.trim(),
-                    shipmentType: required.shipmentType,
+                    shipmentType: shipmentType,
                     movementType: document.getElementById('ctrSvcMovementType').value,
-                    shipmentMode: required.shipmentMode,
-                    countryOrigin: required.countryOrigin,
-                    countryDestination: required.countryDestination,
+                    shipmentMode: shipmentMode,
+                    countryOrigin: countryOrigin,
+                    countryDestination: countryDestination,
                     pol: document.getElementById('ctrSvcPolCode').value.trim(),
                     pod: document.getElementById('ctrSvcPodCode').value.trim(),
                     placeOfReceipt: document.getElementById('ctrSvcPlaceOfReceiptCode').value.trim(),
@@ -841,7 +959,7 @@
                     '<option value="">-- Select --</option>' +
                     '</select></div>' +
                     '<div class="ctr-field"><label class="ctr-lbl ctr-required">Charge Code</label>' +
-                    '<input type="text" class="form-control form-control-sm ctr-cf-code"></div>' +
+                    '<select class="form-control form-control-sm ctr-cf-code"><option value="">-- Select --</option></select></div>' +
                     '<div class="ctr-field"><label class="ctr-lbl ctr-required">Charge Description</label>' +
                     '<input type="text" class="form-control form-control-sm ctr-cf-desc"></div>' +
                     '<div class="ctr-field"><label class="ctr-lbl ctr-required">Charge Based On</label>' +
@@ -1298,8 +1416,6 @@
                 var btn = this;
                 saveDraft(btn, false, function() {
                     state.contractSaved = true;
-                    document.getElementById('ctrAddServiceBtn').disabled = false;
-                    document.getElementById('ctrAddServiceBtn').removeAttribute('title');
 
                     // Update the URL so a page refresh reloads this same draft instead
                     // of generating a brand-new session slot.
@@ -1307,21 +1423,15 @@
                     url.searchParams.set('draft', CONTRACT_ID);
                     window.history.replaceState({}, '', url);
                     saveLocalDraft();
+
+                    showSection(
+                        null); // hides both list + contract-info; modal is now the only active surface
+                    $('#ctrServicesModal').modal('show');
                 });
             });
 
             $('#ctrContractType, #ctrContractName, #ctrEffectiveFrom, #ctrEffectiveTo, #ctrDescription, #ctrRemark')
                 .on('change input', saveLocalDraft);
-
-            document.getElementById('ctrSaveContractBtn').addEventListener('click', function() {
-                if (!state.contractSaved) {
-                    alert('Please click "Save Contract Info" first.');
-                    return;
-                }
-                saveDraft(this, true, function() {
-                    clearLocalDraft();
-                });
-            });
 
             // ── Click delegation for service/charge actions ──────────────────────
             document.addEventListener('click', function(e) {
@@ -1421,6 +1531,16 @@
                         $('#existingContractSearchWrap').hide();
                     }
                 });
+
+            $('#ctrSvcService').on('change', function() {
+                var allowed = SERVICE_PROCESS_MAP[this.value];
+                var filtered = allowed ?
+                    ALL_PROCESSES.filter(function(p) {
+                        return allowed.indexOf(p.Code) !== -1;
+                    }) :
+                    ALL_PROCESSES;
+                populateSelect($('#ctrSvcProcess'), filtered, 'Code', 'Name');
+            });
 
             // Search button click
             $('#ctrSearchExistingBtn').on('click', function() {
@@ -1540,6 +1660,13 @@
             renderServices();
             // Pre‑populate service form dropdowns in background (if not already)
             populateServiceFormMasters();
+
+            // Always land on the list first. Any resumed draft/session data has
+            // already hydrated the Contract Info fields above — it's just sitting
+            // there ready the moment "+ New" is clicked, but the user never
+            // auto-jumps past the landing page just because a stale draft exists.
+            showSection('ctrListSection');
+            loadContractsList();
 
         })();
     </script>

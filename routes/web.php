@@ -1666,6 +1666,7 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
             Route::get('search-services', [App\Http\Controllers\ContractController::class, 'searchServices'])->name(
                 'search-services',
             );
+            Route::get('list', [App\Http\Controllers\ContractController::class, 'listContracts'])->name('list'); 
             // ── 2. MASTER ROUTES (also static) ──
             Route::prefix('masters')->group(function () {
                 Route::get('inco-terms', [App\Http\Controllers\ContractController::class, 'getIncoTerms']);
