@@ -55,20 +55,22 @@
 
                             <div class="cc-info-grid" style="margin-bottom:10px;">
                                 <div class="cc-info-col">
-                                    <div class="cc-info-row"><span class="cc-lbl">COO</span><span
-                                            class="cc-val">{{ $service->COO ?? '—' }}</span></div>
-                                    <div class="cc-info-row"><span class="cc-lbl">COD</span><span
-                                            class="cc-val">{{ $service->COD ?? '—' }}</span></div>
-                                </div>
-                                <div class="cc-info-col">
+                                    <div class="cc-info-row">
+                                        <span class="cc-lbl">COO</span><span
+                                            class="cc-val">{{ $service->COO ?? '—' }}</span>
+                                        <span class="cc-lbl" style="margin-left:24px;">COD</span><span
+                                            class="cc-val">{{ $service->COD ?? '—' }}</span>
+                                    </div>
                                     <div class="cc-info-row"><span class="cc-lbl">IncoTerm</span><span
                                             class="cc-val">{{ $service->IncoTerm ?? '—' }}</span></div>
-                                    <div class="cc-info-row"><span class="cc-lbl">POL</span><span
-                                            class="cc-val">{{ $service->POL ?? '—' }}</span></div>
                                 </div>
                                 <div class="cc-info-col">
-                                    <div class="cc-info-row"><span class="cc-lbl">POD</span><span
-                                            class="cc-val">{{ $service->POD ?? '—' }}</span></div>
+                                    <div class="cc-info-row">
+                                        <span class="cc-lbl">POL</span><span
+                                            class="cc-val">{{ $service->POL ?? '—' }}</span>
+                                        <span class="cc-lbl" style="margin-left:24px;">POD</span><span
+                                            class="cc-val">{{ $service->POD ?? '—' }}</span>
+                                    </div>
                                 </div>
                             </div>
 
