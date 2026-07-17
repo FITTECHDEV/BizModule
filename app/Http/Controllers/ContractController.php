@@ -161,8 +161,8 @@ class ContractController extends Controller
             'ContactType' => $validated['contract_type'],
             'OfficeCode' => $this->getUserOfficeCode(),
             'ClientCode' => '',
-            'EffectiveFrom' => \Carbon\Carbon::parse($validated['effective_from'])->format('d/m/Y'),
-            'EffectiveTo' => \Carbon\Carbon::parse($validated['effective_to'])->format('d/m/Y'),
+            'EffectiveFrom' => \Carbon\Carbon::parse($validated['effective_from'])->format('Ymd'),
+            'EffectiveTo' => \Carbon\Carbon::parse($validated['effective_to'])->format('Ymd'),
             'ContractName' => $validated['contract_name'],
             'Remark' => $validated['remark'] ?? '',
         ];
@@ -290,7 +290,64 @@ class ContractController extends Controller
             );
         }
 
-        return response()->json(['success' => true, 'message' => 'Charge saved.']);
+        return response()->json([
+            'success' => true,
+            'message' => 'Charge saved.',
+            'data' => ['charge_id' => $result['charge_id']],
+        ]);
+    }
+
+    public function updateCharge(
+        Request $request,
+        string $contract,
+        string $serviceFilterId,
+        string $chargeId,
+    ): JsonResponse {
+        $draft = Session::get($this->sessionKey($contract));
+
+        if (empty($draft['contract_id'])) {
+            return response()->json(
+                ['success' => false, 'message' => 'Save Contract Info before editing charges.'],
+                422,
+            );
+        }
+
+        $charge = $request->all();
+
+        $chargePayload = [
+            'OperationType' => 'ServiceBasedCharges',
+            'SubmittedDatetime' => now()->format('Y-m-d H:i:s'),
+            'SubmittedBy' => auth()->user()->name ?? 'system',
+            'Action' => 'Update',
+            'ContractInfoID' => $draft['contract_id'],
+            'ServiceAndFilterID' => $serviceFilterId,
+            'ServiceChargeID' => $chargeId,
+            'ChargeCode' => $charge['chargeCode'] ?? '', // still mandatory per SP validation
+            'ChargeBasedon' => $charge['chargeBasedOn'] ?? '',
+            'ChargeBasedOnUOM' => $charge['chargeBasedOnUOM'] ?? '',
+            'ChargeCurr' => $charge['chargeCurr'] ?? '',
+            'MinAmount' => $charge['minAmount'] ?? 0.0,
+            'MaxAmount' => $charge['maxAmount'] ?? 0.0,
+            'RateType' => $charge['rateType'] ?? '',
+            'Rate' => $charge['rate'] ?? 0.0,
+            'Formula' => $charge['formula'] ?? '',
+            'RateSlabJson' => !empty($charge['rateSlab']) ? json_encode($charge['rateSlab']) : '',
+            'Comments' => '',
+        ];
+
+        $result = $this->callContractSP('sp_Contractinfo_ServiceCharges', $chargePayload);
+
+        if (!$result['success']) {
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => 'Failed to update charge: ' . ($result['message'] ?? 'Unknown error'),
+                ],
+                422,
+            );
+        }
+
+        return response()->json(['success' => true, 'message' => 'Charge updated.']);
     }
 
     private function getUserOfficeCode(): string
@@ -350,6 +407,7 @@ class ContractController extends Controller
                 'contract_id' => $result['ContractID'] ?? null,
                 'contract_no' => $result['ContractNo'] ?? null,
                 'service_filter_id' => $result['ServiceFilterID'] ?? null,
+                'charge_id' => $result['ServiceChargeID'] ?? null,
             ];
         } catch (\Exception $e) {
             Log::error("SP {$spName} call failed: " . $e->getMessage(), ['input' => $inputJson]);

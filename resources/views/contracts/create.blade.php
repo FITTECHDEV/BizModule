@@ -764,28 +764,28 @@
             }
 
             // ── Charge form: populate masters ────────────────────────────────────
-            function loadChargeFormMasters(wrap) {
-                // Charge Category
+            function loadChargeFormMasters(wrap, chargeToEdit) {
                 fetchMasterList('charge-categories').done(function(res) {
-                    if (res.success) populateSelect($(wrap).find('.ctr-cf-category'), res.data, 'Code', 'Name');
+                    if (res.success) {
+                        populateSelect($(wrap).find('.ctr-cf-category'), res.data, 'Code', 'Name');
+                        if (chargeToEdit) $(wrap).find('.ctr-cf-category').val(chargeToEdit.chargeCategory);
+                    }
                 });
-                // Charge Code
                 fetchMasterList('charge-codes', {
                     office_code: OFFICE_CODE,
                     charge_type: $(wrap).find('.ctr-cf-nature').val() || 'Revenue'
                 }).done(function(res) {
-                    if (res.success) populateSelect($(wrap).find('.ctr-cf-code'), res.charge_codes, 'Code',
-                        'Description');
+                    if (res.success) {
+                        populateSelect($(wrap).find('.ctr-cf-code'), res.charge_codes, 'Code', 'Description');
+                        if (chargeToEdit) $(wrap).find('.ctr-cf-code').val(chargeToEdit.chargeCode);
+                    }
                 });
-                // Based On
                 fetchMasterList('based-on').done(function(res) {
-                    if (res.success) populateSelect($(wrap).find('.ctr-cf-basedon'), res.based_on_list, 'Code',
-                        'Name');
+                    if (res.success) {
+                        populateSelect($(wrap).find('.ctr-cf-basedon'), res.based_on_list, 'Code', 'Name');
+                        if (chargeToEdit) $(wrap).find('.ctr-cf-basedon').val(chargeToEdit.chargeBasedOn);
+                    }
                 });
-                // Currency (needs office_id – we'll pass the office code as a param)
-                // For now, we'll fetch currencies with a dummy office_id; later use real office.
-                // You can get the office from the user or pass from controller.
-                // For demo, we'll call with office_id = OFFICE_CODE (if it's a UUID) or fallback.
                 var officeId = OFFICE_CODE || '';
                 fetchMasterList('currencies', {
                     office_id: officeId
@@ -797,7 +797,53 @@
                             $sel.append('<option value="' + c.CurrencyCode + '">' + c.CurrencyCode +
                                 '</option>');
                         });
+                        if (chargeToEdit) $sel.val(chargeToEdit.chargeCurr);
                     }
+                });
+
+                if (!chargeToEdit) return;
+
+                wrap.querySelector('.ctr-cf-desc').value = chargeToEdit.chargeDescription || '';
+                wrap.querySelector('.ctr-cf-uom').value = chargeToEdit.chargeBasedOnUOM || '';
+                wrap.querySelector('.ctr-cf-min').value = chargeToEdit.minAmount ?? '';
+                wrap.querySelector('.ctr-cf-max').value = chargeToEdit.maxAmount ?? '';
+
+                $(wrap).find('.ctr-cf-ratetype').val(chargeToEdit.rateType);
+                $(wrap).find('.ctr-cf-inline-rate').html(inlineRateHtml(chargeToEdit.rateType));
+                $(wrap).find('.ctr-cf-ratearea').html(rateAreaHtml(chargeToEdit.rateType));
+
+                if (chargeToEdit.rateType === 'Single') {
+                    wrap.querySelector('.ctr-cf-rate').value = chargeToEdit.rate ?? '';
+                } else if (chargeToEdit.rateType === 'Slab Based' || chargeToEdit.rateType === 'Step Up') {
+                    fillSlabRows(wrap.querySelector('.ctr-slab-rows'), chargeToEdit.rateSlab);
+                } else if (chargeToEdit.rateType === 'Formula') {
+                    bindFormulaBuilderEvents(wrap);
+                    wrap.querySelector('.ctr-cf-formula').value = chargeToEdit.formula || '';
+                    $(wrap).find('.ctr-fb-ratetype').val(chargeToEdit.formulaRateType || 'Single');
+                    renderFormulaRateArea(wrap, chargeToEdit.formulaRateType || 'Single');
+                    if (chargeToEdit.formulaRateType === 'Slab Based') {
+                        fillSlabRows(wrap.querySelector('.ctr-fb-ratearea .ctr-slab-rows'), chargeToEdit.formulaSlab);
+                    } else {
+                        wrap.querySelector('.ctr-formula-rate').value = chargeToEdit.formulaRate ?? '';
+                    }
+                }
+            }
+
+            function fillSlabRows(tbody, slabs) {
+                if (!tbody || !slabs || !slabs.length) return;
+                tbody.innerHTML = '';
+                slabs.forEach(function(s) {
+                    var isAbove = s.upto === null || s.upto === undefined;
+                    var row = document.createElement('tr');
+                    if (isAbove) row.className = 'ctr-slab-above-row';
+                    row.innerHTML =
+                        '<td>' + (isAbove ? '<span class="ctr-slab-above-label">Above</span>' :
+                            '<input type="number" class="form-control form-control-sm ctr-slab-upto" value="' +
+                            s.upto + '">') + '</td>' +
+                        '<td><input type="number" step="0.01" class="form-control form-control-sm ctr-slab-value" value="' +
+                        s.value + '"></td>' +
+                        '<td>' + (isAbove ? '' : '<span class="ctr-slab-row-remove">&times;</span>') + '</td>';
+                    tbody.appendChild(row);
                 });
             }
 
@@ -943,7 +989,7 @@
                         (svc.pod ? (' | POD: ' + svc.pod) : '') +
                         '</div>' +
                         '<table class="ctr-charges-table"><thead><tr>' +
-                        '<th>Nature</th><th>Code</th><th>Description</th><th>Category</th><th>Rate Type</th><th>Rate</th><th></th>' +
+                        '<th>Nature</th><th>Code</th><th>Description</th><th>Category</th><th>Rate Type</th><th>Rate</th><th>Action</th>' +
                         '</tr></thead><tbody id="charges-' + svc.id + '"></tbody></table>' +
                         '<div class="ctr-empty-msg" id="charges-empty-' + svc.id +
                         '" style="display:none;">No charges added yet.</div>' +
@@ -984,36 +1030,43 @@
                         '<td>' + c.chargeCategory + '</td>' +
                         '<td>' + c.rateType + '</td>' +
                         '<td>' + rateDisplay + '</td>' +
-                        '<td><span class="ctr-slab-row-remove ctr-remove-charge" data-svc="' + svc.id +
-                        '" data-charge="' + c.id + '">&times;</span></td>';
+                        '<td class="text-nowrap">' +
+                        '<i class="fas fa-pen ctr-edit-charge mr-2" data-svc="' + svc.id + '" data-charge="' + c
+                        .id +
+                        '" style="cursor:pointer;color:#4B49AC;" title="Edit"></i>' +
+                        '<span class="ctr-slab-row-remove ctr-remove-charge" data-svc="' + svc.id +
+                        '" data-charge="' + c.id +
+                        '" title="Delete">&times;</span></td>';
                     tbody.appendChild(tr);
                 });
             }
 
             // ── Open Charge Form ──────────────────────────────────────────────────
-            function openChargeForm(svcId) {
+            function openChargeForm(svcId, chargeToEdit) {
                 var wrap = document.getElementById('chargeform-' + svcId);
                 if (!wrap) return;
                 wrap.style.display = 'block';
-                wrap.innerHTML = chargeFormHtml(svcId);
-                bindChargeFormEvents(svcId, wrap);
-                loadChargeFormMasters(wrap);
+                wrap.innerHTML = chargeFormHtml(svcId, !!chargeToEdit);
+                bindChargeFormEvents(svcId, wrap, chargeToEdit);
+                loadChargeFormMasters(wrap, chargeToEdit);
             }
 
-            function chargeFormHtml(svcId) {
+            function chargeFormHtml(svcId, isEdit) {
+                var lock = isEdit ? ' disabled' : '';
                 return '<div class="ctr-grid-2">' +
                     '<div class="ctr-field"><label class="ctr-lbl ctr-required">Charge Nature</label>' +
-                    '<select class="form-control form-control-sm ctr-cf-nature">' +
+                    '<select class="form-control form-control-sm ctr-cf-nature"' + lock + '>' +
                     '<option value="Revenue">Revenue</option><option value="Cost">Cost</option>' +
                     '</select></div>' +
                     '<div class="ctr-field"><label class="ctr-lbl ctr-required">Charge Category</label>' +
-                    '<select class="form-control form-control-sm ctr-cf-category">' +
+                    '<select class="form-control form-control-sm ctr-cf-category"' + lock + '>' +
                     '<option value="">-- Select --</option>' +
                     '</select></div>' +
                     '<div class="ctr-field"><label class="ctr-lbl ctr-required">Charge Code</label>' +
-                    '<select class="form-control form-control-sm ctr-cf-code"><option value="">-- Select --</option></select></div>' +
+                    '<select class="form-control form-control-sm ctr-cf-code"' + lock +
+                    '><option value="">-- Select --</option></select></div>' +
                     '<div class="ctr-field"><label class="ctr-lbl ctr-required">Charge Description</label>' +
-                    '<input type="text" class="form-control form-control-sm ctr-cf-desc"></div>' +
+                    '<input type="text" class="form-control form-control-sm ctr-cf-desc"' + lock + '></div>' +
                     '<div class="ctr-field"><label class="ctr-lbl ctr-required">Charge Based On</label>' +
                     '<select class="form-control form-control-sm ctr-cf-basedon">' +
                     '<option value="">-- Select --</option>' +
@@ -1043,7 +1096,7 @@
                     '<div class="d-flex justify-content-end mt-2">' +
                     '<button type="button" class="btn btn-sm btn-secondary mr-2 ctr-cf-cancel">Cancel</button>' +
                     '<button type="button" class="btn btn-sm btn-success ctr-cf-save" data-svc="' + svcId +
-                    '">Save Charge</button>' +
+                    '">' + (isEdit ? 'Update Charge' : 'Save Charge') + '</button>' +
                     '</div>';
             }
 
@@ -1201,7 +1254,7 @@
                 }
             }
 
-            function bindChargeFormEvents(svcId, wrap) {
+            function bindChargeFormEvents(svcId, wrap, chargeToEdit) {
                 $(wrap).find('.ctr-cf-ratetype').on('change', function() {
                     $(wrap).find('.ctr-cf-inline-rate').html(inlineRateHtml(this.value));
                     $(wrap).find('.ctr-cf-ratearea').html(rateAreaHtml(this.value));
@@ -1214,7 +1267,7 @@
                 });
 
                 $(wrap).find('.ctr-cf-save').on('click', function() {
-                    saveCharge(svcId, wrap);
+                    saveCharge(svcId, wrap, chargeToEdit);
                 });
             }
 
@@ -1246,7 +1299,7 @@
                 renderFormulaRateArea(wrap, rtSelect.value);
             }
 
-            function saveCharge(svcId, wrap) {
+            function saveCharge(svcId, wrap, chargeToEdit) {
                 var svc = findService(svcId);
 
                 if (!svc.serviceFilterId) {
@@ -1381,17 +1434,24 @@
                     }
                 }
 
+                var isEdit = !!chargeToEdit;
+                if (isEdit && !chargeToEdit.chargeId) {
+                    alert('This charge cannot be edited yet — please refresh and try again.');
+                    return;
+                }
+
                 var saveBtn = wrap.querySelector('.ctr-cf-save');
                 var originalText = saveBtn.textContent;
                 saveBtn.disabled = true;
-                saveBtn.textContent = 'Saving...';
+                saveBtn.textContent = isEdit ? 'Updating...' : 'Saving...';
 
-                var chargeUrl = '/contracts/' + encodeURIComponent(CONTRACT_ID) +
+                var baseUrl = '/contracts/' + encodeURIComponent(CONTRACT_ID) +
                     '/services/' + encodeURIComponent(svc.serviceFilterId) + '/charges';
+                var chargeUrl = isEdit ? baseUrl + '/' + encodeURIComponent(chargeToEdit.chargeId) : baseUrl;
 
                 $.ajax({
                     url: chargeUrl,
-                    type: 'POST',
+                    type: isEdit ? 'PUT' : 'POST',
                     data: $.extend({
                         _token: document.querySelector('meta[name="csrf-token"]').content
                     }, charge),
@@ -1401,9 +1461,19 @@
                         alert('Failed to save charge: ' + (res.message || 'Unknown error'));
                         return;
                     }
-                    chargeSeq += 1;
-                    charge.id = 'chg_' + chargeSeq;
-                    svc.charges.push(charge);
+                    if (isEdit) {
+                        charge.id = chargeToEdit.id;
+                        charge.chargeId = chargeToEdit.chargeId;
+                        var idx = svc.charges.findIndex(function(c) {
+                            return c.id === chargeToEdit.id;
+                        });
+                        if (idx !== -1) svc.charges[idx] = charge;
+                    } else {
+                        chargeSeq += 1;
+                        charge.id = 'chg_' + chargeSeq;
+                        charge.chargeId = res.data && res.data.charge_id;
+                        svc.charges.push(charge);
+                    }
                     wrap.style.display = 'none';
                     wrap.innerHTML = '';
                     renderCharges(svc);
@@ -1578,6 +1648,19 @@
                 }
 
                 var removeChargeBtn = e.target.closest('.ctr-remove-charge');
+                var editChargeBtn = e.target.closest('.ctr-edit-charge');
+                if (editChargeBtn) {
+                    var svc2 = findService(editChargeBtn.getAttribute('data-svc'));
+                    var chargeToEdit = svc2.charges.filter(function(c) {
+                        return c.id === editChargeBtn.getAttribute('data-charge');
+                    })[0];
+                    if (!chargeToEdit || !chargeToEdit.chargeId) {
+                        alert('This charge cannot be edited yet — please refresh and try again.');
+                        return;
+                    }
+                    openChargeForm(svc2.id, chargeToEdit);
+                    return;
+                }
                 if (removeChargeBtn) {
                     var svc = findService(removeChargeBtn.getAttribute('data-svc'));
                     var chargeId = removeChargeBtn.getAttribute('data-charge');
