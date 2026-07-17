@@ -1658,6 +1658,11 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
         'charges',
     ])->name('quotation.contract-template.charges');
 
+    Route::get('/quotation/contract-template/list', [
+        App\Http\Controllers\ContractTemplateController::class,
+        'listContracts',
+    ])->name('quotation.contract-template.list');
+
     Route::prefix('contracts')
         ->name('contracts.')
         ->group(function () {
@@ -1668,6 +1673,7 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
             );
             Route::get('new-draft', [App\Http\Controllers\ContractController::class, 'newDraft'])->name('new-draft');
             Route::get('list', [App\Http\Controllers\ContractController::class, 'listContracts'])->name('list');
+
             // ── 2. MASTER ROUTES (also static) ──
             Route::prefix('masters')->group(function () {
                 Route::get('inco-terms', [App\Http\Controllers\ContractController::class, 'getIncoTerms']);
@@ -1692,6 +1698,9 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
             });
 
             // ── 3. WILDCARD ROUTES (catch-all) ──
+            Route::get('/{contract}/view', [App\Http\Controllers\ContractController::class, 'showDetails'])->name(
+                'view',
+            );
             Route::post('/{contract}/services', [App\Http\Controllers\ContractController::class, 'storeService'])->name(
                 'services.store',
             );

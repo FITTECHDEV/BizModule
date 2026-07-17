@@ -387,7 +387,7 @@ return [
                     'can' => 'view-quotation',
                 ],
                 [
-                    'text' => 'Create Contract',
+                    'text' => 'Contract Management',
                     'url' => 'contracts/create',
                     'icon' => 'fas fa-fw fa-file-signature',
                     'active' => ['contracts', 'contracts/*'],

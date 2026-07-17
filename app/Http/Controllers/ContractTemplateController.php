@@ -6,12 +6,43 @@ use App\Http\Requests\StoreContractTemplateRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
+use App\Services\ContractListClient;
+use App\Services\ContractListMapper;
+use Illuminate\Support\Facades\Log;
 
 class ContractTemplateController extends Controller
 {
     private function sessionKey($quotationId): string
     {
         return "contract_template.quotation.{$quotationId}";
+    }
+
+    public function listContracts(ContractListClient $client): JsonResponse
+    {
+        $payload = ContractListMapper::build('List', [], auth()->user()->name ?? '');
+
+        try {
+            $result = $client->call($payload);
+        } catch (\RuntimeException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+
+        if (!$result['ok']) {
+            return response()->json(['success' => false, 'message' => $result['message']], 422);
+        }
+
+        $contracts = array_map(function ($row) {
+            return [
+                'id' => $row[0],
+                'contractNo' => $row[1],
+                'contractName' => $row[2],
+                'effectiveFrom' => $row[3],
+                'effectiveTo' => $row[4],
+                'status' => $row[5],
+            ];
+        }, $result['rows']);
+
+        return response()->json(['success' => true, 'data' => $contracts]);
     }
 
     public function edit(Request $request, $quotationId)
@@ -25,7 +56,10 @@ class ContractTemplateController extends Controller
             'destination' => $request->query('destination', ''),
         ];
 
-        $view = $request->ajax() ? 'quotation.contract-templates._content' : 'quotation.contract-templates.index';
+        $view =
+            $request->ajax() || $request->query('partial') === '1'
+                ? 'quotation.contract-templates._content'
+                : 'quotation.contract-templates.index';
 
         return view($view, compact('quotationId', 'existing', 'shipment'));
     }

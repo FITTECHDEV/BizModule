@@ -37,6 +37,38 @@ class ContractController extends Controller
         return view('contracts.create', compact('contractId', 'existing', 'stats', 'officeCode'));
     }
 
+    public function showDetails(string $contract)
+    {
+        $contractInfo = DB::connection('sqlsrv')
+            ->table('Contract_ContractInfo')
+            ->where('Id', $contract)
+            ->where('IsDeleted', 0)
+            ->first();
+
+        if (!$contractInfo) {
+            abort(404, 'Contract not found');
+        }
+
+        $services = DB::connection('sqlsrv')
+            ->table('Contract_ContractServiceAndFilter')
+            ->where('ContractInfoID', $contract)
+            ->where('IsDeleted', 0)
+            ->get();
+
+        $serviceIds = $services->pluck('Id')->toArray();
+        $charges = [];
+        if (!empty($serviceIds)) {
+            $charges = DB::connection('sqlsrv')
+                ->table('Contract_ContractCharges')
+                ->whereIn('ServiceAndFilterID', $serviceIds)
+                ->where('IsDeleted', 0)
+                ->get()
+                ->groupBy('ServiceAndFilterID');
+        }
+
+        return view('contracts.show', compact('contractInfo', 'services', 'charges'));
+    }
+
     public function newDraft(): JsonResponse
     {
         $contractId = Str::uuid()->toString();
@@ -82,6 +114,8 @@ class ContractController extends Controller
                 'status' => $row[5],
             ];
         }, $result['rows']);
+
+        Log::info('listContracts - result', ['count' => count($contracts), 'sample' => $contracts[0] ?? null]);
 
         return response()->json(['success' => true, 'data' => $contracts]);
     }
@@ -712,7 +746,15 @@ class ContractController extends Controller
                             continue;
                         }
                         if (isset($rows[0]->Code)) {
-                            $uomList = $rows;
+                            // Map each row to ensure Code and Name exist
+                            $uomList = array_map(function ($row) {
+                                // Try common field names for the description
+                                $name = $row->Name ?? ($row->UOMName ?? ($row->Description ?? $row->Code));
+                                return (object) [
+                                    'Code' => $row->Code,
+                                    'Name' => $name,
+                                ];
+                            }, $rows);
                             break;
                         }
                     }
