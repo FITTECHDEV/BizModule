@@ -8,23 +8,23 @@
         <div id="ctrListSection">
             {{-- Dashboard stats --}}
             <div class="ctr-stat-grid mb-3">
-                <div class="ctr-stat-card ctr-stat-pending">
+                <div class="ctr-stat-card ctr-stat-pending" data-status="Pending">
                     <div class="ctr-stat-value">{{ $stats['pending'] }}</div>
                     <div class="ctr-stat-label">Pending</div>
                 </div>
-                <div class="ctr-stat-card ctr-stat-pending-approval">
+                <div class="ctr-stat-card ctr-stat-pending-approval" data-status="Pending Approval">
                     <div class="ctr-stat-value">{{ $stats['pending_approval'] }}</div>
                     <div class="ctr-stat-label">Pending Approval</div>
                 </div>
-                <div class="ctr-stat-card ctr-stat-authorized">
+                <div class="ctr-stat-card ctr-stat-authorized" data-status="Authorized">
                     <div class="ctr-stat-value">{{ $stats['authorized'] }}</div>
                     <div class="ctr-stat-label">Authorized</div>
                 </div>
-                <div class="ctr-stat-card ctr-stat-renewal">
+                <div class="ctr-stat-card ctr-stat-renewal" data-status="RenewalDue">
                     <div class="ctr-stat-value">{{ $stats['renewal_due'] }}</div>
                     <div class="ctr-stat-label">Renewal Due</div>
                 </div>
-                <div class="ctr-stat-card ctr-stat-total">
+                <div class="ctr-stat-card ctr-stat-total" data-status="">
                     <div class="ctr-stat-value">{{ $stats['total'] }}</div>
                     <div class="ctr-stat-label">Total</div>
                 </div>
@@ -461,6 +461,19 @@
             border-left-color: #4B49AC;
         }
 
+        .ctr-stat-card {
+            cursor: pointer;
+            transition: box-shadow .15s ease;
+        }
+
+        .ctr-stat-card:hover {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, .1);
+        }
+
+        .ctr-stat-card.ctr-stat-active {
+            box-shadow: 0 0 0 2px #4B49AC inset;
+        }
+
         @media (max-width: 768px) {
             .ctr-stat-grid {
                 grid-template-columns: repeat(2, 1fr);
@@ -592,26 +605,69 @@
                 document.getElementById('ctrListSection').style.display = (id === 'ctrListSection') ? 'block' : 'none';
             }
 
+            // state.allContracts holds the unfiltered response; the table always
+            // renders from a client-side filter of this, so status filtering never
+            // needs a re-fetch.
+            state.allContracts = [];
+            state.activeStatusFilter = 'Authorized'; // default view per dashboard spec
+
+            function isRenewalDue(effectiveTo) {
+                if (!effectiveTo) return false;
+                var due = new Date(effectiveTo);
+                if (isNaN(due.getTime())) return false;
+                var today = new Date();
+                today.setHours(0, 0, 0, 0);
+                due.setHours(0, 0, 0, 0);
+                var days = Math.round((due - today) / 86400000);
+                return days >= 0 && days <= 10; // mirrors ContractController::computeDashboardStats
+            }
+
+            function filterContracts(list, status) {
+                if (!status) return list; // Total card = no filter
+                if (status === 'RenewalDue') {
+                    return list.filter(function(c) {
+                        return isRenewalDue(c.effectiveTo);
+                    });
+                }
+                return list.filter(function(c) {
+                    return c.status === status;
+                });
+            }
+
+            function renderContractsTable(list) {
+                var $tbody = $('#ctrContractsTableBody').empty();
+                if (!list || !list.length) {
+                    $tbody.append(
+                        '<tr><td colspan="6" class="text-center text-muted">No contracts found.</td></tr>'
+                    );
+                    return;
+                }
+                list.forEach(function(c) {
+                    var contractId = c.id || c.contractId || c.Id || '';
+                    $tbody.append('<tr><td>' + c.contractNo + '</td><td>' + c.contractName +
+                        '</td><td>' +
+                        c.effectiveFrom + '</td><td>' + c.effectiveTo + '</td><td>' + c.status +
+                        '</td><td><button type="button" class="btn btn-xs btn-outline-primary ctr-view-contract" data-id="' +
+                        contractId + '">View</button></td></tr>');
+                });
+            }
+
+            function applyStatusFilterAndRender() {
+                renderContractsTable(filterContracts(state.allContracts, state.activeStatusFilter));
+                $('.ctr-stat-card').removeClass('ctr-stat-active');
+                $('.ctr-stat-card[data-status="' + state.activeStatusFilter + '"]').addClass('ctr-stat-active');
+            }
+
             function loadContractsList() {
                 $.get(CONTRACTS_LIST_URL, function(res) {
-                    console.log('Contracts list response:', res); // 🔍 Check console
-
-                    var $tbody = $('#ctrContractsTableBody').empty();
-                    if (!res.success || !res.data || !res.data.length) {
-                        $tbody.append(
-                            '<tr><td colspan="6" class="text-center text-muted">No contracts found.</td></tr>'
+                    if (!res.success) {
+                        $('#ctrContractsTableBody').html(
+                            '<tr><td colspan="6" class="text-center text-danger">Failed to load contracts.</td></tr>'
                         );
                         return;
                     }
-                    res.data.forEach(function(c) {
-                        // Try multiple possible keys for the ID
-                        var contractId = c.id || c.contractId || c.Id || '';
-                        $tbody.append('<tr><td>' + c.contractNo + '</td><td>' + c.contractName +
-                            '</td><td>' +
-                            c.effectiveFrom + '</td><td>' + c.effectiveTo + '</td><td>' + c.status +
-                            '</td><td><button type="button" class="btn btn-xs btn-outline-primary ctr-view-contract" data-id="' +
-                            contractId + '">View</button></td></tr>');
-                    });
+                    state.allContracts = res.data || [];
+                    applyStatusFilterAndRender();
                 }).fail(function() {
                     $('#ctrContractsTableBody').html(
                         '<tr><td colspan="6" class="text-center text-danger">Failed to load contracts.</td></tr>'
@@ -1759,6 +1815,11 @@
                 if (contractId) {
                     window.location.href = '/contracts/' + contractId + '/view';
                 }
+            });
+
+            $(document).on('click', '.ctr-stat-card', function() {
+                state.activeStatusFilter = $(this).data('status') || '';
+                applyStatusFilterAndRender();
             });
 
             // ── Hydrate from existing draft ──────────────────────────────────────
