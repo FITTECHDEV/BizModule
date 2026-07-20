@@ -1695,6 +1695,7 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
                     App\Http\Controllers\ContractController::class,
                     'getChargeCategories',
                 ]);
+                Route::get('service-classes', [App\Http\Controllers\ContractController::class, 'getServiceClasses']);
             });
 
             // ── 3. WILDCARD ROUTES (catch-all) ──

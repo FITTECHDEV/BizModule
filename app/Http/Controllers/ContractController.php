@@ -165,24 +165,19 @@ class ContractController extends Controller
     }
 
     /**
-     * Pulls real Authorized-contract data via sp_Contract_List (UsedFor=List).
-     *
-     * KNOWN LIMITATION: sp_Contract_List's List-mode query is hardcoded to
-     * Status = 'Authorized' — it cannot return Pending or Pending Approval
-     * contracts under any input. Until a status parameter is added to the SP
-     * (or a separate endpoint exists for non-Authorized statuses), those two
-     * cards — and "Total" as a true cross-status count — remain at 0 / equal
-     * to the Authorized count. This is not a bug in this method; it's a
-     * ceiling imposed by the SP as currently written.
+     * Pulls contract data via sp_Contract_List (UsedFor=List).
+     * The SP returns all active, non-deleted contracts currently within
+     * their effective date range, regardless of status — counts are
+     * bucketed here by the Status column (row index 5).
      */
     private function computeDashboardStats(ContractListClient $client): array
     {
         $stats = [
-            'pending' => 0, // SP cannot return this status — see docblock
-            'pending_approval' => 0, // SP cannot return this status — see docblock
+            'pending' => 0,
+            'pending_approval' => 0,
             'authorized' => 0,
             'renewal_due' => 0,
-            'total' => 0, // == authorized count only, not a true cross-status total
+            'total' => 0,
         ];
 
         $payload = ContractListMapper::build('List', [], auth()->user()->name ?? '');
@@ -191,7 +186,7 @@ class ContractController extends Controller
             $result = $client->call($payload);
         } catch (\RuntimeException $e) {
             Log::error('Dashboard stats - sp_Contract_List call failed', ['error' => $e->getMessage()]);
-            return $stats; // fail safe to zeros rather than breaking the page
+            return $stats;
         }
 
         if (!$result['ok']) {
@@ -199,25 +194,33 @@ class ContractController extends Controller
             return $stats;
         }
 
-        $authorizedCount = count($result['rows']);
-        $renewalDueCount = 0;
         $today = Carbon::today();
 
         foreach ($result['rows'] as $row) {
-            $effectiveTo = $row[4] ?? null; // index 4 = EffectiveTo, per List-mode column order
-            if (!$effectiveTo) {
-                continue;
+            $effectiveTo = $row[4] ?? null;
+            $status = $row[5] ?? null;
+
+            $stats['total']++;
+
+            switch ($status) {
+                case 'Pending':
+                    $stats['pending']++;
+                    break;
+                case 'Pending Approval':
+                    $stats['pending_approval']++;
+                    break;
+                case 'Authorized':
+                    $stats['authorized']++;
+                    break;
             }
 
-            $daysUntilExpiry = $today->diffInDays(Carbon::parse($effectiveTo), false);
-            if ($daysUntilExpiry >= 0 && $daysUntilExpiry <= 10) {
-                $renewalDueCount++;
+            if ($effectiveTo) {
+                $daysUntilExpiry = $today->diffInDays(Carbon::parse($effectiveTo), false);
+                if ($daysUntilExpiry >= 0 && $daysUntilExpiry <= 10) {
+                    $stats['renewal_due']++;
+                }
             }
         }
-
-        $stats['authorized'] = $authorizedCount;
-        $stats['renewal_due'] = $renewalDueCount;
-        $stats['total'] = $authorizedCount;
 
         return $stats;
     }
@@ -1214,6 +1217,26 @@ class ContractController extends Controller
             ['Code' => 'Other', 'Name' => 'Other'],
         ];
         return response()->json(['success' => true, 'data' => $list]);
+    }
+
+    /**
+     * GET /contract/masters/service-classes
+     */
+    public function getServiceClasses(Request $request): JsonResponse
+    {
+        try {
+            $list = DB::connection('sqlsrv')
+                ->table('FITSCMUAT.dbo.Cust_ServiceClass')
+                ->where('IsActive', 1)
+                ->select('Code', 'Name')
+                ->distinct()
+                ->orderBy('Name')
+                ->get();
+            return response()->json(['success' => true, 'data' => $list]);
+        } catch (\Exception $e) {
+            Log::error('getServiceClasses failed: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
     }
 
     /**

@@ -136,7 +136,9 @@
                                     </select>
                                 </div>
                                 <div class="ctr-field"><label class="ctr-lbl">Service Class</label>
-                                    <input type="text" class="form-control form-control-sm" id="ctrSvcServiceClass">
+                                    <select class="form-control form-control-sm" id="ctrSvcServiceClass">
+                                        <option value="">-- Select --</option>
+                                    </select>
                                 </div>
                                 <div class="ctr-field"><label class="ctr-lbl">Shipment Type</label>
                                     <select class="form-control form-control-sm" id="ctrSvcShipmentType">
@@ -618,7 +620,7 @@
             // renders from a client-side filter of this, so status filtering never
             // needs a re-fetch.
             state.allContracts = [];
-            state.activeStatusFilter = 'Authorized'; // default view per dashboard spec
+            state.activeStatusFilter = 'Pending'; // default view per dashboard spec
 
             function isRenewalDue(effectiveTo) {
                 if (!effectiveTo) return false;
@@ -767,6 +769,10 @@
                 // Movement Type
                 fetchMasterList('movement-types').done(function(res) {
                     if (res.success) populateSelect($('#ctrSvcMovementType'), res.data, 'Code', 'Name');
+                });
+                // Service Class
+                fetchMasterList('service-classes').done(function(res) {
+                    if (res.success) populateSelect($('#ctrSvcServiceClass'), res.data, 'Code', 'Name');
                 });
                 // Countries
                 fetchMasterList('countries').done(function(res) {
@@ -1282,11 +1288,13 @@
                     '<div class="ctr-field"><label class="ctr-lbl ctr-required">Charge Description</label>' +
                     '<input type="text" class="form-control form-control-sm ctr-cf-desc" readonly></div>' +
                     '<div class="ctr-field"><label class="ctr-lbl ctr-required">Charge Based On</label>' +
-                    '<select class="form-control form-control-sm ctr-cf-basedon">' +
+                    '<select class="form-control form-control-sm ctr-cf-basedon"' + lock + '>' +
                     '<option value="">-- Select --</option>' +
                     '</select></div>' +
+
                     '<div class="ctr-field"><label class="ctr-lbl">Based On UOM</label>' +
-                    '<select class="form-control form-control-sm ctr-cf-uom"><option value="">-- Select --</option></select></div>' +
+                    '<select class="form-control form-control-sm ctr-cf-uom"' + lock +
+                    '><option value="">-- Select --</option></select></div>' +
                     '<div class="ctr-field"><label class="ctr-lbl ctr-required">Currency</label>' +
                     '<select class="form-control form-control-sm ctr-cf-currency">' +
                     '<option value="">-- Select --</option>' +

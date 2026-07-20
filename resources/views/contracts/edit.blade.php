@@ -88,9 +88,10 @@
                                         </select>
                                     </div>
                                     <div class="ctr-field mb-2"><label class="ctr-lbl">Service Class</label>
-                                        <input type="text"
-                                            class="form-control form-control-sm ce-svc-field ce-svc-serviceclass"
-                                            value="{{ $service->ServiceClass }}" disabled>
+                                        <select class="form-control form-control-sm ce-svc-field ce-svc-serviceclass"
+                                            disabled>
+                                            <option value="">-- Select --</option>
+                                        </select>
                                     </div>
                                     <div class="ctr-field"><label class="ctr-lbl">Country of Origin</label>
                                         <select class="form-control form-control-sm ce-svc-field ce-svc-coo" disabled>
@@ -122,7 +123,7 @@
                                             <option value="">-- Select --</option>
                                         </select>
                                     </div>
-                                    <div class="ctr-field"><label class="ctr-lbl">POL / POD</label>
+                                    <div class="ctr-field mb-2"><label class="ctr-lbl">POL / POD</label>
                                         <div class="d-flex" style="gap:8px;">
                                             <input type="text"
                                                 class="form-control form-control-sm ce-svc-field ce-svc-pol"
@@ -130,6 +131,16 @@
                                             <input type="text"
                                                 class="form-control form-control-sm ce-svc-field ce-svc-pod"
                                                 value="{{ $service->POD }}" placeholder="POD code" disabled>
+                                        </div>
+                                    </div>
+                                    <div class="ctr-field"><label class="ctr-lbl">Place of Receipt / Delivery</label>
+                                        <div class="d-flex" style="gap:8px;">
+                                            <input type="text"
+                                                class="form-control form-control-sm ce-svc-field ce-svc-por"
+                                                value="{{ $service->POR }}" placeholder="POR code" disabled>
+                                            <input type="text"
+                                                class="form-control form-control-sm ce-svc-field ce-svc-poe"
+                                                value="{{ $service->POE }}" placeholder="POE code" disabled>
                                         </div>
                                     </div>
                                 </div>
@@ -499,6 +510,7 @@
                         'shipmentType' => $service->ShipmentType,
                         'shipmentMode' => $service->ShipmentMode,
                         'movementType' => $service->MovementType,
+                        'serviceClass' => $service->ServiceClass,
                     ];
                 @endphp
                 SERVICE_INITIAL['{{ $service->Id }}'] = @json($serviceInitial);
@@ -541,6 +553,10 @@
                 fetchMasterList('movement-types').done(function(res) {
                     if (res.success) populateSelect($group.find('.ce-svc-movementtype'), res.data, 'Code',
                         'Name', initial.movementType);
+                });
+                fetchMasterList('service-classes').done(function(res) {
+                    if (res.success) populateSelect($group.find('.ce-svc-serviceclass'), res.data, 'Code',
+                        'Name', initial.serviceClass);
                 });
                 fetchMasterList('countries').done(function(res) {
                     if (Array.isArray(res)) {
@@ -629,8 +645,8 @@
                     countryDestination: cod,
                     pol: $group.find('.ce-svc-pol').val().trim(),
                     pod: $group.find('.ce-svc-pod').val().trim(),
-                    placeOfReceipt: '',
-                    placeOfDelivery: ''
+                    placeOfReceipt: $group.find('.ce-svc-por').val().trim(),
+                    placeOfDelivery: $group.find('.ce-svc-poe').val().trim()
                 };
 
                 var btn = this;
