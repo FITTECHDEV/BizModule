@@ -1148,10 +1148,12 @@ class ContractController extends Controller
                 ->table('FITSCMUAT.dbo.Sys_MovementType')
                 ->where('IsActive', 1)
                 ->select('Code', 'Name')
+                ->distinct()
                 ->orderBy('Name')
                 ->get();
             return response()->json(['success' => true, 'data' => $list]);
         } catch (\Exception $e) {
+            \Log::error('getMovementTypes failed: ' . $e->getMessage());
             $list = [
                 ['Code' => 'Port to Port', 'Name' => 'Port to Port'],
                 ['Code' => 'Door to Door', 'Name' => 'Door to Door'],
