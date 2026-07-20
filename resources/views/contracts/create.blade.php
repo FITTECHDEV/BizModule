@@ -891,15 +891,39 @@
                     }
                 });
 
+                // ── Charge Code ──────────────────────────────────
+                fetchMasterList('charge-codes', {
+                    office_code: OFFICE_CODE,
+                    charge_type: $(wrap).find('.ctr-cf-nature').val() || 'Revenue'
+                }).done(function(res) {
+                    if (res.success) {
+                        var $select = $(wrap).find('.ctr-cf-code');
+                        $select.empty().append('<option value="">-- Select --</option>');
+                        res.charge_codes.forEach(function(c) {
+                            var code = c.Code || '';
+                            var name = c.Description || c.Name || c.Code || '';
+                            var label = code + ' - ' + name;
+                            var curr = c.Curr || '';
+                            $select.append('<option value="' + code + '" data-description="' + name +
+                                '" data-currency="' + curr + '">' + label + '</option>');
+                        });
+                        if (chargeToEdit) $select.val(chargeToEdit.chargeCode);
+                        // Trigger change to populate description for edit
+                        $select.trigger('change');
+                    }
+                });
+
                 // ── If editing, fill remaining fields ────────────────
                 if (!chargeToEdit) return;
 
-                // ── Charge Code (autocomplete) ────────────────────────────────
-                if (chargeToEdit) {
-                    var $codeInput = $(wrap).find('.ctr-cf-code');
-                    var $codeHidden = $(wrap).find('.ctr-cf-code-hidden');
-                    $codeInput.val(chargeToEdit.chargeCode || '');
-                    $codeHidden.val(chargeToEdit.chargeCode || '');
+                // ── Populate Reimbursable/Accrual on edit ────────────────────────
+                if (chargeToEdit.toBeAdded) {
+                    var nature = chargeToEdit.chargeNature || 'Revenue';
+                    if (nature === 'Revenue') {
+                        $(wrap).find('#ctrIsAccruable').prop('checked', true);
+                    } else {
+                        $(wrap).find('#ctrIsReimbursable').prop('checked', true);
+                    }
                 }
 
                 wrap.querySelector('.ctr-cf-desc').value = chargeToEdit.chargeDescription || '';
@@ -1238,7 +1262,6 @@
                 wrap.innerHTML = chargeFormHtml(svcId, !!chargeToEdit);
                 bindChargeFormEvents(svcId, wrap, chargeToEdit);
                 loadChargeFormMasters(wrap, chargeToEdit);
-                initChargeCodeAutocomplete(wrap);
             }
 
             function chargeFormHtml(svcId, isEdit) {
@@ -1253,17 +1276,31 @@
                     '<option value="">-- Select --</option>' +
                     '</select></div>' +
                     '<div class="ctr-field"><label class="ctr-lbl ctr-required">Charge Code</label>' +
-                    '<input type="text" class="form-control form-control-sm ctr-cf-code" placeholder="Type at least 3 characters...">' +
-                    '<input type="hidden" class="ctr-cf-code-hidden">' +
-                    '</div>' +
+                    '<select class="form-control form-control-sm ctr-cf-code"' + lock + '>' +
+                    '<option value="">-- Select --</option>' +
+                    '</select></div>' +
                     '<div class="ctr-field"><label class="ctr-lbl ctr-required">Charge Description</label>' +
-                    '<input type="text" class="form-control form-control-sm ctr-cf-desc"' + lock + '></div>' +
+                    '<input type="text" class="form-control form-control-sm ctr-cf-desc" readonly>' +
                     '<div class="ctr-field"><label class="ctr-lbl ctr-required">Charge Based On</label>' +
                     '<select class="form-control form-control-sm ctr-cf-basedon">' +
                     '<option value="">-- Select --</option>' +
                     '</select></div>' +
                     '<div class="ctr-field"><label class="ctr-lbl">Based On UOM</label>' +
                     '<select class="form-control form-control-sm ctr-cf-uom"><option value="">-- Select --</option></select></div>' +
+                    '<div class="ctr-field ctr-field-span2" id="ctr-is-accruable-container" style="display:none;">' +
+                    '<div class="form-check mt-2">' +
+                    '<input class="form-check-input" type="checkbox" id="ctrIsAccruable">' +
+                    '<label class="form-check-label" for="ctrIsAccruable"><strong>Is Accruable</strong> <small class="text-muted">(Adds to Cost)</small></label>' +
+                    '</div>' +
+                    '</div>' +
+
+                    '<div class="ctr-field ctr-field-span2" id="ctr-is-reimbursable-container" style="display:none;">' +
+                    '<div class="form-check mt-2">' +
+                    '<input class="form-check-input" type="checkbox" id="ctrIsReimbursable">' +
+                    '<label class="form-check-label" for="ctrIsReimbursable"><strong>Is Reimbursable</strong> <small class="text-muted">(Adds to Revenue)</small></label>' +
+                    '</div>' +
+                    '</div>' +
+
                     '<div class="ctr-field"><label class="ctr-lbl ctr-required">Currency</label>' +
                     '<select class="form-control form-control-sm ctr-cf-currency">' +
                     '<option value="">-- Select --</option>' +
@@ -1521,6 +1558,84 @@
                     });
                 });
 
+                // ── Toggle Accruable/Reimbursable based on Charge Nature ──────────
+                function toggleAccruableReimbursable() {
+                    var nature = $(wrap).find('.ctr-cf-nature').val();
+                    if (nature === 'Revenue') {
+                        $(wrap).find('#ctr-is-accruable-container').show();
+                        $(wrap).find('#ctr-is-reimbursable-container').hide();
+                        $(wrap).find('#ctrIsReimbursable').prop('checked', false);
+                        // Restore previous accruable value if editing
+                        if (chargeToEdit && chargeToEdit.toBeAdded) {
+                            $(wrap).find('#ctrIsAccruable').prop('checked', true);
+                        }
+                    } else { // Cost
+                        $(wrap).find('#ctr-is-accruable-container').hide();
+                        $(wrap).find('#ctr-is-reimbursable-container').show();
+                        $(wrap).find('#ctrIsAccruable').prop('checked', false);
+                        // Restore previous reimbursable value if editing
+                        if (chargeToEdit && chargeToEdit.toBeAdded) {
+                            $(wrap).find('#ctrIsReimbursable').prop('checked', true);
+                        }
+                    }
+                }
+
+                // Initial toggle on form load
+                toggleAccruableReimbursable();
+
+                // ── Refresh charge codes when nature changes ──────────
+                $(wrap).find('.ctr-cf-nature').on('change', function() {
+                    var nature = $(this).val();
+                    var chargeType = (nature === 'Cost') ? 'Cost' : 'Revenue';
+
+                    fetchMasterList('charge-codes', {
+                        office_code: OFFICE_CODE,
+                        charge_type: chargeType,
+                        filter: ''
+                    }).done(function(res) {
+                        if (res.success) {
+                            var options = res.charge_codes.map(function(c) {
+                                return {
+                                    Code: c.Code,
+                                    Label: c.Code + ' - ' + (c.Description || c.Name || c.Code)
+                                };
+                            });
+                            var $select = $(wrap).find('.ctr-cf-code');
+                            populateSelect($select, options, 'Code', 'Label');
+                            // Preserve selected value if it exists in the new list
+                            var currentVal = $select.val();
+                            if (currentVal && !$select.find('option[value="' + currentVal + '"]')
+                                .length) {
+                                $select.val('');
+                            }
+                            // ✅ ADD THIS LINE
+                            $select.trigger('change');
+                        }
+                    });
+                });
+
+                // Re-toggle when Charge Nature changes
+                $(wrap).find('.ctr-cf-nature').on('change', function() {
+                    toggleAccruableReimbursable();
+                });
+
+                // ── Auto‑fill description and currency on code selection ──
+                $(wrap).find('.ctr-cf-code').on('change', function() {
+                    var $selected = $(this).find('option:selected');
+                    var desc = $selected.data('description') || '';
+                    var curr = $selected.data('currency') || '';
+                    if (desc) {
+                        $(wrap).find('.ctr-cf-desc').val(desc);
+                    }
+                    if (curr) {
+                        var $currencySelect = $(wrap).find('.ctr-cf-currency');
+                        // Only set if the currency exists in the dropdown
+                        if ($currencySelect.find('option[value="' + curr + '"]').length) {
+                            $currencySelect.val(curr);
+                        }
+                    }
+                });
+
                 $(wrap).find('.ctr-cf-save').on('click', function() {
                     saveCharge(svcId, wrap, chargeToEdit);
                 });
@@ -1568,11 +1683,15 @@
                 var rateType = wrap.querySelector('.ctr-cf-ratetype').value;
                 var required = {
                     category: wrap.querySelector('.ctr-cf-category').value,
-                    code: wrap.querySelector('.ctr-cf-code-hidden').value.trim(),
+                    code: wrap.querySelector('.ctr-cf-code').value.trim(),
                     desc: wrap.querySelector('.ctr-cf-desc').value.trim(),
                     basedOn: wrap.querySelector('.ctr-cf-basedon').value,
                     rateType: rateType
                 };
+                // ── Read Reimbursable/Accrual status ──────────────────────────────
+                var isAccruable = wrap.querySelector('#ctrIsAccruable')?.checked || false;
+                var isReimbursable = wrap.querySelector('#ctrIsReimbursable')?.checked || false;
+                var toBeAdded = (isAccruable || isReimbursable) ? 1 : 0;
                 var missing = Object.keys(required).filter(function(k) {
                     return !required[k];
                 });
@@ -1589,6 +1708,7 @@
                     chargeBasedOn: required.basedOn,
                     chargeBasedOnUOM: wrap.querySelector('.ctr-cf-uom').value.trim(),
                     chargeCurr: wrap.querySelector('.ctr-cf-currency').value,
+                    toBeAdded: toBeAdded,
                     minAmount: wrap.querySelector('.ctr-cf-min').value !== '' ? parseFloat(parseFloat(wrap
                         .querySelector('.ctr-cf-min').value).toFixed(2)) : null,
                     maxAmount: wrap.querySelector('.ctr-cf-max').value !== '' ? parseFloat(parseFloat(wrap

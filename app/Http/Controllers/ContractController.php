@@ -363,6 +363,8 @@ class ContractController extends Controller
             'ChargeNature' => $charge['chargeNature'] ?? '',
             'ChargeCategory' => $charge['chargeCategory'] ?? '',
             'ChargeDescription' => $charge['chargeDescription'] ?? '',
+            'ToBeAdded' => $charge['to_be_added'] ?? 0,
+
         ];
 
         $result = $this->callContractSP('sp_Contractinfo_ServiceCharges', $chargePayload);
@@ -414,6 +416,7 @@ class ContractController extends Controller
             'ChargeNature' => $charge['chargeNature'] ?? '',
             'ChargeCategory' => $charge['chargeCategory'] ?? '',
             'ChargeDescription' => $charge['chargeDescription'] ?? '',
+            'ToBeAdded' => $charge['to_be_added'] ?? 0,
         ];
 
         $result = $this->callContractSP('sp_Contractinfo_ServiceCharges', $chargePayload);
