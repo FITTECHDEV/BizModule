@@ -20,6 +20,16 @@ class ContractController extends Controller
         return "contract.draft.{$contractId}";
     }
 
+    private function submittedDatetime(): string
+    {
+        // sp_Contractinfo, sp_Contractinfo_ServiceDetails, and
+        // sp_Contractinfo_ServiceCharges all parse SubmittedDatetime via a
+        // positional STUFF() chain built for yyyyMMddHHmmss. Do NOT switch
+        // this to a separator-formatted string — TRY_CONVERT silently
+        // returns NULL if you do.
+        return now()->format('YmdHis');
+    }
+
     /**
      * Show the Create Contract screen. Generates a draft ID if none supplied,
      * so Add Service / Add Charges can be saved incrementally into the same
@@ -67,6 +77,40 @@ class ContractController extends Controller
         }
 
         return view('contracts.show', compact('contractInfo', 'services', 'charges'));
+    }
+
+    public function edit(string $contract)
+    {
+        $contractInfo = DB::connection('sqlsrv')
+            ->table('Contract_ContractInfo')
+            ->where('Id', $contract)
+            ->where('IsDeleted', 0)
+            ->first();
+
+        if (!$contractInfo) {
+            abort(404, 'Contract not found');
+        }
+
+        $services = DB::connection('sqlsrv')
+            ->table('Contract_ContractServiceAndFilter')
+            ->where('ContractInfoID', $contract)
+            ->where('IsDeleted', 0)
+            ->get();
+
+        $serviceIds = $services->pluck('Id')->toArray();
+        $charges = [];
+        if (!empty($serviceIds)) {
+            $charges = DB::connection('sqlsrv')
+                ->table('Contract_ContractCharges')
+                ->whereIn('ServiceAndFilterID', $serviceIds)
+                ->where('IsDeleted', 0)
+                ->get()
+                ->groupBy('ServiceAndFilterID');
+        }
+
+        $officeCode = $this->getUserOfficeCode();
+
+        return view('contracts.edit', compact('contractInfo', 'services', 'charges', 'officeCode'));
     }
 
     public function newDraft(): JsonResponse
@@ -187,7 +231,7 @@ class ContractController extends Controller
 
         $headerPayload = [
             'OperationType' => 'ContractInfo',
-            'SubmittedDatetime' => now()->format('Y-m-d H:i:s'),
+            'SubmittedDatetime' => $this->submittedDatetime(),
             'SubmittedBy' => auth()->user()->name ?? 'system',
             'Action' => $action,
             'ContractID' => $draft['contract_id'] ?? null,
@@ -247,7 +291,7 @@ class ContractController extends Controller
             'OperationType' => 'ContractServiceDetails',
             'Action' => 'Add',
             'SubmittedBy' => auth()->user()->name ?? 'system',
-            'SubmittedDatetime' => now()->format('Y-m-d H:i:s'),
+            'SubmittedDatetime' => $this->submittedDatetime(),
             'ContractInfoID' => $draft['contract_id'],
             'ServiceAndFilterID' => null,
             'Service' => $service['service'] ?? '',
@@ -296,7 +340,7 @@ class ContractController extends Controller
 
         $chargePayload = [
             'OperationType' => 'ServiceBasedCharges',
-            'SubmittedDatetime' => now()->format('Y-m-d H:i:s'),
+            'SubmittedDatetime' => $this->submittedDatetime(),
             'SubmittedBy' => auth()->user()->name ?? 'system',
             'Action' => 'Add',
             'ContractInfoID' => $draft['contract_id'],
@@ -313,6 +357,12 @@ class ContractController extends Controller
             'Formula' => $charge['formula'] ?? '',
             'RateSlabJson' => !empty($charge['rateSlab']) ? json_encode($charge['rateSlab']) : '',
             'Comments' => '',
+            // Not yet read by sp_Contractinfo_ServiceCharges (missing from its
+            // OPENJSON WITH clause and INSERT column list) — sent ahead of time
+            // so no PHP change is needed once the SP is extended to accept them.
+            'ChargeNature' => $charge['chargeNature'] ?? '',
+            'ChargeCategory' => $charge['chargeCategory'] ?? '',
+            'ChargeDescription' => $charge['chargeDescription'] ?? '',
         ];
 
         $result = $this->callContractSP('sp_Contractinfo_ServiceCharges', $chargePayload);
@@ -350,13 +400,13 @@ class ContractController extends Controller
 
         $chargePayload = [
             'OperationType' => 'ServiceBasedCharges',
-            'SubmittedDatetime' => now()->format('Y-m-d H:i:s'),
+            'SubmittedDatetime' => $this->submittedDatetime(),
             'SubmittedBy' => auth()->user()->name ?? 'system',
-            'Action' => 'Update',
+            'Action' => 'Add',
             'ContractInfoID' => $draft['contract_id'],
             'ServiceAndFilterID' => $serviceFilterId,
-            'ServiceChargeID' => $chargeId,
-            'ChargeCode' => $charge['chargeCode'] ?? '', // still mandatory per SP validation
+            'ServiceChargeID' => null,
+            'ChargeCode' => $charge['chargeCode'] ?? '',
             'ChargeBasedon' => $charge['chargeBasedOn'] ?? '',
             'ChargeBasedOnUOM' => $charge['chargeBasedOnUOM'] ?? '',
             'ChargeCurr' => $charge['chargeCurr'] ?? '',
@@ -367,6 +417,12 @@ class ContractController extends Controller
             'Formula' => $charge['formula'] ?? '',
             'RateSlabJson' => !empty($charge['rateSlab']) ? json_encode($charge['rateSlab']) : '',
             'Comments' => '',
+            // Not yet read by sp_Contractinfo_ServiceCharges (missing from its
+            // OPENJSON WITH clause and INSERT column list) — sent ahead of time
+            // so no PHP change is needed once the SP is extended to accept them.
+            'ChargeNature' => $charge['chargeNature'] ?? '',
+            'ChargeCategory' => $charge['chargeCategory'] ?? '',
+            'ChargeDescription' => $charge['chargeDescription'] ?? '',
         ];
 
         $result = $this->callContractSP('sp_Contractinfo_ServiceCharges', $chargePayload);
@@ -1247,5 +1303,81 @@ class ContractController extends Controller
             'exact_matches' => $exact,
             'other_matches' => $other,
         ]);
+    }
+
+    public function updateHeader(StoreContractRequest $request, string $contract): JsonResponse
+    {
+        $validated = $request->validated();
+
+        $headerPayload = [
+            'OperationType' => 'ContractInfo',
+            'SubmittedDatetime' => $this->submittedDatetime(),
+            'SubmittedBy' => auth()->user()->name ?? 'system',
+            'Action' => 'Update',
+            'ContractID' => $contract,
+            'ContractDate' => now()->format('d/m/Y'),
+            'ContactType' => $validated['contract_type'],
+            'OfficeCode' => $this->getUserOfficeCode(),
+            'ClientCode' => '',
+            'EffectiveFrom' => \Carbon\Carbon::parse($validated['effective_from'])->format('Ymd'),
+            'EffectiveTo' => \Carbon\Carbon::parse($validated['effective_to'])->format('Ymd'),
+            'ContractName' => $validated['contract_name'],
+            'Remark' => $validated['remark'] ?? '',
+        ];
+
+        $result = $this->callContractSP('sp_Contractinfo', $headerPayload);
+
+        if (!$result['success']) {
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => 'Failed to update contract: ' . ($result['message'] ?? 'Unknown error'),
+                ],
+                422,
+            );
+        }
+
+        return response()->json(['success' => true, 'message' => $result['message'] ?? 'Contract updated.']);
+    }
+
+    public function updateService(Request $request, string $contract, string $serviceFilterId): JsonResponse
+    {
+        $service = $request->all();
+
+        $servicePayload = [
+            'OperationType' => 'ContractServiceDetails',
+            'Action' => 'Update',
+            'SubmittedBy' => auth()->user()->name ?? 'system',
+            'SubmittedDatetime' => $this->submittedDatetime(),
+            'ContractInfoID' => $contract,
+            'ServiceAndFilterID' => $serviceFilterId,
+            'Service' => $service['service'] ?? '',
+            'Process' => $service['process'] ?? '',
+            'IncoTerm' => $service['incoterm'] ?? '',
+            'COO' => $service['countryOrigin'] ?? '',
+            'COD' => $service['countryDestination'] ?? '',
+            'POR' => $service['placeOfReceipt'] ?? '',
+            'POE' => $service['placeOfDelivery'] ?? '',
+            'POL' => $service['pol'] ?? '',
+            'POD' => $service['pod'] ?? '',
+            'ServiceClass' => $service['serviceClass'] ?? '',
+            'ShipmentMode' => $service['shipmentMode'] ?? '',
+            'ShipmentType' => $service['shipmentType'] ?? '',
+            'MovementType' => $service['movementType'] ?? '',
+        ];
+
+        $result = $this->callContractSP('sp_Contractinfo_ServiceDetails', $servicePayload);
+
+        if (!$result['success']) {
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => 'Failed to update service: ' . ($result['message'] ?? 'Unknown error'),
+                ],
+                422,
+            );
+        }
+
+        return response()->json(['success' => true, 'message' => 'Service updated.']);
     }
 }

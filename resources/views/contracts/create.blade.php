@@ -422,43 +422,45 @@
         .ctr-stat-card {
             border-radius: 6px;
             padding: 20px;
-            background: #fff;
-            border: 1px solid #dee2e6;
-            border-left: 4px solid #4B49AC;
+            border: none;
+            color: #fff;
         }
 
         .ctr-stat-value {
             font-size: 1.8rem;
             font-weight: 700;
-            color: #212529;
+            color: inherit;
         }
 
         .ctr-stat-label {
             font-size: .82rem;
-            color: #6c757d;
+            color: inherit;
+            opacity: .9;
             text-transform: uppercase;
             letter-spacing: .03em;
             margin-top: 4px;
         }
 
         .ctr-stat-pending {
-            border-left-color: #6c757d;
+            background: #6c757d;
         }
 
         .ctr-stat-pending-approval {
-            border-left-color: #ffc107;
+            background: #ffc107;
+            color: #212529;
+            /* amber is too light for white text to stay legible */
         }
 
         .ctr-stat-authorized {
-            border-left-color: #28a745;
+            background: #28a745;
         }
 
         .ctr-stat-renewal {
-            border-left-color: #dc3545;
+            background: #dc3545;
         }
 
         .ctr-stat-total {
-            border-left-color: #4B49AC;
+            background: #4B49AC;
         }
 
         .ctr-stat-card {
@@ -471,7 +473,7 @@
         }
 
         .ctr-stat-card.ctr-stat-active {
-            box-shadow: 0 0 0 2px #4B49AC inset;
+            box-shadow: 0 0 0 3px rgba(0, 0, 0, .35) inset;
         }
 
         @media (max-width: 768px) {
@@ -647,8 +649,12 @@
                     $tbody.append('<tr><td>' + c.contractNo + '</td><td>' + c.contractName +
                         '</td><td>' +
                         c.effectiveFrom + '</td><td>' + c.effectiveTo + '</td><td>' + c.status +
-                        '</td><td><button type="button" class="btn btn-xs btn-outline-primary ctr-view-contract" data-id="' +
-                        contractId + '">View</button></td></tr>');
+                        '</td><td>' +
+                        '<button type="button" class="btn btn-xs btn-outline-primary ctr-view-contract mr-1" data-id="' +
+                        contractId + '">View</button>' +
+                        '<button type="button" class="btn btn-xs btn-outline-secondary ctr-edit-contract" data-id="' +
+                        contractId + '">Edit</button>' +
+                        '</td></tr>');
                 });
             }
 
@@ -1815,6 +1821,12 @@
                 if (contractId) {
                     window.location.href = '/contracts/' + contractId + '/view';
                 }
+            });
+
+            $(document).on('click', '.ctr-edit-contract', function() {
+                var contractId = $(this).data('id');
+                if (!contractId) return;
+                window.location.href = '/contracts/' + encodeURIComponent(contractId) + '/edit';
             });
 
             $(document).on('click', '.ctr-stat-card', function() {

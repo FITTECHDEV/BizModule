@@ -1701,9 +1701,15 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
             Route::get('/{contract}/view', [App\Http\Controllers\ContractController::class, 'showDetails'])->name(
                 'view',
             );
+            Route::get('/{contract}/edit', [App\Http\Controllers\ContractController::class, 'edit'])->name('edit');
+            Route::put('/{contract}', [App\Http\Controllers\ContractController::class, 'updateHeader'])->name('update');
             Route::post('/{contract}/services', [App\Http\Controllers\ContractController::class, 'storeService'])->name(
                 'services.store',
             );
+            Route::put('/{contract}/services/{serviceFilterId}', [
+                App\Http\Controllers\ContractController::class,
+                'updateService',
+            ])->name('services.update');
             Route::post('/{contract}/services/{serviceFilterId}/charges', [
                 App\Http\Controllers\ContractController::class,
                 'storeCharge',
