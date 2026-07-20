@@ -1111,14 +1111,21 @@ class ContractController extends Controller
     public function getShipmentTypes(Request $request): JsonResponse
     {
         try {
+            // Sys_ShipmentType has multiple rows sharing the same Code/Name
+            // (differentiated only by BookingType, which this dropdown doesn't
+            // use) — confirmed via direct query, not a query-construction bug.
+            // ->distinct() on the two selected columns collapses those to one
+            // row per Code/Name pair.
             $list = DB::connection('sqlsrv')
                 ->table('FITSCMUAT.dbo.Sys_ShipmentType')
                 ->where('IsActive', 1)
                 ->select('Code', 'Name')
+                ->distinct()
                 ->orderBy('Name')
                 ->get();
             return response()->json(['success' => true, 'data' => $list]);
         } catch (\Exception $e) {
+            \Log::error('getShipmentTypes failed: ' . $e->getMessage());
             // Fallback if table doesn't exist (unlikely)
             $list = [
                 ['Code' => 'FCL', 'Name' => 'FCL'],
