@@ -9,22 +9,16 @@
         <div class="cc-box cc-box-compact mb-3">
             <div class="cc-box-title d-flex align-items-center">
                 <span id="ceContractNo">{{ $contractInfo->ContractNo }}</span>
-                <button type="button" class="btn btn-sm btn-outline-primary ml-auto mr-2" id="ceSaveHeaderBtn">
-                    Save Contract Info
-                </button>
-                <a href="{{ route('contracts.view', $contractInfo->Id) }}" class="btn btn-secondary btn-sm">
+                <a href="{{ route('contracts.view', $contractInfo->Id) }}" class="btn btn-secondary btn-sm ml-auto">
                     <i class="fas fa-arrow-left"></i> Back to View
                 </a>
             </div>
-
-            <input type="hidden" id="ceContractId" value="{{ $contractInfo->Id }}">
 
             <div class="cc-info-grid">
                 <div class="cc-info-col">
                     <div class="cc-info-row">
                         <span class="cc-lbl">Contract Name</span>
-                        <input type="text" class="form-control form-control-sm cc-input" id="ceContractName"
-                            value="{{ $contractInfo->ContractName }}">
+                        <span class="cc-val">{{ $contractInfo->ContractName }}</span>
                     </div>
                     <div class="cc-info-row">
                         <span class="cc-lbl">Type</span>
@@ -44,18 +38,14 @@
                 <div class="cc-info-col">
                     <div class="cc-info-row">
                         <span class="cc-lbl">Effective From</span>
-                        <input type="date" class="form-control form-control-sm cc-input" id="ceEffectiveFrom"
-                            value="{{ \Carbon\Carbon::parse($contractInfo->EffectiveFrom)->format('Y-m-d') }}"
-                            style="max-width:160px;">
+                        <span
+                            class="cc-val">{{ \Carbon\Carbon::parse($contractInfo->EffectiveFrom)->format('Y-m-d') }}</span>
                         <span class="cc-lbl" style="margin-left:24px;">Effective To</span>
-                        <input type="date" class="form-control form-control-sm cc-input" id="ceEffectiveTo"
-                            value="{{ \Carbon\Carbon::parse($contractInfo->EffectiveTo)->format('Y-m-d') }}"
-                            style="max-width:160px;">
+                        <span class="cc-val">{{ \Carbon\Carbon::parse($contractInfo->EffectiveTo)->format('Y-m-d') }}</span>
                     </div>
                     <div class="cc-info-row">
                         <span class="cc-lbl">Remark</span>
-                        <input type="text" class="form-control form-control-sm cc-input" id="ceRemark"
-                            value="{{ $contractInfo->Remark }}">
+                        <span class="cc-val">{{ $contractInfo->Remark }}</span>
                     </div>
                 </div>
             </div>
@@ -83,57 +73,63 @@
                             <div class="cc-info-grid" style="margin-bottom:10px;">
                                 <div class="cc-info-col">
                                     <div class="ctr-field mb-2"><label class="ctr-lbl">Service</label>
-                                        <select class="form-control form-control-sm ce-svc-service">
+                                        <select class="form-control form-control-sm ce-svc-field ce-svc-service" disabled>
                                             <option value="">-- Select --</option>
                                         </select>
                                     </div>
                                     <div class="ctr-field mb-2"><label class="ctr-lbl">Process</label>
-                                        <select class="form-control form-control-sm ce-svc-process">
+                                        <select class="form-control form-control-sm ce-svc-field ce-svc-process" disabled>
                                             <option value="">-- Select --</option>
                                         </select>
                                     </div>
                                     <div class="ctr-field mb-2"><label class="ctr-lbl">IncoTerm</label>
-                                        <select class="form-control form-control-sm ce-svc-incoterm">
+                                        <select class="form-control form-control-sm ce-svc-field ce-svc-incoterm" disabled>
                                             <option value="">-- Select --</option>
                                         </select>
                                     </div>
                                     <div class="ctr-field mb-2"><label class="ctr-lbl">Service Class</label>
-                                        <input type="text" class="form-control form-control-sm ce-svc-serviceclass"
-                                            value="{{ $service->ServiceClass }}">
+                                        <input type="text"
+                                            class="form-control form-control-sm ce-svc-field ce-svc-serviceclass"
+                                            value="{{ $service->ServiceClass }}" disabled>
                                     </div>
                                     <div class="ctr-field"><label class="ctr-lbl">Country of Origin</label>
-                                        <select class="form-control form-control-sm ce-svc-coo">
+                                        <select class="form-control form-control-sm ce-svc-field ce-svc-coo" disabled>
                                             <option value="">-- Select --</option>
                                         </select>
                                     </div>
                                 </div>
                                 <div class="cc-info-col">
                                     <div class="ctr-field mb-2"><label class="ctr-lbl">Shipment Type</label>
-                                        <select class="form-control form-control-sm ce-svc-shipmenttype">
+                                        <select class="form-control form-control-sm ce-svc-field ce-svc-shipmenttype"
+                                            disabled>
                                             <option value="">-- Select --</option>
                                         </select>
                                     </div>
                                     <div class="ctr-field mb-2"><label class="ctr-lbl">Shipment Mode</label>
-                                        <select class="form-control form-control-sm ce-svc-shipmentmode">
+                                        <select class="form-control form-control-sm ce-svc-field ce-svc-shipmentmode"
+                                            disabled>
                                             <option value="">-- Select --</option>
                                         </select>
                                     </div>
                                     <div class="ctr-field mb-2"><label class="ctr-lbl">Movement Type</label>
-                                        <select class="form-control form-control-sm ce-svc-movementtype">
+                                        <select class="form-control form-control-sm ce-svc-field ce-svc-movementtype"
+                                            disabled>
                                             <option value="">-- Select --</option>
                                         </select>
                                     </div>
                                     <div class="ctr-field mb-2"><label class="ctr-lbl">Country of Destination</label>
-                                        <select class="form-control form-control-sm ce-svc-cod">
+                                        <select class="form-control form-control-sm ce-svc-field ce-svc-cod" disabled>
                                             <option value="">-- Select --</option>
                                         </select>
                                     </div>
                                     <div class="ctr-field"><label class="ctr-lbl">POL / POD</label>
                                         <div class="d-flex" style="gap:8px;">
-                                            <input type="text" class="form-control form-control-sm ce-svc-pol"
-                                                value="{{ $service->POL }}" placeholder="POL code">
-                                            <input type="text" class="form-control form-control-sm ce-svc-pod"
-                                                value="{{ $service->POD }}" placeholder="POD code">
+                                            <input type="text"
+                                                class="form-control form-control-sm ce-svc-field ce-svc-pol"
+                                                value="{{ $service->POL }}" placeholder="POL code" disabled>
+                                            <input type="text"
+                                                class="form-control form-control-sm ce-svc-field ce-svc-pod"
+                                                value="{{ $service->POD }}" placeholder="POD code" disabled>
                                         </div>
                                         <small class="text-muted">Shown as stored codes — retype to change.</small>
                                     </div>
@@ -141,8 +137,16 @@
                             </div>
 
                             <div class="d-flex justify-content-end mb-3">
-                                <button type="button" class="btn btn-sm btn-outline-primary ce-save-service-btn">
-                                    Save Service
+                                <button type="button" class="btn btn-sm btn-outline-primary ce-edit-service-btn">
+                                    <i class="fas fa-pen"></i> Edit
+                                </button>
+                                <button type="button" class="btn btn-sm btn-secondary mr-2 ce-cancel-service-btn"
+                                    style="display:none;">
+                                    Cancel
+                                </button>
+                                <button type="button" class="btn btn-sm btn-success ce-save-service-btn"
+                                    style="display:none;">
+                                    Save
                                 </button>
                             </div>
 
@@ -446,7 +450,6 @@
         (function() {
             var CONTRACT_ID = @json($contractInfo->Id);
             var OFFICE_CODE = @json($officeCode ?? '');
-            var UPDATE_HEADER_URL = @json(route('contracts.update', $contractInfo->Id));
             var MASTER_BASE = '/contracts/masters';
 
             var SERVICE_PROCESS_MAP = {
@@ -490,51 +493,6 @@
                 });
                 if (selectedValue) $select.val(selectedValue);
             }
-
-            // ── Header save ────────────────────────────────────────────────────
-            document.getElementById('ceSaveHeaderBtn').addEventListener('click', function() {
-                var btn = this;
-                var payload = {
-                    contract_name: document.getElementById('ceContractName').value.trim(),
-                    effective_from: document.getElementById('ceEffectiveFrom').value,
-                    effective_to: document.getElementById('ceEffectiveTo').value,
-                    remark: document.getElementById('ceRemark').value.trim(),
-                    // Contract Type is intentionally not editable — sp_Contractinfo's
-                    // Update branch does not persist ContractType even after the
-                    // Action-name typo fix, so exposing it as editable here would be
-                    // a silently-broken control.
-                    contract_type: @json($contractInfo->ContractType),
-                };
-                if (!payload.contract_name || !payload.effective_from || !payload.effective_to) {
-                    alert('Contract Name, Effective From and Effective To are required.');
-                    return;
-                }
-
-                var originalText = btn.textContent;
-                btn.disabled = true;
-                btn.textContent = 'Saving...';
-
-                $.ajax({
-                    url: UPDATE_HEADER_URL,
-                    type: 'PUT',
-                    data: $.extend({
-                        _token: document.querySelector('meta[name="csrf-token"]').content
-                    }, payload),
-                    dataType: 'json'
-                }).done(function(res) {
-                    if (!res.success) {
-                        alert('Failed to update contract: ' + (res.message || 'Unknown error'));
-                        return;
-                    }
-                    alert(res.message || 'Contract updated.');
-                }).fail(function(xhr) {
-                    var msg = (xhr.responseJSON && xhr.responseJSON.message) || 'Update failed.';
-                    alert('Failed to update contract: ' + msg);
-                }).always(function() {
-                    btn.disabled = false;
-                    btn.textContent = originalText;
-                });
-            });
 
             // ── Service sections: populate dropdowns + prefill existing values ─
             var SERVICE_INITIAL = {};
@@ -596,9 +554,9 @@
                 fetchMasterList('countries').done(function(res) {
                     if (Array.isArray(res)) {
                         populateSelect($group.find('.ce-svc-coo'), res, 'CountCode', 'CountryName', initial
-                        .coo);
+                            .coo);
                         populateSelect($group.find('.ce-svc-cod'), res, 'CountCode', 'CountryName', initial
-                        .cod);
+                            .cod);
                     }
                 });
             }
@@ -618,6 +576,34 @@
                         ALL_PROCESSES;
                     populateSelect($body.find('.ce-svc-process'), filtered, 'Code', 'Name');
                 });
+            });
+
+            // ── Edit / Cancel toggle for a service block ────────────────────────
+            function setServiceEditable($group, editable) {
+                $group.find('.ce-svc-field').prop('disabled', !editable);
+                $group.find('.ce-edit-service-btn').toggle(!editable);
+                $group.find('.ce-cancel-service-btn, .ce-save-service-btn').toggle(editable);
+            }
+
+            $(document).on('click', '.ce-edit-service-btn', function() {
+                var $group = $(this).closest('.cc-group-body');
+                var snapshot = $group.find('.ce-svc-field').map(function() {
+                    return {
+                        el: this,
+                        val: this.value
+                    };
+                }).get();
+                $group.data('ce-svc-snapshot', snapshot);
+                setServiceEditable($group, true);
+            });
+
+            $(document).on('click', '.ce-cancel-service-btn', function() {
+                var $group = $(this).closest('.cc-group-body');
+                var snapshot = $group.data('ce-svc-snapshot') || [];
+                snapshot.forEach(function(entry) {
+                    entry.el.value = entry.val;
+                });
+                setServiceEditable($group, false);
             });
 
             // ── Save Service ───────────────────────────────────────────────────
@@ -673,6 +659,7 @@
                         alert('Failed to update service: ' + (res.message || 'Unknown error'));
                         return;
                     }
+                    setServiceEditable($group, false);
                     alert(res.message || 'Service updated.');
                 }).fail(function(xhr) {
                     var msg = (xhr.responseJSON && xhr.responseJSON.message) || 'Update failed.';
@@ -834,7 +821,10 @@
 
             function bindFormulaBuilderEvents(wrap) {
                 $(wrap).find('.ctr-fb-add-field').on('click', function() {
-                    appendFormulaToken(wrap, $(wrap).find('.ctr-fb-fields').val());
+                    var selected = $(wrap).find('.ctr-fb-fields').val() || [];
+                    selected.forEach(function(token) {
+                        appendFormulaToken(wrap, '{' + token + '}');
+                    });
                 });
                 $(wrap).find('.ctr-fb-add-operator').on('click', function() {
                     appendFormulaToken(wrap, $(wrap).find('.ctr-fb-operators').val());
@@ -907,7 +897,7 @@
                         var options = res.based_on_list.map(function(b) {
                             return {
                                 Code: b.Code,
-                                Label: b.Code + ' - ' + b.Name
+                                Label: b.Name
                             };
                         });
                         populateSelect($(wrap).find('.ctr-cf-basedon'), options, 'Code', 'Label', chargeToEdit
@@ -922,7 +912,7 @@
                             var options = res.uom_list.map(function(u) {
                                 return {
                                     Code: u.Code,
-                                    Label: u.Code + ' - ' + u.Name
+                                    Label: u.Name
                                 };
                             });
                             populateSelect($(wrap).find('.ctr-cf-uom'), options, 'Code', 'Label', chargeToEdit
@@ -993,7 +983,7 @@
                             var options = res.uom_list.map(function(u) {
                                 return {
                                     Code: u.Code,
-                                    Label: u.Code + ' - ' + u.Name
+                                    Label: u.Name
                                 };
                             });
                             populateSelect($uomSelect, options, 'Code', 'Label');
@@ -1028,8 +1018,10 @@
                     chargeBasedOn: required.basedOn,
                     chargeBasedOnUOM: wrap.querySelector('.ctr-cf-uom').value.trim(),
                     chargeCurr: wrap.querySelector('.ctr-cf-currency').value,
-                    minAmount: parseFloat(wrap.querySelector('.ctr-cf-min').value) || null,
-                    maxAmount: parseFloat(wrap.querySelector('.ctr-cf-max').value) || null,
+                    minAmount: wrap.querySelector('.ctr-cf-min').value !== '' ? parseFloat(parseFloat(wrap
+                        .querySelector('.ctr-cf-min').value).toFixed(2)) : null,
+                    maxAmount: wrap.querySelector('.ctr-cf-max').value !== '' ? parseFloat(parseFloat(wrap
+                        .querySelector('.ctr-cf-max').value).toFixed(2)) : null,
                     rateType: rateType,
                     rate: null,
                     rateSlab: null,
@@ -1042,7 +1034,7 @@
                         alert('Rate is required for Single rate type.');
                         return;
                     }
-                    charge.rate = parseFloat(rateVal);
+                    charge.rate = parseFloat(parseFloat(rateVal).toFixed(5));
                 } else if (rateType === 'Slab Based' || rateType === 'Step Up') {
                     var rows = wrap.querySelectorAll('.ctr-slab-rows tr');
                     var slabs = [];

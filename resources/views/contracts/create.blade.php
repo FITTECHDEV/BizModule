@@ -589,6 +589,16 @@
                 });
             }
 
+            function clampDecimals(input, places) {
+                if (!input) return;
+                $(input).on('blur', function() {
+                    if (this.value === '') return;
+                    var num = parseFloat(this.value);
+                    if (isNaN(num)) return;
+                    this.value = num.toFixed(places);
+                });
+            }
+
             // ── Helper: populate a select from API response ──────────────────────
             function populateSelect($select, data, valueField, labelField) {
                 $select.empty().append('<option value="">-- Select --</option>');
@@ -858,7 +868,7 @@
                         var options = res.based_on_list.map(function(b) {
                             return {
                                 Code: b.Code,
-                                Label: b.Code + ' - ' + b.Name
+                                Label: b.Name
                             };
                         });
                         populateSelect($(wrap).find('.ctr-cf-basedon'), options, 'Code', 'Label');
@@ -876,7 +886,7 @@
                             var options = res.uom_list.map(function(u) {
                                 return {
                                     Code: u.Code,
-                                    Label: u.Code + ' - ' + u.Name
+                                    Label: u.Name
                                 };
                             });
                             populateSelect($(wrap).find('.ctr-cf-uom'), options, 'Code', 'Label');
@@ -917,6 +927,7 @@
 
                 if (chargeToEdit.rateType === 'Single') {
                     wrap.querySelector('.ctr-cf-rate').value = chargeToEdit.rate ?? '';
+                    clampDecimals(wrap.querySelector('.ctr-cf-rate'), 5);
                 } else if (chargeToEdit.rateType === 'Slab Based' || chargeToEdit.rateType === 'Step Up') {
                     fillSlabRows(wrap.querySelector('.ctr-slab-rows'), chargeToEdit.rateSlab);
                 } else if (chargeToEdit.rateType === 'Formula') {
@@ -1283,7 +1294,7 @@
             function inlineRateHtml(rateType) {
                 if (rateType === 'Single') {
                     return '<label class="ctr-lbl ctr-required">Rate</label>' +
-                        '<input type="number" step="0.01" class="form-control form-control-sm ctr-cf-rate">';
+                        '<input type="number" step="0.00001" class="form-control form-control-sm ctr-cf-rate">';
                 }
                 return '';
             }
@@ -1348,14 +1359,19 @@
                 } else {
                     area.innerHTML = '<div class="ctr-field" style="max-width:200px;">' +
                         '<label class="ctr-lbl ctr-required">Rate</label>' +
-                        '<input type="number" step="0.01" class="form-control form-control-sm ctr-formula-rate"></div>';
+                        '<input type="number" step="0.00001" class="form-control form-control-sm ctr-formula-rate"></div>';
+                    clampDecimals(area.querySelector('.ctr-formula-rate'), 5);
                 }
             }
 
             function bindChargeFormEvents(svcId, wrap, chargeToEdit) {
+                clampDecimals(wrap.querySelector('.ctr-cf-min'), 2);
+                clampDecimals(wrap.querySelector('.ctr-cf-max'), 2);
+
                 $(wrap).find('.ctr-cf-ratetype').on('change', function() {
                     $(wrap).find('.ctr-cf-inline-rate').html(inlineRateHtml(this.value));
                     $(wrap).find('.ctr-cf-ratearea').html(rateAreaHtml(this.value));
+                    clampDecimals(wrap.querySelector('.ctr-cf-rate'), 5);
                     if (this.value === 'Formula') bindFormulaBuilderEvents(wrap);
                 });
 
@@ -1384,7 +1400,7 @@
                             var options = res.uom_list.map(function(u) {
                                 return {
                                     Code: u.Code,
-                                    Label: u.Code + ' - ' + u.Name
+                                    Label: u.Name
                                 };
                             });
                             populateSelect($uomSelect, options, 'Code', 'Label');
@@ -1410,7 +1426,10 @@
 
             function bindFormulaBuilderEvents(wrap) {
                 $(wrap).find('.ctr-fb-add-field').on('click', function() {
-                    appendFormulaToken(wrap, $(wrap).find('.ctr-fb-fields').val());
+                    var selected = $(wrap).find('.ctr-fb-fields').val() || [];
+                    selected.forEach(function(token) {
+                        appendFormulaToken(wrap, '{' + token + '}');
+                    });
                 });
                 $(wrap).find('.ctr-fb-add-operator').on('click', function() {
                     appendFormulaToken(wrap, $(wrap).find('.ctr-fb-operators').val());
@@ -1461,8 +1480,10 @@
                     chargeBasedOn: required.basedOn,
                     chargeBasedOnUOM: wrap.querySelector('.ctr-cf-uom').value.trim(),
                     chargeCurr: wrap.querySelector('.ctr-cf-currency').value,
-                    minAmount: parseFloat(wrap.querySelector('.ctr-cf-min').value) || null,
-                    maxAmount: parseFloat(wrap.querySelector('.ctr-cf-max').value) || null,
+                    minAmount: wrap.querySelector('.ctr-cf-min').value !== '' ? parseFloat(parseFloat(wrap
+                        .querySelector('.ctr-cf-min').value).toFixed(2)) : null,
+                    maxAmount: wrap.querySelector('.ctr-cf-max').value !== '' ? parseFloat(parseFloat(wrap
+                        .querySelector('.ctr-cf-max').value).toFixed(2)) : null,
                     rateType: rateType,
                     rate: null,
                     rateSlab: null,
@@ -1478,7 +1499,7 @@
                         alert('Rate is required for Single rate type.');
                         return;
                     }
-                    charge.rate = parseFloat(rateVal);
+                    charge.rate = parseFloat(parseFloat(rateVal).toFixed(5));
                 } else if (rateType === 'Slab Based' || rateType === 'Step Up') {
                     var rows = wrap.querySelectorAll('.ctr-slab-rows tr');
                     var slabs = [];
@@ -1560,7 +1581,7 @@
                             alert('Rate is required for the Formula rate type.');
                             return;
                         }
-                        charge.formulaRate = parseFloat(fRateVal);
+                        charge.formulaRate = parseFloat(parseFloat(fRateVal).toFixed(5));
                     }
                 }
 
