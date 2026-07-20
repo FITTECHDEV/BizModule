@@ -220,7 +220,11 @@
     <template id="ctrChargeRowTemplate">
         <tr>
             <td class="ctr-nature-cell"></td>
-            <td class="ctr-code-cell"></td>
+            <td class="ctr-code-cell">
+                <input type="text" class="form-control form-control-sm ctr-cf-code"
+                    placeholder="Type at least 3 characters...">
+                <input type="hidden" class="ctr-cf-code-hidden">
+            </td>
             <td class="ctr-desc-cell"></td>
             <td class="ctr-category-cell"></td>
             <td class="ctr-ratetype-cell"></td>
@@ -835,23 +839,6 @@
                     }
                 });
 
-                // ── Charge Code ──────────────────────────────────────
-                fetchMasterList('charge-codes', {
-                    office_code: OFFICE_CODE,
-                    charge_type: $(wrap).find('.ctr-cf-nature').val() || 'Revenue'
-                }).done(function(res) {
-                    if (res.success) {
-                        var options = res.charge_codes.map(function(c) {
-                            return {
-                                Code: c.Code,
-                                Label: c.Code + ' - ' + (c.Description || c.Name || c.Code)
-                            };
-                        });
-                        populateSelect($(wrap).find('.ctr-cf-code'), options, 'Code', 'Label');
-                        if (chargeToEdit) $(wrap).find('.ctr-cf-code').val(chargeToEdit.chargeCode);
-                    }
-                });
-
                 // ── Charge Based On ──────────────────────────────────
                 fetchMasterList('based-on').done(function(res) {
                     if (res.success) {
@@ -907,6 +894,14 @@
                 // ── If editing, fill remaining fields ────────────────
                 if (!chargeToEdit) return;
 
+                // ── Charge Code (autocomplete) ────────────────────────────────
+                if (chargeToEdit) {
+                    var $codeInput = $(wrap).find('.ctr-cf-code');
+                    var $codeHidden = $(wrap).find('.ctr-cf-code-hidden');
+                    $codeInput.val(chargeToEdit.chargeCode || '');
+                    $codeHidden.val(chargeToEdit.chargeCode || '');
+                }
+
                 wrap.querySelector('.ctr-cf-desc').value = chargeToEdit.chargeDescription || '';
                 wrap.querySelector('.ctr-cf-min').value = chargeToEdit.minAmount ?? '';
                 wrap.querySelector('.ctr-cf-max').value = chargeToEdit.maxAmount ?? '';
@@ -921,7 +916,21 @@
                 } else if (chargeToEdit.rateType === 'Slab Based' || chargeToEdit.rateType === 'Step Up') {
                     fillSlabRows(wrap.querySelector('.ctr-slab-rows'), chargeToEdit.rateSlab);
                 } else if (chargeToEdit.rateType === 'Formula') {
-                    bindFormulaBuilderEvents(wrap);
+                    var svc2 = findService(svcId);
+                    var isRevenue2 = (chargeToEdit.chargeNature === 'Cost') ? 0 : 1;
+                    if (svc2 && svc2.serviceFilterId) {
+                        loadFormulaFields(svc2.serviceFilterId, isRevenue2).done(function(res) {
+                            if (res.success) FORMULA_FIELDS = res.data.map(function(name) {
+                                return {
+                                    label: name,
+                                    token: name
+                                };
+                            });
+                            bindFormulaBuilderEvents(wrap);
+                        });
+                    } else {
+                        bindFormulaBuilderEvents(wrap);
+                    }
                     wrap.querySelector('.ctr-cf-formula').value = chargeToEdit.formula || '';
                     $(wrap).find('.ctr-fb-ratetype').val(chargeToEdit.formulaRateType || 'Single');
                     renderFormulaRateArea(wrap, chargeToEdit.formulaRateType || 'Single');
@@ -931,6 +940,87 @@
                         wrap.querySelector('.ctr-formula-rate').value = chargeToEdit.formulaRate ?? '';
                     }
                 }
+            }
+
+            function initChargeCodeAutocomplete(wrap) {
+                var $input = $(wrap).find('.ctr-cf-code');
+                var $hidden = $(wrap).find('.ctr-cf-code-hidden');
+                var $nature = $(wrap).find('.ctr-cf-nature');
+                var $desc = $(wrap).find('.ctr-cf-desc');
+                var $currency = $(wrap).find('.ctr-cf-currency');
+
+                if ($input.hasClass('ui-autocomplete-input')) {
+                    $input.autocomplete('destroy');
+                }
+
+                $input.autocomplete({
+                    source: function(request, response) {
+                        if (request.term.length < 3) {
+                            response([]);
+                            return;
+                        }
+
+                        var chargeType = ($nature.val() === 'Cost') ? 'Cost' : 'Revenue';
+
+                        fetchMasterList('charge-codes', {
+                            office_code: OFFICE_CODE,
+                            charge_type: chargeType,
+                            filter: request.term
+                        }).done(function(res) {
+                            if (res.success && res.charge_codes && res.charge_codes.length) {
+                                response(res.charge_codes.map(function(item) {
+                                    return {
+                                        label: item.Code + ' - ' + (item.Description ||
+                                            item.Name || item.Code),
+                                        value: item.Code,
+                                        name: item.Description || item.Name || item
+                                            .Code,
+                                        currency: item.Curr,
+                                        vat: item.VAT
+                                    };
+                                }));
+                            } else {
+                                response([{
+                                    label: 'No charge codes found',
+                                    value: '',
+                                    disabled: true
+                                }]);
+                            }
+                        }).fail(function() {
+                            response([{
+                                label: 'Error loading charge codes',
+                                value: '',
+                                disabled: true
+                            }]);
+                        });
+                    },
+                    minLength: 3,
+                    delay: 300,
+                    select: function(event, ui) {
+                        if (ui.item.disabled) {
+                            event.preventDefault();
+                            return false;
+                        }
+                        $input.val(ui.item.value);
+                        $hidden.val(ui.item.value);
+                        if (ui.item.name) {
+                            $desc.val(ui.item.name);
+                        }
+                        if (ui.item.currency) {
+                            $currency.val(ui.item.currency);
+                        }
+                        // Optional: if you have a VAT field, set it here
+                        return false;
+                    }
+                });
+
+                // Re‑trigger search when Charge Nature changes
+                $nature.off('change.autocomplete').on('change.autocomplete', function() {
+                    var term = $input.val();
+                    if (term.length >= 3) {
+                        $input.autocomplete('search', term);
+                    }
+                });
             }
 
             function fillSlabRows(tbody, slabs) {
@@ -1148,6 +1238,7 @@
                 wrap.innerHTML = chargeFormHtml(svcId, !!chargeToEdit);
                 bindChargeFormEvents(svcId, wrap, chargeToEdit);
                 loadChargeFormMasters(wrap, chargeToEdit);
+                initChargeCodeAutocomplete(wrap);
             }
 
             function chargeFormHtml(svcId, isEdit) {
@@ -1162,8 +1253,9 @@
                     '<option value="">-- Select --</option>' +
                     '</select></div>' +
                     '<div class="ctr-field"><label class="ctr-lbl ctr-required">Charge Code</label>' +
-                    '<select class="form-control form-control-sm ctr-cf-code"' + lock +
-                    '><option value="">-- Select --</option></select></div>' +
+                    '<input type="text" class="form-control form-control-sm ctr-cf-code" placeholder="Type at least 3 characters...">' +
+                    '<input type="hidden" class="ctr-cf-code-hidden">' +
+                    '</div>' +
                     '<div class="ctr-field"><label class="ctr-lbl ctr-required">Charge Description</label>' +
                     '<input type="text" class="form-control form-control-sm ctr-cf-desc"' + lock + '></div>' +
                     '<div class="ctr-field"><label class="ctr-lbl ctr-required">Charge Based On</label>' +
@@ -1201,6 +1293,18 @@
 
             // ── Rate Type conditional UI (slabs, formula) ──────────────────────
             var FORMULA_FIELDS = [];
+
+            function loadFormulaFields(svcId, isRevenue) {
+                return $.ajax({
+                    url: '/contracts/' + encodeURIComponent(CONTRACT_ID) + '/services/' + encodeURIComponent(
+                        svcId) + '/formula-fields',
+                    type: 'GET',
+                    data: {
+                        is_revenue: isRevenue
+                    },
+                    dataType: 'json'
+                });
+            }
             var FORMULA_OPERATORS = [{
                     label: 'Plus +',
                     token: '+'
@@ -1362,7 +1466,22 @@
                     $(wrap).find('.ctr-cf-inline-rate').html(inlineRateHtml(this.value));
                     $(wrap).find('.ctr-cf-ratearea').html(rateAreaHtml(this.value));
                     clampDecimals(wrap.querySelector('.ctr-cf-rate'), 5);
-                    if (this.value === 'Formula') bindFormulaBuilderEvents(wrap);
+                    if (this.value !== 'Formula') return;
+                    var svc = findService(svcId);
+                    var isRevenue = ($(wrap).find('.ctr-cf-nature').val() === 'Cost') ? 0 : 1;
+                    if (svc && svc.serviceFilterId) {
+                        loadFormulaFields(svc.serviceFilterId, isRevenue).done(function(res) {
+                            if (res.success) FORMULA_FIELDS = res.data.map(function(name) {
+                                return {
+                                    label: name,
+                                    token: name
+                                };
+                            });
+                            bindFormulaBuilderEvents(wrap);
+                        });
+                    } else {
+                        bindFormulaBuilderEvents(wrap);
+                    }
                 });
 
                 $(wrap).find('.ctr-cf-cancel').on('click', function() {
@@ -1449,7 +1568,7 @@
                 var rateType = wrap.querySelector('.ctr-cf-ratetype').value;
                 var required = {
                     category: wrap.querySelector('.ctr-cf-category').value,
-                    code: wrap.querySelector('.ctr-cf-code').value.trim(),
+                    code: wrap.querySelector('.ctr-cf-code-hidden').value.trim(),
                     desc: wrap.querySelector('.ctr-cf-desc').value.trim(),
                     basedOn: wrap.querySelector('.ctr-cf-basedon').value,
                     rateType: rateType

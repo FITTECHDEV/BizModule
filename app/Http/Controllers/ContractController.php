@@ -387,25 +387,16 @@ class ContractController extends Controller
         string $serviceFilterId,
         string $chargeId,
     ): JsonResponse {
-        $draft = Session::get($this->sessionKey($contract));
-
-        if (empty($draft['contract_id'])) {
-            return response()->json(
-                ['success' => false, 'message' => 'Save Contract Info before editing charges.'],
-                422,
-            );
-        }
-
         $charge = $request->all();
 
         $chargePayload = [
             'OperationType' => 'ServiceBasedCharges',
             'SubmittedDatetime' => $this->submittedDatetime(),
             'SubmittedBy' => auth()->user()->name ?? 'system',
-            'Action' => 'Add',
-            'ContractInfoID' => $draft['contract_id'],
+            'Action' => 'Update',
+            'ContractInfoID' => $contract,
             'ServiceAndFilterID' => $serviceFilterId,
-            'ServiceChargeID' => null,
+            'ServiceChargeID' => $chargeId,
             'ChargeCode' => $charge['chargeCode'] ?? '',
             'ChargeBasedon' => $charge['chargeBasedOn'] ?? '',
             'ChargeBasedOnUOM' => $charge['chargeBasedOnUOM'] ?? '',
@@ -1395,5 +1386,54 @@ class ContractController extends Controller
         }
 
         return response()->json(['success' => true, 'message' => 'Service updated.']);
+    }
+
+    /**
+     * GET /contracts/{contract}/services/{serviceFilterId}/formula-fields?is_revenue=1
+     *
+     * sp_Contract_FormulaList has no @OutputJson param — it returns a plain
+     * SELECT. On validation failure it returns a single row/column containing
+     * an error message instead of the field list; both shapes are one column,
+     * so success/failure is distinguished by matching the SP's known error
+     * phrases rather than assuming any non-empty result is success.
+     */
+    public function getFormulaFields(Request $request, string $contract, string $serviceFilterId): JsonResponse
+    {
+        $isRevenue = $request->input('is_revenue');
+
+        if ($isRevenue === null) {
+            return response()->json(['success' => false, 'message' => 'is_revenue is required'], 400);
+        }
+
+        try {
+            $pdo = DB::connection('sqlsrv')->getPdo();
+            $stmt = $pdo->prepare(
+                'SET NOCOUNT ON; EXEC dbo.sp_Contract_FormulaList @IsRevenue = ?, @ContractID = ?, @ServiceFilterID = ?',
+            );
+            $stmt->execute([(int) $isRevenue, $contract, $serviceFilterId]);
+
+            $rows = $stmt->fetchAll(\PDO::FETCH_NUM);
+
+            $isErrorRow =
+                count($rows) === 1 &&
+                is_string($rows[0][0] ?? null) &&
+                (str_starts_with($rows[0][0], 'Error Occured') ||
+                    str_contains($rows[0][0], 'mandatory') ||
+                    str_contains($rows[0][0], 'not present in the system'));
+
+            if ($isErrorRow) {
+                return response()->json(['success' => false, 'message' => $rows[0][0]], 422);
+            }
+
+            $fields = array_map(fn($r) => $r[0], $rows);
+
+            return response()->json(['success' => true, 'data' => $fields]);
+        } catch (\Exception $e) {
+            Log::error('getFormulaFields failed: ' . $e->getMessage(), [
+                'contract' => $contract,
+                'service_filter_id' => $serviceFilterId,
+            ]);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
     }
 }

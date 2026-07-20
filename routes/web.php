@@ -1720,6 +1720,10 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
             ])->name('services.charges.update');
             Route::post('/{contract}', [App\Http\Controllers\ContractController::class, 'store'])->name('store');
             Route::get('/{contract}', [App\Http\Controllers\ContractController::class, 'show'])->name('show');
+            Route::get('/{contract}/services/{serviceFilterId}/formula-fields', [
+                App\Http\Controllers\ContractController::class,
+                'getFormulaFields',
+            ])->name('services.formula-fields');
         });
 
     Route::get('/quotation/website-requests', [App\Http\Controllers\WebsiteQuotationController::class, 'index'])->name(
