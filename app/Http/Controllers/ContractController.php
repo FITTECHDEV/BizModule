@@ -364,7 +364,6 @@ class ContractController extends Controller
             'ChargeCategory' => $charge['chargeCategory'] ?? '',
             'ChargeDescription' => $charge['chargeDescription'] ?? '',
             'ToBeAdded' => $charge['to_be_added'] ?? 0,
-
         ];
 
         $result = $this->callContractSP('sp_Contractinfo_ServiceCharges', $chargePayload);
@@ -759,10 +758,10 @@ class ContractController extends Controller
     {
         try {
             $list = DB::select(
-                "SELECT Id, Code, Name, BasedOn
-                 FROM Cust_ChargecodeBasedOn WITH (NOLOCK)
-                 WHERE IsActive = 1
-                 ORDER BY Name",
+                "SELECT Id, Code, Name
+                FROM FITSCMUAT.dbo.Sys_ChargeBasedOn WITH (NOLOCK)
+                WHERE IsActive = 1
+                ORDER BY Name",
             );
             return response()->json(['success' => true, 'based_on_list' => $list]);
         } catch (\Exception $e) {
@@ -1036,14 +1035,32 @@ class ContractController extends Controller
      * GET /contract/masters/services
      * Assumes a stored procedure dbo.sp_ServiceList exists.
      */
+    // public function getServices(Request $request): JsonResponse
+    // {
+    //     $list = [
+    //         ['Code' => 'Air', 'Name' => 'Air'],
+    //         ['Code' => 'Sea', 'Name' => 'Sea'],
+    //         ['Code' => 'Road', 'Name' => 'Road'],
+    //     ];
+    //     return response()->json(['success' => true, 'data' => $list]);
+    // }
     public function getServices(Request $request): JsonResponse
     {
-        $list = [
-            ['Code' => 'Air', 'Name' => 'Air'],
-            ['Code' => 'Sea', 'Name' => 'Sea'],
-            ['Code' => 'Road', 'Name' => 'Road'],
-        ];
-        return response()->json(['success' => true, 'data' => $list]);
+        try {
+            $list = DB::connection('sqlsrv')
+                ->table('Sys_ServiceProcess')
+                ->where('IsActive', 1)
+                ->where('IsDeleted', 0)
+                ->select('ServiceCode as Code', 'ServiceName as Name')
+                ->distinct()
+                ->orderBy('ServiceName')
+                ->get();
+
+            return response()->json(['success' => true, 'data' => $list]);
+        } catch (\Exception $e) {
+            Log::error('getServices failed: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
     }
 
     /**

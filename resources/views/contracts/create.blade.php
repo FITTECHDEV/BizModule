@@ -1280,32 +1280,27 @@
                     '<option value="">-- Select --</option>' +
                     '</select></div>' +
                     '<div class="ctr-field"><label class="ctr-lbl ctr-required">Charge Description</label>' +
-                    '<input type="text" class="form-control form-control-sm ctr-cf-desc" readonly>' +
+                    '<input type="text" class="form-control form-control-sm ctr-cf-desc" readonly></div>' +
                     '<div class="ctr-field"><label class="ctr-lbl ctr-required">Charge Based On</label>' +
                     '<select class="form-control form-control-sm ctr-cf-basedon">' +
                     '<option value="">-- Select --</option>' +
                     '</select></div>' +
                     '<div class="ctr-field"><label class="ctr-lbl">Based On UOM</label>' +
                     '<select class="form-control form-control-sm ctr-cf-uom"><option value="">-- Select --</option></select></div>' +
-                    '<div class="ctr-field ctr-field-span2" id="ctr-is-accruable-container" style="display:none;">' +
-                    '<div class="form-check mt-2">' +
-                    '<input class="form-check-input" type="checkbox" id="ctrIsAccruable">' +
-                    '<label class="form-check-label" for="ctrIsAccruable"><strong>Is Accruable</strong> <small class="text-muted">(Adds to Cost)</small></label>' +
-                    '</div>' +
-                    '</div>' +
-
-                    '<div class="ctr-field ctr-field-span2" id="ctr-is-reimbursable-container" style="display:none;">' +
-                    '<div class="form-check mt-2">' +
-                    '<input class="form-check-input" type="checkbox" id="ctrIsReimbursable">' +
-                    '<label class="form-check-label" for="ctrIsReimbursable"><strong>Is Reimbursable</strong> <small class="text-muted">(Adds to Revenue)</small></label>' +
-                    '</div>' +
-                    '</div>' +
-
                     '<div class="ctr-field"><label class="ctr-lbl ctr-required">Currency</label>' +
                     '<select class="form-control form-control-sm ctr-cf-currency">' +
                     '<option value="">-- Select --</option>' +
                     '</select></div>' +
-                    '<div class="ctr-field"></div>' +
+                    '<div class="ctr-field" id="ctr-is-accruable-container" style="display:none;">' +
+                    '<div class="form-check mt-4">' +
+                    '<input class="form-check-input" type="checkbox" id="ctrIsAccruable">' +
+                    '<label class="form-check-label" for="ctrIsAccruable"><strong>Is Accruable</strong> <small class="text-muted">(Adds to Cost)</small></label>' +
+                    '</div></div>' +
+                    '<div class="ctr-field" id="ctr-is-reimbursable-container" style="display:none;">' +
+                    '<div class="form-check mt-4">' +
+                    '<input class="form-check-input" type="checkbox" id="ctrIsReimbursable">' +
+                    '<label class="form-check-label" for="ctrIsReimbursable"><strong>Is Reimbursable</strong> <small class="text-muted">(Adds to Revenue)</small></label>' +
+                    '</div></div>' +
                     '<div class="ctr-field"><label class="ctr-lbl">Min Amount</label>' +
                     '<input type="number" step="0.01" class="form-control form-control-sm ctr-cf-min"></div>' +
                     '<div class="ctr-field"><label class="ctr-lbl">Max Amount</label>' +
