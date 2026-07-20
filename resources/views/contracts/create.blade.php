@@ -511,13 +511,6 @@
             // ── Master data endpoints ─────────────────────────────────────────────
             var MASTER_BASE = '/contracts/masters';
 
-            var SERVICE_PROCESS_MAP = {
-                'Air': ['Export', 'Import'],
-                'Sea': ['Export', 'Import'],
-                'Road': ['Local']
-            };
-            var ALL_PROCESSES = [];
-
             // ── State ──────────────────────────────────────────────────────────────
             var existing = @json($existing ?? null);
             var state = {
@@ -743,10 +736,7 @@
                 });
                 // Process
                 fetchMasterList('processes').done(function(res) {
-                    if (res.success) {
-                        ALL_PROCESSES = res.data;
-                        populateSelect($('#ctrSvcProcess'), res.data, 'Code', 'Name');
-                    }
+                    if (res.success) populateSelect($('#ctrSvcProcess'), res.data, 'Code', 'Name');
                 });
                 // IncoTerm — updated to show both code and name
                 fetchMasterList('inco-terms').done(function(res) {
@@ -1887,15 +1877,14 @@
             }
 
             $('#ctrSvcService').on('change', function() {
-                var allowed = SERVICE_PROCESS_MAP[this.value];
-                var filtered = allowed ?
-                    ALL_PROCESSES.filter(function(p) {
-                        return allowed.indexOf(p.Code) !== -1;
-                    }) :
-                    ALL_PROCESSES;
-                populateSelect($('#ctrSvcProcess'), filtered, 'Code', 'Name');
+                var serviceCode = this.value;
+                if (!serviceCode) return;
+                fetchMasterList('processes', {
+                    service: serviceCode
+                }).done(function(res) {
+                    if (res.success) populateSelect($('#ctrSvcProcess'), res.data, 'Code', 'Name');
+                });
             });
-
             // ── Initial render ─────────────────────────────────────────────────────
             renderServices();
             // Pre‑populate service form dropdowns in background (if not already)

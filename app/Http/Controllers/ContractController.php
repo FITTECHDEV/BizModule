@@ -1062,24 +1062,31 @@ class ContractController extends Controller
      */
     public function getProcesses(Request $request): JsonResponse
     {
+        $serviceCode = $request->input('service');
+
         try {
-            $list = DB::connection('sqlsrv')
-                ->table('Sys_ServiceProcess')
-                ->where('IsActive', 1)
-                ->where('IsDeleted', 0)
+            $query = DB::connection('sqlsrv')->table('Sys_ServiceProcess')->where('IsActive', 1)->where('IsDeleted', 0);
+
+            if ($serviceCode) {
+                $query->where('ServiceCode', $serviceCode);
+            }
+
+            $list = $query
                 ->select('ProcessCode as Code', 'ProcessName as Name')
                 ->distinct()
                 ->orderBy('ProcessName')
                 ->get();
 
-            // If no data, fallback to hardcoded values (mirror SP validation)
+            // If no data, fallback to hardcoded values (mirror SP validation).
+            // Note: fallback is unfiltered — only hit if the real table returns
+            // nothing, so this never silently drops a valid service's processes.
             if ($list->isEmpty()) {
                 return $this->fallbackProcesses();
             }
 
             return response()->json(['success' => true, 'data' => $list]);
         } catch (\Exception $e) {
-            \Log::error('getProcesses failed: ' . $e->getMessage());
+            \Log::error('getProcesses failed: ' . $e->getMessage(), ['service' => $serviceCode]);
             return $this->fallbackProcesses();
         }
     }
