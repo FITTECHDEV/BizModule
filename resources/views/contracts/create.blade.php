@@ -621,7 +621,6 @@
             // needs a re-fetch.
             state.allContracts = [];
             state.activeStatusFilter = 'Pending'; // default view per dashboard spec
-
             function isRenewalDue(effectiveTo) {
                 if (!effectiveTo) return false;
                 var due = new Date(effectiveTo);

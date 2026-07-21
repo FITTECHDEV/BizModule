@@ -40,12 +40,29 @@
                         <span class="cc-lbl">Effective From</span>
                         <span
                             class="cc-val">{{ \Carbon\Carbon::parse($contractInfo->EffectiveFrom)->format('Y-m-d') }}</span>
-                        <span class="cc-lbl" style="margin-left:24px;">Effective To</span>
-                        <span class="cc-val">{{ \Carbon\Carbon::parse($contractInfo->EffectiveTo)->format('Y-m-d') }}</span>
+                    </div>
+                    <div class="cc-info-row">
+                        <span class="cc-lbl">Effective To</span>
+                        <span class="cc-val ce-hdr-view"
+                            data-field="effectiveTo">{{ \Carbon\Carbon::parse($contractInfo->EffectiveTo)->format('Y-m-d') }}</span>
+                        <input type="date" class="form-control form-control-sm cc-input ce-hdr-field ce-hdr-effectiveto"
+                            value="{{ \Carbon\Carbon::parse($contractInfo->EffectiveTo)->format('Y-m-d') }}"
+                            style="display:none;">
                     </div>
                     <div class="cc-info-row">
                         <span class="cc-lbl">Remark</span>
-                        <span class="cc-val">{{ $contractInfo->Remark }}</span>
+                        <span class="cc-val ce-hdr-view" data-field="remark">{{ $contractInfo->Remark }}</span>
+                        <input type="text" class="form-control form-control-sm cc-input ce-hdr-field ce-hdr-remark"
+                            value="{{ $contractInfo->Remark }}" style="display:none;">
+                    </div>
+                    <div class="d-flex justify-content-end mt-2">
+                        <button type="button" class="btn btn-sm btn-outline-primary ce-edit-header-btn">
+                            <i class="fas fa-pen"></i> Edit
+                        </button>
+                        <button type="button" class="btn btn-sm btn-secondary mr-2 ce-cancel-header-btn"
+                            style="display:none;">Cancel</button>
+                        <button type="button" class="btn btn-sm btn-success ce-save-header-btn"
+                            style="display:none;">Save</button>
                     </div>
                 </div>
             </div>
@@ -69,16 +86,15 @@
                         <div class="cc-group-body collapsed" id="serviceBody{{ $loop->index }}">
 
                             <input type="hidden" class="ce-svc-id" value="{{ $service->Id }}">
-
                             <div class="cc-info-grid" style="margin-bottom:10px;">
                                 <div class="cc-info-col">
                                     <div class="ctr-field mb-2"><label class="ctr-lbl">Service</label>
-                                        <select class="form-control form-control-sm ce-svc-field ce-svc-service" disabled>
+                                        <select class="form-control form-control-sm ce-svc-locked ce-svc-service" disabled>
                                             <option value="">-- Select --</option>
                                         </select>
                                     </div>
                                     <div class="ctr-field mb-2"><label class="ctr-lbl">Process</label>
-                                        <select class="form-control form-control-sm ce-svc-field ce-svc-process" disabled>
+                                        <select class="form-control form-control-sm ce-svc-locked ce-svc-process" disabled>
                                             <option value="">-- Select --</option>
                                         </select>
                                     </div>
@@ -93,10 +109,17 @@
                                             <option value="">-- Select --</option>
                                         </select>
                                     </div>
-                                    <div class="ctr-field"><label class="ctr-lbl">Country of Origin</label>
-                                        <select class="form-control form-control-sm ce-svc-field ce-svc-coo" disabled>
-                                            <option value="">-- Select --</option>
-                                        </select>
+                                    <div class="ctr-field d-flex" style="gap:8px;">
+                                        <div style="flex:1;"><label class="ctr-lbl">Country of Origin</label>
+                                            <select class="form-control form-control-sm ce-svc-field ce-svc-coo" disabled>
+                                                <option value="">-- Select --</option>
+                                            </select>
+                                        </div>
+                                        <div style="flex:1;"><label class="ctr-lbl">Country of Destination</label>
+                                            <select class="form-control form-control-sm ce-svc-field ce-svc-cod" disabled>
+                                                <option value="">-- Select --</option>
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="cc-info-col">
@@ -118,26 +141,25 @@
                                             <option value="">-- Select --</option>
                                         </select>
                                     </div>
-                                    <div class="ctr-field mb-2"><label class="ctr-lbl">Country of Destination</label>
-                                        <select class="form-control form-control-sm ce-svc-field ce-svc-cod" disabled>
-                                            <option value="">-- Select --</option>
-                                        </select>
-                                    </div>
-                                    <div class="ctr-field mb-2"><label class="ctr-lbl">POL / POD</label>
-                                        <div class="d-flex" style="gap:8px;">
+                                    <div class="ctr-field mb-2 d-flex" style="gap:8px;">
+                                        <div style="flex:1;"><label class="ctr-lbl">POL</label>
                                             <input type="text"
                                                 class="form-control form-control-sm ce-svc-field ce-svc-pol"
                                                 value="{{ $service->POL }}" placeholder="POL code" disabled>
+                                        </div>
+                                        <div style="flex:1;"><label class="ctr-lbl">Place of Receipt</label>
+                                            <input type="text"
+                                                class="form-control form-control-sm ce-svc-field ce-svc-por"
+                                                value="{{ $service->POR }}" placeholder="POR code" disabled>
+                                        </div>
+                                    </div>
+                                    <div class="ctr-field d-flex" style="gap:8px;">
+                                        <div style="flex:1;"><label class="ctr-lbl">POD</label>
                                             <input type="text"
                                                 class="form-control form-control-sm ce-svc-field ce-svc-pod"
                                                 value="{{ $service->POD }}" placeholder="POD code" disabled>
                                         </div>
-                                    </div>
-                                    <div class="ctr-field"><label class="ctr-lbl">Place of Receipt / Delivery</label>
-                                        <div class="d-flex" style="gap:8px;">
-                                            <input type="text"
-                                                class="form-control form-control-sm ce-svc-field ce-svc-por"
-                                                value="{{ $service->POR }}" placeholder="POR code" disabled>
+                                        <div style="flex:1;"><label class="ctr-lbl">Place of Delivery</label>
                                             <input type="text"
                                                 class="form-control form-control-sm ce-svc-field ce-svc-poe"
                                                 value="{{ $service->POE }}" placeholder="POE code" disabled>
@@ -147,6 +169,10 @@
                             </div>
 
                             <div class="d-flex justify-content-end mb-3">
+                                <button type="button" class="btn btn-sm btn-outline-danger mr-auto ce-delete-service-btn"
+                                    data-svc="{{ $service->Id }}">
+                                    <i class="fas fa-trash"></i> Delete Service
+                                </button>
                                 <button type="button" class="btn btn-sm btn-outline-primary ce-edit-service-btn">
                                     <i class="fas fa-pen"></i> Edit
                                 </button>
@@ -160,6 +186,13 @@
                                 </button>
                             </div>
 
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <strong class="ctr-lbl mb-0">Charges</strong>
+                                <button type="button" class="btn btn-sm btn-outline-primary ce-add-charge-btn"
+                                    data-svc="{{ $service->Id }}">
+                                    <i class="fas fa-plus"></i> Add Charge
+                                </button>
+                            </div>
                             @if (isset($charges[$service->Id]) && $charges[$service->Id]->count())
                                 <div class="cc-table-wrap">
                                     <table class="cc-table">
@@ -209,8 +242,7 @@
                                                             {{ is_array($slabs) ? count($slabs) . ' slabs' : '—' }}
                                                         @elseif($charge->RateType === 'Formula')
                                                             {{ $charge->Formula }}
-                                                        @else
-                                                            —
+                                                        @else—
                                                         @endif
                                                     </td>
                                                     <td>
@@ -218,17 +250,21 @@
                                                             style="cursor:pointer;color:#4B49AC;" title="Edit"
                                                             data-svc="{{ $service->Id }}"
                                                             data-charge='@json($chargeJs)'></i>
+                                                        <i class="fas fa-trash ce-delete-charge ml-2"
+                                                            style="cursor:pointer;color:#dc3545;" title="Delete"
+                                                            data-svc="{{ $service->Id }}"
+                                                            data-charge-id="{{ $charge->Id }}"></i>
                                                     </td>
                                                 </tr>
                                             @endforeach
                                         </tbody>
                                     </table>
                                 </div>
-                                <div class="ctr-subform mt-2" id="chargeform-{{ $service->Id }}" style="display:none;">
-                                </div>
                             @else
                                 <div class="cc-empty-msg">No charges for this service.</div>
                             @endif
+                            <div class="ctr-subform mt-2" id="chargeform-{{ $service->Id }}" style="display:none;">
+                            </div>
                         </div>
                     </div>
                 @endforeach
@@ -238,7 +274,19 @@
                 <div class="cc-empty-msg">No services added.</div>
             </div>
         @endif
-
+        <div class="modal fade" id="addChargeModal" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Add Charge</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body" id="addChargeModalBody"></div>
+                </div>
+            </div>
+        </div>
     </div>
 @stop
 
@@ -615,6 +663,35 @@
                 setServiceEditable($group, false);
             });
 
+            $(document).on('click', '.ce-delete-service-btn', function() {
+                var svcId = $(this).data('svc');
+                if (!confirm('Delete this service and all its charges? This cannot be undone.')) return;
+
+                var btn = this;
+                btn.disabled = true;
+
+                $.ajax({
+                    url: '/contracts/' + encodeURIComponent(CONTRACT_ID) + '/services/' +
+                        encodeURIComponent(svcId),
+                    type: 'DELETE',
+                    data: {
+                        _token: document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    dataType: 'json'
+                }).done(function(res) {
+                    if (!res.success) {
+                        alert('Failed to delete service: ' + (res.message || 'Unknown error'));
+                        btn.disabled = false;
+                        return;
+                    }
+                    $(btn).closest('.cc-group').remove();
+                }).fail(function(xhr) {
+                    var msg = (xhr.responseJSON && xhr.responseJSON.message) || 'Delete failed.';
+                    alert('Failed to delete service: ' + msg);
+                    btn.disabled = false;
+                });
+            });
+
             // ── Save Service ───────────────────────────────────────────────────
             $(document).on('click', '.ce-save-service-btn', function() {
                 var $group = $(this).closest('.cc-group-body');
@@ -676,6 +753,57 @@
                     var msg = (xhr.responseJSON && xhr.responseJSON.message) ||
                         'Update failed.';
                     alert('Failed to update service: ' + msg);
+                }).always(function() {
+                    btn.disabled = false;
+                    btn.textContent = originalText;
+                });
+            });
+
+            function setHeaderEditable(editable) {
+                $('.ce-hdr-view').toggle(!editable);
+                $('.ce-hdr-field').toggle(editable);
+                $('.ce-edit-header-btn').toggle(!editable);
+                $('.ce-cancel-header-btn, .ce-save-header-btn').toggle(editable);
+            }
+
+            $(document).on('click', '.ce-edit-header-btn', function() {
+                setHeaderEditable(true);
+            });
+
+            $(document).on('click', '.ce-cancel-header-btn', function() {
+                $('.ce-hdr-effectiveto').val($('.ce-hdr-view[data-field="effectiveTo"]').text().trim());
+                $('.ce-hdr-remark').val($('.ce-hdr-view[data-field="remark"]').text().trim());
+                setHeaderEditable(false);
+            });
+
+            $(document).on('click', '.ce-save-header-btn', function() {
+                var effectiveTo = $('.ce-hdr-effectiveto').val();
+                var remark = $('.ce-hdr-remark').val().trim();
+                var btn = this;
+                var originalText = btn.textContent;
+                btn.disabled = true;
+                btn.textContent = 'Saving...';
+
+                $.ajax({
+                    url: '/contracts/' + encodeURIComponent(CONTRACT_ID), // TODO: confirm actual route
+                    type: 'PUT',
+                    data: {
+                        _token: document.querySelector('meta[name="csrf-token"]').content,
+                        effectiveTo: effectiveTo,
+                        remark: remark
+                    },
+                    dataType: 'json'
+                }).done(function(res) {
+                    if (!res.success) {
+                        alert('Failed to update contract: ' + (res.message || 'Unknown error'));
+                        return;
+                    }
+                    $('.ce-hdr-view[data-field="effectiveTo"]').text(effectiveTo);
+                    $('.ce-hdr-view[data-field="remark"]').text(remark);
+                    setHeaderEditable(false);
+                }).fail(function(xhr) {
+                    var msg = (xhr.responseJSON && xhr.responseJSON.message) || 'Update failed.';
+                    alert('Failed to update contract: ' + msg);
                 }).always(function() {
                     btn.disabled = false;
                     btn.textContent = originalText;
@@ -903,7 +1031,7 @@
                     '</div><div class="ctr-cf-ratearea mt-2"></div>' +
                     '<div class="d-flex justify-content-end mt-2">' +
                     '<button type="button" class="btn btn-sm btn-secondary mr-2 ctr-cf-cancel">Cancel</button>' +
-                    '<button type="button" class="btn btn-sm btn-success ctr-cf-save">Update Charge</button></div>';
+                    '<button type="button" class="btn btn-sm btn-success ctr-cf-save">Save Charge</button></div>';
             }
 
             function loadChargeFormMasters(wrap, chargeToEdit) {
@@ -1004,8 +1132,13 @@
                     if (this.value === 'Formula') bindFormulaBuilderEvents(wrap);
                 });
                 $(wrap).find('.ctr-cf-cancel').on('click', function() {
-                    wrap.style.display = 'none';
-                    wrap.innerHTML = '';
+                    var modal = $(wrap).closest('.modal');
+                    if (modal.length) {
+                        modal.modal('hide');
+                    } else {
+                        wrap.style.display = 'none';
+                        wrap.innerHTML = '';
+                    }
                 });
                 $(wrap).find('.ctr-cf-basedon').on('change', function() {
                     var basedOnCode = $(this).val();
@@ -1123,12 +1256,14 @@
                 saveBtn.disabled = true;
                 saveBtn.textContent = 'Updating...';
 
+                var isNew = !chargeId;
+                var url = '/contracts/' + encodeURIComponent(CONTRACT_ID) + '/services/' +
+                    encodeURIComponent(svcId) + '/charges';
+                if (!isNew) url += '/' + encodeURIComponent(chargeId);
+
                 $.ajax({
-                    url: '/contracts/' + encodeURIComponent(CONTRACT_ID) + '/services/' +
-                        encodeURIComponent(
-                            svcId) +
-                        '/charges/' + encodeURIComponent(chargeId),
-                    type: 'PUT',
+                    url: url,
+                    type: isNew ? 'POST' : 'PUT',
                     data: $.extend({
                         _token: document.querySelector('meta[name="csrf-token"]').content
                     }, charge),
@@ -1171,6 +1306,74 @@
                     block: 'center'
                 });
             });
+
+            $(document).on('click', '.ce-add-charge-btn', function() {
+                var svcId = $(this).data('svc');
+                var wrap = document.getElementById('addChargeModalBody');
+                if (!wrap) return;
+
+                var emptyCharge = {
+                    chargeId: null,
+                    chargeCode: '',
+                    chargeDescription: '',
+                    chargeBasedOn: '',
+                    chargeBasedOnUOM: '',
+                    chargeCurr: '',
+                    minAmount: null,
+                    maxAmount: null,
+                    rateType: '',
+                    rate: null,
+                    formula: null,
+                    rateSlab: null
+                };
+
+                wrap.innerHTML = chargeFormHtml();
+                bindChargeFormEvents(svcId, null, wrap, emptyCharge);
+                loadChargeFormMasters(wrap, emptyCharge);
+                loadFormulaFields(svcId).done(function(res) {
+                    if (res.success) FORMULA_FIELDS = res.data.map(function(name) {
+                        return {
+                            label: name,
+                            token: name
+                        };
+                    });
+                });
+                $('#addChargeModal').modal('show');
+            });
+
+            $('#addChargeModal').on('hidden.bs.modal', function() {
+                $('#addChargeModalBody').empty();
+            });
+
+            $(document).on('click', '.ce-delete-charge', function() {
+                var svcId = $(this).data('svc');
+                var chargeId = $(this).data('charge-id');
+                if (!confirm('Delete this charge?')) return;
+
+                var icon = this;
+
+                $.ajax({
+                    url: '/contracts/' + encodeURIComponent(CONTRACT_ID) + '/services/' +
+                        encodeURIComponent(svcId) +
+                        '/charges/' + encodeURIComponent(chargeId),
+                    type: 'DELETE',
+                    data: {
+                        _token: document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    dataType: 'json'
+                }).done(function(res) {
+                    if (!res.success) {
+                        alert('Failed to delete charge: ' + (res.message || 'Unknown error'));
+                        return;
+                    }
+                    $(icon).closest('tr').remove();
+                }).fail(function(xhr) {
+                    var msg = (xhr.responseJSON && xhr.responseJSON.message) || 'Delete failed.';
+                    alert('Failed to delete charge: ' + msg);
+                });
+            });
+
+
 
         })();
     </script>

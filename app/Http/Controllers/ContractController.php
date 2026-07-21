@@ -363,8 +363,8 @@ class ContractController extends Controller
             // Not yet read by sp_Contractinfo_ServiceCharges (missing from its
             // OPENJSON WITH clause and INSERT column list) — sent ahead of time
             // so no PHP change is needed once the SP is extended to accept them.
-            'ChargeNature' => $charge['chargeNature'] ?? '',
-            'ChargeCategory' => $charge['chargeCategory'] ?? '',
+            'IsRevenue' => ($charge['chargeNature'] ?? '') === 'Cost' ? 0 : 1,
+            'Category' => $charge['chargeCategory'] ?? '',
             'ChargeDescription' => $charge['chargeDescription'] ?? '',
             'ToBeAdded' => $charge['to_be_added'] ?? 0,
         ];
@@ -1054,7 +1054,7 @@ class ContractController extends Controller
                 ->table('Sys_ServiceProcess')
                 ->where('IsActive', 1)
                 ->where('IsDeleted', 0)
-                ->select('ServiceCode as Code', 'ServiceName as Name')
+                ->select('ServiceName as Code', 'ServiceName as Name')
                 ->distinct()
                 ->orderBy('ServiceName')
                 ->get();
@@ -1184,39 +1184,19 @@ class ContractController extends Controller
      */
     public function getChargeCategories(Request $request): JsonResponse
     {
-        // Try common table names
-        $tables = ['Cust_ChargeCategory', 'Sys_ChargeCategory', 'ChargeCategory'];
-        $data = null;
+        try {
+            $pdo = DB::connection('sqlsrv')->getPdo();
+            $stmt = $pdo->prepare('SET NOCOUNT ON; EXEC dbo.sp_Contract_ChargeCategoryList');
+            $stmt->execute();
 
-        foreach ($tables as $table) {
-            try {
-                $data = DB::connection('sqlsrv')
-                    ->table('FITSCMUAT.dbo.' . $table)
-                    ->where('IsActive', 1)
-                    ->select('Code', 'Name')
-                    ->orderBy('Name')
-                    ->get();
-                if ($data->isNotEmpty()) {
-                    break;
-                }
-            } catch (\Exception $e) {
-                continue;
-            }
+            $rows = $stmt->fetchAll(\PDO::FETCH_NUM);
+            $list = array_map(fn($r) => ['Code' => $r[0], 'Name' => $r[0]], $rows);
+
+            return response()->json(['success' => true, 'data' => $list]);
+        } catch (\Exception $e) {
+            Log::error('getChargeCategories failed: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
-
-        if ($data && $data->isNotEmpty()) {
-            return response()->json(['success' => true, 'data' => $data]);
-        }
-
-        // Fallback if no table found
-        $list = [
-            ['Code' => 'Freight', 'Name' => 'Freight'],
-            ['Code' => 'Handling', 'Name' => 'Handling'],
-            ['Code' => 'Documentation', 'Name' => 'Documentation'],
-            ['Code' => 'Insurance', 'Name' => 'Insurance'],
-            ['Code' => 'Other', 'Name' => 'Other'],
-        ];
-        return response()->json(['success' => true, 'data' => $list]);
     }
 
     /**

@@ -5329,6 +5329,9 @@
                 });
             }
 
+            // Make loadCharges accessible from other scripts (like the contract template modal)
+            window.loadCharges = loadCharges;
+
             function loadContractTemplateCharges() {
                 $.ajax({
                     url: '{{ route('quotation.contract-template.charges', $quotation->ID) }}',
