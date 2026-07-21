@@ -1711,6 +1711,10 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
                 App\Http\Controllers\ContractController::class,
                 'updateService',
             ])->name('services.update');
+            Route::delete('/{contract}/services/{serviceFilterId}', [
+                App\Http\Controllers\ContractController::class,
+                'destroyService',
+            ])->name('services.destroy');
             Route::post('/{contract}/services/{serviceFilterId}/charges', [
                 App\Http\Controllers\ContractController::class,
                 'storeCharge',
@@ -1719,6 +1723,10 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
                 App\Http\Controllers\ContractController::class,
                 'updateCharge',
             ])->name('services.charges.update');
+            Route::delete('/{contract}/services/{serviceFilterId}/charges/{chargeId}', [
+                App\Http\Controllers\ContractController::class,
+                'destroyCharge',
+            ])->name('services.charges.destroy');
             Route::post('/{contract}', [App\Http\Controllers\ContractController::class, 'store'])->name('store');
             Route::get('/{contract}', [App\Http\Controllers\ContractController::class, 'show'])->name('show');
             Route::get('/{contract}/services/{serviceFilterId}/formula-fields', [

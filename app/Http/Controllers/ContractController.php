@@ -110,6 +110,13 @@ class ContractController extends Controller
 
         $officeCode = $this->getUserOfficeCode();
 
+        $officeId = DB::connection('sqlsrv')
+            ->table('Cust_Office')
+            ->whereRaw('RTRIM(Code) = ?', [strtoupper(trim($officeCode))])
+            ->where('IsActive', 1)
+            ->where('IsDeleted', 0)
+            ->value('Id');
+
         return view('contracts.edit', compact('contractInfo', 'services', 'charges', 'officeCode'));
     }
 
@@ -331,12 +338,23 @@ class ContractController extends Controller
     public function storeCharge(Request $request, string $contract, string $serviceFilterId): JsonResponse
     {
         $draft = Session::get($this->sessionKey($contract));
+        $contractInfoId = $draft['contract_id'] ?? null;
 
-        if (empty($draft['contract_id'])) {
-            return response()->json(
-                ['success' => false, 'message' => 'Save Contract Info before adding charges.'],
-                422,
-            );
+        if (empty($contractInfoId)) {
+            // No session draft (Edit flow) — treat $contract as the real ContractInfoID.
+            $exists = DB::connection('sqlsrv')
+                ->table('Contract_ContractInfo')
+                ->where('Id', $contract)
+                ->where('IsDeleted', 0)
+                ->exists();
+
+            if (!$exists) {
+                return response()->json(
+                    ['success' => false, 'message' => 'Save Contract Info before adding charges.'],
+                    422,
+                );
+            }
+            $contractInfoId = $contract;
         }
 
         $charge = $request->all();
@@ -346,7 +364,7 @@ class ContractController extends Controller
             'SubmittedDatetime' => $this->submittedDatetime(),
             'SubmittedBy' => auth()->user()->name ?? 'system',
             'Action' => 'Add',
-            'ContractInfoID' => $draft['contract_id'],
+            'ContractInfoID' => $contractInfoId,
             'ServiceAndFilterID' => $serviceFilterId,
             'ServiceChargeID' => null,
             'ChargeCode' => $charge['chargeCode'] ?? '',
@@ -360,6 +378,10 @@ class ContractController extends Controller
             'Formula' => $charge['formula'] ?? '',
             'RateSlabJson' => !empty($charge['rateSlab']) ? json_encode($charge['rateSlab']) : '',
             'Comments' => '',
+            'ChargeAction' => $charge['chargeAction'] ?? 'R',
+            'MarkupRate' => $charge['markupRate'] ?? 0.0,
+            'MarkFormula' => $charge['markupFormula'] ?? '',
+            'MarkRateSlabJson' => !empty($charge['markupRateSlab']) ? json_encode($charge['markupRateSlab']) : '',
             // Not yet read by sp_Contractinfo_ServiceCharges (missing from its
             // OPENJSON WITH clause and INSERT column list) — sent ahead of time
             // so no PHP change is needed once the SP is extended to accept them.
@@ -412,11 +434,17 @@ class ContractController extends Controller
             'Formula' => $charge['formula'] ?? '',
             'RateSlabJson' => !empty($charge['rateSlab']) ? json_encode($charge['rateSlab']) : '',
             'Comments' => '',
-            // Not yet read by sp_Contractinfo_ServiceCharges (missing from its
-            // OPENJSON WITH clause and INSERT column list) — sent ahead of time
-            // so no PHP change is needed once the SP is extended to accept them.
-            'ChargeNature' => $charge['chargeNature'] ?? '',
-            'ChargeCategory' => $charge['chargeCategory'] ?? '',
+            'ChargeAction' => $charge['chargeAction'] ?? 'R',
+            'MarkupRate' => $charge['markupRate'] ?? 0.0,
+            'MarkFormula' => $charge['markupFormula'] ?? '',
+            'MarkRateSlabJson' => !empty($charge['markupRateSlab']) ? json_encode($charge['markupRateSlab']) : '',
+            // IsRevenue/Category not yet read by sp_Contractinfo_ServiceCharges
+            // (commented out server-side, missing from OPENJSON WITH clause and
+            // INSERT/UPDATE column lists) — sent ahead of time using the SP's
+            // documented contract so no PHP change is needed once the DBA
+            // enables them.
+            'IsRevenue' => ($charge['chargeNature'] ?? '') === 'Cost' ? 0 : 1,
+            'Category' => $charge['chargeCategory'] ?? '',
             'ChargeDescription' => $charge['chargeDescription'] ?? '',
             'ToBeAdded' => $charge['to_be_added'] ?? 0,
         ];
@@ -434,6 +462,106 @@ class ContractController extends Controller
         }
 
         return response()->json(['success' => true, 'message' => 'Charge updated.']);
+    }
+
+    public function destroyCharge(string $contract, string $serviceFilterId, string $chargeId): JsonResponse
+    {
+        $chargePayload = [
+            'OperationType' => 'ServiceBasedCharges',
+            'SubmittedDatetime' => $this->submittedDatetime(),
+            'SubmittedBy' => auth()->user()->name ?? 'system',
+            'Action' => 'Delete',
+            'ContractInfoID' => $contract,
+            'ServiceAndFilterID' => $serviceFilterId,
+            'ServiceChargeID' => $chargeId,
+        ];
+
+        $result = $this->callContractSP('sp_Contractinfo_ServiceCharges', $chargePayload);
+
+        if (!$result['success']) {
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => 'Failed to delete charge: ' . ($result['message'] ?? 'Unknown error'),
+                ],
+                422,
+            );
+        }
+
+        return response()->json(['success' => true, 'message' => 'Charge deleted.']);
+    }
+
+    /**
+     * Deletes a service and cascades to all its charges first, since
+     * sp_Contractinfo_ServiceDetails' Delete action only soft-deletes the
+     * service row itself — it does not touch Contract_ContractCharges.
+     * Charges are fetched and deleted individually via
+     * sp_Contractinfo_ServiceCharges before the service delete runs, so a
+     * charge-delete failure aborts before the service is touched.
+     */
+    public function destroyService(string $contract, string $serviceFilterId): JsonResponse
+    {
+        $chargeIds = DB::connection('sqlsrv')
+            ->table('Contract_ContractCharges')
+            ->where('ServiceAndFilterID', $serviceFilterId)
+            ->where('ContractInfoID', $contract)
+            ->where('IsDeleted', 0)
+            ->pluck('Id');
+
+        foreach ($chargeIds as $chargeId) {
+            $chargeResult = $this->callContractSP('sp_Contractinfo_ServiceCharges', [
+                'OperationType' => 'ServiceBasedCharges',
+                'SubmittedDatetime' => $this->submittedDatetime(),
+                'SubmittedBy' => auth()->user()->name ?? 'system',
+                'Action' => 'Delete',
+                'ContractInfoID' => $contract,
+                'ServiceAndFilterID' => $serviceFilterId,
+                'ServiceChargeID' => $chargeId,
+            ]);
+
+            if (!$chargeResult['success']) {
+                Log::error('destroyService - failed to delete charge, aborting service delete', [
+                    'contract' => $contract,
+                    'service_filter_id' => $serviceFilterId,
+                    'charge_id' => $chargeId,
+                    'message' => $chargeResult['message'] ?? null,
+                ]);
+                return response()->json(
+                    [
+                        'success' => false,
+                        'message' =>
+                            'Failed to delete charge ' .
+                            $chargeId .
+                            ' while removing service: ' .
+                            ($chargeResult['message'] ?? 'Unknown error'),
+                    ],
+                    422,
+                );
+            }
+        }
+
+        $servicePayload = [
+            'OperationType' => 'ContractServiceDetails',
+            'SubmittedDatetime' => $this->submittedDatetime(),
+            'SubmittedBy' => auth()->user()->name ?? 'system',
+            'Action' => 'Delete',
+            'ContractInfoID' => $contract,
+            'ServiceAndFilterID' => $serviceFilterId,
+        ];
+
+        $result = $this->callContractSP('sp_Contractinfo_ServiceDetails', $servicePayload);
+
+        if (!$result['success']) {
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => 'Failed to delete service: ' . ($result['message'] ?? 'Unknown error'),
+                ],
+                422,
+            );
+        }
+
+        return response()->json(['success' => true, 'message' => 'Service and its charges deleted.']);
     }
 
     private function getUserOfficeCode(): string
@@ -1208,9 +1336,9 @@ class ContractController extends Controller
             $list = DB::connection('sqlsrv')
                 ->table('FITSCMUAT.dbo.Cust_ServiceClass')
                 ->where('IsActive', 1)
-                ->select('Code', 'Name')
+                ->select('Code', 'Description as Name')
                 ->distinct()
-                ->orderBy('Name')
+                ->orderBy('Description')
                 ->get();
             return response()->json(['success' => true, 'data' => $list]);
         } catch (\Exception $e) {
