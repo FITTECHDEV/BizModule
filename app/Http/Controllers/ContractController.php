@@ -63,6 +63,7 @@ class ContractController extends Controller
             ->table('Contract_ContractServiceAndFilter')
             ->where('ContractInfoID', $contract)
             ->where('IsDeleted', 0)
+            ->where('IsActive', 1)
             ->get();
 
         $serviceIds = $services->pluck('Id')->toArray();
@@ -72,6 +73,7 @@ class ContractController extends Controller
                 ->table('Contract_ContractCharges')
                 ->whereIn('ServiceAndFilterID', $serviceIds)
                 ->where('IsDeleted', 0)
+                ->where('IsActive', 1)
                 ->get()
                 ->groupBy('ServiceAndFilterID');
         }
@@ -95,6 +97,7 @@ class ContractController extends Controller
             ->table('Contract_ContractServiceAndFilter')
             ->where('ContractInfoID', $contract)
             ->where('IsDeleted', 0)
+            ->where('IsActive', 1)
             ->get();
 
         $serviceIds = $services->pluck('Id')->toArray();
@@ -104,6 +107,7 @@ class ContractController extends Controller
                 ->table('Contract_ContractCharges')
                 ->whereIn('ServiceAndFilterID', $serviceIds)
                 ->where('IsDeleted', 0)
+                ->where('IsActive', 1)
                 ->get()
                 ->groupBy('ServiceAndFilterID');
         }
@@ -287,12 +291,23 @@ class ContractController extends Controller
     public function storeService(Request $request, string $contract): JsonResponse
     {
         $draft = Session::get($this->sessionKey($contract));
+        $contractInfoId = $draft['contract_id'] ?? null;
 
-        if (empty($draft['contract_id'])) {
-            return response()->json(
-                ['success' => false, 'message' => 'Save Contract Info before adding services.'],
-                422,
-            );
+        if (empty($contractInfoId)) {
+            // No session draft (Edit flow) — treat $contract as the real ContractInfoID.
+            $exists = DB::connection('sqlsrv')
+                ->table('Contract_ContractInfo')
+                ->where('Id', $contract)
+                ->where('IsDeleted', 0)
+                ->exists();
+
+            if (!$exists) {
+                return response()->json(
+                    ['success' => false, 'message' => 'Save Contract Info before adding services.'],
+                    422,
+                );
+            }
+            $contractInfoId = $contract;
         }
 
         $service = $request->all();
@@ -302,7 +317,7 @@ class ContractController extends Controller
             'Action' => 'Add',
             'SubmittedBy' => auth()->user()->name ?? 'system',
             'SubmittedDatetime' => $this->submittedDatetime(),
-            'ContractInfoID' => $draft['contract_id'],
+            'ContractInfoID' => $contractInfoId, // ← was $draft['contract_id']
             'ServiceAndFilterID' => null,
             'Service' => $service['service'] ?? '',
             'Process' => $service['process'] ?? '',

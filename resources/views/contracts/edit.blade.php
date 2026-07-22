@@ -669,21 +669,69 @@
             }
 
             $(document).on('click', '.ce-add-service-btn', function() {
-                var wrap = document.getElementById('addServiceInlineForm');
-                if (wrap.style.display === 'block') {
-                    wrap.style.display = 'none';
-                    wrap.innerHTML = '';
-                    return;
-                }
+                var wrap = document.getElementById('addServiceModalBody');
+                if (!wrap) return;
                 wrap.innerHTML = serviceFormHtml();
                 populateServiceGroupMasters($(wrap), {});
                 bindAddServiceSave(wrap);
-                wrap.style.display = 'block';
-                wrap.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'center'
-                });
+                $('#addServiceModal').modal('show');
             });
+
+            function serviceFormHtml() {
+                return '<div class="cc-info-grid" style="margin-bottom:10px;">' +
+                    '<div class="cc-info-col">' +
+                    '<div class="ctr-field mb-2 d-flex" style="gap:8px;">' +
+                    '<div style="flex:1;"><label class="ctr-lbl ctr-required">Service</label>' +
+                    '<select class="form-control form-control-sm ce-svc-service">' +
+                    '<option value="">-- Select --</option></select></div>' +
+                    '<div style="flex:1;"><label class="ctr-lbl ctr-required">Process</label>' +
+                    '<select class="form-control form-control-sm ce-svc-process">' +
+                    '<option value="">-- Select --</option></select></div>' +
+                    '</div>' +
+                    '<div class="ctr-field mb-2"><label class="ctr-lbl">IncoTerm</label>' +
+                    '<select class="form-control form-control-sm ce-svc-incoterm">' +
+                    '<option value="">-- Select --</option></select></div>' +
+                    '<div class="ctr-field mb-2"><label class="ctr-lbl">Service Class</label>' +
+                    '<select class="form-control form-control-sm ce-svc-serviceclass">' +
+                    '<option value="">-- Select --</option></select></div>' +
+                    '<div class="ctr-field d-flex" style="gap:8px;">' +
+                    '<div style="flex:1;"><label class="ctr-lbl">Country of Origin</label>' +
+                    '<select class="form-control form-control-sm ce-svc-coo">' +
+                    '<option value="">-- Select --</option></select></div>' +
+                    '<div style="flex:1;"><label class="ctr-lbl">Country of Destination</label>' +
+                    '<select class="form-control form-control-sm ce-svc-cod">' +
+                    '<option value="">-- Select --</option></select></div>' +
+                    '</div>' +
+                    '</div>' +
+                    '<div class="cc-info-col">' +
+                    '<div class="ctr-field mb-2"><label class="ctr-lbl">Shipment Type</label>' +
+                    '<select class="form-control form-control-sm ce-svc-shipmenttype">' +
+                    '<option value="">-- Select --</option></select></div>' +
+                    '<div class="ctr-field mb-2"><label class="ctr-lbl">Shipment Mode</label>' +
+                    '<select class="form-control form-control-sm ce-svc-shipmentmode">' +
+                    '<option value="">-- Select --</option></select></div>' +
+                    '<div class="ctr-field mb-2"><label class="ctr-lbl">Movement Type</label>' +
+                    '<select class="form-control form-control-sm ce-svc-movementtype">' +
+                    '<option value="">-- Select --</option></select></div>' +
+                    '<div class="ctr-field mb-2 d-flex" style="gap:8px;">' +
+                    '<div style="flex:1;"><label class="ctr-lbl">POL</label>' +
+                    '<input type="text" class="form-control form-control-sm ce-svc-pol" placeholder="POL code"></div>' +
+                    '<div style="flex:1;"><label class="ctr-lbl">Place of Receipt</label>' +
+                    '<input type="text" class="form-control form-control-sm ce-svc-por" placeholder="POR code"></div>' +
+                    '</div>' +
+                    '<div class="ctr-field d-flex" style="gap:8px;">' +
+                    '<div style="flex:1;"><label class="ctr-lbl">POD</label>' +
+                    '<input type="text" class="form-control form-control-sm ce-svc-pod" placeholder="POD code"></div>' +
+                    '<div style="flex:1;"><label class="ctr-lbl">Place of Delivery</label>' +
+                    '<input type="text" class="form-control form-control-sm ce-svc-poe" placeholder="POE code"></div>' +
+                    '</div>' +
+                    '</div>' +
+                    '</div>' +
+                    '<div class="d-flex justify-content-end mt-2">' +
+                    '<button type="button" class="btn btn-sm btn-secondary mr-2 ce-cancel-new-service-btn">Cancel</button>' +
+                    '<button type="button" class="btn btn-sm btn-success ce-save-new-service-btn">Save Service</button>' +
+                    '</div>';
+            }
 
             function bindAddServiceSave(wrap) {
                 $(wrap).find('.ce-save-new-service-btn').on('click', function() {
@@ -736,6 +784,11 @@
                     });
                 });
             }
+
+            $(document).on('click', '.ce-cancel-new-service-btn', function() {
+                $('#addServiceModal').modal('hide');
+            });
+
 
             $('.cc-group-body').each(function() {
                 var $body = $(this);
