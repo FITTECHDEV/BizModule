@@ -950,6 +950,10 @@
                 setHeaderEditable(false);
             });
 
+            $(document).on('click', '.modal .close[data-dismiss="modal"]', function() {
+                $(this).closest('.modal').modal('hide');
+            });
+
             $(document).on('click', '.ce-save-header-btn', function() {
                 var effectiveTo = $('.ce-hdr-effectiveto').val();
                 var remark = $('.ce-hdr-remark').val().trim();
@@ -1233,6 +1237,13 @@
                 $(wrap).find('.ctr-fb-add-function').on('click', function() {
                     appendFormulaToken(wrap, $(wrap).find('.ctr-fb-functions').val());
                 });
+                $(wrap).find('.ctr-fb-fields, .ctr-fb-operators, .ctr-fb-functions').on('dblclick', 'option',
+                    function() {
+                        var token = $(this).val();
+                        var isField = $(this).closest('select').hasClass('ctr-fb-fields');
+                        appendFormulaToken(wrap, isField ? '{' + token + '}' : token);
+                    });
+
                 $(wrap).find('.ctr-fb-reset').on('click', function(e) {
                     e.preventDefault();
                     wrap.querySelector('.ctr-cf-formula').value = '';
@@ -1267,48 +1278,48 @@
             
                     <div class="ctr-grid-2" style="display:grid; grid-template-columns:1fr 1fr; gap:12px 16px;">
             
-                        <!-- Row 1 -->
-                        <div class="ctr-field">
-                            <label class="ctr-lbl">Charge Category</label>
-                            <select class="form-control form-control-sm ctr-cf-category">
-                                <option value="">-- Select --</option>
-                            </select>
-                        </div>
-            
-                        <div class="ctr-field">
-                            <label class="ctr-lbl">Charge Code</label>
-                            <select class="form-control form-control-sm ctr-cf-code">
-                                <option value="">-- Select --</option>
-                            </select>
-                        </div>
-            
-                        <!-- Row 2 -->
-                        <div class="ctr-field">
-                            <label class="ctr-lbl">Charge Based On</label>
-                            <select class="form-control form-control-sm ctr-cf-basedon">
-                                <option value="">-- Select --</option>
-                            </select>
-                        </div>
-            
-                        <div class="ctr-field">
-                            <label class="ctr-lbl">Based On UOM</label>
-                            <select class="form-control form-control-sm ctr-cf-uom">
-                                <option value="">Select Based On first</option>
-                            </select>
-                        </div>
-            
-                        <!-- Row 3 -->
-                        <div class="ctr-field">
-                            <label class="ctr-lbl">Currency</label>
-                            <select class="form-control form-control-sm ctr-cf-currency">
-                                <option value="">-- Select --</option>
-                            </select>
-                        </div>
-            
-                        <div class="ctr-field">
-                            <label class="ctr-lbl">Charge Description</label>
-                            <input type="text" class="form-control form-control-sm ctr-cf-desc">
-                        </div>
+                    <!-- Row 1 -->
+                    <div class="ctr-field">
+                        <label class="ctr-lbl">Charge Code</label>
+                        <select class="form-control form-control-sm ctr-cf-code">
+                            <option value="">-- Select --</option>
+                        </select>
+                    </div>
+                    
+                    <div class="ctr-field">
+                        <label class="ctr-lbl">Charge Description</label>
+                        <input type="text" class="form-control form-control-sm ctr-cf-desc">
+                    </div>
+                    
+                    <!-- Row 2 -->
+                    <div class="ctr-field">
+                        <label class="ctr-lbl">Charge Based On</label>
+                        <select class="form-control form-control-sm ctr-cf-basedon">
+                            <option value="">-- Select --</option>
+                        </select>
+                    </div>
+                    
+                    <div class="ctr-field">
+                        <label class="ctr-lbl">Based On UOM</label>
+                        <select class="form-control form-control-sm ctr-cf-uom">
+                            <option value="">Select Based On first</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Row 3 -->
+                    <div class="ctr-field">
+                        <label class="ctr-lbl">Currency</label>
+                        <select class="form-control form-control-sm ctr-cf-currency">
+                            <option value="">-- Select --</option>
+                        </select>
+                    </div>
+                    
+                    <div class="ctr-field">
+                        <label class="ctr-lbl">Charge Category</label>
+                        <select class="form-control form-control-sm ctr-cf-category">
+                            <option value="">-- Select --</option>
+                        </select>
+                    </div>
             
                         <!-- Row 4 -->
                         <div class="ctr-field">
@@ -1332,13 +1343,8 @@
                                 <option value="Formula">Formula</option>
                             </select>
                         </div>
-            
-                        <div></div>
-            
-                        <!-- Rate appears under Max Amount -->
-                        <div></div>
+                        
                         <div class="ctr-field ctr-cf-inline-rate"></div>
-            
                     </div>
             
                     <!-- Markup section -->
@@ -1347,10 +1353,10 @@
             
                         <div class="ctr-field mt-1" style="max-width:220px;">
                             <label class="ctr-lbl">Markup Rate Type</label>
-          <select class="form-control form-control-sm ctr-mk-ratetype">
-    <option value="">-- Select --</option>
-    <option value="Single">Single</option>
-</select>
+                                <select class="form-control form-control-sm ctr-mk-ratetype">
+                                <option value="">-- Select --</option>
+                                <option value="Single">Single</option>
+                            </select>
                         </div>
             
                         <div class="ctr-field ctr-mk-inline-rate"></div>
@@ -1800,7 +1806,7 @@
                     window.location.reload();
                 }).fail(function(xhr) {
                     var msg = (xhr.responseJSON && xhr.responseJSON.message) || 'Update failed.';
-                    alert('Failed to update charge: ' + msg);
+                    alert('Failed to update contract: ' + msg);
                 }).always(function() {
                     saveBtn.disabled = false;
                     saveBtn.textContent = originalText;

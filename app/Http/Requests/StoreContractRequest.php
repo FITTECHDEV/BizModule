@@ -17,12 +17,12 @@ class StoreContractRequest extends FormRequest
             // 'contract_no' => ['required', 'string', 'max:50'],
             'contract_type' => ['required', 'string', 'in:Tariff,Long Term'],
             'contract_name' => ['required', 'string', 'max:500'],
-            'status' => ['required', 'string'],
+            'status' => ['nullable', 'string'],
             'effective_from' => ['required', 'date'],
             'effective_to' => ['required', 'date', 'after_or_equal:effective_from'],
             'description' => ['nullable', 'string', 'max:1000'],
             'remark' => ['nullable', 'string', 'max:1000'],
-            'services' => ['required', 'string'], // JSON string, decoded + validated in controller
+            'services' => ['nullable', 'string'],
         ];
     }
 

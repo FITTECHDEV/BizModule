@@ -83,10 +83,7 @@ class AzureUser extends Authenticatable
     /**
      * The attributes that should be hidden for serialization.
      */
-    protected $hidden = [
-        'password',
-        'remember_token',
-    ];
+    protected $hidden = ['password', 'remember_token'];
 
     /**
      * The attributes that should be cast.
@@ -97,33 +94,15 @@ class AzureUser extends Authenticatable
     ];
 
     // =================================================================
-// ATTRIBUTE ACCESSORS - Map to existing columns
-// =================================================================
+    // ATTRIBUTE ACCESSORS - Map to existing columns
+    // =================================================================
 
     /**
      * Accessor: AzureId (with proper fallback)
      */
     public function getAzureIdAttribute($value = null)
     {
-        // First, try to get from attributes array
-        if (isset($this->attributes['AzureId'])) {
-            $azureId = $this->attributes['AzureId'];
-            \Log::debug('AzureId from attributes', ['value' => $azureId]);
-            return $azureId;
-        }
-
-        // Fallback: try with lowercase (in case of casing issues)
-        if (isset($this->attributes['azureId'])) {
-            $azureId = $this->attributes['azureId'];
-            \Log::debug('AzureId from attributes (lowercase)', ['value' => $azureId]);
-            return $azureId;
-        }
-
-        \Log::debug('AzureId not found in attributes', [
-            'available_keys' => array_keys($this->attributes)
-        ]);
-
-        return null;
+        return $this->attributes['AzureId'] ?? ($this->attributes['azureId'] ?? null);
     }
 
     /**
@@ -168,10 +147,7 @@ class AzureUser extends Authenticatable
      */
     public function getModulesAttribute()
     {
-        return $this->moduleAssignments()
-            ->select('ApplicationName', 'application_id')
-            ->distinct()
-            ->get();
+        return $this->moduleAssignments()->select('ApplicationName', 'application_id')->distinct()->get();
     }
 
     // =================================================================
@@ -183,8 +159,7 @@ class AzureUser extends Authenticatable
      */
     public function scopeActive($query)
     {
-        return $query->where('Status', 'Active')
-            ->where('accountEnabled', true);
+        return $query->where('Status', 'Active')->where('accountEnabled', true);
     }
 
     /**
@@ -255,7 +230,7 @@ class AzureUser extends Authenticatable
             'Active' => 'badge-success',
             'Pending' => 'badge-warning',
             'Inactive' => 'badge-danger',
-            default => 'badge-secondary'
+            default => 'badge-secondary',
         };
     }
 
@@ -334,9 +309,7 @@ class AzureUser extends Authenticatable
      */
     public function canBeDeactivated(): bool
     {
-        return $this->isProvisionedToAzure()
-            && $this->Status === 'Active'
-            && $this->accountEnabled == 1;
+        return $this->isProvisionedToAzure() && $this->Status === 'Active' && $this->accountEnabled == 1;
     }
 
     /**
@@ -347,8 +320,7 @@ class AzureUser extends Authenticatable
      */
     public function canBeReactivated(): bool
     {
-        return $this->isProvisionedToAzure()
-            && $this->Status === 'Inactive';
+        return $this->isProvisionedToAzure() && $this->Status === 'Inactive';
     }
 
     /**
@@ -469,17 +441,17 @@ class AzureUser extends Authenticatable
         string $azureId,
         ?string $azureUpn = null,
         ?string $azureDisplayName = null,
-        ?string $updatedBy = null
+        ?string $updatedBy = null,
     ): bool {
-        return DB::connection('sqlsrv')->update("
+        return DB::connection('sqlsrv')->update(
+            "
             UPDATE Azure_Users
             SET AzureId = ?,
                 Status = 'Active'
             WHERE Id = ?
-        ", [
-            $azureId,
-            $this->Id
-        ]) > 0;
+        ",
+            [$azureId, $this->Id],
+        ) > 0;
     }
 
     /**
@@ -491,12 +463,15 @@ class AzureUser extends Authenticatable
      */
     public function clearAzureProvisioning(?string $updatedBy = null): bool
     {
-        return DB::connection('sqlsrv')->update("
+        return DB::connection('sqlsrv')->update(
+            "
             UPDATE Azure_Users
             SET AzureId = NULL,
                 Status = 'Pending'
             WHERE Id = ?
-        ", [$this->Id]) > 0;
+        ",
+            [$this->Id],
+        ) > 0;
     }
 
     // =================================================================
@@ -508,10 +483,7 @@ class AzureUser extends Authenticatable
      */
     public function getModuleCountAttribute(): int
     {
-        return $this->moduleAssignments()
-            ->select('ApplicationName')
-            ->distinct()
-            ->count();
+        return $this->moduleAssignments()->select('ApplicationName')->distinct()->count();
     }
 
     /**
@@ -519,9 +491,7 @@ class AzureUser extends Authenticatable
      */
     public function hasModule(string $moduleName): bool
     {
-        return $this->moduleAssignments()
-            ->where('ApplicationName', $moduleName)
-            ->exists();
+        return $this->moduleAssignments()->where('ApplicationName', $moduleName)->exists();
     }
 
     /**
@@ -583,11 +553,14 @@ class AzureUser extends Authenticatable
      */
     public function updateStatus(string $status, ?string $updatedBy = null): bool
     {
-        return DB::connection('sqlsrv')->update("
+        return DB::connection('sqlsrv')->update(
+            "
             UPDATE Azure_Users
             SET Status = ?
             WHERE Id = ?
-        ", [$status, $this->Id]) > 0;
+        ",
+            [$status, $this->Id],
+        ) > 0;
     }
 
     /**
@@ -596,12 +569,15 @@ class AzureUser extends Authenticatable
      */
     public function disable(?string $updatedBy = null): bool
     {
-        return DB::connection('sqlsrv')->update("
+        return DB::connection('sqlsrv')->update(
+            "
             UPDATE Azure_Users
             SET accountEnabled = 0,
                 Status = 'Inactive'
             WHERE Id = ?
-        ", [$this->Id]) > 0;
+        ",
+            [$this->Id],
+        ) > 0;
     }
 
     /**
@@ -610,12 +586,15 @@ class AzureUser extends Authenticatable
      */
     public function enable(?string $updatedBy = null): bool
     {
-        return DB::connection('sqlsrv')->update("
+        return DB::connection('sqlsrv')->update(
+            "
             UPDATE Azure_Users
             SET accountEnabled = 1,
                 Status = 'Active'
             WHERE Id = ?
-        ", [$this->Id]) > 0;
+        ",
+            [$this->Id],
+        ) > 0;
     }
 
     // =================================================================
@@ -625,7 +604,7 @@ class AzureUser extends Authenticatable
     /**
      * Get Azure user statistics
      * Used by dashboard to display user counts by status
-     * 
+     *
      * @return array
      */
     public static function getStatistics(): array
@@ -651,10 +630,7 @@ class AzureUser extends Authenticatable
             \Log::info('Azure Statistics Retrieved', $stats);
 
             // ✅ Additional check: Log first 5 users to verify Status values
-            $sampleUsers = self::select('Id', 'displayName', 'Status')
-                ->limit(5)
-                ->get()
-                ->toArray();
+            $sampleUsers = self::select('Id', 'displayName', 'Status')->limit(5)->get()->toArray();
 
             \Log::info('Sample Azure Users', [
                 'count' => count($sampleUsers),

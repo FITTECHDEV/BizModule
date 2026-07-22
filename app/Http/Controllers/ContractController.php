@@ -249,7 +249,7 @@ class ContractController extends Controller
             'SubmittedBy' => auth()->user()->name ?? 'system',
             'Action' => $action,
             'ContractID' => $draft['contract_id'] ?? null,
-            'ContractDate' => now()->format('d/m/Y'),
+            'ContractDate' => now()->format('Ymd'),
             'ContactType' => $validated['contract_type'],
             'OfficeCode' => $this->getUserOfficeCode(),
             'ClientCode' => '',
@@ -386,23 +386,18 @@ class ContractController extends Controller
             'ChargeBasedon' => $charge['chargeBasedOn'] ?? '',
             'ChargeBasedOnUOM' => $charge['chargeBasedOnUOM'] ?? '',
             'ChargeCurr' => $charge['chargeCurr'] ?? '',
-            'MinAmount' => $charge['minAmount'] ?? 0.0,
-            'MaxAmount' => $charge['maxAmount'] ?? 0.0,
+            'MinAmount' => $this->toFloat($charge['minAmount'] ?? null),
+            'MaxAmount' => $this->toFloat($charge['maxAmount'] ?? null),
             'RateType' => $charge['rateType'] ?? '',
-            'Rate' => $charge['rate'] ?? 0.0,
+            'Rate' => $this->toFloat($charge['rate'] ?? null),
             'Formula' => $charge['formula'] ?? '',
             'RateSlabJson' => !empty($charge['rateSlab']) ? json_encode($charge['rateSlab']) : '',
             'Comments' => '',
-            // 'ChargeAction' => $charge['chargeAction'] ?? 'R',
-            'MarkupRate' => $charge['markupRate'] ?? 0.0,
+            'MarkupRate' => $this->toFloat($charge['markupRate'] ?? null),
             'MarkFormula' => $charge['markupFormula'] ?? '',
             'MarkRateSlabJson' => !empty($charge['markupRateSlab']) ? json_encode($charge['markupRateSlab']) : '',
-            // Not yet read by sp_Contractinfo_ServiceCharges (missing from its
-            // OPENJSON WITH clause and INSERT column list) — sent ahead of time
-            // so no PHP change is needed once the SP is extended to accept them.
             'RevenueOrCost' => ($charge['chargeNature'] ?? '') === 'Cost' ? 'Cost' : 'Revenue',
             'Category' => $charge['chargeCategory'] ?? '',
-            // 'ChargeDescription' => $charge['chargeDescription'] ?? '',
             'ToBeAdded' => $charge['to_be_added'] ?? 0,
         ];
 
@@ -442,15 +437,15 @@ class ContractController extends Controller
             'ChargeBasedon' => $charge['chargeBasedOn'] ?? '',
             'ChargeBasedOnUOM' => $charge['chargeBasedOnUOM'] ?? '',
             'ChargeCurr' => $charge['chargeCurr'] ?? '',
-            'MinAmount' => $charge['minAmount'] ?? 0.0,
-            'MaxAmount' => $charge['maxAmount'] ?? 0.0,
+            'MinAmount' => $this->toFloat($charge['minAmount'] ?? null),
+            'MaxAmount' => $this->toFloat($charge['maxAmount'] ?? null),
             'RateType' => $charge['rateType'] ?? '',
-            'Rate' => $charge['rate'] ?? 0.0,
+            'Rate' => $this->toFloat($charge['rate'] ?? null),
             'Formula' => $charge['formula'] ?? '',
             'RateSlabJson' => !empty($charge['rateSlab']) ? json_encode($charge['rateSlab']) : '',
             'Comments' => '',
             // 'ChargeAction' => $charge['chargeAction'] ?? 'R',
-            'MarkupRate' => $charge['markupRate'] ?? 0.0,
+            'MarkupRate' => $this->toFloat($charge['markupRate'] ?? null),
             'MarkFormula' => $charge['markupFormula'] ?? '',
             'MarkRateSlabJson' => !empty($charge['markupRateSlab']) ? json_encode($charge['markupRateSlab']) : '',
             // IsRevenue/Category not yet read by sp_Contractinfo_ServiceCharges
@@ -599,9 +594,19 @@ class ContractController extends Controller
         return 'KE';
     }
 
+    /**
+     * Casts a request-string numeric value to float, treating null/empty
+     * as 0.0 rather than letting an empty string reach json_encode as "".
+     */
+    private function toFloat($value): float
+    {
+        return $value === null || $value === '' ? 0.0 : (float) $value;
+    }
+
     private function callContractSP(string $spName, array $payload): array
     {
         $inputJson = json_encode($payload);
+        Log::info("SP {$spName} input", ['input' => $inputJson]);
         try {
             $pdo = DB::connection('sqlsrv')->getPdo();
             $stmt = $pdo->prepare(
@@ -1488,7 +1493,7 @@ class ContractController extends Controller
             'SubmittedBy' => auth()->user()->name ?? 'system',
             'Action' => 'Update',
             'ContractID' => $contract,
-            'ContractDate' => now()->format('d/m/Y'),
+            'ContractDate' => now()->format('Ymd'),
             'ContactType' => $validated['contract_type'],
             'OfficeCode' => $this->getUserOfficeCode(),
             'ClientCode' => '',
