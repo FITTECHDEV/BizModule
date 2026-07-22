@@ -282,6 +282,12 @@
                     </div>
                 @endforeach
             </div>
+            {{-- ── Add Service button ─────────────────────────────────────────── --}}
+            <div class="d-flex justify-content-end mb-2">
+                <button type="button" class="btn btn-sm btn-outline-primary ce-add-service-btn">
+                    <i class="fas fa-plus"></i> Add Service
+                </button>
+            </div>
         @else
             <div class="cc-box cc-box-compact">
                 <div class="cc-empty-msg">No services added.</div>
@@ -297,6 +303,19 @@
                         </button>
                     </div>
                     <div class="modal-body" id="addChargeModalBody"></div>
+                </div>
+            </div>
+        </div>
+        <div class="modal fade" id="addServiceModal" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Add Service</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body" id="addServiceModalBody"></div>
                 </div>
             </div>
         </div>
@@ -649,6 +668,75 @@
                 });
             }
 
+            $(document).on('click', '.ce-add-service-btn', function() {
+                var wrap = document.getElementById('addServiceInlineForm');
+                if (wrap.style.display === 'block') {
+                    wrap.style.display = 'none';
+                    wrap.innerHTML = '';
+                    return;
+                }
+                wrap.innerHTML = serviceFormHtml();
+                populateServiceGroupMasters($(wrap), {});
+                bindAddServiceSave(wrap);
+                wrap.style.display = 'block';
+                wrap.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center'
+                });
+            });
+
+            function bindAddServiceSave(wrap) {
+                $(wrap).find('.ce-save-new-service-btn').on('click', function() {
+                    var process = $(wrap).find('.ce-svc-process').val();
+                    var coo = $(wrap).find('.ce-svc-coo').val().trim();
+                    var cod = $(wrap).find('.ce-svc-cod').val().trim();
+
+                    if (['Export', 'Local'].indexOf(process) !== -1 && !coo) {
+                        alert('Country of Origin is required when Process is Export or Local.');
+                        return;
+                    }
+                    if (process === 'Import' && !cod) {
+                        alert('Country of Destination is required when Process is Import.');
+                        return;
+                    }
+
+                    var payload = {
+                        service: $(wrap).find('.ce-svc-service').val(),
+                        process: process,
+                        incoterm: $(wrap).find('.ce-svc-incoterm').val(),
+                        serviceClass: $(wrap).find('.ce-svc-serviceclass').val().trim(),
+                        shipmentType: $(wrap).find('.ce-svc-shipmenttype').val(),
+                        movementType: $(wrap).find('.ce-svc-movementtype').val(),
+                        shipmentMode: $(wrap).find('.ce-svc-shipmentmode').val(),
+                        countryOrigin: coo,
+                        countryDestination: cod,
+                        pol: $(wrap).find('.ce-svc-pol').val().trim(),
+                        pod: $(wrap).find('.ce-svc-pod').val().trim(),
+                        placeOfReceipt: $(wrap).find('.ce-svc-por').val().trim(),
+                        placeOfDelivery: $(wrap).find('.ce-svc-poe').val().trim()
+                    };
+
+                    $.ajax({
+                        url: '/contracts/' + encodeURIComponent(CONTRACT_ID) + '/services',
+                        type: 'POST',
+                        data: $.extend({
+                            _token: document.querySelector('meta[name="csrf-token"]').content
+                        }, payload),
+                        dataType: 'json'
+                    }).done(function(res) {
+                        if (!res.success) {
+                            alert('Failed to add service: ' + (res.message || 'Unknown error'));
+                            return;
+                        }
+                        alert(res.message || 'Service added.');
+                        window.location.reload(); // simplest: reload to show new service group
+                    }).fail(function(xhr) {
+                        alert('Failed to add service: ' + ((xhr.responseJSON && xhr.responseJSON
+                            .message) || 'Add failed.'));
+                    });
+                });
+            }
+
             $('.cc-group-body').each(function() {
                 var $body = $(this);
                 var svcId = $body.find('.ce-svc-id').val();
@@ -972,16 +1060,7 @@
             }
 
             function markupRateAreaHtml(rateType) {
-                if (rateType === 'Slab Based' || rateType === 'Step Up') {
-                    return '<div class="ctr-slab-wrap"><table class="ctr-slab-table">' +
-                        '<thead><tr><th>Min</th><th>Up To</th><th>Value</th><th>Formula</th><th></th></tr></thead>' +
-                        '<tbody class="ctr-mk-slab-rows">' + markupSlabRowHtml() + '</tbody></table>' +
-                        '<button type="button" class="btn btn-xs btn-outline-primary ctr-mk-slab-add-row mt-1">+ Add Slab</button></div>';
-                }
-                if (rateType === 'Formula') {
-                    return '<div class="ctr-field mt-2"><label class="ctr-lbl">Markup Formula</label>' +
-                        '<textarea class="form-control form-control-sm ctr-mk-formula" rows="2"></textarea></div>';
-                }
+                // Markup is Single-only for now — slab/formula markup deferred.
                 return '';
             }
 
@@ -1215,13 +1294,10 @@
             
                         <div class="ctr-field mt-1" style="max-width:220px;">
                             <label class="ctr-lbl">Markup Rate Type</label>
-                            <select class="form-control form-control-sm ctr-mk-ratetype">
-                                <option value="">-- Select --</option>
-                                <option value="Single">Single</option>
-                                <option value="Slab Based">Slab Based</option>
-                                <option value="Step Up">Step Up</option>
-                                <option value="Formula">Formula</option>
-                            </select>
+          <select class="form-control form-control-sm ctr-mk-ratetype">
+    <option value="">-- Select --</option>
+    <option value="Single">Single</option>
+</select>
                         </div>
             
                         <div class="ctr-field ctr-mk-inline-rate"></div>
@@ -1395,6 +1471,9 @@
                 $(wrap).find('.ctr-cf-inline-rate').html(inlineRateHtml(normalizedRateType));
                 $(wrap).find('.ctr-cf-ratearea').html(rateAreaHtml(normalizedRateType));
 
+                var $markupRadio = $(wrap).find('input[name="ctr-cf-action"][value="M"]');
+                $markupRadio.closest('label').toggle(normalizedRateType === 'Single');
+
                 if (normalizedRateType === 'Single') {
                     wrap.querySelector('.ctr-cf-rate').value = chargeToEdit.rate ?? '';
                 } else if (normalizedRateType === 'Slab Based' || normalizedRateType === 'Step Up') {
@@ -1410,6 +1489,15 @@
                     $(wrap).find('.ctr-cf-inline-rate').html(inlineRateHtml(this.value));
                     $(wrap).find('.ctr-cf-ratearea').html(rateAreaHtml(this.value));
                     if (this.value === 'Formula') bindFormulaBuilderEvents(wrap);
+
+                    var $markupRadio = $(wrap).find('input[name="ctr-cf-action"][value="M"]');
+                    var markupAllowed = (this.value === 'Single');
+                    $markupRadio.closest('label').toggle(markupAllowed);
+
+                    if (!markupAllowed && $markupRadio.is(':checked')) {
+                        $(wrap).find('input[name="ctr-cf-action"]:visible').first().prop('checked', true)
+                            .trigger('change');
+                    }
                 });
                 $(wrap).find('.ctr-cf-cancel').on('click', function() {
                     var modal = $(wrap).closest('.modal');
@@ -1630,41 +1718,6 @@
                             return;
                         }
                         charge.markupRate = parseFloat(parseFloat(mkRateVal).toFixed(5));
-                    } else if (mkRateType === 'Slab Based' || mkRateType === 'Step Up') {
-                        var mkRows = wrap.querySelectorAll('.ctr-mk-slab-rows tr');
-                        var mkSlabs = [];
-                        var mkValid = true;
-                        mkRows.forEach(function(row) {
-                            var minVal = row.querySelector('.ctr-mk-slab-min').value;
-                            var uptoVal = row.querySelector('.ctr-mk-slab-upto').value;
-                            var value = row.querySelector('.ctr-mk-slab-value').value;
-                            var formula = row.querySelector('.ctr-mk-slab-formula').value.trim();
-                            if (uptoVal === '' || value === '') {
-                                mkValid = false;
-                                return;
-                            }
-                            mkSlabs.push({
-                                Slab: parseFloat(uptoVal),
-                                value: parseFloat(value),
-                                Formula: formula,
-                                Min: minVal !== '' ? parseFloat(minVal) : 0
-                            });
-                        });
-                        if (!mkValid || !mkSlabs.length) {
-                            alert('Please fill all markup slab rows (Up To and Value are required).');
-                            return;
-                        }
-                        charge.markupRateSlab = {
-                            Type: mkRateType === 'Step Up' ? 'StepUp' : 'LessThanOrEqual',
-                            Slabs: mkSlabs
-                        };
-                    } else if (mkRateType === 'Formula') {
-                        var mkFormulaVal = wrap.querySelector('.ctr-mk-formula').value.trim();
-                        if (!mkFormulaVal) {
-                            alert('Markup Formula is required for Formula markup rate type.');
-                            return;
-                        }
-                        charge.markupFormula = mkFormulaVal;
                     }
                 }
 

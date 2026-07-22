@@ -378,16 +378,16 @@ class ContractController extends Controller
             'Formula' => $charge['formula'] ?? '',
             'RateSlabJson' => !empty($charge['rateSlab']) ? json_encode($charge['rateSlab']) : '',
             'Comments' => '',
-            'ChargeAction' => $charge['chargeAction'] ?? 'R',
+            // 'ChargeAction' => $charge['chargeAction'] ?? 'R',
             'MarkupRate' => $charge['markupRate'] ?? 0.0,
             'MarkFormula' => $charge['markupFormula'] ?? '',
             'MarkRateSlabJson' => !empty($charge['markupRateSlab']) ? json_encode($charge['markupRateSlab']) : '',
             // Not yet read by sp_Contractinfo_ServiceCharges (missing from its
             // OPENJSON WITH clause and INSERT column list) — sent ahead of time
             // so no PHP change is needed once the SP is extended to accept them.
-            'IsRevenue' => ($charge['chargeNature'] ?? '') === 'Cost' ? 0 : 1,
+            'RevenueOrCost' => ($charge['chargeNature'] ?? '') === 'Cost' ? 'Cost' : 'Revenue',
             'Category' => $charge['chargeCategory'] ?? '',
-            'ChargeDescription' => $charge['chargeDescription'] ?? '',
+            // 'ChargeDescription' => $charge['chargeDescription'] ?? '',
             'ToBeAdded' => $charge['to_be_added'] ?? 0,
         ];
 
@@ -434,7 +434,7 @@ class ContractController extends Controller
             'Formula' => $charge['formula'] ?? '',
             'RateSlabJson' => !empty($charge['rateSlab']) ? json_encode($charge['rateSlab']) : '',
             'Comments' => '',
-            'ChargeAction' => $charge['chargeAction'] ?? 'R',
+            // 'ChargeAction' => $charge['chargeAction'] ?? 'R',
             'MarkupRate' => $charge['markupRate'] ?? 0.0,
             'MarkFormula' => $charge['markupFormula'] ?? '',
             'MarkRateSlabJson' => !empty($charge['markupRateSlab']) ? json_encode($charge['markupRateSlab']) : '',
@@ -443,9 +443,9 @@ class ContractController extends Controller
             // INSERT/UPDATE column lists) — sent ahead of time using the SP's
             // documented contract so no PHP change is needed once the DBA
             // enables them.
-            'IsRevenue' => ($charge['chargeNature'] ?? '') === 'Cost' ? 0 : 1,
+            'RevenueOrCost' => ($charge['chargeNature'] ?? '') === 'Cost' ? 'Cost' : 'Revenue',
             'Category' => $charge['chargeCategory'] ?? '',
-            'ChargeDescription' => $charge['chargeDescription'] ?? '',
+            // 'ChargeDescription' => $charge['chargeDescription'] ?? '',
             'ToBeAdded' => $charge['to_be_added'] ?? 0,
         ];
 
@@ -746,7 +746,7 @@ class ContractController extends Controller
                 }
             } while ($stmt->nextRowset());
 
-            Log::info('getCountries - result', ['count' => count($rows), 'sample' => $rows[0] ?? null]);
+            // Log::info('getCountries - result', ['count' => count($rows), 'sample' => $rows[0] ?? null]);
 
             return response()->json($rows);
         } catch (\Exception $e) {
