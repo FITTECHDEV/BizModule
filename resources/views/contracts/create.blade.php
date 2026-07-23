@@ -413,6 +413,8 @@
         .ctr-slab-row-remove {
             cursor: pointer;
             color: #dc3545;
+            font-size: 1.4rem;
+            line-height: 1;
         }
 
         .ctr-fb-reset {
@@ -496,6 +498,17 @@
 
         .ctr-formula-col select[multiple] {
             height: auto;
+        }
+
+        /* Hide native number input spinners */
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        input[type="number"] {
+            -moz-appearance: textfield;
         }
     </style>
 @stop

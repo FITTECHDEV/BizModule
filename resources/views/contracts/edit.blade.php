@@ -73,7 +73,10 @@
             <div class="cc-section-block mb-3">
                 <div class="cc-section-block-header cc-header-revenue">
                     <strong>Services</strong>
-                    <span class="ml-auto cc-totals-inline">{{ $services->count() }} total</span>
+                    <span class="ml-auto mr-3 cc-totals-inline">{{ $services->count() }} total</span>
+                    <button type="button" class="btn btn-sm btn-light ce-add-service-btn">
+                        <i class="fas fa-plus"></i> Add Service
+                    </button>
                 </div>
 
                 @foreach ($services as $service)
@@ -282,14 +285,14 @@
                     </div>
                 @endforeach
             </div>
-            {{-- ── Add Service button ─────────────────────────────────────────── --}}
-            <div class="d-flex justify-content-end mb-2">
-                <button type="button" class="btn btn-sm btn-outline-primary ce-add-service-btn">
-                    <i class="fas fa-plus"></i> Add Service
-                </button>
-            </div>
         @else
-            <div class="cc-box cc-box-compact">
+            <div class="cc-section-block mb-3">
+                <div class="cc-section-block-header cc-header-revenue">
+                    <strong>Services</strong>
+                    <button type="button" class="btn btn-sm btn-light ml-auto ce-add-service-btn">
+                        <i class="fas fa-plus"></i> Add Service
+                    </button>
+                </div>
                 <div class="cc-empty-msg">No services added.</div>
             </div>
         @endif
@@ -513,6 +516,8 @@
         .ctr-slab-row-remove {
             cursor: pointer;
             color: #dc3545;
+            font-size: 1.4rem;
+            line-height: 1;
         }
 
         .ctr-formula-cols {
@@ -530,6 +535,37 @@
                 flex-direction: column;
                 gap: 10px;
             }
+        }
+
+        /* Hide native number input spinners */
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+
+        .ctr-field-readonly {
+            background-color: #e9ecef;
+            cursor: not-allowed;
+        }
+
+        .ctr-natureaction-lbl {
+            font-weight: 400;
+            font-size: 0.82rem;
+        }
+
+        .ctr-required::after {
+            content: ' *';
+            color: #dc3545;
+        }
+
+        .ctr-cf-uom:disabled {
+            background-color: #e9ecef;
+            cursor: not-allowed;
         }
     </style>
 @stop
@@ -1121,34 +1157,6 @@
                 return '';
             }
 
-            function updateActionVisibility(wrap) {
-                var nature = wrap.querySelector('input[name="ctr-cf-nature"]:checked').value; // "Revenue" or "Cost"
-                var $group = $(wrap).find('.ctr-cf-action-group');
-                var $radios = $group.find('input[name="ctr-cf-action"]');
-                var firstVisible = null;
-
-                $radios.each(function() {
-                    var showFor = $(this).data('show-for') || '';
-                    var visible = showFor.split(',').map(function(s) {
-                        return s.trim();
-                    }).indexOf(nature.toLowerCase()) !== -1;
-                    $(this).closest('label').toggle(visible);
-                    if (visible && !firstVisible) {
-                        firstVisible = this;
-                    }
-                });
-
-                // Only auto-correct if something WAS checked but its label is now hidden
-                // (nature switched). Do NOT auto-select when nothing is checked yet —
-                // new charges should start with no Charge Action selected.
-                var checked = $radios.filter(':checked');
-                if (checked.length > 0 && !checked.closest('label').is(':visible')) {
-                    if (firstVisible) {
-                        $(firstVisible).prop('checked', true).trigger('change');
-                    }
-                }
-            }
-
             function fillMarkupSlabRows(tbody, rateSlabData) {
                 if (!tbody || !rateSlabData) return;
                 var slabs = Array.isArray(rateSlabData) ? rateSlabData : (rateSlabData.Slabs || []);
@@ -1251,50 +1259,41 @@
 
             function chargeFormHtml() {
                 return `
-                    <!-- Header row: Nature (left) and Charge Action (right) -->
-                    <div style="display:flex; gap:20px; margin-bottom:12px;">
-                        <div style="flex:1;">
-                            <label class="ctr-lbl">Nature</label>
-                            <div>
-                                <label class="mr-3"><input type="radio" name="ctr-cf-nature" value="Revenue" checked> Revenue</label>
-                                <label><input type="radio" name="ctr-cf-nature" value="Cost"> Cost</label>
-                            </div>
+                    <!-- Single Nature+Action row, matching quotation module's layout -->
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                        <div>
+                            <label class="mr-3 ctr-natureaction-lbl"><input type="radio" name="ctr-cf-natureaction" value="Revenue"> Revenue</label>
+                            <label class="mr-3 ctr-natureaction-lbl"><input type="radio" name="ctr-cf-natureaction" value="Cost"> Cost</label>
+                            <label class="ctr-natureaction-lbl"><input type="radio" name="ctr-cf-natureaction" value="CostMarkup"> Cost with markup</label>
                         </div>
-                        <div style="flex:1;">
-                            <label class="ctr-lbl">Charge Action</label>
-                            <div class="ctr-cf-action-group">
-                                <label class="mr-3"><input type="radio" name="ctr-cf-action" value="R" data-show-for="cost"> Reimbursement</label>
-                                <label class="mr-3"><input type="radio" name="ctr-cf-action" value="A" data-show-for="revenue"> Accrual</label>
-                                <label><input type="radio" name="ctr-cf-action" value="M" data-show-for="revenue,cost"> Markup</label>
-                            </div>
-                        </div>
+                        <div class="ctr-cf-base-currency text-muted" style="font-size:.85rem;"></div>
                     </div>
             
                     <div class="ctr-grid-2" style="display:grid; grid-template-columns:1fr 1fr; gap:12px 16px;">
             
                     <!-- Row 1 -->
                     <div class="ctr-field">
-                        <label class="ctr-lbl">Charge Code</label>
+                        <label class="ctr-lbl ctr-required">Charge Code</label>
                         <select class="form-control form-control-sm ctr-cf-code">
                             <option value="">-- Select --</option>
                         </select>
                     </div>
                     
-                    <div class="ctr-field">
+                <div class="ctr-field">
                         <label class="ctr-lbl">Charge Description</label>
-                        <input type="text" class="form-control form-control-sm ctr-cf-desc">
+                        <input type="text" class="form-control form-control-sm ctr-cf-desc ctr-field-readonly" readonly>
                     </div>
                     
                     <!-- Row 2 -->
                     <div class="ctr-field">
-                        <label class="ctr-lbl">Charge Based On</label>
+                        <label class="ctr-lbl ctr-required">Charge Based On</label>
                         <select class="form-control form-control-sm ctr-cf-basedon">
                             <option value="">-- Select --</option>
                         </select>
                     </div>
                     
                     <div class="ctr-field">
-                        <label class="ctr-lbl">Based On UOM</label>
+                        <label class="ctr-lbl ctr-required">Based On UOM</label>
                         <select class="form-control form-control-sm ctr-cf-uom">
                             <option value="">Select Based On first</option>
                         </select>
@@ -1360,10 +1359,11 @@
             
                     <!-- Slab / Formula area -->
                     <div class="ctr-cf-ratearea mt-2"></div>
-            
+                                
                     <div class="d-flex justify-content-end mt-2">
                         <button type="button" class="btn btn-sm btn-secondary mr-2 ctr-cf-cancel">Cancel</button>
-                        <button type="button" class="btn btn-sm btn-success ctr-cf-save">Save Charge</button>
+                        <button type="button" class="btn btn-sm btn-primary mr-2 ctr-cf-save-add-more">Save &amp; Add More</button>
+                        <button type="button" class="btn btn-sm btn-success ctr-cf-save">Save</button>
                     </div>
                 `;
             }
@@ -1387,6 +1387,7 @@
             }
 
             function loadChargeFormMasters(wrap, chargeToEdit) {
+                loadBaseCurrency(wrap);
                 fetchMasterList('charge-categories').done(function(res) {
                     if (res.success) populateSelect($(wrap).find('.ctr-cf-category'), res.data,
                         'Code', 'Name');
@@ -1401,10 +1402,9 @@
                         res.charge_codes.forEach(function(c) {
                             var code = c.Code || '';
                             var name = c.Description || c.Name || c.Code || '';
-                            var label = code + ' - ' + name;
                             var curr = c.Curr || '';
                             $select.append('<option value="' + code + '" data-description="' + name +
-                                '" data-currency="' + curr + '">' + label + '</option>');
+                                '" data-currency="' + curr + '">' + name + '</option>');
                         });
                         if (chargeToEdit.chargeCode) $select.val(chargeToEdit.chargeCode);
                         // Trigger change to auto-fill description/currency when editing
@@ -1448,6 +1448,12 @@
                             based_on_code: basedOnCode
                         }).done(function(res) {
                             if (res.success) {
+                                if (!res.uom_list.length) {
+                                    $uomSelect.empty().append('<option value="">No UOM required</option>').prop(
+                                        'disabled', true);
+                                    return;
+                                }
+                                $uomSelect.prop('disabled', false);
                                 var options = res.uom_list.map(function(u) {
                                     return {
                                         Code: u.Code,
@@ -1480,29 +1486,21 @@
                 wrap.querySelector('.ctr-cf-desc').value = chargeToEdit.chargeDescription || '';
                 wrap.querySelector('.ctr-cf-min').value = chargeToEdit.minAmount ?? '';
                 wrap.querySelector('.ctr-cf-max').value = chargeToEdit.maxAmount ?? '';
-                var natureVal = chargeToEdit.chargeNature || 'Revenue';
-                var $natureRadio = $(wrap).find('input[name="ctr-cf-nature"][value="' + natureVal + '"]');
-                if ($natureRadio.length) $natureRadio.prop('checked', true);
-                updateActionVisibility(wrap);
-
-
-                // --- Charge Action and Markup prefill ---
-                // First, set the action value (if stored) to the radio, but only if it's visible.
+                // Derive the single natureaction radio value from stored chargeNature + chargeAction
+                var natureVal = chargeToEdit.chargeNature || '';
                 var actionVal = chargeToEdit.chargeAction || '';
-                var $actionRadio = $(wrap).find('input[name="ctr-cf-action"][value="' + actionVal + '"]');
-                if ($actionRadio.length && $actionRadio.closest('label').is(':visible')) {
-                    $actionRadio.prop('checked', true);
-                } else {
-                    // If stored value is not visible, fallback to the first visible action
-                    var $visible = $(wrap).find('.ctr-cf-action-group input[name="ctr-cf-action"]:visible');
-                    if ($visible.length) {
-                        $visible.first().prop('checked', true);
-                    }
+                var naVal = '';
+                if (actionVal === 'M') {
+                    naVal = 'CostMarkup';
+                } else if (natureVal === 'Cost') {
+                    naVal = 'Cost';
+                } else if (natureVal === 'Revenue') {
+                    naVal = 'Revenue';
                 }
-                // Trigger change to show/hide markup
-                $(wrap).find('input[name="ctr-cf-action"]:checked').trigger('change');
-
-                $(wrap).find('.ctr-cf-markup-wrap').toggle(actionVal === 'M');
+                if (naVal) {
+                    $(wrap).find('input[name="ctr-cf-natureaction"][value="' + naVal + '"]').prop('checked', true);
+                }
+                $(wrap).find('.ctr-cf-markup-wrap').toggle(naVal === 'CostMarkup');
 
                 if (actionVal === 'M') {
                     var normalizedMarkupRateType = normalizeRateType(chargeToEdit.markupRateType);
@@ -1524,8 +1522,8 @@
                 $(wrap).find('.ctr-cf-inline-rate').html(inlineRateHtml(normalizedRateType));
                 $(wrap).find('.ctr-cf-ratearea').html(rateAreaHtml(normalizedRateType));
 
-                var $markupRadio = $(wrap).find('input[name="ctr-cf-action"][value="M"]');
-                $markupRadio.closest('label').toggle(normalizedRateType === 'Single');
+                // var $markupRadio = $(wrap).find('input[name="ctr-cf-action"][value="M"]');
+                // $markupRadio.closest('label').toggle(normalizedRateType === 'Single');
 
                 if (normalizedRateType === 'Single') {
                     wrap.querySelector('.ctr-cf-rate').value = chargeToEdit.rate ?? '';
@@ -1537,20 +1535,33 @@
                 }
             }
 
+            function loadBaseCurrency(wrap) {
+                fetchMasterList('currencies', {
+                    office_id: OFFICE_CODE
+                }).done(function(res) {
+                    if (res.success && res.currencies && res.currencies.length) {
+                        // Assumes first entry represents the office's base currency —
+                        // adjust if your currencies endpoint flags a specific default.
+                        var base = res.currencies[0].CurrencyCode;
+                        $(wrap).find('.ctr-cf-base-currency').text('Base Currency: ' + base);
+                    }
+                });
+            }
+
             function bindChargeFormEvents(svcId, chargeId, wrap, chargeToEdit) {
                 $(wrap).find('.ctr-cf-ratetype').on('change', function() {
                     $(wrap).find('.ctr-cf-inline-rate').html(inlineRateHtml(this.value));
                     $(wrap).find('.ctr-cf-ratearea').html(rateAreaHtml(this.value));
                     if (this.value === 'Formula') bindFormulaBuilderEvents(wrap);
 
-                    var $markupRadio = $(wrap).find('input[name="ctr-cf-action"][value="M"]');
-                    var markupAllowed = (this.value === 'Single');
-                    $markupRadio.closest('label').toggle(markupAllowed);
+                    // var $markupRadio = $(wrap).find('input[name="ctr-cf-action"][value="M"]');
+                    // var markupAllowed = (this.value === 'Single');
+                    // $markupRadio.closest('label').toggle(markupAllowed);
 
-                    if (!markupAllowed && $markupRadio.is(':checked')) {
-                        $(wrap).find('input[name="ctr-cf-action"]:visible').first().prop('checked', true)
-                            .trigger('change');
-                    }
+                    // if (!markupAllowed && $markupRadio.is(':checked')) {
+                    //     $(wrap).find('input[name="ctr-cf-action"]:visible').first().prop('checked', true)
+                    //         .trigger('change');
+                    // }
                 });
                 $(wrap).find('.ctr-cf-cancel').on('click', function() {
                     var modal = $(wrap).closest('.modal');
@@ -1561,12 +1572,10 @@
                         wrap.innerHTML = '';
                     }
                 });
-                $(wrap).find('input[name="ctr-cf-nature"]').on('change', function() {
-                    updateActionVisibility(wrap);
-                    // Also trigger action change to show/hide markup section
-                    $(wrap).find('input[name="ctr-cf-action"]:checked').trigger('change');
+                $(wrap).find('input[name="ctr-cf-natureaction"]').on('change', function() {
+                    $(wrap).find('.ctr-cf-markup-wrap').toggle(this.value === 'CostMarkup');
 
-                    var isRevenueForFormula = this.value === 'Cost' ? 0 : 1;
+                    var isRevenueForFormula = (this.value === 'Revenue') ? 1 : 0;
                     loadFormulaFields(svcId, isRevenueForFormula).done(function(res) {
                         if (!res.success) return;
                         FORMULA_FIELDS = res.data.map(function(name) {
@@ -1587,22 +1596,6 @@
                 });
                 $(wrap).on('click', '.ctr-slab-row-remove', function() {
                     $(this).closest('tr').remove();
-                });
-
-                // Charge Action toggle — also allows unchecking by clicking the
-                // already-selected radio again (radios don't support this natively).
-                $(wrap).find('input[name="ctr-cf-action"]').on('mousedown', function() {
-                    // Record whether this radio was checked BEFORE the click takes effect
-                    $(this).data('was-checked', this.checked);
-                });
-                $(wrap).find('input[name="ctr-cf-action"]').on('click', function() {
-                    if ($(this).data('was-checked')) {
-                        this.checked = false;
-                        $(wrap).find('.ctr-cf-markup-wrap').hide();
-                    }
-                });
-                $(wrap).find('input[name="ctr-cf-action"]').on('change', function() {
-                    $(wrap).find('.ctr-cf-markup-wrap').toggle(this.checked && this.value === 'M');
                 });
 
                 // Markup Rate Type change
@@ -1655,6 +1648,13 @@
                             based_on_code: basedOnCode
                         }).done(function(res) {
                             if (res.success) {
+                                if (!res.uom_list.length) {
+                                    $uomSelect.empty().append(
+                                        '<option value="">No UOM required</option>').prop(
+                                        'disabled', true);
+                                    return;
+                                }
+                                $uomSelect.prop('disabled', false);
                                 var options = res.uom_list.map(function(u) {
                                     return {
                                         Code: u.Code,
@@ -1673,14 +1673,29 @@
                     var curr = $selected.data('currency') || '';
                     if (desc) $(wrap).find('.ctr-cf-desc').val(desc);
                     if (curr) $(wrap).find('.ctr-cf-currency').val(curr);
+                    // Show code-only in the closed box after selection
+                    if ($selected.val()) $selected.text($selected.val());
+                });
+                $(wrap).find('.ctr-cf-code').on('mousedown', function() {
+                    // Restore full names right before the dropdown opens
+                    $(this).find('option').each(function() {
+                        var name = $(this).data('description');
+                        if (name) $(this).text(name);
+                    });
                 });
                 $(wrap).find('.ctr-cf-save').on('click', function() {
-                    saveChargeUpdate(svcId, chargeId, wrap);
+                    saveChargeUpdate(svcId, chargeId, wrap, false);
+                });
+                $(wrap).find('.ctr-cf-save-add-more').on('click', function() {
+                    saveChargeUpdate(svcId, chargeId, wrap, true);
                 });
             }
 
-            function saveChargeUpdate(svcId, chargeId, wrap) {
+            function saveChargeUpdate(svcId, chargeId, wrap, keepOpen) {
                 var rateType = wrap.querySelector('.ctr-cf-ratetype').value;
+                var $uomField = wrap.querySelector('.ctr-cf-uom');
+                var uomNotNeeded = $uomField.disabled;
+
                 var required = {
                     category: wrap.querySelector('.ctr-cf-category').value,
                     code: wrap.querySelector('.ctr-cf-code').value.trim(),
@@ -1688,6 +1703,9 @@
                     basedOn: wrap.querySelector('.ctr-cf-basedon').value,
                     rateType: rateType
                 };
+                if (!uomNotNeeded) {
+                    required.basedOnUOM = $uomField.value.trim();
+                }
                 var missing = Object.keys(required).filter(function(k) {
                     return !required[k];
                 });
@@ -1696,8 +1714,17 @@
                     return;
                 }
 
+                var naRadio = wrap.querySelector('input[name="ctr-cf-natureaction"]:checked');
+                if (!naRadio) {
+                    alert('Please select Revenue, Cost, or Cost with markup.');
+                    return;
+                }
+                var naVal = naRadio.value;
+                var derivedNature = (naVal === 'Revenue') ? 'Revenue' : 'Cost';
+                var derivedAction = (naVal === 'Revenue') ? 'A' : (naVal === 'CostMarkup') ? 'M' : 'R';
+
                 var charge = {
-                    chargeNature: wrap.querySelector('input[name="ctr-cf-nature"]:checked').value,
+                    chargeNature: derivedNature,
                     chargeCode: required.code,
                     chargeDescription: required.desc,
                     chargeBasedOn: required.basedOn,
@@ -1754,8 +1781,7 @@
                 }
 
                 // --- Charge Action and Markup ---
-                var actionRadio = wrap.querySelector('input[name="ctr-cf-action"]:checked');
-                var actionVal = actionRadio ? actionRadio.value : '';
+                var actionVal = derivedAction;
                 charge.chargeAction = actionVal;
                 charge.to_be_added = (actionVal === 'A' || actionVal === 'R') ? 1 : 0;
                 charge.markupRateType = null;
@@ -1802,8 +1828,35 @@
                         alert('Failed to update charge: ' + (res.message || 'Unknown error'));
                         return;
                     }
-                    alert('Charge updated. Reloading to reflect changes...');
-                    window.location.reload();
+                    if (keepOpen) {
+                        alert('Charge saved. Add another below.');
+                        var svcIdForNew = svcId;
+                        var emptyCharge = {
+                            chargeId: null,
+                            chargeCode: '',
+                            chargeDescription: '',
+                            chargeBasedOn: '',
+                            chargeBasedOnUOM: '',
+                            chargeCurr: '',
+                            minAmount: null,
+                            maxAmount: null,
+                            rateType: '',
+                            rate: null,
+                            formula: null,
+                            rateSlab: null,
+                            chargeAction: '',
+                            markupRateType: null,
+                            markupRate: null,
+                            markupFormula: null,
+                            markupRateSlab: null
+                        };
+                        wrap.innerHTML = chargeFormHtml();
+                        bindChargeFormEvents(svcIdForNew, null, wrap, emptyCharge);
+                        loadChargeFormMasters(wrap, emptyCharge);
+                    } else {
+                        alert('Charge updated. Reloading to reflect changes...');
+                        window.location.reload();
+                    }
                 }).fail(function(xhr) {
                     var msg = (xhr.responseJSON && xhr.responseJSON.message) || 'Update failed.';
                     alert('Failed to update contract: ' + msg);
