@@ -601,6 +601,24 @@
                 });
             }
 
+            var equipmentTypeOptions = [];
+
+            function loadEquipmentTypeOptions(callback) {
+                if (equipmentTypeOptions.length > 0) {
+                    if (typeof callback === 'function') callback();
+                    return;
+                }
+                fetchMasterList('equipment-types', {}).done(function(res) {
+                    if (res.success && res.data.length > 0) {
+                        equipmentTypeOptions = res.data;
+                    }
+                    if (typeof callback === 'function') callback();
+                }).fail(function() {
+                    console.error('Failed to load equipment types');
+                    if (typeof callback === 'function') callback();
+                });
+            }
+
             function clampDecimals(input, places) {
                 if (!input) return;
                 $(input).on('blur', function() {
@@ -874,20 +892,42 @@
                 // ── Based On UOM ─────────────────────────────────────
                 // Load UOM only when editing an existing charge with a value
                 if (chargeToEdit && chargeToEdit.chargeBasedOn) {
-                    fetchMasterList('based-on-uom', {
-                        based_on_code: chargeToEdit.chargeBasedOn
-                    }).done(function(res) {
-                        if (res.success) {
-                            var options = res.uom_list.map(function(u) {
-                                return {
-                                    Code: u.Code,
-                                    Label: u.Name
-                                };
+                    var basedOnCode = chargeToEdit.chargeBasedOn;
+                    var $uomSelect = $(wrap).find('.ctr-cf-uom');
+
+                    if (basedOnCode === 'Equipment') {
+                        $uomSelect.empty().append('<option value="">-- Select Container Type --</option>').prop(
+                            'disabled', true);
+                        loadEquipmentTypeOptions(function() {
+                            equipmentTypeOptions.forEach(function(item) {
+                                var code = item.Code || item;
+                                $uomSelect.append('<option value="' + code + '">' + code + '</option>');
                             });
-                            populateSelect($(wrap).find('.ctr-cf-uom'), options, 'Code', 'Label');
-                            if (chargeToEdit) $(wrap).find('.ctr-cf-uom').val(chargeToEdit.chargeBasedOnUOM);
-                        }
-                    });
+                            $uomSelect.prop('disabled', false);
+                            if (chargeToEdit.chargeBasedOnUOM) $uomSelect.val(chargeToEdit.chargeBasedOnUOM);
+                        });
+                    } else {
+                        fetchMasterList('based-on-uom', {
+                            based_on_code: basedOnCode
+                        }).done(function(res) {
+                            if (res.success) {
+                                if (!res.uom_list.length) {
+                                    $uomSelect.empty().append('<option value="">No UOM required</option>').prop(
+                                        'disabled', true);
+                                    return;
+                                }
+                                $uomSelect.prop('disabled', false);
+                                var options = res.uom_list.map(function(u) {
+                                    return {
+                                        Code: u.Code,
+                                        Label: u.Name
+                                    };
+                                });
+                                populateSelect($uomSelect, options, 'Code', 'Label');
+                                $uomSelect.val(chargeToEdit.chargeBasedOnUOM);
+                            }
+                        });
+                    }
                 } else {
                     // For new charges, leave the UOM select empty (will load on Based On change)
                     $(wrap).find('.ctr-cf-uom').empty().append('<option value="">Select Based On first</option>');
@@ -920,10 +960,9 @@
                         res.charge_codes.forEach(function(c) {
                             var code = c.Code || '';
                             var name = c.Description || c.Name || c.Code || '';
-                            var label = code + ' - ' + name;
                             var curr = c.Curr || '';
                             $select.append('<option value="' + code + '" data-description="' + name +
-                                '" data-currency="' + curr + '">' + label + '</option>');
+                                '" data-currency="' + curr + '">' + name + '</option>');
                         });
                         if (chargeToEdit) $select.val(chargeToEdit.chargeCode);
                         // Trigger change to populate description for edit
@@ -1283,7 +1322,7 @@
             }
 
             function chargeFormHtml(svcId, isEdit) {
-                var lock = isEdit ? ' disabled' : '';
+                var lock = '';
                 return '<div class="ctr-grid-2">' +
                     '<div class="ctr-field"><label class="ctr-lbl ctr-required">Charge Nature</label>' +
                     '<select class="form-control form-control-sm ctr-cf-nature"' + lock + '>' +
@@ -1551,13 +1590,30 @@
                         return;
                     }
 
-                    // Fetch UOM options for the selected Based On
+                    if (basedOnCode === 'Equipment') {
+                        $uomSelect.empty().append('<option value="">-- Select Container Type --</option>').prop(
+                            'disabled', true);
+                        loadEquipmentTypeOptions(function() {
+                            equipmentTypeOptions.forEach(function(item) {
+                                var code = item.Code || item;
+                                $uomSelect.append('<option value="' + code + '">' + code +
+                                    '</option>');
+                            });
+                            $uomSelect.prop('disabled', false);
+                        });
+                        return;
+                    }
+
                     fetchMasterList('based-on-uom', {
                         based_on_code: basedOnCode
                     }).done(function(res) {
-                        console.log('UOM response:', res);
-
                         if (res.success) {
+                            if (!res.uom_list.length) {
+                                $uomSelect.empty().append('<option value="">No UOM required</option>')
+                                    .prop('disabled', true);
+                                return;
+                            }
+                            $uomSelect.prop('disabled', false);
                             var options = res.uom_list.map(function(u) {
                                 return {
                                     Code: u.Code,
@@ -1565,7 +1621,6 @@
                                 };
                             });
                             populateSelect($uomSelect, options, 'Code', 'Label');
-                            $uomSelect.prop('disabled', false);
                         } else {
                             $uomSelect.empty().append('<option value="">No UOM available</option>')
                                 .prop('disabled', true);
@@ -1644,11 +1699,17 @@
                     }
                     if (curr) {
                         var $currencySelect = $(wrap).find('.ctr-cf-currency');
-                        // Only set if the currency exists in the dropdown
                         if ($currencySelect.find('option[value="' + curr + '"]').length) {
                             $currencySelect.val(curr);
                         }
                     }
+                    if ($selected.val()) $selected.text($selected.val());
+                });
+                $(wrap).find('.ctr-cf-code').on('mousedown', function() {
+                    $(this).find('option').each(function() {
+                        var name = $(this).data('description');
+                        if (name) $(this).text(name);
+                    });
                 });
 
                 $(wrap).find('.ctr-cf-save').on('click', function() {
