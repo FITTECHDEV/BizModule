@@ -1177,24 +1177,6 @@ class ContractController extends Controller
         }
     }
 
-    // -----------------------------------------------------------------
-    // Optional: Service / Process / ShipmentType / MovementType lists
-    // (If the SPs exist, add them similarly. I’ll include stubs.)
-    // -----------------------------------------------------------------
-
-    /**
-     * GET /contract/masters/services
-     * Assumes a stored procedure dbo.sp_ServiceList exists.
-     */
-    // public function getServices(Request $request): JsonResponse
-    // {
-    //     $list = [
-    //         ['Code' => 'Air', 'Name' => 'Air'],
-    //         ['Code' => 'Sea', 'Name' => 'Sea'],
-    //         ['Code' => 'Road', 'Name' => 'Road'],
-    //     ];
-    //     return response()->json(['success' => true, 'data' => $list]);
-    // }
     public function getServices(Request $request): JsonResponse
     {
         try {

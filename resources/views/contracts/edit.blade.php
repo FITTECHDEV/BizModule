@@ -152,24 +152,28 @@
                                         <div style="flex:1;"><label class="ctr-lbl">POL</label>
                                             <input type="text"
                                                 class="form-control form-control-sm ce-svc-field ce-svc-pol"
-                                                value="{{ $service->POL }}" placeholder="POL code" disabled>
+                                                value="{{ $service->POL }}" placeholder="Type at least 2 characters..."
+                                                disabled>
                                         </div>
                                         <div style="flex:1;"><label class="ctr-lbl">Place of Receipt</label>
                                             <input type="text"
                                                 class="form-control form-control-sm ce-svc-field ce-svc-por"
-                                                value="{{ $service->POR }}" placeholder="POR code" disabled>
+                                                value="{{ $service->POR }}" placeholder="Type at least 2 characters..."
+                                                disabled>
                                         </div>
                                     </div>
                                     <div class="ctr-field d-flex" style="gap:8px;">
                                         <div style="flex:1;"><label class="ctr-lbl">POD</label>
                                             <input type="text"
                                                 class="form-control form-control-sm ce-svc-field ce-svc-pod"
-                                                value="{{ $service->POD }}" placeholder="POD code" disabled>
+                                                value="{{ $service->POD }}" placeholder="Type at least 2 characters..."
+                                                disabled>
                                         </div>
                                         <div style="flex:1;"><label class="ctr-lbl">Place of Delivery</label>
                                             <input type="text"
                                                 class="form-control form-control-sm ce-svc-field ce-svc-poe"
-                                                value="{{ $service->POE }}" placeholder="POE code" disabled>
+                                                value="{{ $service->POE }}" placeholder="Type at least 2 characters..."
+                                                disabled>
                                         </div>
                                     </div>
                                 </div>
@@ -567,6 +571,38 @@
             background-color: #e9ecef;
             cursor: not-allowed;
         }
+
+        .ui-autocomplete {
+            max-height: 220px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            z-index: 9999 !important;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            background: #fff;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, .15);
+            padding: 4px 0;
+            margin: 2px 0 0 0;
+            list-style: none;
+            font-size: 0.85rem;
+        }
+
+        .ui-autocomplete .ui-menu-item {
+            padding: 0;
+        }
+
+        .ui-autocomplete .ui-menu-item-wrapper {
+            display: block;
+            padding: 6px 12px;
+            cursor: pointer;
+            color: #212529;
+        }
+
+        .ui-autocomplete .ui-menu-item-wrapper.ui-state-active {
+            background: #4B49AC;
+            color: #fff;
+            border: none;
+        }
     </style>
 @stop
 
@@ -618,6 +654,50 @@
                     $select.append('<option value="' + val + '">' + label + '</option>');
                 });
                 if (selectedValue) $select.val(selectedValue);
+            }
+
+            function initLocationAutocomplete(inputId, codeInputId, countrySelectId) {
+                var $input = $('#' + inputId);
+                var $codeInput = codeInputId ? $('#' + codeInputId) : null;
+                var $country = countrySelectId ? $('#' + countrySelectId) : null;
+
+                if ($input.hasClass('ui-autocomplete-input')) $input.autocomplete('destroy');
+
+                $input.autocomplete({
+                    minLength: 2,
+                    delay: 300,
+                    appendTo: $input.closest('.modal-body, .cc-group-body').length ?
+                        $input.closest('.modal-body, .cc-group-body') : 'body',
+                    source: function(request, response) {
+                        $.ajax({
+                            url: MASTER_BASE + '/locations',
+                            data: {
+                                filter: request.term,
+                                include_country: $country && $country.val() ? 1 : 0,
+                                country_code: $country ? $country.val() : ''
+                            },
+                            success: function(data) {
+                                if (data.success && data.locations.length) {
+                                    response(data.locations.map(function(l) {
+                                        return {
+                                            label: l.LocationCode + ' — ' + l
+                                                .LocationName,
+                                            value: l.LocationCode,
+                                            code: l.LocationCode
+                                        };
+                                    }));
+                                } else {
+                                    response([]);
+                                }
+                            }
+                        });
+                    },
+                    select: function(event, ui) {
+                        $input.val(ui.item.value);
+                        if ($codeInput) $codeInput.val(ui.item.code);
+                        return false;
+                    }
+                });
             }
 
             // Normalizes RateType strings from the SP ('SlabBased', 'StepUp')
@@ -710,6 +790,16 @@
                 wrap.innerHTML = serviceFormHtml();
                 populateServiceGroupMasters($(wrap), {});
                 bindAddServiceSave(wrap);
+                $(wrap).find('.ce-svc-pol').attr('id', 'ce-svc-pol-new');
+                $(wrap).find('.ce-svc-por').attr('id', 'ce-svc-por-new');
+                $(wrap).find('.ce-svc-pod').attr('id', 'ce-svc-pod-new');
+                $(wrap).find('.ce-svc-poe').attr('id', 'ce-svc-poe-new');
+                $(wrap).find('.ce-svc-coo').attr('id', 'ce-svc-coo-new');
+                $(wrap).find('.ce-svc-cod').attr('id', 'ce-svc-cod-new');
+                initLocationAutocomplete('ce-svc-pol-new', null, null);
+                initLocationAutocomplete('ce-svc-por-new', null, 'ce-svc-coo-new');
+                initLocationAutocomplete('ce-svc-pod-new', null, null);
+                initLocationAutocomplete('ce-svc-poe-new', null, 'ce-svc-cod-new');
                 $('#addServiceModal').modal('show');
             });
 
@@ -825,12 +915,21 @@
                 $('#addServiceModal').modal('hide');
             });
 
-
             $('.cc-group-body').each(function() {
                 var $body = $(this);
                 var svcId = $body.find('.ce-svc-id').val();
                 var initial = SERVICE_INITIAL[svcId] || {};
                 populateServiceGroupMasters($body, initial);
+
+                // Assign unique IDs to each location select
+                $body.find('.ce-svc-coo').attr('id', 'ce-svc-coo-' + svcId);
+                $body.find('.ce-svc-cod').attr('id', 'ce-svc-cod-' + svcId);
+                $body.find('.ce-svc-pol').attr('id', 'ce-svc-pol-' + svcId);
+                $body.find('.ce-svc-pod').attr('id', 'ce-svc-pod-' + svcId);
+                $body.find('.ce-svc-por').attr('id', 'ce-svc-por-' + svcId);
+                $body.find('.ce-svc-poe').attr('id', 'ce-svc-poe-' + svcId);
+
+                $body.data('ce-svc-id', svcId);
 
                 $body.find('.ce-svc-service').on('change', function() {
                     var serviceCode = this.value;
@@ -839,10 +938,30 @@
                         service: serviceCode
                     }).done(function(res) {
                         if (res.success) populateSelect($body.find('.ce-svc-process'), res.data,
-                            'Code',
-                            'Name');
+                            'Code', 'Name');
                     });
                 });
+            });
+            // Select2 must not initialize against a display:none container (produces the
+            // broken/native-looking dropdown seen when a collapsed group loads on page
+            // load). Instead, init lazily the first time each group is expanded.
+            document.addEventListener('click', function(e) {
+                var header = e.target.closest('.cc-group-header');
+                if (!header) return;
+
+                var body = document.getElementById(header.getAttribute('data-target'));
+                if (!body || body.dataset.locAutocompleteInit) return;
+
+                var $body = $(body);
+                var svcId = $body.data('ce-svc-id');
+                console.log('svcId on expand:', svcId); // TEMP DEBUG
+
+                initLocationAutocomplete('ce-svc-pol-' + svcId, null, null);
+                initLocationAutocomplete('ce-svc-por-' + svcId, null, 'ce-svc-coo-' + svcId);
+                initLocationAutocomplete('ce-svc-pod-' + svcId, null, null);
+                initLocationAutocomplete('ce-svc-poe-' + svcId, null, 'ce-svc-cod-' + svcId);
+
+                body.dataset.locAutocompleteInit = '1';
             });
 
             // ── Edit / Cancel toggle for a service block ────────────────────────
@@ -868,7 +987,7 @@
                 var $group = $(this).closest('.cc-group-body');
                 var snapshot = $group.data('ce-svc-snapshot') || [];
                 snapshot.forEach(function(entry) {
-                    entry.el.value = entry.val;
+                    $(entry.el).val(entry.val).trigger('change');
                 });
                 setServiceEditable($group, false);
             });

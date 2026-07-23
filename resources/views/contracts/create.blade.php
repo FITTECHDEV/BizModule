@@ -813,58 +813,47 @@
                 });
             }
 
-            // ── Location autocomplete (jQuery UI) ────────────────────────────────
-            function initLocationAutocomplete(inputId, codeInputId) {
+            function initLocationAutocomplete(inputId, codeInputId, countrySelectId) {
                 var $input = $('#' + inputId);
                 var $codeInput = $('#' + codeInputId);
-                if ($input.hasClass('ui-autocomplete-input')) {
-                    $input.autocomplete('destroy');
-                }
+                var $country = countrySelectId ? $('#' + countrySelectId) : null;
+
+                if ($input.hasClass('ui-autocomplete-input')) $input.autocomplete('destroy');
+
                 $input.autocomplete({
                     minLength: 2,
                     delay: 300,
                     source: function(request, response) {
-                        fetchMasterList('locations', {
+                        $.ajax({
+                            url: MASTER_BASE + '/locations',
+                            data: {
                                 filter: request.term,
-                                include_country: 0
-                            })
-                            .done(function(res) {
-                                if (res.success && res.locations.length) {
-                                    response(res.locations.map(function(l) {
+                                include_country: $country && $country.val() ? 1 : 0,
+                                country_code: $country ? $country.val() : ''
+                            },
+                            success: function(data) {
+                                if (data.success && data.locations.length) {
+                                    response(data.locations.map(function(l) {
                                         return {
-                                            label: l.LocationCode + ' — ' + l.LocationName,
-                                            value: l.LocationName,
+                                            label: l.LocationCode + ' — ' + l
+                                                .LocationName,
+                                            value: l.LocationCode,
                                             code: l.LocationCode
                                         };
                                     }));
                                 } else {
-                                    response([{
-                                        label: 'No locations found',
-                                        value: '',
-                                        disabled: true
-                                    }]);
+                                    response([]);
                                 }
-                            })
-                            .fail(function() {
-                                response([{
-                                    label: 'Error loading locations',
-                                    value: '',
-                                    disabled: true
-                                }]);
-                            });
+                            }
+                        });
                     },
                     select: function(event, ui) {
-                        if (ui.item.disabled) {
-                            event.preventDefault();
-                            return false;
-                        }
                         $input.val(ui.item.value);
                         $codeInput.val(ui.item.code);
                         return false;
                     }
                 });
             }
-
             // ── Charge form: populate masters ────────────────────────────────────
             function loadChargeFormMasters(wrap, chargeToEdit) {
                 // ── Charge Category ──────────────────────────────────
@@ -1130,10 +1119,11 @@
                 if (!$('#ctrSvcService option').length) {
                     populateServiceFormMasters();
                 }
-                initLocationAutocomplete('ctrSvcPol', 'ctrSvcPolCode');
-                initLocationAutocomplete('ctrSvcPod', 'ctrSvcPodCode');
-                initLocationAutocomplete('ctrSvcPlaceOfReceipt', 'ctrSvcPlaceOfReceiptCode');
-                initLocationAutocomplete('ctrSvcPlaceOfDelivery', 'ctrSvcPlaceOfDeliveryCode');
+                initLocationAutocomplete('ctrSvcPol', 'ctrSvcPolCode', 'ctrSvcCountryOrigin');
+                initLocationAutocomplete('ctrSvcPod', 'ctrSvcPodCode', 'ctrSvcCountryDestination');
+                initLocationAutocomplete('ctrSvcPlaceOfReceipt', 'ctrSvcPlaceOfReceiptCode', 'ctrSvcCountryOrigin');
+                initLocationAutocomplete('ctrSvcPlaceOfDelivery', 'ctrSvcPlaceOfDeliveryCode',
+                    'ctrSvcCountryDestination');
             }
             document.getElementById('ctrAddServiceBtn').addEventListener('click', openServiceForm);
 
@@ -1144,10 +1134,12 @@
 
             function clearServiceForm() {
                 ['ctrSvcService', 'ctrSvcProcess', 'ctrSvcIncoTerm', 'ctrSvcServiceClass', 'ctrSvcShipmentType',
-                    'ctrSvcMovementType', 'ctrSvcShipmentMode', 'ctrSvcCountryOrigin', 'ctrSvcCountryDestination',
-                    'ctrSvcPol', 'ctrSvcPod', 'ctrSvcPlaceOfReceipt', 'ctrSvcPlaceOfDelivery'
+                    'ctrSvcMovementType', 'ctrSvcShipmentMode', 'ctrSvcCountryOrigin', 'ctrSvcCountryDestination'
                 ].forEach(function(id) {
                     document.getElementById(id).value = '';
+                });
+                ['ctrSvcPol', 'ctrSvcPod', 'ctrSvcPlaceOfReceipt', 'ctrSvcPlaceOfDelivery'].forEach(function(id) {
+                    $('#' + id).val(null).trigger('change');
                 });
                 ['ctrSvcPolCode', 'ctrSvcPodCode', 'ctrSvcPlaceOfReceiptCode', 'ctrSvcPlaceOfDeliveryCode'].forEach(
                     function(id) {
