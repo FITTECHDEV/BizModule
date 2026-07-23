@@ -510,6 +510,13 @@
         input[type="number"] {
             -moz-appearance: textfield;
         }
+
+        .ui-autocomplete {
+            z-index: 9999 !important;
+            max-height: 220px;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
     </style>
 @stop
 
@@ -823,6 +830,8 @@
                 $input.autocomplete({
                     minLength: 2,
                     delay: 300,
+                    appendTo: $input.closest('.modal-body, .ctr-subform').length ?
+                        $input.closest('.modal-body, .ctr-subform') : 'body',
                     source: function(request, response) {
                         $.ajax({
                             url: MASTER_BASE + '/locations',

@@ -38,8 +38,12 @@
                 <div class="cc-info-col">
                     <div class="cc-info-row">
                         <span class="cc-lbl">Effective From</span>
-                        <span
-                            class="cc-val">{{ \Carbon\Carbon::parse($contractInfo->EffectiveFrom)->format('Y-m-d') }}</span>
+                        <span class="cc-val ce-hdr-view"
+                            data-field="effectiveFrom">{{ \Carbon\Carbon::parse($contractInfo->EffectiveFrom)->format('Y-m-d') }}</span>
+                        <input type="date"
+                            class="form-control form-control-sm cc-input ce-hdr-field ce-hdr-effectivefrom"
+                            value="{{ \Carbon\Carbon::parse($contractInfo->EffectiveFrom)->format('Y-m-d') }}"
+                            style="display:none;">
                     </div>
                     <div class="cc-info-row">
                         <span class="cc-lbl">Effective To</span>
@@ -1100,6 +1104,7 @@
             });
 
             $(document).on('click', '.ce-cancel-header-btn', function() {
+                $('.ce-hdr-effectivefrom').val($('.ce-hdr-view[data-field="effectiveFrom"]').text().trim());
                 $('.ce-hdr-effectiveto').val($('.ce-hdr-view[data-field="effectiveTo"]').text().trim());
                 $('.ce-hdr-remark').val($('.ce-hdr-view[data-field="remark"]').text().trim());
                 setHeaderEditable(false);
@@ -1110,6 +1115,7 @@
             });
 
             $(document).on('click', '.ce-save-header-btn', function() {
+                var effectiveFrom = $('.ce-hdr-effectivefrom').val();
                 var effectiveTo = $('.ce-hdr-effectiveto').val();
                 var remark = $('.ce-hdr-remark').val().trim();
                 var btn = this;
@@ -1124,7 +1130,7 @@
                         _token: document.querySelector('meta[name="csrf-token"]').content,
                         contract_type: @json($contractInfo->ContractType),
                         contract_name: @json($contractInfo->ContractName),
-                        effective_from: @json(\Carbon\Carbon::parse($contractInfo->EffectiveFrom)->format('Y-m-d')),
+                        effective_from: effectiveFrom,
                         effective_to: effectiveTo,
                         remark: remark
                     },
@@ -1134,6 +1140,7 @@
                         alert('Failed to update contract: ' + (res.message || 'Unknown error'));
                         return;
                     }
+                    $('.ce-hdr-view[data-field="effectiveFrom"]').text(effectiveFrom);
                     $('.ce-hdr-view[data-field="effectiveTo"]').text(effectiveTo);
                     $('.ce-hdr-view[data-field="remark"]').text(remark);
                     setHeaderEditable(false);
@@ -1902,7 +1909,7 @@
                 // --- Charge Action and Markup ---
                 var actionVal = derivedAction;
                 charge.chargeAction = actionVal;
-                charge.to_be_added = (actionVal === 'A' || actionVal === 'R') ? 1 : 0;
+                charge.toBeAdded = (actionVal === 'A' || actionVal === 'R') ? 1 : 0;
                 charge.markupRateType = null;
                 charge.markupRate = null;
                 charge.markupFormula = null;
