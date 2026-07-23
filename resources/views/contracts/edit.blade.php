@@ -1064,10 +1064,12 @@
                     '<div class="ctr-field mt-2"><div class="d-flex align-items-center">' +
                     '<label class="ctr-lbl mb-0">Formula</label><a href="#" class="ctr-fb-reset ml-auto">Reset</a></div>' +
                     '<textarea class="form-control form-control-sm ctr-cf-formula" rows="2"></textarea></div>' +
-                    '<div class="ctr-field mt-2" style="max-width:220px;"><label class="ctr-lbl">Rate Type</label>' +
+                    '<div class="d-flex" style="gap:16px; align-items:flex-start;">' +
+                    '<div class="ctr-field mt-2" style="max-width:220px; flex:0 0 auto;"><label class="ctr-lbl">Rate Type</label>' +
                     '<select class="form-control form-control-sm ctr-fb-ratetype">' +
                     '<option value="Single">Single</option><option value="Slab Based">Slab Based</option></select></div>' +
-                    '<div class="ctr-fb-ratearea mt-2"></div></div>';
+                    '<div class="ctr-fb-ratearea mt-2" style="flex:1;"></div>' +
+                    '</div></div>';
             }
 
             function inlineRateHtml(rateType) {
@@ -1080,17 +1082,15 @@
 
             function slabRowHtml() {
                 return '<tr>' +
-                    '<td><input type="number" class="form-control form-control-sm ctr-slab-min"></td>' +
-                    '<td><input type="number" class="form-control form-control-sm ctr-slab-upto"></td>' +
+                    '<td><input type="number" class="form-control form-control-sm ctr-slab-upto" placeholder="e.g. 500"></td>' +
                     '<td><input type="number" step="0.01" class="form-control form-control-sm ctr-slab-value"></td>' +
-                    '<td><input type="text" class="form-control form-control-sm ctr-slab-formula" placeholder="optional"></td>' +
                     '<td><span class="ctr-slab-row-remove">&times;</span></td></tr>';
             }
 
             function rateAreaHtml(rateType) {
                 if (rateType === 'Slab Based' || rateType === 'Step Up') {
                     return '<div class="ctr-slab-wrap"><table class="ctr-slab-table">' +
-                        '<thead><tr><th>Min</th><th>Up To</th><th>Value</th><th>Formula</th><th></th></tr></thead>' +
+                        '<thead><tr><th>Up To</th><th>Value</th><th></th></tr></thead>' +
                         '<tbody class="ctr-slab-rows">' + slabRowHtml() + '</tbody></table>' +
                         '<button type="button" class="btn btn-xs btn-outline-primary ctr-slab-add-row mt-1">+ Add Slab</button></div>';
                 }
@@ -1138,9 +1138,11 @@
                     }
                 });
 
-                // If the currently checked radio is hidden, check the first visible one
+                // Only auto-correct if something WAS checked but its label is now hidden
+                // (nature switched). Do NOT auto-select when nothing is checked yet —
+                // new charges should start with no Charge Action selected.
                 var checked = $radios.filter(':checked');
-                if (checked.length === 0 || !checked.closest('label').is(':visible')) {
+                if (checked.length > 0 && !checked.closest('label').is(':visible')) {
                     if (firstVisible) {
                         $(firstVisible).prop('checked', true).trigger('change');
                     }
@@ -1176,14 +1178,10 @@
                 slabs.forEach(function(s) {
                     var row = document.createElement('tr');
                     row.innerHTML =
-                        '<td><input type="number" class="form-control form-control-sm ctr-slab-min" value="' + (
-                            s.Min ?? '') + '"></td>' +
                         '<td><input type="number" class="form-control form-control-sm ctr-slab-upto" value="' +
-                        (s.Slab ?? s.upto ?? '') + '"></td>' +
+                        (s.upto ?? s.Slab ?? '') + '"></td>' +
                         '<td><input type="number" step="0.01" class="form-control form-control-sm ctr-slab-value" value="' +
                         (s.value ?? '') + '"></td>' +
-                        '<td><input type="text" class="form-control form-control-sm ctr-slab-formula" value="' +
-                        (s.Formula ?? '') + '"></td>' +
                         '<td><span class="ctr-slab-row-remove">&times;</span></td>';
                     tbody.appendChild(row);
                 });
@@ -1191,14 +1189,10 @@
 
             function addSlabRow(wrap) {
                 var tbody = wrap.querySelector('.ctr-slab-rows');
-                var rows = tbody.querySelectorAll('tr');
-                var lastUpto = rows.length ? rows[rows.length - 1].querySelector('.ctr-slab-upto').value : '';
                 var tr = document.createElement('tr');
-                tr.innerHTML = '<td><input type="number" class="form-control form-control-sm ctr-slab-min" value="' + (
-                        lastUpto || '') + '"></td>' +
-                    '<td><input type="number" class="form-control form-control-sm ctr-slab-upto"></td>' +
+                tr.innerHTML =
+                    '<td><input type="number" class="form-control form-control-sm ctr-slab-upto" placeholder="e.g. 500"></td>' +
                     '<td><input type="number" step="0.01" class="form-control form-control-sm ctr-slab-value"></td>' +
-                    '<td><input type="text" class="form-control form-control-sm ctr-slab-formula" placeholder="optional"></td>' +
                     '<td><span class="ctr-slab-row-remove">&times;</span></td>';
                 tbody.appendChild(tr);
             }
@@ -1269,7 +1263,7 @@
                         <div style="flex:1;">
                             <label class="ctr-lbl">Charge Action</label>
                             <div class="ctr-cf-action-group">
-                                <label class="mr-3"><input type="radio" name="ctr-cf-action" value="R" data-show-for="cost" checked> Reimbursement</label>
+                                <label class="mr-3"><input type="radio" name="ctr-cf-action" value="R" data-show-for="cost"> Reimbursement</label>
                                 <label class="mr-3"><input type="radio" name="ctr-cf-action" value="A" data-show-for="revenue"> Accrual</label>
                                 <label><input type="radio" name="ctr-cf-action" value="M" data-show-for="revenue,cost"> Markup</label>
                             </div>
@@ -1494,7 +1488,7 @@
 
                 // --- Charge Action and Markup prefill ---
                 // First, set the action value (if stored) to the radio, but only if it's visible.
-                var actionVal = chargeToEdit.chargeAction || 'R';
+                var actionVal = chargeToEdit.chargeAction || '';
                 var $actionRadio = $(wrap).find('input[name="ctr-cf-action"][value="' + actionVal + '"]');
                 if ($actionRadio.length && $actionRadio.closest('label').is(':visible')) {
                     $actionRadio.prop('checked', true);
@@ -1595,9 +1589,20 @@
                     $(this).closest('tr').remove();
                 });
 
-                // Charge Action toggle
+                // Charge Action toggle — also allows unchecking by clicking the
+                // already-selected radio again (radios don't support this natively).
+                $(wrap).find('input[name="ctr-cf-action"]').on('mousedown', function() {
+                    // Record whether this radio was checked BEFORE the click takes effect
+                    $(this).data('was-checked', this.checked);
+                });
+                $(wrap).find('input[name="ctr-cf-action"]').on('click', function() {
+                    if ($(this).data('was-checked')) {
+                        this.checked = false;
+                        $(wrap).find('.ctr-cf-markup-wrap').hide();
+                    }
+                });
                 $(wrap).find('input[name="ctr-cf-action"]').on('change', function() {
-                    $(wrap).find('.ctr-cf-markup-wrap').toggle(this.value === 'M');
+                    $(wrap).find('.ctr-cf-markup-wrap').toggle(this.checked && this.value === 'M');
                 });
 
                 // Markup Rate Type change
@@ -1723,29 +1728,22 @@
                     var slabs = [];
                     var valid = true;
                     rows.forEach(function(row) {
-                        var minVal = row.querySelector('.ctr-slab-min').value;
                         var uptoVal = row.querySelector('.ctr-slab-upto').value;
                         var value = row.querySelector('.ctr-slab-value').value;
-                        var formula = row.querySelector('.ctr-slab-formula').value.trim();
                         if (uptoVal === '' || value === '') {
                             valid = false;
                             return;
                         }
                         slabs.push({
-                            Slab: parseFloat(uptoVal),
-                            value: parseFloat(value),
-                            Formula: formula,
-                            Min: minVal !== '' ? parseFloat(minVal) : 0
+                            upto: parseFloat(uptoVal),
+                            value: parseFloat(value)
                         });
                     });
                     if (!valid || !slabs.length) {
                         alert('Please fill all slab rows (Up To and Value are required).');
                         return;
                     }
-                    charge.rateSlab = {
-                        Type: rateType === 'Step Up' ? 'StepUp' : 'LessThanOrEqual',
-                        Slabs: slabs
-                    };
+                    charge.rateSlab = slabs;
                 } else if (rateType === 'Formula') {
                     var formulaVal = wrap.querySelector('.ctr-cf-formula').value.trim();
                     if (!formulaVal) {
@@ -1756,8 +1754,10 @@
                 }
 
                 // --- Charge Action and Markup ---
-                var actionVal = wrap.querySelector('input[name="ctr-cf-action"]:checked').value;
+                var actionRadio = wrap.querySelector('input[name="ctr-cf-action"]:checked');
+                var actionVal = actionRadio ? actionRadio.value : '';
                 charge.chargeAction = actionVal;
+                charge.to_be_added = (actionVal === 'A' || actionVal === 'R') ? 1 : 0;
                 charge.markupRateType = null;
                 charge.markupRate = null;
                 charge.markupFormula = null;
@@ -1855,7 +1855,7 @@
                     rate: null,
                     formula: null,
                     rateSlab: null,
-                    chargeAction: 'A',
+                    chargeAction: '',
                     markupRateType: null,
                     markupRate: null,
                     markupFormula: null,

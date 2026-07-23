@@ -1576,12 +1576,14 @@ class ContractController extends Controller
             return response()->json(['success' => false, 'message' => 'is_revenue is required'], 400);
         }
 
+        $revenueOrCost = (int) $isRevenue === 1 ? 'Revenue' : 'Cost';
+
         try {
             $pdo = DB::connection('sqlsrv')->getPdo();
             $stmt = $pdo->prepare(
-                'SET NOCOUNT ON; EXEC dbo.sp_Contract_FormulaList @IsRevenue = ?, @ContractID = ?, @ServiceFilterID = ?',
+                'SET NOCOUNT ON; EXEC dbo.sp_Contract_FormulaList @RevenueOrCost = ?, @ContractID = ?, @ServiceFilterID = ?',
             );
-            $stmt->execute([(int) $isRevenue, $contract, $serviceFilterId]);
+            $stmt->execute([$revenueOrCost, $contract, $serviceFilterId]);
 
             $rows = $stmt->fetchAll(\PDO::FETCH_NUM);
 
@@ -1590,7 +1592,8 @@ class ContractController extends Controller
                 is_string($rows[0][0] ?? null) &&
                 (str_starts_with($rows[0][0], 'Error Occured') ||
                     str_contains($rows[0][0], 'mandatory') ||
-                    str_contains($rows[0][0], 'not present in the system'));
+                    str_contains($rows[0][0], 'not present in the system') ||
+                    str_contains($rows[0][0], 'should have option'));
 
             if ($isErrorRow) {
                 return response()->json(['success' => false, 'message' => $rows[0][0]], 422);
