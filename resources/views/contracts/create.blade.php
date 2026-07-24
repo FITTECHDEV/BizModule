@@ -1652,37 +1652,6 @@
                 // Initial toggle on form load
                 toggleAccruableReimbursable();
 
-                // ── Refresh charge codes when nature changes ──────────
-                $(wrap).find('.ctr-cf-nature').on('change', function() {
-                    var nature = $(this).val();
-                    var chargeType = (nature === 'Cost') ? 'Cost' : 'Revenue';
-
-                    fetchMasterList('charge-codes', {
-                        office_code: OFFICE_CODE,
-                        charge_type: chargeType,
-                        filter: ''
-                    }).done(function(res) {
-                        if (res.success) {
-                            var options = res.charge_codes.map(function(c) {
-                                return {
-                                    Code: c.Code,
-                                    Label: c.Code + ' - ' + (c.Description || c.Name || c.Code)
-                                };
-                            });
-                            var $select = $(wrap).find('.ctr-cf-code');
-                            populateSelect($select, options, 'Code', 'Label');
-                            // Preserve selected value if it exists in the new list
-                            var currentVal = $select.val();
-                            if (currentVal && !$select.find('option[value="' + currentVal + '"]')
-                                .length) {
-                                $select.val('');
-                            }
-                            // ✅ ADD THIS LINE
-                            $select.trigger('change');
-                        }
-                    });
-                });
-
                 // Re-toggle when Charge Nature changes
                 $(wrap).find('.ctr-cf-nature').on('change', function() {
                     toggleAccruableReimbursable();
@@ -1764,9 +1733,12 @@
                     rateType: rateType
                 };
                 // ── Read Reimbursable/Accrual status ──────────────────────────────
-                var isAccruable = wrap.querySelector('#ctrIsAccruable')?.checked || false;
-                var isReimbursable = wrap.querySelector('#ctrIsReimbursable')?.checked || false;
-                var toBeAdded = (isAccruable || isReimbursable) ? 1 : 0;
+                if (toBeAdded === 1) {
+                    charge.markupRateType = charge.rateType;
+                    charge.markupRate = charge.rate;
+                    charge.markupRateSlab = charge.rateSlab;
+                    charge.markupFormula = charge.formula;
+                }
                 var missing = Object.keys(required).filter(function(k) {
                     return !required[k];
                 });

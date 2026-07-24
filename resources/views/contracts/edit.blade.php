@@ -2015,10 +2015,16 @@
                 // --- Charge Action and Markup ---
                 var actionVal = derivedAction;
                 charge.chargeAction = actionVal;
-                charge.toBeAdded = (actionVal === 'M') ? 1 : 0;
 
                 charge.isAccruable = wrap.querySelector('.ctr-cf-accruable').checked ? '1' : '0';
                 charge.isReimbursable = wrap.querySelector('.ctr-cf-reimbursable').checked ? '1' : '0';
+
+                // toBeAdded triggers the SP's auto-created counterpart charge — this
+                // fires for Cost-with-Markup (actionVal === 'M') AND for plain
+                // Accruable/Reimbursable checkboxes, since both create a second row.
+                charge.toBeAdded = (actionVal === 'M' || charge.isAccruable === '1' || charge.isReimbursable === '1') ?
+                    1 : 0;
+
                 charge.markupRateType = null;
                 charge.markupRate = null;
                 charge.markupFormula = null;
@@ -2039,6 +2045,14 @@
                         }
                         charge.markupRate = parseFloat(parseFloat(mkRateVal).toFixed(5));
                     }
+                } else if (charge.toBeAdded === 1) {
+                    // Accruable/Reimbursable without markup: the counterpart charge should
+                    // carry the same rate as the primary charge, not 0 — otherwise the SP's
+                    // second insert (@ToBeAdded = 1 branch) writes Rate = 0 / empty slabs.
+                    charge.markupRateType = charge.rateType;
+                    charge.markupRate = charge.rate;
+                    charge.markupRateSlab = charge.rateSlab;
+                    charge.markupFormula = charge.formula;
                 }
 
                 var saveBtn = wrap.querySelector('.ctr-cf-save');
