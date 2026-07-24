@@ -1636,16 +1636,14 @@
                         $(wrap).find('#ctr-is-accruable-container').show();
                         $(wrap).find('#ctr-is-reimbursable-container').hide();
                         $(wrap).find('#ctrIsReimbursable').prop('checked', false);
-                        // Restore previous accruable value if editing
-                        if (chargeToEdit && chargeToEdit.toBeAdded) {
+                        if (chargeToEdit && chargeToEdit.isAccruable === '1') {
                             $(wrap).find('#ctrIsAccruable').prop('checked', true);
                         }
-                    } else { // Cost
+                    } else {
                         $(wrap).find('#ctr-is-accruable-container').hide();
                         $(wrap).find('#ctr-is-reimbursable-container').show();
                         $(wrap).find('#ctrIsAccruable').prop('checked', false);
-                        // Restore previous reimbursable value if editing
-                        if (chargeToEdit && chargeToEdit.toBeAdded) {
+                        if (chargeToEdit && chargeToEdit.isReimbursable === '1') {
                             $(wrap).find('#ctrIsReimbursable').prop('checked', true);
                         }
                     }
@@ -1786,6 +1784,8 @@
                     chargeBasedOnUOM: wrap.querySelector('.ctr-cf-uom').value.trim(),
                     chargeCurr: wrap.querySelector('.ctr-cf-currency').value,
                     toBeAdded: toBeAdded,
+                    isAccruable: isAccruable ? '1' : '0',
+                    isReimbursable: isReimbursable ? '1' : '0',
                     minAmount: wrap.querySelector('.ctr-cf-min').value !== '' ? parseFloat(parseFloat(wrap
                         .querySelector('.ctr-cf-min').value).toFixed(2)) : null,
                     maxAmount: wrap.querySelector('.ctr-cf-max').value !== '' ? parseFloat(parseFloat(wrap

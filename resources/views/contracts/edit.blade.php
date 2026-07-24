@@ -251,6 +251,8 @@
                                                             isset($charge->MarkupRateSlab) && $charge->MarkupRateSlab
                                                                 ? json_decode($charge->MarkupRateSlab, true)
                                                                 : null,
+                                                        'isAccruable' => $charge->IsAccruable ?? '0',
+                                                        'isReimbursable' => $charge->IsReimbursable ?? '0',
                                                     ];
                                                 @endphp
                                                 <tr>
@@ -1244,15 +1246,26 @@
 
             function slabRowHtml() {
                 return '<tr>' +
+                    '<td><input type="number" class="form-control form-control-sm ctr-slab-min" value="0" step="any"></td>' +
                     '<td><input type="number" class="form-control form-control-sm ctr-slab-upto" placeholder="e.g. 500"></td>' +
                     '<td><input type="number" step="0.01" class="form-control form-control-sm ctr-slab-value"></td>' +
+                    '<td><input type="text" class="form-control form-control-sm ctr-slab-formula" placeholder="optional"></td>' +
                     '<td><span class="ctr-slab-row-remove">&times;</span></td></tr>';
             }
 
             function rateAreaHtml(rateType) {
                 if (rateType === 'Slab Based' || rateType === 'Step Up') {
-                    return '<div class="ctr-slab-wrap"><table class="ctr-slab-table">' +
-                        '<thead><tr><th>Up To</th><th>Value</th><th></th></tr></thead>' +
+                    return '<div class="ctr-slab-wrap">' +
+                        '<div class="ctr-field mb-1" style="max-width:200px;">' +
+                        '<label class="ctr-lbl">Slab Type</label>' +
+                        '<select class="form-control form-control-sm ctr-slab-type">' +
+                        '<option value="LessThanOrEqual" selected>LessThanOrEqual</option>' +
+                        '<option value="LessThan">LessThan</option>' +
+                        '<option value="GreaterThan">GreaterThan</option>' +
+                        '<option value="GreaterThanOrEqual">GreaterThanOrEqual</option>' +
+                        '</select></div>' +
+                        '<table class="ctr-slab-table">' +
+                        '<thead><tr><th>Min</th><th>Slab (Up To)</th><th>Value</th><th>Formula (optional)</th><th></th></tr></thead>' +
                         '<tbody class="ctr-slab-rows">' + slabRowHtml() + '</tbody></table>' +
                         '<button type="button" class="btn btn-xs btn-outline-primary ctr-slab-add-row mt-1">+ Add Slab</button></div>';
                 }
@@ -1306,16 +1319,30 @@
 
             function fillSlabRows(tbody, rateSlabData) {
                 if (!tbody || !rateSlabData) return;
-                var slabs = Array.isArray(rateSlabData) ? rateSlabData : (rateSlabData.Slabs || []);
+                var slabs = [];
+                if (Array.isArray(rateSlabData)) {
+                    // Old format: simple array of {upto, value} – convert
+                    slabs = rateSlabData;
+                } else if (rateSlabData.Slabs) {
+                    slabs = rateSlabData.Slabs;
+                }
                 if (!slabs.length) return;
                 tbody.innerHTML = '';
                 slabs.forEach(function(s) {
                     var row = document.createElement('tr');
+                    var min = s.Min ?? 0;
+                    var upto = s.Slab ?? s.upto ?? '';
+                    var value = s.value ?? '';
+                    var formula = s.Formula ?? '';
                     row.innerHTML =
+                        '<td><input type="number" class="form-control form-control-sm ctr-slab-min" value="' +
+                        min + '"></td>' +
                         '<td><input type="number" class="form-control form-control-sm ctr-slab-upto" value="' +
-                        (s.upto ?? s.Slab ?? '') + '"></td>' +
+                        upto + '"></td>' +
                         '<td><input type="number" step="0.01" class="form-control form-control-sm ctr-slab-value" value="' +
-                        (s.value ?? '') + '"></td>' +
+                        value + '"></td>' +
+                        '<td><input type="text" class="form-control form-control-sm ctr-slab-formula" value="' +
+                        formula + '"></td>' +
                         '<td><span class="ctr-slab-row-remove">&times;</span></td>';
                     tbody.appendChild(row);
                 });
@@ -1325,8 +1352,10 @@
                 var tbody = wrap.querySelector('.ctr-slab-rows');
                 var tr = document.createElement('tr');
                 tr.innerHTML =
+                    '<td><input type="number" class="form-control form-control-sm ctr-slab-min" value="0"></td>' +
                     '<td><input type="number" class="form-control form-control-sm ctr-slab-upto" placeholder="e.g. 500"></td>' +
                     '<td><input type="number" step="0.01" class="form-control form-control-sm ctr-slab-value"></td>' +
+                    '<td><input type="text" class="form-control form-control-sm ctr-slab-formula" placeholder="optional"></td>' +
                     '<td><span class="ctr-slab-row-remove">&times;</span></td>';
                 tbody.appendChild(tr);
             }
@@ -1335,7 +1364,7 @@
                 var area = wrap.querySelector('.ctr-fb-ratearea');
                 if (rateType === 'Slab Based') {
                     area.innerHTML = '<div class="ctr-slab-wrap"><table class="ctr-slab-table">' +
-                        '<thead><tr><th>Up To</th><th>Value</th><th></th></tr></thead>' +
+                        '<thead><tr><th>Min</th><th>Slab (Up To)</th><th>Value</th><th>Formula (optional)</th><th></th></tr></thead>' +
                         '<tbody class="ctr-slab-rows">' + slabRowHtml() + '</tbody></table>' +
                         '<button type="button" class="btn btn-xs btn-outline-primary ctr-slab-add-row mt-1">+ Add Slab</button></div>';
                 } else {
@@ -1385,18 +1414,49 @@
 
             function chargeFormHtml() {
                 return `
-                    <!-- Single Nature+Action row, matching quotation module's layout -->
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                        <div>
-                            <label class="mr-3 ctr-natureaction-lbl"><input type="radio" name="ctr-cf-natureaction" value="Revenue"> Revenue</label>
-                            <label class="mr-3 ctr-natureaction-lbl"><input type="radio" name="ctr-cf-natureaction" value="Cost"> Cost</label>
-                            <label class="ctr-natureaction-lbl"><input type="radio" name="ctr-cf-natureaction" value="CostMarkup"> Cost with markup</label>
-                        </div>
-                        <div class="ctr-cf-base-currency text-muted" style="font-size:.85rem;"></div>
+        <!-- Nature + Accruals + Base Currency -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; gap:20px;">
+
+            <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
+
+                <!-- Nature -->
+                <div>
+                    <label class="mr-3 ctr-natureaction-lbl">
+                        <input type="radio" name="ctr-cf-natureaction" value="Revenue" checked> Revenue
+                    </label>
+                    <label class="mr-3 ctr-natureaction-lbl">
+                        <input type="radio" name="ctr-cf-natureaction" value="Cost"> Cost
+                    </label>
+                    <label class="ctr-natureaction-lbl">
+                        <input type="radio" name="ctr-cf-natureaction" value="CostMarkup"> Cost with markup
+                    </label>
+                </div>
+
+                <!-- Accruable / Reimbursable -->
+                <div class="ctr-cf-accruals-row" style="display:flex; gap:20px; align-items:center;">
+                    <div class="ctr-cf-accruable-wrap">
+                        <label class="ctr-natureaction-lbl mb-0">
+                            <input type="checkbox" class="ctr-cf-accruable">
+                            Is Accruable
+                        </label>
                     </div>
-            
-                    <div class="ctr-grid-2" style="display:grid; grid-template-columns:1fr 1fr; gap:12px 16px;">
-            
+
+                    <div class="ctr-cf-reimbursable-wrap">
+                        <label class="ctr-natureaction-lbl mb-0">
+                            <input type="checkbox" class="ctr-cf-reimbursable">
+                            Is Reimbursable (Adds to Revenue)
+                        </label>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Base Currency -->
+            <div class="ctr-cf-base-currency text-muted" style="font-size:.85rem;"></div>
+                </div>
+        
+                <div class="ctr-grid-2" style="display:grid; grid-template-columns:1fr 1fr; gap:12px 16px;">
+        
                     <!-- Row 1 -->
                     <div class="ctr-field">
                         <label class="ctr-lbl ctr-required">Charge Code</label>
@@ -1404,12 +1464,12 @@
                             <option value="">-- Select --</option>
                         </select>
                     </div>
-                    
-                <div class="ctr-field">
+        
+                    <div class="ctr-field">
                         <label class="ctr-lbl">Charge Description</label>
                         <input type="text" class="form-control form-control-sm ctr-cf-desc ctr-field-readonly" readonly>
                     </div>
-                    
+        
                     <!-- Row 2 -->
                     <div class="ctr-field">
                         <label class="ctr-lbl ctr-required">Charge Based On</label>
@@ -1417,14 +1477,14 @@
                             <option value="">-- Select --</option>
                         </select>
                     </div>
-                    
+        
                     <div class="ctr-field">
                         <label class="ctr-lbl ctr-required">Based On UOM</label>
                         <select class="form-control form-control-sm ctr-cf-uom">
                             <option value="">Select Based On first</option>
                         </select>
                     </div>
-                    
+        
                     <!-- Row 3 -->
                     <div class="ctr-field">
                         <label class="ctr-lbl">Currency</label>
@@ -1432,6 +1492,7 @@
                             <option value="">-- Select --</option>
                         </select>
                     </div>
+
                     
                     <div class="ctr-field">
                         <label class="ctr-lbl">Charge Category</label>
@@ -1470,15 +1531,24 @@
                     <div class="ctr-cf-markup-wrap mt-2" style="display:none;">
                         <strong class="ctr-lbl">Markup</strong>
             
-                        <div class="ctr-field mt-1" style="max-width:220px;">
-                            <label class="ctr-lbl">Markup Rate Type</label>
-                                <select class="form-control form-control-sm ctr-mk-ratetype">
-                                <option value="">-- Select --</option>
-                                <option value="Single">Single</option>
+                    <div class="ctr-field mt-1 d-flex" style="gap:8px; max-width:340px;">
+                        <div style="flex:1;">
+                            <label class="ctr-lbl">Increase By</label>
+                            <input type="number" step="0.01" class="form-control form-control-sm ctr-mk-rate" value="0">
+                        </div>
+                        <div style="flex:1;">
+                            <label class="ctr-lbl">&nbsp;</label>
+                            <select class="form-control form-control-sm ctr-mk-ratetype">
+                                <option value="Percentage">Percentage</option>
+                                <option value="Fixed">Fixed</option>
                             </select>
                         </div>
-            
-                        <div class="ctr-field ctr-mk-inline-rate"></div>
+                    </div>
+                    
+                    <div class="ctr-field" style="max-width:220px;">
+                        <label class="ctr-lbl">Amount</label>
+                        <input type="number" step="0.01" class="form-control form-control-sm ctr-mk-amount" readonly>
+                    </div>
             
                         <div class="ctr-mk-ratearea mt-2"></div>
                     </div>
@@ -1627,6 +1697,7 @@
                     $(wrap).find('input[name="ctr-cf-natureaction"][value="' + naVal + '"]').prop('checked', true);
                 }
                 $(wrap).find('.ctr-cf-markup-wrap').toggle(naVal === 'CostMarkup');
+                $(wrap).find('.ctr-cf-accruals-row').toggle(naVal !== 'CostMarkup'); // <-- add this line
 
                 if (actionVal === 'M') {
                     var normalizedMarkupRateType = normalizeRateType(chargeToEdit.markupRateType);
@@ -1647,6 +1718,11 @@
                 $(wrap).find('.ctr-cf-ratetype').val(normalizedRateType);
                 $(wrap).find('.ctr-cf-inline-rate').html(inlineRateHtml(normalizedRateType));
                 $(wrap).find('.ctr-cf-ratearea').html(rateAreaHtml(normalizedRateType));
+
+                $(wrap).find('.ctr-cf-accruable').prop('checked', chargeToEdit.isAccruable == '1');
+                $(wrap).find('.ctr-cf-reimbursable').prop('checked', chargeToEdit.isReimbursable == '1');
+                $(wrap).find('.ctr-cf-accruable-wrap').toggle(naVal === 'Revenue');
+                $(wrap).find('.ctr-cf-reimbursable-wrap').toggle(naVal === 'Cost');
 
                 // var $markupRadio = $(wrap).find('input[name="ctr-cf-action"][value="M"]');
                 // $markupRadio.closest('label').toggle(normalizedRateType === 'Single');
@@ -1672,6 +1748,19 @@
                         $(wrap).find('.ctr-cf-base-currency').text('Base Currency: ' + base);
                     }
                 });
+            }
+
+            function recalcMarkupAmount(wrap) {
+                var baseRate = parseFloat(wrap.querySelector('.ctr-cf-rate')?.value) || 0;
+                var qty = parseFloat(wrap.querySelector('.ctr-cf-quantity')?.value) ||
+                    1; // adjust if field name differs
+                var baseAmount = baseRate * qty;
+
+                var mkRate = parseFloat(wrap.querySelector('.ctr-mk-rate').value) || 0;
+                var mkType = wrap.querySelector('.ctr-mk-ratetype').value;
+
+                var amount = mkType === 'Fixed' ? mkRate : baseAmount * (mkRate / 100);
+                wrap.querySelector('.ctr-mk-amount').value = amount.toFixed(2);
             }
 
             function bindChargeFormEvents(svcId, chargeId, wrap, chargeToEdit) {
@@ -1700,6 +1789,13 @@
                 });
                 $(wrap).find('input[name="ctr-cf-natureaction"]').on('change', function() {
                     $(wrap).find('.ctr-cf-markup-wrap').toggle(this.value === 'CostMarkup');
+                    $(wrap).find('.ctr-cf-accruals-row').toggle(this.value !== 'CostMarkup');
+
+                    var isRevenue = (this.value === 'Revenue');
+                    $(wrap).find('.ctr-cf-accruable-wrap').toggle(isRevenue);
+                    $(wrap).find('.ctr-cf-reimbursable-wrap').toggle(!isRevenue && this.value === 'Cost');
+                    if (!isRevenue) $(wrap).find('.ctr-cf-accruable').prop('checked', false);
+                    if (isRevenue) $(wrap).find('.ctr-cf-reimbursable').prop('checked', false);
 
                     var isRevenueForFormula = (this.value === 'Revenue') ? 1 : 0;
                     loadFormulaFields(svcId, isRevenueForFormula).done(function(res) {
@@ -1716,9 +1812,11 @@
                         }
                     });
                 });
-                // Slab add/remove for main charge (if not already bound elsewhere)
-                $(wrap).find('.ctr-slab-add-row').on('click', function() {
-                    addSlabRow(wrap);
+                // Slab add/remove for main charge — delegated so it also catches
+                // the Formula section's slab table, which is created dynamically
+                // later via renderFormulaRateArea() and doesn't exist at bind time.
+                $(wrap).on('click', '.ctr-slab-add-row', function() {
+                    addSlabRow(this.closest('.ctr-slab-wrap').parentNode || wrap);
                 });
                 $(wrap).on('click', '.ctr-slab-row-remove', function() {
                     $(this).closest('tr').remove();
@@ -1877,26 +1975,34 @@
                     }
                     charge.rate = parseFloat(parseFloat(rateVal).toFixed(5));
                 } else if (rateType === 'Slab Based' || rateType === 'Step Up') {
+                    var slabType = wrap.querySelector('.ctr-slab-type')?.value || 'LessThanOrEqual';
                     var rows = wrap.querySelectorAll('.ctr-slab-rows tr');
                     var slabs = [];
                     var valid = true;
                     rows.forEach(function(row) {
-                        var uptoVal = row.querySelector('.ctr-slab-upto').value;
-                        var value = row.querySelector('.ctr-slab-value').value;
-                        if (uptoVal === '' || value === '') {
+                        var minVal = row.querySelector('.ctr-slab-min')?.value || '0';
+                        var upto = row.querySelector('.ctr-slab-upto')?.value;
+                        var value = row.querySelector('.ctr-slab-value')?.value;
+                        var formula = row.querySelector('.ctr-slab-formula')?.value || '';
+                        if (upto === '' || value === '') {
                             valid = false;
                             return;
                         }
                         slabs.push({
-                            upto: parseFloat(uptoVal),
-                            value: parseFloat(value)
+                            Min: parseFloat(minVal) || 0,
+                            Slab: parseFloat(upto),
+                            value: parseFloat(value),
+                            Formula: formula
                         });
                     });
                     if (!valid || !slabs.length) {
-                        alert('Please fill all slab rows (Up To and Value are required).');
+                        alert('Please fill all slab rows (Min, Slab, Value are required).');
                         return;
                     }
-                    charge.rateSlab = slabs;
+                    charge.rateSlab = {
+                        Type: slabType,
+                        Slabs: slabs
+                    };
                 } else if (rateType === 'Formula') {
                     var formulaVal = wrap.querySelector('.ctr-cf-formula').value.trim();
                     if (!formulaVal) {
@@ -1909,7 +2015,10 @@
                 // --- Charge Action and Markup ---
                 var actionVal = derivedAction;
                 charge.chargeAction = actionVal;
-                charge.toBeAdded = (actionVal === 'A' || actionVal === 'R') ? 1 : 0;
+                charge.toBeAdded = (actionVal === 'M') ? 1 : 0;
+
+                charge.isAccruable = wrap.querySelector('.ctr-cf-accruable').checked ? '1' : '0';
+                charge.isReimbursable = wrap.querySelector('.ctr-cf-reimbursable').checked ? '1' : '0';
                 charge.markupRateType = null;
                 charge.markupRate = null;
                 charge.markupFormula = null;
@@ -2044,6 +2153,8 @@
                 wrap.innerHTML = chargeFormHtml();
                 bindChargeFormEvents(svcId, null, wrap, emptyCharge);
                 loadChargeFormMasters(wrap, emptyCharge);
+                $(wrap).find('input[name="ctr-cf-natureaction"]:checked').trigger(
+                    'change');
                 loadFormulaFields(svcId, 1).done(function(res) {
                     if (res.success) FORMULA_FIELDS = res.data.map(function(name) {
                         return {

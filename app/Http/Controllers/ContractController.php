@@ -398,7 +398,9 @@ class ContractController extends Controller
             'MarkRateSlabJson' => !empty($charge['markupRateSlab']) ? json_encode($charge['markupRateSlab']) : '',
             'RevenueOrCost' => ($charge['chargeNature'] ?? '') === 'Cost' ? 'Cost' : 'Revenue',
             'Category' => $charge['chargeCategory'] ?? '',
-            'ToBeAdded' => $charge['to_be_added'] ?? 0,
+            'ToBeAdded' => $charge['toBeAdded'] ?? 0,
+            'IsAccruable' => $charge['isAccruable'] ?? '0',
+            'IsReimbursable' => $charge['isReimbursable'] ?? '0',
         ];
 
         $result = $this->callContractSP('sp_Contractinfo_ServiceCharges', $chargePayload);
@@ -425,12 +427,15 @@ class ContractController extends Controller
     ): JsonResponse {
         $charge = $request->all();
 
+        $draft = Session::get($this->sessionKey($contract));
+        $contractInfoId = $draft['contract_id'] ?? $contract;
+
         $chargePayload = [
             'OperationType' => 'ServiceBasedCharges',
             'SubmittedDatetime' => $this->submittedDatetime(),
             'SubmittedBy' => auth()->user()->name ?? 'system',
             'Action' => 'Update',
-            'ContractInfoID' => $contract,
+            'ContractInfoID' => $contractInfoId,
             'ServiceAndFilterID' => $serviceFilterId,
             'ServiceChargeID' => $chargeId,
             'ChargeCode' => $charge['chargeCode'] ?? '',
@@ -455,8 +460,9 @@ class ContractController extends Controller
             // enables them.
             'RevenueOrCost' => ($charge['chargeNature'] ?? '') === 'Cost' ? 'Cost' : 'Revenue',
             'Category' => $charge['chargeCategory'] ?? '',
-            // 'ChargeDescription' => $charge['chargeDescription'] ?? '',
-            'ToBeAdded' => $charge['to_be_added'] ?? 0,
+            'ToBeAdded' => $charge['toBeAdded'] ?? 0,
+            'IsAccruable' => $charge['isAccruable'] ?? '0',
+            'IsReimbursable' => $charge['isReimbursable'] ?? '0',
         ];
 
         $result = $this->callContractSP('sp_Contractinfo_ServiceCharges', $chargePayload);
@@ -884,10 +890,19 @@ class ContractController extends Controller
             $stmt->execute([$officeCode, $chargeType, $filter]);
 
             $chargeCodes = [];
+            $rowsetIndex = 0;
             do {
+                $rowsetIndex++;
                 try {
                     $results = $stmt->fetchAll(\PDO::FETCH_OBJ);
-                    if (!empty($results) && isset($results[0]->Id)) {
+                    Log::info("getChargeCodes rowset {$rowsetIndex}", [
+                        'office_code' => $officeCode,
+                        'charge_type' => $chargeType,
+                        'count' => count($results),
+                        'first_row_keys' => !empty($results) ? array_keys((array) $results[0]) : null,
+                        'first_row_values' => !empty($results) ? array_values((array) $results[0]) : null,
+                    ]);
+                    if (!empty($results) && isset($results[0]->Code)) {
                         $chargeCodes = $results;
                         break;
                     }
@@ -898,10 +913,14 @@ class ContractController extends Controller
 
             return response()->json(['success' => true, 'charge_codes' => $chargeCodes]);
         } catch (\Exception $e) {
+            Log::error('getChargeCodes failed: ' . $e->getMessage(), [
+                'office_code' => $officeCode,
+                'charge_type' => $chargeType,
+            ]);
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
-
+    
     /**
      * GET /contract/masters/based-on
      */
