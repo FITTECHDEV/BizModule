@@ -1414,168 +1414,169 @@
 
             function chargeFormHtml() {
                 return `
-        <!-- Nature + Accruals + Base Currency -->
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; gap:20px;">
-
-            <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
-
-                <!-- Nature -->
-                <div>
-                    <label class="mr-3 ctr-natureaction-lbl">
-                        <input type="radio" name="ctr-cf-natureaction" value="Revenue" checked> Revenue
-                    </label>
-                    <label class="mr-3 ctr-natureaction-lbl">
-                        <input type="radio" name="ctr-cf-natureaction" value="Cost"> Cost
-                    </label>
-                    <label class="ctr-natureaction-lbl">
-                        <input type="radio" name="ctr-cf-natureaction" value="CostMarkup"> Cost with markup
-                    </label>
-                </div>
-
-                <!-- Accruable / Reimbursable -->
-                <div class="ctr-cf-accruals-row" style="display:flex; gap:20px; align-items:center;">
-                    <div class="ctr-cf-accruable-wrap">
-                        <label class="ctr-natureaction-lbl mb-0">
-                            <input type="checkbox" class="ctr-cf-accruable">
-                            Is Accruable
-                        </label>
-                    </div>
-
-                    <div class="ctr-cf-reimbursable-wrap">
-                        <label class="ctr-natureaction-lbl mb-0">
-                            <input type="checkbox" class="ctr-cf-reimbursable">
-                            Is Reimbursable (Adds to Revenue)
-                        </label>
-                    </div>
-                </div>
-
-            </div>
-
-            <!-- Base Currency -->
-            <div class="ctr-cf-base-currency text-muted" style="font-size:.85rem;"></div>
-                </div>
-        
-                <div class="ctr-grid-2" style="display:grid; grid-template-columns:1fr 1fr; gap:12px 16px;">
-        
-                    <!-- Row 1 -->
-                    <div class="ctr-field">
-                        <label class="ctr-lbl ctr-required">Charge Code</label>
-                        <select class="form-control form-control-sm ctr-cf-code">
-                            <option value="">-- Select --</option>
-                        </select>
-                    </div>
-        
-                    <div class="ctr-field">
-                        <label class="ctr-lbl">Charge Description</label>
-                        <input type="text" class="form-control form-control-sm ctr-cf-desc ctr-field-readonly" readonly>
-                    </div>
-        
-                    <!-- Row 2 -->
-                    <div class="ctr-field">
-                        <label class="ctr-lbl ctr-required">Charge Based On</label>
-                        <select class="form-control form-control-sm ctr-cf-basedon">
-                            <option value="">-- Select --</option>
-                        </select>
-                    </div>
-        
-                    <div class="ctr-field">
-                        <label class="ctr-lbl ctr-required">Based On UOM</label>
-                        <select class="form-control form-control-sm ctr-cf-uom">
-                            <option value="">Select Based On first</option>
-                        </select>
-                    </div>
-        
-                    <!-- Row 3 -->
-                    <div class="ctr-field">
-                        <label class="ctr-lbl">Currency</label>
-                        <select class="form-control form-control-sm ctr-cf-currency">
-                            <option value="">-- Select --</option>
-                        </select>
-                    </div>
-
-                    
-                    <div class="ctr-field">
-                        <label class="ctr-lbl">Charge Category</label>
-                        <select class="form-control form-control-sm ctr-cf-category">
-                            <option value="">-- Select --</option>
-                        </select>
-                    </div>
+                    <!-- Nature + Accruals + Base Currency -->
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; gap:20px;">
             
-                        <!-- Row 4 -->
-                        <div class="ctr-field">
-                            <label class="ctr-lbl">Min Amount</label>
-                            <input type="number" step="0.01" class="form-control form-control-sm ctr-cf-min">
+                        <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
+            
+                            <!-- Nature -->
+                            <div>
+                                <label class="mr-3 ctr-natureaction-lbl">
+                                    <input type="radio" name="ctr-cf-natureaction" value="Revenue" checked> Revenue
+                                </label>
+                                <label class="mr-3 ctr-natureaction-lbl">
+                                    <input type="radio" name="ctr-cf-natureaction" value="Cost"> Cost
+                                </label>
+                                <label class="ctr-natureaction-lbl">
+                                    <input type="radio" name="ctr-cf-natureaction" value="CostMarkup"> Cost with markup
+                                </label>
+                            </div>
+            
+                            <!-- Accruable / Reimbursable -->
+                            <div class="ctr-cf-accruals-row" style="display:flex; gap:20px; align-items:center;">
+                                <div class="ctr-cf-accruable-wrap">
+                                    <label class="ctr-natureaction-lbl mb-0">
+                                        <input type="checkbox" class="ctr-cf-accruable">
+                                        Is Accruable
+                                    </label>
+                                </div>
+            
+                                <div class="ctr-cf-reimbursable-wrap">
+                                    <label class="ctr-natureaction-lbl mb-0">
+                                        <input type="checkbox" class="ctr-cf-reimbursable">
+                                        Is Reimbursable (Adds to Revenue)
+                                    </label>
+                                </div>
+                            </div>
+            
                         </div>
             
+                        <!-- Base Currency -->
+                        <div class="ctr-cf-base-currency text-muted" style="font-size:.85rem;"></div>
+                    </div>
+            
+                    <div class="ctr-grid-2" style="display:grid; grid-template-columns:1fr 1fr; gap:12px 16px;">
+            
+                        <!-- Row 1 -->
+                        <div class="ctr-field">
+                            <label class="ctr-lbl ctr-required">Charge Code</label>
+                            <select class="form-control form-control-sm ctr-cf-code">
+                                <option value="">-- Select --</option>
+                            </select>
+                        </div>
+            
+                        <div class="ctr-field">
+                            <label class="ctr-lbl">Charge Description</label>
+                            <input type="text" class="form-control form-control-sm ctr-cf-desc ctr-field-readonly" readonly>
+                        </div>
+            
+                        <!-- Row 2 -->
+                        <div class="ctr-field">
+                            <label class="ctr-lbl ctr-required">Charge Based On</label>
+                            <select class="form-control form-control-sm ctr-cf-basedon">
+                                <option value="">-- Select --</option>
+                            </select>
+                        </div>
+            
+                        <div class="ctr-field">
+                            <label class="ctr-lbl ctr-required">Based On UOM</label>
+                            <select class="form-control form-control-sm ctr-cf-uom">
+                                <option value="">Select Based On first</option>
+                            </select>
+                        </div>
+    
+                        
                         <div class="ctr-field">
                             <label class="ctr-lbl">Max Amount</label>
                             <input type="number" step="0.01" class="form-control form-control-sm ctr-cf-max">
                         </div>
-            
-                        <!-- Row 5 -->
-                        <div class="ctr-field">
-                            <label class="ctr-lbl">Rate Type</label>
-                            <select class="form-control form-control-sm ctr-cf-ratetype">
-                                <option value="">-- Select --</option>
-                                <option value="Single">Single</option>
-                                <option value="Slab Based">Slab Based</option>
-                                <option value="Step Up">Step Up</option>
-                                <option value="Formula">Formula</option>
-                            </select>
-                        </div>
                         
-                        <div class="ctr-field ctr-cf-inline-rate"></div>
-                    </div>
-            
-                    <!-- Markup section -->
-                    <div class="ctr-cf-markup-wrap mt-2" style="display:none;">
-                        <strong class="ctr-lbl">Markup</strong>
-                    
-                        <div class="ctr-grid-2" style="display:grid; grid-template-columns:1fr 1fr; gap:12px 16px; margin-top:6px;">
-                    
-                            <div class="ctr-field d-flex" style="gap:8px;">
-                                <div style="flex:1;">
-                                    <label class="ctr-lbl">Increase By</label>
-                                    <input type="number" step="0.01" class="form-control form-control-sm ctr-mk-rate" value="0.00">
-                                </div>
-                                <div style="flex:1;">
-                                    <label class="ctr-lbl">&nbsp;</label>
-                                    <select class="form-control form-control-sm ctr-mk-ratetype">
-                                        <option value="Percentage">Percentage</option>
-                                        <option value="Fixed">Fixed</option>
-                                    </select>
-                                </div>
-                            </div>
-                    
+                            <!-- Row 4 -->
                             <div class="ctr-field">
-                                <label class="ctr-lbl">Amount</label>
-                                <input type="number" step="0.01" class="form-control form-control-sm ctr-mk-amount" value="0.00" readonly>
+                                <label class="ctr-lbl">Min Amount</label>
+                                <input type="number" step="0.01" class="form-control form-control-sm ctr-cf-min">
                             </div>
-                    
+                        
                             <div class="ctr-field">
-                                <label class="ctr-lbl ctr-required">Exchange Rate</label>
-                                <input type="number" step="0.00001" class="form-control form-control-sm ctr-mk-exrate" value="0" readonly>
+                                <label class="ctr-lbl">Charge Category</label>
+                                <select class="form-control form-control-sm ctr-cf-category">
+                                    <option value="">-- Select --</option>
+                                </select>
                             </div>
-                    
-                            <div class="ctr-field">
-                                <label class="ctr-lbl">Amount in Base Currency (<span class="ctr-mk-basecurr-code">SSP</span>)</label>
-                                <input type="number" step="0.01" class="form-control form-control-sm ctr-mk-baseamount" value="0" readonly>
-                            </div>
-                    
+                        
                         </div>
-                    
-                        <div class="ctr-mk-ratearea mt-2"></div>
-                    </div>
-            
-                    <!-- Slab / Formula area -->
-                    <div class="ctr-cf-ratearea mt-2"></div>
-                                
-                    <div class="d-flex justify-content-end mt-2">
-                        <button type="button" class="btn btn-sm btn-secondary mr-2 ctr-cf-cancel">Cancel</button>
-                        <button type="button" class="btn btn-sm btn-primary mr-2 ctr-cf-save-add-more">Save &amp; Add More</button>
-                        <button type="button" class="btn btn-sm btn-success ctr-cf-save">Save</button>
-                    </div>
-                `;
+    
+                        <!-- Markup section -->
+                        <div class="ctr-cf-markup-wrap mt-2" style="display:none;">
+                            <strong class="ctr-lbl">Markup</strong>
+                        
+                            <div class="ctr-grid-2" style="display:grid; grid-template-columns:1fr 1fr; gap:12px 16px; margin-top:6px;">
+                        
+                                <div class="ctr-field d-flex" style="gap:8px;">
+                                    <div style="flex:1;">
+                                        <label class="ctr-lbl">Rate</label>
+                                        <input type="number" step="0.01" class="form-control form-control-sm ctr-mk-baserate" placeholder="0">
+                                    </div>
+                                    <div style="flex:1;">
+                                        <label class="ctr-lbl">&nbsp;</label>
+                                        <select class="form-control form-control-sm ctr-mk-currency">
+                                            <option value="">Select</option>
+                                        </select>
+                                    </div>
+                                </div>
+                        
+                                <div class="ctr-field">
+                                    <label class="ctr-lbl">Amount</label>
+                                    <input type="number" step="0.01" class="form-control form-control-sm ctr-mk-baseamount" value="0" readonly>
+                                </div>
+                        
+                                <div class="ctr-field d-flex" style="gap:8px;">
+                                    <div style="flex:1;">
+                                        <label class="ctr-lbl">Increase By</label>
+                                        <input type="number" step="0.01" class="form-control form-control-sm ctr-mk-rate" placeholder="0.00">
+                                    </div>
+                                    <div style="flex:1;">
+                                        <label class="ctr-lbl">&nbsp;</label>
+                                        <select class="form-control form-control-sm ctr-mk-ratetype">
+                                            <option value="Percentage">Percentage</option>
+                                            <option value="Fixed">Fixed</option>
+                                        </select>
+                                    </div>
+                                </div>
+                        
+                                <div class="ctr-field">
+                                    <label class="ctr-lbl">Amount</label>
+                                    <input type="number" step="0.01" class="form-control form-control-sm ctr-mk-amount" value="0.00" readonly>
+                                </div>
+                        
+                            </div>
+                        </div>
+    
+                        <div class="ctr-grid-2" style="display:grid; grid-template-columns:1fr 1fr; gap:12px 16px; margin-top:12px;">
+                            <!-- Row 5 -->
+                            <div class="ctr-field">
+                                <label class="ctr-lbl">Rate Type</label>
+                                <select class="form-control form-control-sm ctr-cf-ratetype">
+                                    <option value="">-- Select --</option>
+                                    <option value="Single">Single</option>
+                                    <option value="Slab Based">Slab Based</option>
+                                    <option value="Step Up">Step Up</option>
+                                    <option value="Formula">Formula</option>
+                                </select>
+                            </div>
+                            
+                            <div class="ctr-field ctr-cf-inline-rate"></div>
+                        </div>
+                
+                        <!-- Slab / Formula area -->
+                        <div class="ctr-cf-ratearea mt-2"></div>
+                                    
+                        <div class="d-flex justify-content-end mt-2">
+                            <button type="button" class="btn btn-sm btn-secondary mr-2 ctr-cf-cancel">Cancel</button>
+                            <button type="button" class="btn btn-sm btn-primary mr-2 ctr-cf-save-add-more">Save &amp; Add More</button>
+                            <button type="button" class="btn btn-sm btn-success ctr-cf-save">Save</button>
+                        </div>
+                    `;
             }
 
             var equipmentTypeOptions = [];
@@ -1684,12 +1685,18 @@
                     if (res.success) {
                         var $sel = $(wrap).find('.ctr-cf-currency');
                         $sel.empty().append('<option value="">-- Select --</option>');
+                        var $mkSel = $(wrap).find('.ctr-mk-currency');
+                        $mkSel.empty().append('<option value="">Select</option>');
                         res.currencies.forEach(function(c) {
                             $sel.append('<option value="' + c.CurrencyCode + '">' + c
                                 .CurrencyCode +
                                 '</option>');
+                            $mkSel.append('<option value="' + c.CurrencyCode + '">' + c
+                                .CurrencyCode +
+                                '</option>');
                         });
                         $sel.val(chargeToEdit.chargeCurr);
+                        $mkSel.val(chargeToEdit.chargeCurr);
                         if (chargeToEdit.chargeCurr) {
                             loadMarkupExchangeRate(wrap);
                         }
@@ -1723,7 +1730,7 @@
                     $(wrap).find('.ctr-mk-ratearea').html(markupRateAreaHtml(normalizedMarkupRateType));
                     if (normalizedMarkupRateType === 'Single') {
                         wrap.querySelector('.ctr-mk-rate').value = chargeToEdit.markupRate ?? '';
-                        recalcMarkupAmount(wrap); 
+                        recalcMarkupAmount(wrap);
                     } else if (normalizedMarkupRateType === 'Slab Based' || normalizedMarkupRateType === 'Step Up') {
 
                         fillMarkupSlabRows(wrap.querySelector('.ctr-mk-slab-rows'), chargeToEdit.markupRateSlab);
