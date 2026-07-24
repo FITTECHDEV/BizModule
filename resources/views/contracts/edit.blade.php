@@ -1530,26 +1530,40 @@
                     <!-- Markup section -->
                     <div class="ctr-cf-markup-wrap mt-2" style="display:none;">
                         <strong class="ctr-lbl">Markup</strong>
-            
-                    <div class="ctr-field mt-1 d-flex" style="gap:8px; max-width:340px;">
-                        <div style="flex:1;">
-                            <label class="ctr-lbl">Increase By</label>
-                            <input type="number" step="0.01" class="form-control form-control-sm ctr-mk-rate" value="0">
-                        </div>
-                        <div style="flex:1;">
-                            <label class="ctr-lbl">&nbsp;</label>
-                            <select class="form-control form-control-sm ctr-mk-ratetype">
-                                <option value="Percentage">Percentage</option>
-                                <option value="Fixed">Fixed</option>
-                            </select>
-                        </div>
-                    </div>
                     
-                    <div class="ctr-field" style="max-width:220px;">
-                        <label class="ctr-lbl">Amount</label>
-                        <input type="number" step="0.01" class="form-control form-control-sm ctr-mk-amount" readonly>
-                    </div>
-            
+                        <div class="ctr-grid-2" style="display:grid; grid-template-columns:1fr 1fr; gap:12px 16px; margin-top:6px;">
+                    
+                            <div class="ctr-field d-flex" style="gap:8px;">
+                                <div style="flex:1;">
+                                    <label class="ctr-lbl">Increase By</label>
+                                    <input type="number" step="0.01" class="form-control form-control-sm ctr-mk-rate" value="0.00">
+                                </div>
+                                <div style="flex:1;">
+                                    <label class="ctr-lbl">&nbsp;</label>
+                                    <select class="form-control form-control-sm ctr-mk-ratetype">
+                                        <option value="Percentage">Percentage</option>
+                                        <option value="Fixed">Fixed</option>
+                                    </select>
+                                </div>
+                            </div>
+                    
+                            <div class="ctr-field">
+                                <label class="ctr-lbl">Amount</label>
+                                <input type="number" step="0.01" class="form-control form-control-sm ctr-mk-amount" value="0.00" readonly>
+                            </div>
+                    
+                            <div class="ctr-field">
+                                <label class="ctr-lbl ctr-required">Exchange Rate</label>
+                                <input type="number" step="0.00001" class="form-control form-control-sm ctr-mk-exrate" value="0" readonly>
+                            </div>
+                    
+                            <div class="ctr-field">
+                                <label class="ctr-lbl">Amount in Base Currency (<span class="ctr-mk-basecurr-code">SSP</span>)</label>
+                                <input type="number" step="0.01" class="form-control form-control-sm ctr-mk-baseamount" value="0" readonly>
+                            </div>
+                    
+                        </div>
+                    
                         <div class="ctr-mk-ratearea mt-2"></div>
                     </div>
             
@@ -1676,6 +1690,9 @@
                                 '</option>');
                         });
                         $sel.val(chargeToEdit.chargeCurr);
+                        if (chargeToEdit.chargeCurr) {
+                            loadMarkupExchangeRate(wrap);
+                        }
                     }
                 });
 
@@ -1706,6 +1723,7 @@
                     $(wrap).find('.ctr-mk-ratearea').html(markupRateAreaHtml(normalizedMarkupRateType));
                     if (normalizedMarkupRateType === 'Single') {
                         wrap.querySelector('.ctr-mk-rate').value = chargeToEdit.markupRate ?? '';
+                        recalcMarkupAmount(wrap); 
                     } else if (normalizedMarkupRateType === 'Slab Based' || normalizedMarkupRateType === 'Step Up') {
 
                         fillMarkupSlabRows(wrap.querySelector('.ctr-mk-slab-rows'), chargeToEdit.markupRateSlab);
@@ -1746,21 +1764,44 @@
                         // adjust if your currencies endpoint flags a specific default.
                         var base = res.currencies[0].CurrencyCode;
                         $(wrap).find('.ctr-cf-base-currency').text('Base Currency: ' + base);
+                        $(wrap).find('.ctr-mk-basecurr-code').text(base);
                     }
                 });
             }
 
             function recalcMarkupAmount(wrap) {
                 var baseRate = parseFloat(wrap.querySelector('.ctr-cf-rate')?.value) || 0;
-                var qty = parseFloat(wrap.querySelector('.ctr-cf-quantity')?.value) ||
-                    1; // adjust if field name differs
-                var baseAmount = baseRate * qty;
+                var mkRate = parseFloat(wrap.querySelector('.ctr-mk-rate')?.value) || 0;
+                var mkType = wrap.querySelector('.ctr-mk-ratetype')?.value;
 
-                var mkRate = parseFloat(wrap.querySelector('.ctr-mk-rate').value) || 0;
-                var mkType = wrap.querySelector('.ctr-mk-ratetype').value;
+                var amount = mkType === 'Fixed' ? mkRate : baseRate * (mkRate / 100);
+                var amountField = wrap.querySelector('.ctr-mk-amount');
+                if (amountField) amountField.value = amount.toFixed(2);
 
-                var amount = mkType === 'Fixed' ? mkRate : baseAmount * (mkRate / 100);
-                wrap.querySelector('.ctr-mk-amount').value = amount.toFixed(2);
+                recalcBaseCurrencyAmount(wrap, amount);
+            }
+
+            function recalcBaseCurrencyAmount(wrap, amount) {
+                var exRate = parseFloat(wrap.querySelector('.ctr-mk-exrate')?.value) || 0;
+                var baseField = wrap.querySelector('.ctr-mk-baseamount');
+                if (baseField) baseField.value = (amount * exRate).toFixed(2);
+            }
+
+            function loadMarkupExchangeRate(wrap) {
+                var fromCurrency = wrap.querySelector('.ctr-cf-currency')?.value;
+                if (!fromCurrency) return;
+
+                fetchMasterList('exchange-rate', {
+                    office_code: OFFICE_CODE,
+                    from_currency: fromCurrency
+                }).done(function(res) {
+                    if (res.success && res.exchange_rate) {
+                        var exField = wrap.querySelector('.ctr-mk-exrate');
+                        if (exField) exField.value = res.exchange_rate;
+                        var amt = parseFloat(wrap.querySelector('.ctr-mk-amount')?.value) || 0;
+                        recalcBaseCurrencyAmount(wrap, amt);
+                    }
+                });
             }
 
             function bindChargeFormEvents(svcId, chargeId, wrap, chargeToEdit) {
@@ -1843,6 +1884,16 @@
                         '<td><input type="text" class="form-control form-control-sm ctr-mk-slab-formula" placeholder="optional"></td>' +
                         '<td><span class="ctr-mk-slab-row-remove">&times;</span></td>';
                     tbody.appendChild(tr);
+                });
+
+                $(wrap).on('input', '.ctr-mk-rate, .ctr-cf-rate', function() {
+                    recalcMarkupAmount(wrap);
+                });
+                $(wrap).on('change', '.ctr-mk-ratetype', function() {
+                    recalcMarkupAmount(wrap);
+                });
+                $(wrap).find('.ctr-cf-currency').on('change', function() {
+                    loadMarkupExchangeRate(wrap);
                 });
 
                 $(wrap).on('click', '.ctr-mk-slab-row-remove', function() {

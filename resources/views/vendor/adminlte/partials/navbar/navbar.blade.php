@@ -66,7 +66,7 @@
                     </a>
                 @endforelse
                 @if (auth()->user()->unreadNotifications->count() > 2)
-                     <div class="dropdown-divider"></div>
+                    <div class="dropdown-divider"></div>
                 <a href="{{ route('mark') }}" class="dropdown-item dropdown-footer" onclick="return confirm('Are you sure ?')">Mark All As Read</a>
                 @endif
             </div> --}}
@@ -75,7 +75,7 @@
         @if (!empty($switcherBaseOffice))
         <li class="nav-item d-flex align-items-center" style="gap: 6px; padding-right: 8px;">
             <small class="text-muted" style="white-space: nowrap;">
-                <i class="fas fa-building mr-1"></i>Offfffffice:
+                <i class="fas fa-building mr-1"></i>Office:
             </small>
 
             @if (!empty($switcherOtherOffices))

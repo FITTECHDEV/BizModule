@@ -61,24 +61,26 @@
                                         <span class="cc-lbl" style="margin-left:24px;">Process</span><span
                                             class="cc-val">{{ $service->Process ?? '—' }}</span>
                                     </div>
-                                    <div class="cc-info-row"><span class="cc-lbl">IncoTerm</span><span
-                                            class="cc-val">{{ $service->IncoTerm ?? '—' }}</span></div>
-                                    <div class="cc-info-row"><span class="cc-lbl">Service Class</span><span
-                                            class="cc-val">{{ $service->ServiceClass ?? '—' }}</span></div>
+                                    <div class="cc-info-row">
+                                        <span class="cc-lbl">IncoTerm</span><span
+                                            class="cc-val">{{ $service->IncoTerm ?? '—' }}</span>
+                                        <span class="cc-lbl" style="margin-left:24px;">Service Class</span><span
+                                            class="cc-val">{{ $service->ServiceClass ?? '—' }}</span>
+                                    </div>
                                     <div class="cc-info-row">
                                         <span class="cc-lbl">Country of Origin</span><span
                                             class="cc-val">{{ $service->COO ?? '—' }}</span>
-                                    </div>
-                                    <div class="cc-info-row">
-                                        <span class="cc-lbl">Country of Destination</span><span
+                                        <span class="cc-lbl" style="margin-left:24px;">Country of Destination</span><span
                                             class="cc-val">{{ $service->COD ?? '—' }}</span>
                                     </div>
                                 </div>
                                 <div class="cc-info-col">
-                                    <div class="cc-info-row"><span class="cc-lbl">Shipment Type</span><span
-                                            class="cc-val">{{ $service->ShipmentType ?? '—' }}</span></div>
-                                    <div class="cc-info-row"><span class="cc-lbl">Shipment Mode</span><span
-                                            class="cc-val">{{ $service->ShipmentMode ?? '—' }}</span></div>
+                                    <div class="cc-info-row">
+                                        <span class="cc-lbl">Shipment Type</span><span
+                                            class="cc-val">{{ $service->ShipmentType ?? '—' }}</span>
+                                        <span class="cc-lbl" style="margin-left:24px;">Shipment Mode</span><span
+                                            class="cc-val">{{ $service->ShipmentMode ?? '—' }}</span>
+                                    </div>
                                     <div class="cc-info-row"><span class="cc-lbl">Movement Type</span><span
                                             class="cc-val">{{ $service->MovementType ?? '—' }}</span></div>
                                     <div class="cc-info-row">
@@ -144,7 +146,6 @@
                                 <div class="cc-empty-msg">No charges for this service.</div>
                             @endif
                         </div>
-                    </div>
                 @endforeach
             </div>
         @else
