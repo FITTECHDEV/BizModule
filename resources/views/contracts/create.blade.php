@@ -30,7 +30,17 @@
                 </div>
             </div>
 
-            <div class="d-flex justify-content-end mb-3">
+            <div class="ctr-toolbar d-flex justify-content-between align-items-center mb-3">
+                <div class="ctr-page-size-wrap d-flex align-items-center">
+                    <label class="ctr-lbl mb-0 mr-2 font-weight-bold" for="ctrPageSize">Show</label>
+                    <select class="form-control form-control-sm" id="ctrPageSize" style="width:auto;">
+                        <option value="10">10</option>
+                        <option value="25" selected>25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                        <option value="all">All</option>
+                    </select>
+                </div>
                 <button type="button" class="btn btn-primary" id="ctrNewContractBtn">+ New</button>
             </div>
             <table class="table table-sm table-bordered" id="ctrContractsTable">
@@ -363,6 +373,14 @@
             margin-bottom: 10px;
         }
 
+        .ctr-toolbar {
+            background: #f4f4fb;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 8px 12px;
+
+        }
+
         .ctr-charges-table th,
         .ctr-charges-table td {
             border: 1px solid #dee2e6;
@@ -659,6 +677,8 @@
             // needs a re-fetch.
             state.allContracts = [];
             state.activeStatusFilter = 'Pending'; // default view per dashboard spec
+            state.pageSize = 25;
+
             function isRenewalDue(effectiveTo) {
                 if (!effectiveTo) return false;
                 var due = new Date(effectiveTo);
@@ -704,8 +724,19 @@
                 });
             }
 
+            function applyPageSize(list) {
+                if (state.pageSize === 'all') return list;
+                return list.slice(0, parseInt(state.pageSize, 10));
+            }
+
+            function applyPageSize(list) {
+                if (state.pageSize === 'all') return list;
+                return list.slice(0, parseInt(state.pageSize, 10));
+            }
+
             function applyStatusFilterAndRender() {
-                renderContractsTable(filterContracts(state.allContracts, state.activeStatusFilter));
+                var filtered = filterContracts(state.allContracts, state.activeStatusFilter);
+                renderContractsTable(applyPageSize(filtered));
                 $('.ctr-stat-card').removeClass('ctr-stat-active');
                 $('.ctr-stat-card[data-status="' + state.activeStatusFilter + '"]').addClass('ctr-stat-active');
             }
@@ -2130,6 +2161,11 @@
 
             $(document).on('click', '.ctr-stat-card', function() {
                 state.activeStatusFilter = $(this).data('status') || '';
+                applyStatusFilterAndRender();
+            });
+
+            $(document).on('change', '#ctrPageSize', function() {
+                state.pageSize = $(this).val();
                 applyStatusFilterAndRender();
             });
 
