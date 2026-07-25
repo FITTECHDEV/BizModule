@@ -388,12 +388,13 @@ class ContractController extends Controller
             'ChargeCurr' => $charge['chargeCurr'] ?? '',
             'MinAmount' => $this->toFloat($charge['minAmount'] ?? null),
             'MaxAmount' => $this->toFloat($charge['maxAmount'] ?? null),
+            'Quantity' => $this->toFloat($charge['quantity'] ?? null),
             'RateType' => $charge['rateType'] ?? '',
             'Rate' => $this->toFloat($charge['rate'] ?? null),
             'Formula' => $charge['formula'] ?? '',
             'RateSlabJson' => !empty($charge['rateSlab']) ? json_encode($charge['rateSlab']) : '',
             'Comments' => '',
-            'MarkupRate' => $this->toFloat($charge['markupRate'] ?? null),
+            'MarkupRate' => $this->toFloat($charge['markupAmount'] ?? null),
             'MarkFormula' => $charge['markupFormula'] ?? '',
             'MarkRateSlabJson' => !empty($charge['markupRateSlab']) ? json_encode($charge['markupRateSlab']) : '',
             'RevenueOrCost' => ($charge['chargeNature'] ?? '') === 'Cost' ? 'Cost' : 'Revenue',
@@ -444,13 +445,14 @@ class ContractController extends Controller
             'ChargeCurr' => $charge['chargeCurr'] ?? '',
             'MinAmount' => $this->toFloat($charge['minAmount'] ?? null),
             'MaxAmount' => $this->toFloat($charge['maxAmount'] ?? null),
+            'Quantity' => $this->toFloat($charge['quantity'] ?? null),
             'RateType' => $charge['rateType'] ?? '',
             'Rate' => $this->toFloat($charge['rate'] ?? null),
             'Formula' => $charge['formula'] ?? '',
             'RateSlabJson' => !empty($charge['rateSlab']) ? json_encode($charge['rateSlab']) : '',
             'Comments' => '',
             // 'ChargeAction' => $charge['chargeAction'] ?? 'R',
-            'MarkupRate' => $this->toFloat($charge['markupRate'] ?? null),
+            'MarkupRate' => $this->toFloat($charge['markupAmount'] ?? null),
             'MarkFormula' => $charge['markupFormula'] ?? '',
             'MarkRateSlabJson' => !empty($charge['markupRateSlab']) ? json_encode($charge['markupRateSlab']) : '',
             // IsRevenue/Category not yet read by sp_Contractinfo_ServiceCharges
@@ -920,7 +922,7 @@ class ContractController extends Controller
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
-    
+
     /**
      * GET /contract/masters/based-on
      */

@@ -166,6 +166,11 @@
                                                 disabled>
                                         </div>
                                     </div>
+                                    <div class="ctr-field mb-2"><label class="ctr-lbl">Forwarder</label>
+                                        <input type="text"
+                                            class="form-control form-control-sm ce-svc-field ce-svc-forwarder"
+                                            placeholder="Not yet available for saving" disabled>
+                                    </div>
                                     <div class="ctr-field d-flex" style="gap:8px;">
                                         <div style="flex:1;"><label class="ctr-lbl">POD</label>
                                             <input type="text"
@@ -851,6 +856,8 @@
                     '<div style="flex:1;"><label class="ctr-lbl">Place of Receipt</label>' +
                     '<input type="text" class="form-control form-control-sm ce-svc-por" placeholder="POR code"></div>' +
                     '</div>' +
+                    '<div class="ctr-field mb-2"><label class="ctr-lbl">Forwarder</label>' +
+                    '<input type="text" class="form-control form-control-sm ce-svc-forwarder" placeholder="Not yet available for saving" disabled></input></div>' +
                     '<div class="ctr-field d-flex" style="gap:8px;">' +
                     '<div style="flex:1;"><label class="ctr-lbl">POD</label>' +
                     '<input type="text" class="form-control form-control-sm ce-svc-pod" placeholder="POD code"></div>' +
@@ -1273,50 +1280,6 @@
                 return '';
             }
 
-            function markupInlineRateHtml(rateType) {
-                if (rateType === 'Single') {
-                    return '<label class="ctr-lbl">Markup Rate</label>' +
-                        '<input type="number" step="0.00001" class="form-control form-control-sm ctr-mk-rate">';
-                }
-                return '';
-            }
-
-
-            function markupSlabRowHtml() {
-                return '<tr>' +
-                    '<td><input type="number" class="form-control form-control-sm ctr-mk-slab-min"></td>' +
-                    '<td><input type="number" class="form-control form-control-sm ctr-mk-slab-upto"></td>' +
-                    '<td><input type="number" step="0.01" class="form-control form-control-sm ctr-mk-slab-value"></td>' +
-                    '<td><input type="text" class="form-control form-control-sm ctr-mk-slab-formula" placeholder="optional"></td>' +
-                    '<td><span class="ctr-mk-slab-row-remove">&times;</span></td></tr>';
-            }
-
-            function markupRateAreaHtml(rateType) {
-                // Markup is Single-only for now — slab/formula markup deferred.
-                return '';
-            }
-
-            function fillMarkupSlabRows(tbody, rateSlabData) {
-                if (!tbody || !rateSlabData) return;
-                var slabs = Array.isArray(rateSlabData) ? rateSlabData : (rateSlabData.Slabs || []);
-                if (!slabs.length) return;
-                tbody.innerHTML = '';
-                slabs.forEach(function(s) {
-                    var row = document.createElement('tr');
-                    row.innerHTML =
-                        '<td><input type="number" class="form-control form-control-sm ctr-mk-slab-min" value="' +
-                        (s.Min ?? '') + '"></td>' +
-                        '<td><input type="number" class="form-control form-control-sm ctr-mk-slab-upto" value="' +
-                        (s.Slab ?? s.upto ?? '') + '"></td>' +
-                        '<td><input type="number" step="0.01" class="form-control form-control-sm ctr-mk-slab-value" value="' +
-                        (s.value ?? '') + '"></td>' +
-                        '<td><input type="text" class="form-control form-control-sm ctr-mk-slab-formula" value="' +
-                        (s.Formula ?? '') + '"></td>' +
-                        '<td><span class="ctr-mk-slab-row-remove">&times;</span></td>';
-                    tbody.appendChild(row);
-                });
-            }
-
             function fillSlabRows(tbody, rateSlabData) {
                 if (!tbody || !rateSlabData) return;
                 var slabs = [];
@@ -1496,6 +1459,19 @@
                                 <label class="ctr-lbl">Min Amount</label>
                                 <input type="number" step="0.01" class="form-control form-control-sm ctr-cf-min">
                             </div>
+
+                            <div class="ctr-field">
+                                <label class="ctr-lbl ctr-required">Currency</label>
+                                <select class="form-control form-control-sm ctr-cf-currency">
+                                    <option value="">-- Select --</option>
+                                </select>
+                            </div>
+
+                            <div class="ctr-field">
+                                <label class="ctr-lbl">Quantity</label>
+                                <input type="number" step="0.01" class="form-control form-control-sm ctr-cf-qty" placeholder="0">
+                            </div>
+
                         
                             <div class="ctr-field">
                                 <label class="ctr-lbl">Charge Category</label>
@@ -1511,24 +1487,6 @@
                             <strong class="ctr-lbl">Markup</strong>
                         
                             <div class="ctr-grid-2" style="display:grid; grid-template-columns:1fr 1fr; gap:12px 16px; margin-top:6px;">
-                        
-                                <div class="ctr-field d-flex" style="gap:8px;">
-                                    <div style="flex:1;">
-                                        <label class="ctr-lbl">Rate</label>
-                                        <input type="number" step="0.01" class="form-control form-control-sm ctr-mk-baserate" placeholder="0">
-                                    </div>
-                                    <div style="flex:1;">
-                                        <label class="ctr-lbl">&nbsp;</label>
-                                        <select class="form-control form-control-sm ctr-mk-currency">
-                                            <option value="">Select</option>
-                                        </select>
-                                    </div>
-                                </div>
-                        
-                                <div class="ctr-field">
-                                    <label class="ctr-lbl">Amount</label>
-                                    <input type="number" step="0.01" class="form-control form-control-sm ctr-mk-baseamount" value="0" readonly>
-                                </div>
                         
                                 <div class="ctr-field d-flex" style="gap:8px;">
                                     <div style="flex:1;">
@@ -1598,7 +1556,6 @@
             }
 
             function loadChargeFormMasters(wrap, chargeToEdit) {
-                loadBaseCurrency(wrap);
                 fetchMasterList('charge-categories').done(function(res) {
                     if (res.success) populateSelect($(wrap).find('.ctr-cf-category'), res.data,
                         'Code', 'Name');
@@ -1697,15 +1654,13 @@
                         });
                         $sel.val(chargeToEdit.chargeCurr);
                         $mkSel.val(chargeToEdit.chargeCurr);
-                        if (chargeToEdit.chargeCurr) {
-                            loadMarkupExchangeRate(wrap);
-                        }
                     }
                 });
 
                 wrap.querySelector('.ctr-cf-desc').value = chargeToEdit.chargeDescription || '';
                 wrap.querySelector('.ctr-cf-min').value = chargeToEdit.minAmount ?? '';
                 wrap.querySelector('.ctr-cf-max').value = chargeToEdit.maxAmount ?? '';
+                wrap.querySelector('.ctr-cf-qty').value = chargeToEdit.quantity ?? '';
                 // Derive the single natureaction radio value from stored chargeNature + chargeAction
                 var natureVal = chargeToEdit.chargeNature || '';
                 var actionVal = chargeToEdit.chargeAction || '';
@@ -1724,19 +1679,9 @@
                 $(wrap).find('.ctr-cf-accruals-row').toggle(naVal !== 'CostMarkup'); // <-- add this line
 
                 if (actionVal === 'M') {
-                    var normalizedMarkupRateType = normalizeRateType(chargeToEdit.markupRateType);
-                    $(wrap).find('.ctr-mk-ratetype').val(normalizedMarkupRateType || '');
-                    $(wrap).find('.ctr-mk-inline-rate').html(markupInlineRateHtml(normalizedMarkupRateType));
-                    $(wrap).find('.ctr-mk-ratearea').html(markupRateAreaHtml(normalizedMarkupRateType));
-                    if (normalizedMarkupRateType === 'Single') {
-                        wrap.querySelector('.ctr-mk-rate').value = chargeToEdit.markupRate ?? '';
-                        recalcMarkupAmount(wrap);
-                    } else if (normalizedMarkupRateType === 'Slab Based' || normalizedMarkupRateType === 'Step Up') {
-
-                        fillMarkupSlabRows(wrap.querySelector('.ctr-mk-slab-rows'), chargeToEdit.markupRateSlab);
-                    } else if (normalizedMarkupRateType === 'Formula') {
-                        wrap.querySelector('.ctr-mk-formula').value = chargeToEdit.markupFormula || '';
-                    }
+                    $(wrap).find('.ctr-mk-ratetype').val(chargeToEdit.markupType || 'Percentage');
+                    wrap.querySelector('.ctr-mk-rate').value = chargeToEdit.markupRate ?? '';
+                    recalcMarkupAmount(wrap);
                 }
 
                 var normalizedRateType = normalizeRateType(chargeToEdit.rateType);
@@ -1744,13 +1689,14 @@
                 $(wrap).find('.ctr-cf-inline-rate').html(inlineRateHtml(normalizedRateType));
                 $(wrap).find('.ctr-cf-ratearea').html(rateAreaHtml(normalizedRateType));
 
+                var markupAllowed = (normalizedRateType === 'Single');
+                $(wrap).find('input[name="ctr-cf-natureaction"][value="CostMarkup"]').prop('disabled', !markupAllowed)
+                    .closest('label').toggle(markupAllowed);
+
                 $(wrap).find('.ctr-cf-accruable').prop('checked', chargeToEdit.isAccruable == '1');
                 $(wrap).find('.ctr-cf-reimbursable').prop('checked', chargeToEdit.isReimbursable == '1');
                 $(wrap).find('.ctr-cf-accruable-wrap').toggle(naVal === 'Revenue');
                 $(wrap).find('.ctr-cf-reimbursable-wrap').toggle(naVal === 'Cost');
-
-                // var $markupRadio = $(wrap).find('input[name="ctr-cf-action"][value="M"]');
-                // $markupRadio.closest('label').toggle(normalizedRateType === 'Single');
 
                 if (normalizedRateType === 'Single') {
                     wrap.querySelector('.ctr-cf-rate').value = chargeToEdit.rate ?? '';
@@ -1762,53 +1708,18 @@
                 }
             }
 
-            function loadBaseCurrency(wrap) {
-                fetchMasterList('currencies', {
-                    office_id: OFFICE_CODE
-                }).done(function(res) {
-                    if (res.success && res.currencies && res.currencies.length) {
-                        // Assumes first entry represents the office's base currency —
-                        // adjust if your currencies endpoint flags a specific default.
-                        var base = res.currencies[0].CurrencyCode;
-                        $(wrap).find('.ctr-cf-base-currency').text('Base Currency: ' + base);
-                        $(wrap).find('.ctr-mk-basecurr-code').text(base);
-                    }
-                });
-            }
-
             function recalcMarkupAmount(wrap) {
                 var baseRate = parseFloat(wrap.querySelector('.ctr-cf-rate')?.value) || 0;
+                var qty = parseFloat(wrap.querySelector('.ctr-cf-qty')?.value) || 0;
                 var mkRate = parseFloat(wrap.querySelector('.ctr-mk-rate')?.value) || 0;
                 var mkType = wrap.querySelector('.ctr-mk-ratetype')?.value;
 
-                var amount = mkType === 'Fixed' ? mkRate : baseRate * (mkRate / 100);
+                var amount = mkType === 'Fixed' ?
+                    mkRate * qty :
+                    (mkRate / 100) * (baseRate * qty);
+
                 var amountField = wrap.querySelector('.ctr-mk-amount');
                 if (amountField) amountField.value = amount.toFixed(2);
-
-                recalcBaseCurrencyAmount(wrap, amount);
-            }
-
-            function recalcBaseCurrencyAmount(wrap, amount) {
-                var exRate = parseFloat(wrap.querySelector('.ctr-mk-exrate')?.value) || 0;
-                var baseField = wrap.querySelector('.ctr-mk-baseamount');
-                if (baseField) baseField.value = (amount * exRate).toFixed(2);
-            }
-
-            function loadMarkupExchangeRate(wrap) {
-                var fromCurrency = wrap.querySelector('.ctr-cf-currency')?.value;
-                if (!fromCurrency) return;
-
-                fetchMasterList('exchange-rate', {
-                    office_code: OFFICE_CODE,
-                    from_currency: fromCurrency
-                }).done(function(res) {
-                    if (res.success && res.exchange_rate) {
-                        var exField = wrap.querySelector('.ctr-mk-exrate');
-                        if (exField) exField.value = res.exchange_rate;
-                        var amt = parseFloat(wrap.querySelector('.ctr-mk-amount')?.value) || 0;
-                        recalcBaseCurrencyAmount(wrap, amt);
-                    }
-                });
             }
 
             function bindChargeFormEvents(svcId, chargeId, wrap, chargeToEdit) {
@@ -1817,14 +1728,15 @@
                     $(wrap).find('.ctr-cf-ratearea').html(rateAreaHtml(this.value));
                     if (this.value === 'Formula') bindFormulaBuilderEvents(wrap);
 
-                    // var $markupRadio = $(wrap).find('input[name="ctr-cf-action"][value="M"]');
-                    // var markupAllowed = (this.value === 'Single');
-                    // $markupRadio.closest('label').toggle(markupAllowed);
+                    var $markupRadio = $(wrap).find('input[name="ctr-cf-natureaction"][value="CostMarkup"]');
+                    var markupAllowed = (this.value === 'Single');
+                    $markupRadio.prop('disabled', !markupAllowed);
+                    $markupRadio.closest('label').toggle(markupAllowed);
 
-                    // if (!markupAllowed && $markupRadio.is(':checked')) {
-                    //     $(wrap).find('input[name="ctr-cf-action"]:visible').first().prop('checked', true)
-                    //         .trigger('change');
-                    // }
+                    if (!markupAllowed && $markupRadio.is(':checked')) {
+                        $(wrap).find('input[name="ctr-cf-natureaction"][value="Cost"]').prop('checked', true)
+                            .trigger('change');
+                    }
                 });
                 $(wrap).find('.ctr-cf-cancel').on('click', function() {
                     var modal = $(wrap).closest('.modal');
@@ -1870,42 +1782,13 @@
                     $(this).closest('tr').remove();
                 });
 
-                // Markup Rate Type change
-                $(wrap).on('change', '.ctr-mk-ratetype', function() {
-                    $(wrap).find('.ctr-mk-inline-rate').html(markupInlineRateHtml(this.value));
-                    $(wrap).find('.ctr-mk-ratearea').html(markupRateAreaHtml(this.value));
-                });
-
-                // Markup slab add/remove
-                $(wrap).on('click', '.ctr-mk-slab-add-row', function() {
-                    var tbody = wrap.querySelector('.ctr-mk-slab-rows');
-                    var rows = tbody.querySelectorAll('tr');
-                    var lastUpto = rows.length ? rows[rows.length - 1].querySelector('.ctr-mk-slab-upto')
-                        .value : '';
-                    var tr = document.createElement('tr');
-                    tr.innerHTML =
-                        '<td><input type="number" class="form-control form-control-sm ctr-mk-slab-min" value="' +
-                        (lastUpto || '') + '"></td>' +
-                        '<td><input type="number" class="form-control form-control-sm ctr-mk-slab-upto"></td>' +
-                        '<td><input type="number" step="0.01" class="form-control form-control-sm ctr-mk-slab-value"></td>' +
-                        '<td><input type="text" class="form-control form-control-sm ctr-mk-slab-formula" placeholder="optional"></td>' +
-                        '<td><span class="ctr-mk-slab-row-remove">&times;</span></td>';
-                    tbody.appendChild(tr);
-                });
-
-                $(wrap).on('input', '.ctr-mk-rate, .ctr-cf-rate', function() {
+                $(wrap).on('input', '.ctr-mk-rate, .ctr-cf-rate, .ctr-cf-qty', function() {
                     recalcMarkupAmount(wrap);
                 });
                 $(wrap).on('change', '.ctr-mk-ratetype', function() {
                     recalcMarkupAmount(wrap);
                 });
-                $(wrap).find('.ctr-cf-currency').on('change', function() {
-                    loadMarkupExchangeRate(wrap);
-                });
 
-                $(wrap).on('click', '.ctr-mk-slab-row-remove', function() {
-                    $(this).closest('tr').remove();
-                });
                 $(wrap).find('.ctr-cf-basedon').on('change', function() {
                     var basedOnCode = $(this).val();
                     var $uomSelect = $(wrap).find('.ctr-cf-uom');
@@ -2019,6 +1902,9 @@
                     maxAmount: wrap.querySelector('.ctr-cf-max').value !== '' ? parseFloat(parseFloat(
                         wrap
                         .querySelector('.ctr-cf-max').value).toFixed(2)) : null,
+                    quantity: wrap.querySelector('.ctr-cf-qty').value !== '' ? parseFloat(parseFloat(
+                        wrap
+                        .querySelector('.ctr-cf-qty').value).toFixed(2)) : null,
                     rateType: rateType,
                     rate: null,
                     rateSlab: null,
@@ -2026,11 +1912,12 @@
                 };
 
                 if (rateType === 'Single') {
-                    var rateVal = wrap.querySelector('.ctr-cf-rate').value;
-                    if (rateVal === '') {
-                        alert('Rate is required for Single rate type.');
+                    var rateInput = wrap.querySelector('.ctr-cf-rate');
+                    if (!rateInput) {
+                        alert('Rate field is missing from the form. Please close and reopen Add Charge.');
                         return;
                     }
+                    var rateVal = rateInput.value;
                     charge.rate = parseFloat(parseFloat(rateVal).toFixed(5));
                 } else if (rateType === 'Slab Based' || rateType === 'Step Up') {
                     var slabType = wrap.querySelector('.ctr-slab-type')?.value || 'LessThanOrEqual';
@@ -2089,20 +1976,16 @@
                 charge.markupRateSlab = null;
 
                 if (actionVal === 'M') {
-                    var mkRateType = wrap.querySelector('.ctr-mk-ratetype').value;
-                    if (!mkRateType) {
-                        alert('Markup Rate Type is required when Charge Action is Markup.');
+                    var mkType = wrap.querySelector('.ctr-mk-ratetype').value; // Percentage | Fixed
+                    var mkRateVal = wrap.querySelector('.ctr-mk-rate').value;
+                    if (!mkType || mkRateVal === '') {
+                        alert('Markup type and Increase By rate are required for Cost with Markup.');
                         return;
                     }
-                    charge.markupRateType = mkRateType;
-                    if (mkRateType === 'Single') {
-                        var mkRateVal = wrap.querySelector('.ctr-mk-rate').value;
-                        if (mkRateVal === '') {
-                            alert('Markup Rate is required for Single markup rate type.');
-                            return;
-                        }
-                        charge.markupRate = parseFloat(parseFloat(mkRateVal).toFixed(5));
-                    }
+                    charge.markupRateType = 'Single';
+                    charge.markupType = mkType;
+                    charge.markupRate = parseFloat(parseFloat(mkRateVal).toFixed(5));
+                    charge.markupAmount = parseFloat(wrap.querySelector('.ctr-mk-amount').value) || 0;
                 } else if (charge.toBeAdded === 1) {
                     // Accruable/Reimbursable without markup: the counterpart charge should
                     // carry the same rate as the primary charge, not 0 — otherwise the SP's
