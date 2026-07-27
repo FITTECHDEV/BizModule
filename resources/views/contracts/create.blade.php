@@ -1359,6 +1359,7 @@
                     '<div class="ctr-field"><label class="ctr-lbl ctr-required">Charge Nature</label>' +
                     '<select class="form-control form-control-sm ctr-cf-nature"' + lock + '>' +
                     '<option value="Revenue">Revenue</option><option value="Cost">Cost</option>' +
+                    '<option value="CostMarkup">Cost with markup</option>' +
                     '</select></div>' +
                     '<div class="ctr-field"><label class="ctr-lbl ctr-required">Charge Category</label>' +
                     '<select class="form-control form-control-sm ctr-cf-category"' + lock + '>' +
@@ -1405,6 +1406,19 @@
                     '<option value="Formula">Formula</option>' +
                     '</select></div>' +
                     '<div class="ctr-field ctr-cf-inline-rate"></div>' +
+                    '<div class="ctr-cf-markup-wrap mt-2" style="display:none;">' +
+                    '<strong class="ctr-lbl">Markup</strong>' +
+                    '<div class="ctr-grid-2" style="margin-top:6px;">' +
+                    '<div class="ctr-field d-flex" style="gap:8px;">' +
+                    '<div style="flex:1;"><label class="ctr-lbl">Increase By</label>' +
+                    '<input type="number" step="0.01" class="form-control form-control-sm ctr-mk-rate" placeholder="0.00"></div>' +
+                    '<div style="flex:1;"><label class="ctr-lbl">&nbsp;</label>' +
+                    '<select class="form-control form-control-sm ctr-mk-ratetype">' +
+                    '<option value="Percentage">Percentage</option><option value="Fixed">Fixed</option>' +
+                    '</select></div></div>' +
+                    '<div class="ctr-field"><label class="ctr-lbl">Amount</label>' +
+                    '<input type="number" step="0.01" class="form-control form-control-sm ctr-mk-amount" value="0.00" readonly></div>' +
+                    '</div></div>' +
                     '</div>' +
                     '<div class="ctr-cf-ratearea mt-2"></div>' +
                     '<div class="d-flex justify-content-end mt-2">' +
@@ -1589,6 +1603,14 @@
                     $(wrap).find('.ctr-cf-inline-rate').html(inlineRateHtml(this.value));
                     $(wrap).find('.ctr-cf-ratearea').html(rateAreaHtml(this.value));
                     clampDecimals(wrap.querySelector('.ctr-cf-rate'), 5);
+
+                    var $markupOption = $(wrap).find('.ctr-cf-nature option[value="CostMarkup"]');
+                    var markupAllowed = (this.value === 'Single');
+                    $markupOption.prop('disabled', !markupAllowed);
+                    if (!markupAllowed && $(wrap).find('.ctr-cf-nature').val() === 'CostMarkup') {
+                        $(wrap).find('.ctr-cf-nature').val('Cost').trigger('change');
+                    }
+
                     if (this.value !== 'Formula') return;
                     var svc = findService(svcId);
                     var isRevenue = ($(wrap).find('.ctr-cf-nature').val() === 'Cost') ? 0 : 1;
@@ -1666,19 +1688,40 @@
                     if (nature === 'Revenue') {
                         $(wrap).find('#ctr-is-accruable-container').show();
                         $(wrap).find('#ctr-is-reimbursable-container').hide();
+                        $(wrap).find('.ctr-cf-markup-wrap').hide();
                         $(wrap).find('#ctrIsReimbursable').prop('checked', false);
                         if (chargeToEdit && chargeToEdit.isAccruable === '1') {
                             $(wrap).find('#ctrIsAccruable').prop('checked', true);
                         }
+                    } else if (nature === 'CostMarkup') {
+                        $(wrap).find('#ctr-is-accruable-container').hide();
+                        $(wrap).find('#ctr-is-reimbursable-container').hide();
+                        $(wrap).find('.ctr-cf-markup-wrap').show();
+                        $(wrap).find('#ctrIsAccruable').prop('checked', false);
+                        $(wrap).find('#ctrIsReimbursable').prop('checked', false);
                     } else {
                         $(wrap).find('#ctr-is-accruable-container').hide();
                         $(wrap).find('#ctr-is-reimbursable-container').show();
+                        $(wrap).find('.ctr-cf-markup-wrap').hide();
                         $(wrap).find('#ctrIsAccruable').prop('checked', false);
                         if (chargeToEdit && chargeToEdit.isReimbursable === '1') {
                             $(wrap).find('#ctrIsReimbursable').prop('checked', true);
                         }
                     }
                 }
+
+                function recalcMarkupAmount() {
+                    var baseRate = parseFloat(wrap.querySelector('.ctr-cf-rate')?.value) || 0;
+                    var mkRate = parseFloat(wrap.querySelector('.ctr-mk-rate')?.value) || 0;
+                    var mkType = wrap.querySelector('.ctr-mk-ratetype')?.value;
+                    var markedUpRate = mkType === 'Fixed' ?
+                        baseRate + mkRate :
+                        baseRate + (baseRate * mkRate / 100);
+                    var amountField = wrap.querySelector('.ctr-mk-amount');
+                    if (amountField) amountField.value = markedUpRate.toFixed(5);
+                }
+                $(wrap).on('input', '.ctr-mk-rate, .ctr-cf-rate', recalcMarkupAmount);
+                $(wrap).on('change', '.ctr-mk-ratetype', recalcMarkupAmount);
 
                 // Initial toggle on form load
                 toggleAccruableReimbursable();
@@ -1763,13 +1806,6 @@
                     basedOn: wrap.querySelector('.ctr-cf-basedon').value,
                     rateType: rateType
                 };
-                // ── Read Reimbursable/Accrual status ──────────────────────────────
-                if (toBeAdded === 1) {
-                    charge.markupRateType = charge.rateType;
-                    charge.markupRate = charge.rate;
-                    charge.markupRateSlab = charge.rateSlab;
-                    charge.markupFormula = charge.formula;
-                }
                 var missing = Object.keys(required).filter(function(k) {
                     return !required[k];
                 });
@@ -1779,16 +1815,12 @@
                 }
 
                 var charge = {
-                    chargeNature: wrap.querySelector('.ctr-cf-nature').value,
                     chargeCategory: required.category,
                     chargeCode: required.code,
                     chargeDescription: required.desc,
                     chargeBasedOn: required.basedOn,
                     chargeBasedOnUOM: wrap.querySelector('.ctr-cf-uom').value.trim(),
                     chargeCurr: wrap.querySelector('.ctr-cf-currency').value,
-                    toBeAdded: toBeAdded,
-                    isAccruable: isAccruable ? '1' : '0',
-                    isReimbursable: isReimbursable ? '1' : '0',
                     minAmount: wrap.querySelector('.ctr-cf-min').value !== '' ? parseFloat(parseFloat(wrap
                         .querySelector('.ctr-cf-min').value).toFixed(2)) : null,
                     maxAmount: wrap.querySelector('.ctr-cf-max').value !== '' ? parseFloat(parseFloat(wrap
@@ -1801,6 +1833,41 @@
                     formulaRate: null,
                     formulaSlab: null
                 };
+
+                var natureVal = wrap.querySelector('.ctr-cf-nature').value;
+                var isAccruableChecked = wrap.querySelector('#ctrIsAccruable')?.checked || false;
+                var isReimbursableChecked = wrap.querySelector('#ctrIsReimbursable')?.checked || false;
+                charge.isAccruable = isAccruableChecked ? '1' : '0';
+                charge.isReimbursable = isReimbursableChecked ? '1' : '0';
+                charge.toBeAdded = (natureVal === 'CostMarkup' || isAccruableChecked || isReimbursableChecked) ? 1 : 0;
+
+                if (natureVal === 'CostMarkup') {
+                    var mkType = wrap.querySelector('.ctr-mk-ratetype').value;
+                    var mkRateVal = wrap.querySelector('.ctr-mk-rate').value;
+                    if (!mkType || mkRateVal === '') {
+                        alert('Markup type and Increase By rate are required for Cost with Markup.');
+                        return;
+                    }
+                    var baseRateVal = parseFloat(charge.rate) || 0;
+                    var mkRateNum = parseFloat(mkRateVal);
+                    var markedUpRate = mkType === 'Fixed' ?
+                        baseRateVal + mkRateNum :
+                        baseRateVal + (baseRateVal * mkRateNum / 100);
+
+                    charge.chargeNature = 'Cost';
+                    charge.markupRateType = 'Single';
+                    charge.markupType = mkType;
+                    charge.markupRate = parseFloat(markedUpRate.toFixed(5));
+                    charge.markupAmount = parseFloat(wrap.querySelector('.ctr-mk-amount').value) || 0;
+                } else {
+                    charge.chargeNature = natureVal;
+                    if (charge.toBeAdded === 1) {
+                        charge.markupRateType = charge.rateType;
+                        charge.markupRate = charge.rate;
+                        charge.markupRateSlab = charge.rateSlab;
+                        charge.markupFormula = charge.formula;
+                    }
+                }
 
                 if (rateType === 'Single') {
                     var rateVal = wrap.querySelector('.ctr-cf-rate').value;

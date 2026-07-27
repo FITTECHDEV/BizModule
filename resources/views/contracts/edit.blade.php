@@ -1708,18 +1708,31 @@
                 }
             }
 
+            // function recalcMarkupAmount(wrap) {
+            //     var baseRate = parseFloat(wrap.querySelector('.ctr-cf-rate')?.value) || 0;
+            //     var qty = parseFloat(wrap.querySelector('.ctr-cf-qty')?.value) || 0;
+            //     var mkRate = parseFloat(wrap.querySelector('.ctr-mk-rate')?.value) || 0;
+            //     var mkType = wrap.querySelector('.ctr-mk-ratetype')?.value;
+
+            //     var amount = mkType === 'Fixed' ?
+            //         mkRate * qty :
+            //         (mkRate / 100) * (baseRate * qty);
+
+            //     var amountField = wrap.querySelector('.ctr-mk-amount');
+            //     if (amountField) amountField.value = amount.toFixed(2);
+            // }
+
             function recalcMarkupAmount(wrap) {
                 var baseRate = parseFloat(wrap.querySelector('.ctr-cf-rate')?.value) || 0;
-                var qty = parseFloat(wrap.querySelector('.ctr-cf-qty')?.value) || 0;
                 var mkRate = parseFloat(wrap.querySelector('.ctr-mk-rate')?.value) || 0;
                 var mkType = wrap.querySelector('.ctr-mk-ratetype')?.value;
 
-                var amount = mkType === 'Fixed' ?
-                    mkRate * qty :
-                    (mkRate / 100) * (baseRate * qty);
+                var markedUpRate = mkType === 'Fixed' ?
+                    baseRate + mkRate :
+                    baseRate + (baseRate * mkRate / 100);
 
                 var amountField = wrap.querySelector('.ctr-mk-amount');
-                if (amountField) amountField.value = amount.toFixed(2);
+                if (amountField) amountField.value = markedUpRate.toFixed(5);
             }
 
             function bindChargeFormEvents(svcId, chargeId, wrap, chargeToEdit) {
@@ -1975,25 +1988,43 @@
                 charge.markupFormula = null;
                 charge.markupRateSlab = null;
 
+                // if (actionVal === 'M') {
+                //     var mkType = wrap.querySelector('.ctr-mk-ratetype').value; // Percentage | Fixed
+                //     var mkRateVal = wrap.querySelector('.ctr-mk-rate').value;
+                //     if (!mkType || mkRateVal === '') {
+                //         alert('Markup type and Increase By rate are required for Cost with Markup.');
+                //         return;
+                //     }
+                //     charge.markupRateType = 'Single';
+                //     charge.markupType = mkType;
+                //     charge.markupRate = parseFloat(parseFloat(mkRateVal).toFixed(5));
+                //     charge.markupAmount = parseFloat(wrap.querySelector('.ctr-mk-amount').value) || 0;
+                // } else if (charge.toBeAdded === 1) {
+                //     // Accruable/Reimbursable without markup: the counterpart charge should
+                //     // carry the same rate as the primary charge, not 0 — otherwise the SP's
+                //     // second insert (@ToBeAdded = 1 branch) writes Rate = 0 / empty slabs.
+                //     charge.markupRateType = charge.rateType;
+                //     charge.markupRate = charge.rate;
+                //     charge.markupRateSlab = charge.rateSlab;
+                //     charge.markupFormula = charge.formula;
+                // }
+
                 if (actionVal === 'M') {
-                    var mkType = wrap.querySelector('.ctr-mk-ratetype').value; // Percentage | Fixed
+                    var mkType = wrap.querySelector('.ctr-mk-ratetype').value;
                     var mkRateVal = wrap.querySelector('.ctr-mk-rate').value;
                     if (!mkType || mkRateVal === '') {
                         alert('Markup type and Increase By rate are required for Cost with Markup.');
                         return;
                     }
+                    var baseRateVal = parseFloat(charge.rate) || 0;
+                    var mkRateNum = parseFloat(mkRateVal);
+                    var markedUpRate = mkType === 'Fixed' ?
+                        baseRateVal + mkRateNum :
+                        baseRateVal + (baseRateVal * mkRateNum / 100);
+
                     charge.markupRateType = 'Single';
                     charge.markupType = mkType;
-                    charge.markupRate = parseFloat(parseFloat(mkRateVal).toFixed(5));
-                    charge.markupAmount = parseFloat(wrap.querySelector('.ctr-mk-amount').value) || 0;
-                } else if (charge.toBeAdded === 1) {
-                    // Accruable/Reimbursable without markup: the counterpart charge should
-                    // carry the same rate as the primary charge, not 0 — otherwise the SP's
-                    // second insert (@ToBeAdded = 1 branch) writes Rate = 0 / empty slabs.
-                    charge.markupRateType = charge.rateType;
-                    charge.markupRate = charge.rate;
-                    charge.markupRateSlab = charge.rateSlab;
-                    charge.markupFormula = charge.formula;
+                    charge.markupRate = parseFloat(markedUpRate.toFixed(5));
                 }
 
                 var saveBtn = wrap.querySelector('.ctr-cf-save');
