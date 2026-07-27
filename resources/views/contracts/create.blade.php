@@ -1409,13 +1409,14 @@
                     '<div class="ctr-cf-markup-wrap mt-2" style="display:none;">' +
                     '<strong class="ctr-lbl">Markup</strong>' +
                     '<div class="ctr-grid-2" style="margin-top:6px;">' +
-                    '<div class="ctr-field d-flex" style="gap:8px;">' +
-                    '<div style="flex:1;"><label class="ctr-lbl">Increase By</label>' +
-                    '<input type="number" step="0.01" class="form-control form-control-sm ctr-mk-rate" placeholder="0.00"></div>' +
-                    '<div style="flex:1;"><label class="ctr-lbl">&nbsp;</label>' +
-                    '<select class="form-control form-control-sm ctr-mk-ratetype">' +
-                    '<option value="Percentage">Percentage</option><option value="Fixed">Fixed</option>' +
-                    '</select></div></div>' +
+                    '<div class="ctr-field"><label class="ctr-lbl">Increase By</label>' +
+                    '<div class="input-group input-group-sm">' +
+                    '<input type="number" step="0.01" class="form-control ctr-mk-rate">' +
+                    '<div class="input-group-append">' +
+                    '<select class="form-control ctr-mk-ratetype" style="max-width:110px;">' +
+                    '<option value="Percentage">%</option><option value="Fixed">Fixed</option>' +
+                    '</select>' +
+                    '</div></div></div>' +
                     '<div class="ctr-field"><label class="ctr-lbl">Amount</label>' +
                     '<input type="number" step="0.01" class="form-control form-control-sm ctr-mk-amount" value="0.00" readonly></div>' +
                     '</div></div>' +
