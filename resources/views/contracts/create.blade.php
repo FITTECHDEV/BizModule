@@ -729,11 +729,6 @@
                 return list.slice(0, parseInt(state.pageSize, 10));
             }
 
-            function applyPageSize(list) {
-                if (state.pageSize === 'all') return list;
-                return list.slice(0, parseInt(state.pageSize, 10));
-            }
-
             function applyStatusFilterAndRender() {
                 var filtered = filterContracts(state.allContracts, state.activeStatusFilter);
                 renderContractsTable(applyPageSize(filtered));
@@ -895,7 +890,7 @@
                 });
             }
             // ── Charge form: populate masters ────────────────────────────────────
-            function loadChargeFormMasters(wrap, chargeToEdit) {
+            function loadChargeFormMasters(wrap, chargeToEdit, svcId) {
                 // ── Charge Category ──────────────────────────────────
                 fetchMasterList('charge-categories').done(function(res) {
                     if (res.success) {
@@ -1050,87 +1045,6 @@
                         wrap.querySelector('.ctr-formula-rate').value = chargeToEdit.formulaRate ?? '';
                     }
                 }
-            }
-
-            function initChargeCodeAutocomplete(wrap) {
-                var $input = $(wrap).find('.ctr-cf-code');
-                var $hidden = $(wrap).find('.ctr-cf-code-hidden');
-                var $nature = $(wrap).find('.ctr-cf-nature');
-                var $desc = $(wrap).find('.ctr-cf-desc');
-                var $currency = $(wrap).find('.ctr-cf-currency');
-
-                if ($input.hasClass('ui-autocomplete-input')) {
-                    $input.autocomplete('destroy');
-                }
-
-                $input.autocomplete({
-                    source: function(request, response) {
-                        if (request.term.length < 3) {
-                            response([]);
-                            return;
-                        }
-
-                        var chargeType = ($nature.val() === 'Cost') ? 'Cost' : 'Revenue';
-
-                        fetchMasterList('charge-codes', {
-                            office_code: OFFICE_CODE,
-                            charge_type: chargeType,
-                            filter: request.term
-                        }).done(function(res) {
-                            if (res.success && res.charge_codes && res.charge_codes.length) {
-                                response(res.charge_codes.map(function(item) {
-                                    return {
-                                        label: item.Code + ' - ' + (item.Description ||
-                                            item.Name || item.Code),
-                                        value: item.Code,
-                                        name: item.Description || item.Name || item
-                                            .Code,
-                                        currency: item.Curr,
-                                        vat: item.VAT
-                                    };
-                                }));
-                            } else {
-                                response([{
-                                    label: 'No charge codes found',
-                                    value: '',
-                                    disabled: true
-                                }]);
-                            }
-                        }).fail(function() {
-                            response([{
-                                label: 'Error loading charge codes',
-                                value: '',
-                                disabled: true
-                            }]);
-                        });
-                    },
-                    minLength: 3,
-                    delay: 300,
-                    select: function(event, ui) {
-                        if (ui.item.disabled) {
-                            event.preventDefault();
-                            return false;
-                        }
-                        $input.val(ui.item.value);
-                        $hidden.val(ui.item.value);
-                        if (ui.item.name) {
-                            $desc.val(ui.item.name);
-                        }
-                        if (ui.item.currency) {
-                            $currency.val(ui.item.currency);
-                        }
-                        // Optional: if you have a VAT field, set it here
-                        return false;
-                    }
-                });
-
-                // Re‑trigger search when Charge Nature changes
-                $nature.off('change.autocomplete').on('change.autocomplete', function() {
-                    var term = $input.val();
-                    if (term.length >= 3) {
-                        $input.autocomplete('search', term);
-                    }
-                });
             }
 
             function fillSlabRows(tbody, slabs) {
@@ -1350,7 +1264,7 @@
                 wrap.style.display = 'block';
                 wrap.innerHTML = chargeFormHtml(svcId, !!chargeToEdit);
                 bindChargeFormEvents(svcId, wrap, chargeToEdit);
-                loadChargeFormMasters(wrap, chargeToEdit);
+                loadChargeFormMasters(wrap, chargeToEdit, svcId);
             }
 
             function chargeFormHtml(svcId, isEdit) {

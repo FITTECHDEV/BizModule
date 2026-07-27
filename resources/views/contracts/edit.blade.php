@@ -1879,6 +1879,7 @@
                     code: wrap.querySelector('.ctr-cf-code').value.trim(),
                     desc: wrap.querySelector('.ctr-cf-desc').value.trim(),
                     basedOn: wrap.querySelector('.ctr-cf-basedon').value,
+                    currency: wrap.querySelector('.ctr-cf-currency').value,
                     rateType: rateType
                 };
                 if (!uomNotNeeded) {
