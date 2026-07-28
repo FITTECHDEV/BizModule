@@ -226,6 +226,19 @@
                 </div>{{-- /modal-content --}}
             </div>{{-- /modal-dialog --}}
         </div>{{-- /ctrServicesModal --}}
+        <div class="modal fade" id="ctrAddChargeModal" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Add Charge</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body" id="ctrAddChargeModalBody"></div>
+                </div>
+            </div>
+        </div>
     </div>{{-- /contractCreateContent --}}
 
     {{-- Charge row template --}}
@@ -1209,8 +1222,6 @@
                         '" style="display:none;">No charges added yet.</div>' +
                         '<button type="button" class="btn btn-sm btn-outline-primary ctr-add-charge-btn" data-svc="' +
                         svc.id + '">+ Add Charge</button>' +
-                        '<div class="ctr-subform mt-2" id="chargeform-' + svc.id +
-                        '" style="display:none;"></div>' +
                         '</div>';
                     list.appendChild(card);
                     renderCharges(svc);
@@ -1257,12 +1268,12 @@
 
             // ── Open Charge Form ───
             function openChargeForm(svcId, chargeToEdit) {
-                var wrap = document.getElementById('chargeform-' + svcId);
+                var wrap = document.getElementById('ctrAddChargeModalBody');
                 if (!wrap) return;
-                wrap.style.display = 'block';
                 wrap.innerHTML = chargeFormHtml(svcId, !!chargeToEdit);
                 bindChargeFormEvents(svcId, wrap, chargeToEdit);
                 loadChargeFormMasters(wrap, chargeToEdit, svcId);
+                $('#ctrAddChargeModal').modal('show');
             }
 
             function chargeFormHtml(svcId, isEdit) {
@@ -1542,8 +1553,7 @@
                 });
 
                 $(wrap).find('.ctr-cf-cancel').on('click', function() {
-                    wrap.style.display = 'none';
-                    wrap.innerHTML = '';
+                    $('#ctrAddChargeModal').modal('hide');
                 });
 
                 $(wrap).find('.ctr-cf-basedon').on('change', function() {
@@ -1914,8 +1924,7 @@
                         charge.chargeId = res.data && res.data.charge_id;
                         svc.charges.push(charge);
                     }
-                    wrap.style.display = 'none';
-                    wrap.innerHTML = '';
+                    $('#ctrAddChargeModal').modal('hide');
                     renderCharges(svc);
                     saveLocalDraft();
                 }).fail(function(xhr) {
@@ -2058,6 +2067,10 @@
 
             $('#ctrContractInfoModal .close, #ctrServicesModal .close').on('click', function() {
                 $(this).closest('.modal').modal('hide');
+            });
+
+            $('#ctrAddChargeModal').on('hidden.bs.modal', function() {
+                $('#ctrAddChargeModalBody').empty();
             });
 
             // ── Click delegation for service/charge actions ──────────────────────
