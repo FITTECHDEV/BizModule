@@ -549,7 +549,6 @@
             var CONTRACTS_LIST_URL = @json(route('contracts.list'));
             var OFFICE_CODE = @json($officeCode ?? '');
 
-            var CREATE_URL = @json(route('contracts.create'));
             var NEW_DRAFT_URL = @json(route('contracts.new-draft'));
 
             // ── Master data endpoints ─────────────────────────────────────────────
@@ -564,7 +563,6 @@
                     status: 'Draft',
                     effectiveFrom: '',
                     effectiveTo: '',
-                    description: '',
                     remark: '',
                     services: []
                 }
@@ -1065,7 +1063,7 @@
                 });
             }
 
-            // ── Service form visibility and population ──────────────────────────
+            // ── Service form visibility and population ────
             var svcForm = document.getElementById('ctrServiceForm');
 
             function openServiceForm() {
@@ -1101,7 +1099,7 @@
                     });
             }
 
-            // ── Save Service ──────────────────────────────────────────────────────
+            // ── Save Service ────
             document.getElementById('ctrSaveServiceBtn').addEventListener('click', function() {
                 var required = {
                     service: document.getElementById('ctrSvcService').value,
@@ -1181,7 +1179,7 @@
                 });
             });
 
-            // ── Render services & charges ────────────────────────────────────────
+            // ── Render services & charges ───────
             function renderServices() {
                 var list = document.getElementById('ctrServicesList');
                 var empty = document.getElementById('ctrServicesEmpty');
@@ -1257,7 +1255,7 @@
                 });
             }
 
-            // ── Open Charge Form ──────────────────────────────────────────────────
+            // ── Open Charge Form ───
             function openChargeForm(svcId, chargeToEdit) {
                 var wrap = document.getElementById('chargeform-' + svcId);
                 if (!wrap) return;
@@ -1268,31 +1266,30 @@
             }
 
             function chargeFormHtml(svcId, isEdit) {
-                var lock = '';
                 return '<div class="ctr-grid-2">' +
                     '<div class="ctr-field"><label class="ctr-lbl ctr-required">Charge Nature</label>' +
-                    '<select class="form-control form-control-sm ctr-cf-nature"' + lock + '>' +
+                    '<select class="form-control form-control-sm ctr-cf-nature">' +
                     '<option value="Revenue">Revenue</option><option value="Cost">Cost</option>' +
                     '<option value="CostMarkup">Cost with markup</option>' +
                     '</select></div>' +
                     '<div class="ctr-field"><label class="ctr-lbl ctr-required">Charge Category</label>' +
-                    '<select class="form-control form-control-sm ctr-cf-category"' + lock + '>' +
+                    '<select class="form-control form-control-sm ctr-cf-category">' +
                     '<option value="">-- Select --</option>' +
                     '</select></div>' +
                     '<div class="ctr-field"><label class="ctr-lbl ctr-required">Charge Code</label>' +
-                    '<select class="form-control form-control-sm ctr-cf-code"' + lock + '>' +
+                    '<select class="form-control form-control-sm ctr-cf-code">' +
                     '<option value="">-- Select --</option>' +
                     '</select></div>' +
                     '<div class="ctr-field"><label class="ctr-lbl ctr-required">Charge Description</label>' +
                     '<input type="text" class="form-control form-control-sm ctr-cf-desc" readonly></div>' +
                     '<div class="ctr-field"><label class="ctr-lbl ctr-required">Charge Based On</label>' +
-                    '<select class="form-control form-control-sm ctr-cf-basedon"' + lock + '>' +
+                    '<select class="form-control form-control-sm ctr-cf-basedon">' +
                     '<option value="">-- Select --</option>' +
                     '</select></div>' +
 
                     '<div class="ctr-field"><label class="ctr-lbl">Based On UOM</label>' +
-                    '<select class="form-control form-control-sm ctr-cf-uom"' + lock +
-                    '><option value="">-- Select --</option></select></div>' +
+                    '<select class="form-control form-control-sm ctr-cf-uom">' +
+                    '<option value="">-- Select --</option></select></div>' +
                     '<div class="ctr-field"><label class="ctr-lbl ctr-required">Currency</label>' +
                     '<select class="form-control form-control-sm ctr-cf-currency">' +
                     '<option value="">-- Select --</option>' +

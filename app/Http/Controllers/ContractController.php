@@ -451,7 +451,6 @@ class ContractController extends Controller
             'Formula' => $charge['formula'] ?? '',
             'RateSlabJson' => !empty($charge['rateSlab']) ? json_encode($charge['rateSlab']) : '',
             'Comments' => '',
-            // 'ChargeAction' => $charge['chargeAction'] ?? 'R',
             'MarkupRate' => $this->toFloat($charge['markupRate'] ?? null),
             'MarkFormula' => $charge['markupFormula'] ?? '',
             'MarkRateSlabJson' => !empty($charge['markupRateSlab']) ? json_encode($charge['markupRateSlab']) : '',
@@ -773,8 +772,6 @@ class ContractController extends Controller
                     continue;
                 }
             } while ($stmt->nextRowset());
-
-            // Log::info('getCountries - result', ['count' => count($rows), 'sample' => $rows[0] ?? null]);
 
             return response()->json($rows);
         } catch (\Exception $e) {

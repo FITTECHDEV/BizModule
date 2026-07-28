@@ -967,7 +967,6 @@
 
                 var $body = $(body);
                 var svcId = $body.data('ce-svc-id');
-                console.log('svcId on expand:', svcId); // TEMP DEBUG
 
                 initLocationAutocomplete('ce-svc-pol-' + svcId, null, null);
                 initLocationAutocomplete('ce-svc-por-' + svcId, null, 'ce-svc-coo-' + svcId);
@@ -1642,18 +1641,12 @@
                     if (res.success) {
                         var $sel = $(wrap).find('.ctr-cf-currency');
                         $sel.empty().append('<option value="">-- Select --</option>');
-                        var $mkSel = $(wrap).find('.ctr-mk-currency');
-                        $mkSel.empty().append('<option value="">Select</option>');
                         res.currencies.forEach(function(c) {
                             $sel.append('<option value="' + c.CurrencyCode + '">' + c
                                 .CurrencyCode +
                                 '</option>');
-                            $mkSel.append('<option value="' + c.CurrencyCode + '">' + c
-                                .CurrencyCode +
-                                '</option>');
                         });
                         $sel.val(chargeToEdit.chargeCurr);
-                        $mkSel.val(chargeToEdit.chargeCurr);
                     }
                 });
 
@@ -1707,20 +1700,6 @@
                     wrap.querySelector('.ctr-cf-formula').value = chargeToEdit.formula || '';
                 }
             }
-
-            // function recalcMarkupAmount(wrap) {
-            //     var baseRate = parseFloat(wrap.querySelector('.ctr-cf-rate')?.value) || 0;
-            //     var qty = parseFloat(wrap.querySelector('.ctr-cf-qty')?.value) || 0;
-            //     var mkRate = parseFloat(wrap.querySelector('.ctr-mk-rate')?.value) || 0;
-            //     var mkType = wrap.querySelector('.ctr-mk-ratetype')?.value;
-
-            //     var amount = mkType === 'Fixed' ?
-            //         mkRate * qty :
-            //         (mkRate / 100) * (baseRate * qty);
-
-            //     var amountField = wrap.querySelector('.ctr-mk-amount');
-            //     if (amountField) amountField.value = amount.toFixed(2);
-            // }
 
             function recalcMarkupAmount(wrap) {
                 var baseRate = parseFloat(wrap.querySelector('.ctr-cf-rate')?.value) || 0;
@@ -1989,27 +1968,6 @@
                 charge.markupFormula = null;
                 charge.markupRateSlab = null;
 
-                // if (actionVal === 'M') {
-                //     var mkType = wrap.querySelector('.ctr-mk-ratetype').value; // Percentage | Fixed
-                //     var mkRateVal = wrap.querySelector('.ctr-mk-rate').value;
-                //     if (!mkType || mkRateVal === '') {
-                //         alert('Markup type and Increase By rate are required for Cost with Markup.');
-                //         return;
-                //     }
-                //     charge.markupRateType = 'Single';
-                //     charge.markupType = mkType;
-                //     charge.markupRate = parseFloat(parseFloat(mkRateVal).toFixed(5));
-                //     charge.markupAmount = parseFloat(wrap.querySelector('.ctr-mk-amount').value) || 0;
-                // } else if (charge.toBeAdded === 1) {
-                //     // Accruable/Reimbursable without markup: the counterpart charge should
-                //     // carry the same rate as the primary charge, not 0 — otherwise the SP's
-                //     // second insert (@ToBeAdded = 1 branch) writes Rate = 0 / empty slabs.
-                //     charge.markupRateType = charge.rateType;
-                //     charge.markupRate = charge.rate;
-                //     charge.markupRateSlab = charge.rateSlab;
-                //     charge.markupFormula = charge.formula;
-                // }
-
                 if (actionVal === 'M') {
                     var mkType = wrap.querySelector('.ctr-mk-ratetype').value;
                     var mkRateVal = wrap.querySelector('.ctr-mk-rate').value;
@@ -2026,6 +1984,12 @@
                     charge.markupRateType = 'Single';
                     charge.markupType = mkType;
                     charge.markupRate = parseFloat(markedUpRate.toFixed(5));
+
+                } else if (charge.toBeAdded === 1) {
+                    charge.markupRateType = charge.rateType;
+                    charge.markupRate = charge.rate;
+                    charge.markupRateSlab = charge.rateSlab;
+                    charge.markupFormula = charge.formula;
                 }
 
                 var saveBtn = wrap.querySelector('.ctr-cf-save');
