@@ -127,7 +127,7 @@ class CrmSyncService
                 if (empty($row->bookingdetailsjson)) {
                     $skipped++;
                     // NEW — track skipped so UI can display it in the results table
-                    $records[] = ['bookingno' => $bno, 'status' => 'skipped', 'error' => null];
+                    $records[] = ['bookingno' => $bno, 'status' => 'skipped', 'error' => null, 'company' => null];
                     Log::warning('CRM Sync - Empty JSON skipped', ['bookingno' => $bno]);
                     continue;
                 }
@@ -138,7 +138,7 @@ class CrmSyncService
                     $errorMsg = 'JSON parse error: ' . json_last_error_msg();
                     $errors[] = ['bookingno' => $bno, 'error' => $errorMsg];
                     // NEW — track failed with reason
-                    $records[] = ['bookingno' => $bno, 'status' => 'failed', 'error' => $errorMsg];
+                    $records[] = ['bookingno' => $bno, 'status' => 'failed', 'error' => $errorMsg, 'company' => null];
                     Log::error('CRM Sync - JSON parse error', ['bookingno' => $bno]);
                     continue;
                 }
@@ -153,7 +153,12 @@ class CrmSyncService
                     $existing ? $updated++ : $inserted++;
                     $processedBookingNos[] = $bno;
                     // NEW — track dry-run outcome so preview table shows inserted/updated split
-                    $records[] = ['bookingno' => $bno, 'status' => $action, 'error' => null];
+                    $records[] = [
+                        'bookingno' => $bno,
+                        'status' => $action,
+                        'error' => null,
+                        'company' => $data['companyname'] ?? null,
+                    ];
 
                     Log::debug('CRM Sync - Dry run', [
                         'bookingno' => $bno,
@@ -191,7 +196,12 @@ class CrmSyncService
                 $existing ? $updated++ : $inserted++;
                 $processedBookingNos[] = $bno;
                 // NEW — track real outcome
-                $records[] = ['bookingno' => $bno, 'status' => $action, 'error' => null];
+                $records[] = [
+                    'bookingno' => $bno,
+                    'status' => $action,
+                    'error' => null,
+                    'company' => $data['companyname'] ?? null,
+                ];
 
                 Log::info('CRM Sync - SP executed', [
                     'bookingno' => $bno,
@@ -201,7 +211,12 @@ class CrmSyncService
                 $failed++;
                 $errors[] = ['bookingno' => $bno, 'error' => $e->getMessage()];
                 // NEW — track exception failures
-                $records[] = ['bookingno' => $bno, 'status' => 'failed', 'error' => $e->getMessage()];
+                $records[] = [
+                    'bookingno' => $bno,
+                    'status' => 'failed',
+                    'error' => $e->getMessage(),
+                    'company' => ($data ?? [])['companyname'] ?? null,
+                ];
 
                 Log::error('CRM Sync - Record failed', [
                     'bookingno' => $bno,

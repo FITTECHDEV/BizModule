@@ -1005,26 +1005,50 @@
                     }
                 });
 
+                // NEW
                 // ── If editing, fill remaining fields ────────────────
                 if (!chargeToEdit) return;
-
-                // ── Populate Reimbursable/Accrual on edit ────────────────────────
-                if (chargeToEdit.toBeAdded) {
-                    var nature = chargeToEdit.chargeNature || 'Revenue';
-                    if (nature === 'Revenue') {
-                        $(wrap).find('#ctrIsAccruable').prop('checked', true);
-                    } else {
-                        $(wrap).find('#ctrIsReimbursable').prop('checked', true);
-                    }
-                }
 
                 wrap.querySelector('.ctr-cf-desc').value = chargeToEdit.chargeDescription || '';
                 wrap.querySelector('.ctr-cf-min').value = chargeToEdit.minAmount ?? '';
                 wrap.querySelector('.ctr-cf-max').value = chargeToEdit.maxAmount ?? '';
+                wrap.querySelector('.ctr-cf-qty').value = chargeToEdit.quantity ?? '';
+
+                // Derive the single natureaction radio value from stored chargeNature + chargeAction
+                var natureVal = chargeToEdit.chargeNature || '';
+                var actionVal = chargeToEdit.chargeAction || '';
+                var naVal = '';
+                if (actionVal === 'M') {
+                    naVal = 'CostMarkup';
+                } else if (natureVal === 'Cost') {
+                    naVal = 'Cost';
+                } else if (natureVal === 'Revenue') {
+                    naVal = 'Revenue';
+                }
+                if (naVal) {
+                    $(wrap).find('input[name="ctr-cf-natureaction"][value="' + naVal + '"]').prop('checked', true);
+                }
+                $(wrap).find('.ctr-cf-markup-wrap').toggle(naVal === 'CostMarkup');
+                $(wrap).find('.ctr-cf-accruals-row').toggle(naVal !== 'CostMarkup');
+
+                if (actionVal === 'M') {
+                    $(wrap).find('.ctr-mk-ratetype').val(chargeToEdit.markupType || 'Percentage');
+                    wrap.querySelector('.ctr-mk-rate').value = chargeToEdit.markupRate ?? '';
+                    recalcMarkupAmount(wrap);
+                }
 
                 $(wrap).find('.ctr-cf-ratetype').val(chargeToEdit.rateType);
                 $(wrap).find('.ctr-cf-inline-rate').html(inlineRateHtml(chargeToEdit.rateType));
                 $(wrap).find('.ctr-cf-ratearea').html(rateAreaHtml(chargeToEdit.rateType));
+
+                var markupAllowed = (chargeToEdit.rateType === 'Single');
+                $(wrap).find('input[name="ctr-cf-natureaction"][value="CostMarkup"]').prop('disabled', !markupAllowed)
+                    .closest('label').toggle(markupAllowed);
+
+                $(wrap).find('.ctr-cf-accruable').prop('checked', chargeToEdit.isAccruable == '1');
+                $(wrap).find('.ctr-cf-reimbursable').prop('checked', chargeToEdit.isReimbursable == '1');
+                $(wrap).find('.ctr-cf-accruable-wrap').toggle(naVal === 'Revenue');
+                $(wrap).find('.ctr-cf-reimbursable-wrap').toggle(naVal === 'Cost');
 
                 if (chargeToEdit.rateType === 'Single') {
                     wrap.querySelector('.ctr-cf-rate').value = chargeToEdit.rate ?? '';
@@ -1033,7 +1057,7 @@
                     fillSlabRows(wrap.querySelector('.ctr-slab-rows'), chargeToEdit.rateSlab);
                 } else if (chargeToEdit.rateType === 'Formula') {
                     var svc2 = findService(svcId);
-                    var isRevenue2 = (chargeToEdit.chargeNature === 'Cost') ? 0 : 1;
+                    var isRevenue2 = (naVal === 'Cost') ? 0 : 1;
                     if (svc2 && svc2.serviceFilterId) {
                         loadFormulaFields(svc2.serviceFilterId, isRevenue2).done(function(res) {
                             if (res.success) FORMULA_FIELDS = res.data.map(function(name) {
@@ -1043,35 +1067,42 @@
                                 };
                             });
                             bindFormulaBuilderEvents(wrap);
+                            var $fieldsSelect = $(wrap).find('.ctr-fb-fields');
+                            if ($fieldsSelect.length) $fieldsSelect.html(formulaOptionsHtml(FORMULA_FIELDS));
                         });
                     } else {
                         bindFormulaBuilderEvents(wrap);
                     }
                     wrap.querySelector('.ctr-cf-formula').value = chargeToEdit.formula || '';
-                    $(wrap).find('.ctr-fb-ratetype').val(chargeToEdit.formulaRateType || 'Single');
-                    renderFormulaRateArea(wrap, chargeToEdit.formulaRateType || 'Single');
-                    if (chargeToEdit.formulaRateType === 'Slab Based') {
-                        fillSlabRows(wrap.querySelector('.ctr-fb-ratearea .ctr-slab-rows'), chargeToEdit.formulaSlab);
-                    } else {
-                        wrap.querySelector('.ctr-formula-rate').value = chargeToEdit.formulaRate ?? '';
-                    }
                 }
             }
 
-            function fillSlabRows(tbody, slabs) {
-                if (!tbody || !slabs || !slabs.length) return;
+            function fillSlabRows(tbody, rateSlabData) {
+                if (!tbody || !rateSlabData) return;
+                var slabs = [];
+                if (Array.isArray(rateSlabData)) {
+                    slabs = rateSlabData;
+                } else if (rateSlabData.Slabs) {
+                    slabs = rateSlabData.Slabs;
+                }
+                if (!slabs.length) return;
                 tbody.innerHTML = '';
                 slabs.forEach(function(s) {
-                    var isAbove = s.upto === null || s.upto === undefined;
                     var row = document.createElement('tr');
-                    if (isAbove) row.className = 'ctr-slab-above-row';
+                    var min = s.Min ?? 0;
+                    var upto = s.Slab ?? s.upto ?? '';
+                    var value = s.value ?? '';
+                    var formula = s.Formula ?? '';
                     row.innerHTML =
-                        '<td>' + (isAbove ? '<span class="ctr-slab-above-label">Above</span>' :
-                            '<input type="number" class="form-control form-control-sm ctr-slab-upto" value="' +
-                            s.upto + '">') + '</td>' +
+                        '<td><input type="number" class="form-control form-control-sm ctr-slab-min" value="' +
+                        min + '"></td>' +
+                        '<td><input type="number" class="form-control form-control-sm ctr-slab-upto" value="' +
+                        upto + '"></td>' +
                         '<td><input type="number" step="0.01" class="form-control form-control-sm ctr-slab-value" value="' +
-                        s.value + '"></td>' +
-                        '<td>' + (isAbove ? '' : '<span class="ctr-slab-row-remove">&times;</span>') + '</td>';
+                        value + '"></td>' +
+                        '<td><input type="text" class="form-control form-control-sm ctr-slab-formula" value="' +
+                        formula + '"></td>' +
+                        '<td><span class="ctr-slab-row-remove">&times;</span></td>';
                     tbody.appendChild(row);
                 });
             }
@@ -1244,7 +1275,7 @@
                 svc.charges.forEach(function(c) {
                     var rateDisplay = c.rateType === 'Single' ? (c.rate + ' ' + c.chargeCurr) :
                         c.rateType === 'Formula' ? (c.formula || '—') :
-                        (c.rateSlab || []).length + ' slab(s)';
+                        ((c.rateSlab && c.rateSlab.Slabs) ? c.rateSlab.Slabs.length : 0) + ' slab(s)';
 
                     var tr = document.createElement('tr');
                     tr.innerHTML =
@@ -1270,85 +1301,155 @@
             function openChargeForm(svcId, chargeToEdit) {
                 var wrap = document.getElementById('ctrAddChargeModalBody');
                 if (!wrap) return;
+                var chargeId = chargeToEdit ? chargeToEdit.chargeId : null;
                 wrap.innerHTML = chargeFormHtml(svcId, !!chargeToEdit);
-                bindChargeFormEvents(svcId, wrap, chargeToEdit);
+                bindChargeFormEvents(svcId, chargeId, wrap, chargeToEdit);
                 loadChargeFormMasters(wrap, chargeToEdit, svcId);
+
+                // NEW: eager-load formula fields so Rate Type = Formula works immediately,
+                // matching edit.blade.php's .ce-add-charge-btn behavior
+                var svc = findService(svcId);
+                if (svc && svc.serviceFilterId) {
+                    loadFormulaFields(svc.serviceFilterId, 1).done(function(res) {
+                        if (res.success) FORMULA_FIELDS = res.data.map(function(name) {
+                            return {
+                                label: name,
+                                token: name
+                            };
+                        });
+                    });
+                }
+
                 $('#ctrAddChargeModal').modal('show');
             }
 
             function chargeFormHtml(svcId, isEdit) {
-                return '<div class="ctr-grid-2">' +
-                    '<div class="ctr-field"><label class="ctr-lbl ctr-required">Charge Nature</label>' +
-                    '<select class="form-control form-control-sm ctr-cf-nature">' +
-                    '<option value="Revenue">Revenue</option><option value="Cost">Cost</option>' +
-                    '<option value="CostMarkup">Cost with markup</option>' +
-                    '</select></div>' +
-                    '<div class="ctr-field"><label class="ctr-lbl ctr-required">Charge Category</label>' +
-                    '<select class="form-control form-control-sm ctr-cf-category">' +
-                    '<option value="">-- Select --</option>' +
-                    '</select></div>' +
-                    '<div class="ctr-field"><label class="ctr-lbl ctr-required">Charge Code</label>' +
-                    '<select class="form-control form-control-sm ctr-cf-code">' +
-                    '<option value="">-- Select --</option>' +
-                    '</select></div>' +
-                    '<div class="ctr-field"><label class="ctr-lbl ctr-required">Charge Description</label>' +
-                    '<input type="text" class="form-control form-control-sm ctr-cf-desc" readonly></div>' +
-                    '<div class="ctr-field"><label class="ctr-lbl ctr-required">Charge Based On</label>' +
-                    '<select class="form-control form-control-sm ctr-cf-basedon">' +
-                    '<option value="">-- Select --</option>' +
-                    '</select></div>' +
-
-                    '<div class="ctr-field"><label class="ctr-lbl">Based On UOM</label>' +
-                    '<select class="form-control form-control-sm ctr-cf-uom">' +
-                    '<option value="">-- Select --</option></select></div>' +
-                    '<div class="ctr-field"><label class="ctr-lbl ctr-required">Currency</label>' +
-                    '<select class="form-control form-control-sm ctr-cf-currency">' +
-                    '<option value="">-- Select --</option>' +
-                    '</select></div>' +
-                    '<div class="ctr-field" id="ctr-is-accruable-container" style="display:none;">' +
-                    '<div class="form-check mt-4">' +
-                    '<input class="form-check-input" type="checkbox" id="ctrIsAccruable">' +
-                    '<label class="form-check-label" for="ctrIsAccruable"><strong>Is Accruable</strong> <small class="text-muted">(Adds to Cost)</small></label>' +
-                    '</div></div>' +
-                    '<div class="ctr-field" id="ctr-is-reimbursable-container" style="display:none;">' +
-                    '<div class="form-check mt-4">' +
-                    '<input class="form-check-input" type="checkbox" id="ctrIsReimbursable">' +
-                    '<label class="form-check-label" for="ctrIsReimbursable"><strong>Is Reimbursable</strong> <small class="text-muted">(Adds to Revenue)</small></label>' +
-                    '</div></div>' +
-                    '<div class="ctr-field"><label class="ctr-lbl">Min Amount</label>' +
-                    '<input type="number" step="0.01" class="form-control form-control-sm ctr-cf-min"></div>' +
-                    '<div class="ctr-field"><label class="ctr-lbl">Max Amount</label>' +
-                    '<input type="number" step="0.01" class="form-control form-control-sm ctr-cf-max"></div>' +
-                    '<div class="ctr-field"><label class="ctr-lbl ctr-required">Rate Type</label>' +
-                    '<select class="form-control form-control-sm ctr-cf-ratetype">' +
-                    '<option value="">-- Select --</option>' +
-                    '<option value="Single">Single</option>' +
-                    '<option value="Slab Based">Slab Based</option>' +
-                    '<option value="Step Up">Step Up</option>' +
-                    '<option value="Formula">Formula</option>' +
-                    '</select></div>' +
-                    '<div class="ctr-field ctr-cf-inline-rate"></div>' +
-                    '<div class="ctr-cf-markup-wrap mt-2" style="display:none;">' +
-                    '<strong class="ctr-lbl">Markup</strong>' +
-                    '<div class="ctr-grid-2" style="margin-top:6px;">' +
-                    '<div class="ctr-field"><label class="ctr-lbl">Increase By</label>' +
-                    '<div class="input-group input-group-sm">' +
-                    '<input type="number" step="0.01" class="form-control ctr-mk-rate">' +
-                    '<div class="input-group-append">' +
-                    '<select class="form-control ctr-mk-ratetype" style="max-width:110px;">' +
-                    '<option value="Percentage">%</option><option value="Fixed">Fixed</option>' +
-                    '</select>' +
-                    '</div></div></div>' +
-                    '<div class="ctr-field"><label class="ctr-lbl">Amount</label>' +
-                    '<input type="number" step="0.01" class="form-control form-control-sm ctr-mk-amount" value="0.00" readonly></div>' +
-                    '</div></div>' +
-                    '</div>' +
-                    '<div class="ctr-cf-ratearea mt-2"></div>' +
-                    '<div class="d-flex justify-content-end mt-2">' +
-                    '<button type="button" class="btn btn-sm btn-secondary mr-2 ctr-cf-cancel">Cancel</button>' +
-                    '<button type="button" class="btn btn-sm btn-success ctr-cf-save" data-svc="' + svcId +
-                    '">' + (isEdit ? 'Update Charge' : 'Save Charge') + '</button>' +
-                    '</div>';
+                return `
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; gap:20px;">
+                        <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
+                            <div>
+                                <label class="mr-3 ctr-natureaction-lbl">
+                                    <input type="radio" name="ctr-cf-natureaction" value="Revenue" checked> Revenue
+                                </label>
+                                <label class="mr-3 ctr-natureaction-lbl">
+                                    <input type="radio" name="ctr-cf-natureaction" value="Cost"> Cost
+                                </label>
+                                <label class="ctr-natureaction-lbl">
+                                    <input type="radio" name="ctr-cf-natureaction" value="CostMarkup"> Cost with markup
+                                </label>
+                            </div>
+                            <div class="ctr-cf-accruals-row" style="display:flex; gap:20px; align-items:center;">
+                                <div class="ctr-cf-accruable-wrap">
+                                    <label class="ctr-natureaction-lbl mb-0">
+                                        <input type="checkbox" class="ctr-cf-accruable">
+                                        Is Accruable
+                                    </label>
+                                </div>
+                                <div class="ctr-cf-reimbursable-wrap">
+                                    <label class="ctr-natureaction-lbl mb-0">
+                                        <input type="checkbox" class="ctr-cf-reimbursable">
+                                        Is Reimbursable (Adds to Revenue)
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="ctr-cf-base-currency text-muted" style="font-size:.85rem;"></div>
+                    </div>
+            
+                    <div class="ctr-grid-2" style="display:grid; grid-template-columns:1fr 1fr; gap:12px 16px;">
+                        <div class="ctr-field">
+                            <label class="ctr-lbl ctr-required">Charge Code</label>
+                            <select class="form-control form-control-sm ctr-cf-code">
+                                <option value="">-- Select --</option>
+                            </select>
+                        </div>
+                        <div class="ctr-field">
+                            <label class="ctr-lbl">Charge Description</label>
+                            <input type="text" class="form-control form-control-sm ctr-cf-desc ctr-field-readonly" readonly>
+                        </div>
+                        <div class="ctr-field">
+                            <label class="ctr-lbl ctr-required">Charge Based On</label>
+                            <select class="form-control form-control-sm ctr-cf-basedon">
+                                <option value="">-- Select --</option>
+                            </select>
+                        </div>
+                        <div class="ctr-field">
+                            <label class="ctr-lbl ctr-required">Based On UOM</label>
+                            <select class="form-control form-control-sm ctr-cf-uom">
+                                <option value="">Select Based On first</option>
+                            </select>
+                        </div>
+                        <div class="ctr-field">
+                            <label class="ctr-lbl">Max Amount</label>
+                            <input type="number" step="0.01" class="form-control form-control-sm ctr-cf-max">
+                        </div>
+                        <div class="ctr-field">
+                            <label class="ctr-lbl">Min Amount</label>
+                            <input type="number" step="0.01" class="form-control form-control-sm ctr-cf-min">
+                        </div>
+                        <div class="ctr-field">
+                            <label class="ctr-lbl ctr-required">Currency</label>
+                            <select class="form-control form-control-sm ctr-cf-currency">
+                                <option value="">-- Select --</option>
+                            </select>
+                        </div>
+                        <div class="ctr-field">
+                            <label class="ctr-lbl">Quantity</label>
+                            <input type="number" step="0.01" class="form-control form-control-sm ctr-cf-qty" placeholder="0">
+                        </div>
+                        <div class="ctr-field">
+                            <label class="ctr-lbl">Charge Category</label>
+                            <select class="form-control form-control-sm ctr-cf-category">
+                                <option value="">-- Select --</option>
+                            </select>
+                        </div>
+                    </div>
+            
+                    <div class="ctr-cf-markup-wrap mt-2" style="display:none;">
+                        <strong class="ctr-lbl">Markup</strong>
+                        <div class="ctr-grid-2" style="display:grid; grid-template-columns:1fr 1fr; gap:12px 16px; margin-top:6px;">
+                            <div class="ctr-field d-flex" style="gap:8px;">
+                                <div style="flex:1;">
+                                    <label class="ctr-lbl">Increase By</label>
+                                    <input type="number" step="0.01" class="form-control form-control-sm ctr-mk-rate" placeholder="0.00">
+                                </div>
+                                <div style="flex:1;">
+                                    <label class="ctr-lbl">&nbsp;</label>
+                                    <select class="form-control form-control-sm ctr-mk-ratetype">
+                                        <option value="Percentage">Percentage</option>
+                                        <option value="Fixed">Fixed</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="ctr-field">
+                                <label class="ctr-lbl">Amount</label>
+                                <input type="number" step="0.01" class="form-control form-control-sm ctr-mk-amount" value="0.00" readonly>
+                            </div>
+                        </div>
+                    </div>
+            
+                    <div class="ctr-grid-2" style="display:grid; grid-template-columns:1fr 1fr; gap:12px 16px; margin-top:12px;">
+                        <div class="ctr-field">
+                            <label class="ctr-lbl">Rate Type</label>
+                            <select class="form-control form-control-sm ctr-cf-ratetype">
+                                <option value="">-- Select --</option>
+                                <option value="Single">Single</option>
+                                <option value="Slab Based">Slab Based</option>
+                                <option value="Step Up">Step Up</option>
+                                <option value="Formula">Formula</option>
+                            </select>
+                        </div>
+                        <div class="ctr-field ctr-cf-inline-rate"></div>
+                    </div>
+            
+                    <div class="ctr-cf-ratearea mt-2"></div>
+            
+                    <div class="d-flex justify-content-end mt-2">
+                        <button type="button" class="btn btn-sm btn-secondary mr-2 ctr-cf-cancel">Cancel</button>
+                        <button type="button" class="btn btn-sm btn-primary mr-2 ctr-cf-save-add-more" data-svc="${svcId}">Save &amp; Add More</button>
+                        <button type="button" class="btn btn-sm btn-success ctr-cf-save" data-svc="${svcId}">${isEdit ? 'Update Charge' : 'Save Charge'}</button>
+                    </div>
+                `;
             }
 
             // ── Rate Type conditional UI (slabs, formula) ──────────────────────
@@ -1456,12 +1557,18 @@
             function rateAreaHtml(rateType) {
                 if (rateType === 'Slab Based' || rateType === 'Step Up') {
                     return '<div class="ctr-slab-wrap">' +
-                        '<table class="ctr-slab-table"><thead><tr><th>Up To</th><th>Value</th><th></th></tr></thead>' +
-                        '<tbody class="ctr-slab-rows">' +
-                        slabRowHtml(true) +
-                        '</tbody></table>' +
-                        '<button type="button" class="btn btn-xs btn-outline-primary ctr-slab-add-row mt-1">+ Add Slab</button>' +
-                        '</div>';
+                        '<div class="ctr-field mb-1" style="max-width:200px;">' +
+                        '<label class="ctr-lbl">Slab Type</label>' +
+                        '<select class="form-control form-control-sm ctr-slab-type">' +
+                        '<option value="LessThanOrEqual" selected>LessThanOrEqual</option>' +
+                        '<option value="LessThan">LessThan</option>' +
+                        '<option value="GreaterThan">GreaterThan</option>' +
+                        '<option value="GreaterThanOrEqual">GreaterThanOrEqual</option>' +
+                        '</select></div>' +
+                        '<table class="ctr-slab-table">' +
+                        '<thead><tr><th>Min</th><th>Slab (Up To)</th><th>Value</th><th>Formula (optional)</th><th></th></tr></thead>' +
+                        '<tbody class="ctr-slab-rows">' + slabRowHtml() + '</tbody></table>' +
+                        '<button type="button" class="btn btn-xs btn-outline-primary ctr-slab-add-row mt-1">+ Add Slab</button></div>';
                 }
                 if (rateType === 'Formula') {
                     return formulaBuilderHtml();
@@ -1469,91 +1576,135 @@
                 return '';
             }
 
-            function slabRowHtml(isAbove) {
-                return '<tr' + (isAbove ? ' class="ctr-slab-above-row"' : '') + '>' +
-                    '<td>' + (isAbove ?
-                        '<span class="ctr-slab-above-label">Above</span>' :
-                        '<input type="number" class="form-control form-control-sm ctr-slab-upto" placeholder="e.g. 200">'
-                    ) + '</td>' +
+            function slabRowHtml() {
+                return '<tr>' +
+                    '<td><input type="number" class="form-control form-control-sm ctr-slab-min" value="0" step="any"></td>' +
+                    '<td><input type="number" class="form-control form-control-sm ctr-slab-upto" placeholder="e.g. 500"></td>' +
                     '<td><input type="number" step="0.01" class="form-control form-control-sm ctr-slab-value"></td>' +
-                    '<td>' + (isAbove ? '' : '<span class="ctr-slab-row-remove">&times;</span>') + '</td>' +
-                    '</tr>';
+                    '<td><input type="text" class="form-control form-control-sm ctr-slab-formula" placeholder="optional"></td>' +
+                    '<td><span class="ctr-slab-row-remove">&times;</span></td></tr>';
             }
 
             function addSlabRow(wrap) {
                 var tbody = wrap.querySelector('.ctr-slab-rows');
-                var lastRow = tbody.querySelector('.ctr-slab-above-row');
-                if (lastRow) {
-                    var value = lastRow.querySelector('.ctr-slab-value').value;
-                    var normalRow = document.createElement('tr');
-                    normalRow.innerHTML =
-                        '<td><input type="number" class="form-control form-control-sm ctr-slab-upto" placeholder="e.g. 500"></td>' +
-                        '<td><input type="number" step="0.01" class="form-control form-control-sm ctr-slab-value" value="' +
-                        value + '"></td>' +
-                        '<td><span class="ctr-slab-row-remove">&times;</span></td>';
-                    lastRow.replaceWith(normalRow);
-                }
-                var newRow = document.createElement('tr');
-                newRow.className = 'ctr-slab-above-row';
-                newRow.innerHTML =
-                    '<td><span class="ctr-slab-above-label">Above</span></td>' +
+                var tr = document.createElement('tr');
+                tr.innerHTML =
+                    '<td><input type="number" class="form-control form-control-sm ctr-slab-min" value="0"></td>' +
+                    '<td><input type="number" class="form-control form-control-sm ctr-slab-upto" placeholder="e.g. 500"></td>' +
                     '<td><input type="number" step="0.01" class="form-control form-control-sm ctr-slab-value"></td>' +
-                    '<td></td>';
-                tbody.appendChild(newRow);
+                    '<td><input type="text" class="form-control form-control-sm ctr-slab-formula" placeholder="optional"></td>' +
+                    '<td><span class="ctr-slab-row-remove">&times;</span></td>';
+                tbody.appendChild(tr);
             }
 
             function renderFormulaRateArea(wrap, rateType) {
                 var area = wrap.querySelector('.ctr-fb-ratearea');
                 if (rateType === 'Slab Based') {
-                    area.innerHTML = '<div class="ctr-slab-wrap">' +
-                        '<table class="ctr-slab-table"><thead><tr><th>Up To</th><th>Value</th><th></th></tr></thead>' +
-                        '<tbody class="ctr-slab-rows">' + slabRowHtml(true) + '</tbody></table>' +
-                        '<button type="button" class="btn btn-xs btn-outline-primary ctr-slab-add-row mt-1">+ Add Slab</button>' +
-                        '</div>';
+                    area.innerHTML = '<div class="ctr-slab-wrap"><table class="ctr-slab-table">' +
+                        '<thead><tr><th>Min</th><th>Slab (Up To)</th><th>Value</th><th>Formula (optional)</th><th></th></tr></thead>' +
+                        '<tbody class="ctr-slab-rows">' + slabRowHtml() + '</tbody></table>' +
+                        '<button type="button" class="btn btn-xs btn-outline-primary ctr-slab-add-row mt-1">+ Add Slab</button></div>';
                 } else {
-                    area.innerHTML = '<div class="ctr-field" style="max-width:200px;">' +
-                        '<label class="ctr-lbl ctr-required">Rate</label>' +
+                    area.innerHTML =
+                        '<div class="ctr-field" style="max-width:200px;"><label class="ctr-lbl">Rate</label>' +
                         '<input type="number" step="0.00001" class="form-control form-control-sm ctr-formula-rate"></div>';
-                    clampDecimals(area.querySelector('.ctr-formula-rate'), 5);
                 }
             }
 
-            function bindChargeFormEvents(svcId, wrap, chargeToEdit) {
-                clampDecimals(wrap.querySelector('.ctr-cf-min'), 2);
-                clampDecimals(wrap.querySelector('.ctr-cf-max'), 2);
+            function recalcMarkupAmount(wrap) {
+                var baseRate = parseFloat(wrap.querySelector('.ctr-cf-rate')?.value) || 0;
+                var mkRate = parseFloat(wrap.querySelector('.ctr-mk-rate')?.value) || 0;
+                var mkType = wrap.querySelector('.ctr-mk-ratetype')?.value;
 
+                var markedUpRate = mkType === 'Fixed' ?
+                    baseRate + mkRate :
+                    baseRate + (baseRate * mkRate / 100);
+
+                var amountField = wrap.querySelector('.ctr-mk-amount');
+                if (amountField) amountField.value = markedUpRate.toFixed(5);
+            }
+
+            function bindChargeFormEvents(svcId, chargeId, wrap, chargeToEdit) {
                 $(wrap).find('.ctr-cf-ratetype').on('change', function() {
                     $(wrap).find('.ctr-cf-inline-rate').html(inlineRateHtml(this.value));
                     $(wrap).find('.ctr-cf-ratearea').html(rateAreaHtml(this.value));
-                    clampDecimals(wrap.querySelector('.ctr-cf-rate'), 5);
-
-                    var $markupOption = $(wrap).find('.ctr-cf-nature option[value="CostMarkup"]');
-                    var markupAllowed = (this.value === 'Single');
-                    $markupOption.prop('disabled', !markupAllowed);
-                    if (!markupAllowed && $(wrap).find('.ctr-cf-nature').val() === 'CostMarkup') {
-                        $(wrap).find('.ctr-cf-nature').val('Cost').trigger('change');
+                    if (this.value === 'Formula') {
+                        var svc = findService(svcId);
+                        var isRevenue = $(wrap).find('input[name="ctr-cf-natureaction"]:checked').val() ===
+                            'Cost' ? 0 : 1;
+                        if (svc && svc.serviceFilterId) {
+                            loadFormulaFields(svc.serviceFilterId, isRevenue).done(function(res) {
+                                if (res.success) FORMULA_FIELDS = res.data.map(function(name) {
+                                    return {
+                                        label: name,
+                                        token: name
+                                    };
+                                });
+                                bindFormulaBuilderEvents(wrap);
+                                var $fieldsSelect = $(wrap).find('.ctr-fb-fields');
+                                if ($fieldsSelect.length) $fieldsSelect.html(formulaOptionsHtml(
+                                    FORMULA_FIELDS));
+                            });
+                        } else {
+                            bindFormulaBuilderEvents(wrap);
+                        }
                     }
 
-                    if (this.value !== 'Formula') return;
-                    var svc = findService(svcId);
-                    var isRevenue = ($(wrap).find('.ctr-cf-nature').val() === 'Cost') ? 0 : 1;
-                    if (svc && svc.serviceFilterId) {
-                        loadFormulaFields(svc.serviceFilterId, isRevenue).done(function(res) {
-                            if (res.success) FORMULA_FIELDS = res.data.map(function(name) {
-                                return {
-                                    label: name,
-                                    token: name
-                                };
-                            });
-                            bindFormulaBuilderEvents(wrap);
-                        });
-                    } else {
-                        bindFormulaBuilderEvents(wrap);
+                    var $markupRadio = $(wrap).find('input[name="ctr-cf-natureaction"][value="CostMarkup"]');
+                    var markupAllowed = (this.value === 'Single');
+                    $markupRadio.prop('disabled', !markupAllowed);
+                    $markupRadio.closest('label').toggle(markupAllowed);
+
+                    if (!markupAllowed && $markupRadio.is(':checked')) {
+                        $(wrap).find('input[name="ctr-cf-natureaction"][value="Cost"]').prop('checked', true)
+                            .trigger('change');
                     }
                 });
 
                 $(wrap).find('.ctr-cf-cancel').on('click', function() {
                     $('#ctrAddChargeModal').modal('hide');
+                });
+
+                $(wrap).find('input[name="ctr-cf-natureaction"]').on('change', function() {
+                    $(wrap).find('.ctr-cf-markup-wrap').toggle(this.value === 'CostMarkup');
+                    $(wrap).find('.ctr-cf-accruals-row').toggle(this.value !== 'CostMarkup');
+
+                    var isRevenue = (this.value === 'Revenue');
+                    $(wrap).find('.ctr-cf-accruable-wrap').toggle(isRevenue);
+                    $(wrap).find('.ctr-cf-reimbursable-wrap').toggle(!isRevenue && this.value === 'Cost');
+                    if (!isRevenue) $(wrap).find('.ctr-cf-accruable').prop('checked', false);
+                    if (isRevenue) $(wrap).find('.ctr-cf-reimbursable').prop('checked', false);
+
+                    var svc = findService(svcId);
+                    var isRevenueForFormula = isRevenue ? 1 : 0;
+                    if (svc && svc.serviceFilterId) {
+                        loadFormulaFields(svc.serviceFilterId, isRevenueForFormula).done(function(res) {
+                            if (!res.success) return;
+                            FORMULA_FIELDS = res.data.map(function(name) {
+                                return {
+                                    label: name,
+                                    token: name
+                                };
+                            });
+                            var $fieldsSelect = $(wrap).find('.ctr-fb-fields');
+                            if ($fieldsSelect.length) $fieldsSelect.html(formulaOptionsHtml(
+                                FORMULA_FIELDS));
+                        });
+                    }
+                });
+
+                $(wrap).on('click', '.ctr-slab-add-row', function() {
+                    addSlabRow(this.closest('.ctr-slab-wrap').parentNode || wrap);
+                });
+                $(wrap).on('click', '.ctr-slab-row-remove', function() {
+                    $(this).closest('tr').remove();
+                });
+
+                $(wrap).on('input', '.ctr-mk-rate, .ctr-cf-rate, .ctr-cf-qty', function() {
+                    recalcMarkupAmount(wrap);
+                });
+                $(wrap).on('change', '.ctr-mk-ratetype', function() {
+                    recalcMarkupAmount(wrap);
                 });
 
                 $(wrap).find('.ctr-cf-basedon').on('change', function() {
@@ -1604,68 +1755,15 @@
                     });
                 });
 
-                // ── Toggle Accruable/Reimbursable based on Charge Nature ──────────
-                function toggleAccruableReimbursable() {
-                    var nature = $(wrap).find('.ctr-cf-nature').val();
-                    if (nature === 'Revenue') {
-                        $(wrap).find('#ctr-is-accruable-container').show();
-                        $(wrap).find('#ctr-is-reimbursable-container').hide();
-                        $(wrap).find('.ctr-cf-markup-wrap').hide();
-                        $(wrap).find('#ctrIsReimbursable').prop('checked', false);
-                        if (chargeToEdit && chargeToEdit.isAccruable === '1') {
-                            $(wrap).find('#ctrIsAccruable').prop('checked', true);
-                        }
-                    } else if (nature === 'CostMarkup') {
-                        $(wrap).find('#ctr-is-accruable-container').hide();
-                        $(wrap).find('#ctr-is-reimbursable-container').hide();
-                        $(wrap).find('.ctr-cf-markup-wrap').show();
-                        $(wrap).find('#ctrIsAccruable').prop('checked', false);
-                        $(wrap).find('#ctrIsReimbursable').prop('checked', false);
-                    } else {
-                        $(wrap).find('#ctr-is-accruable-container').hide();
-                        $(wrap).find('#ctr-is-reimbursable-container').show();
-                        $(wrap).find('.ctr-cf-markup-wrap').hide();
-                        $(wrap).find('#ctrIsAccruable').prop('checked', false);
-                        if (chargeToEdit && chargeToEdit.isReimbursable === '1') {
-                            $(wrap).find('#ctrIsReimbursable').prop('checked', true);
-                        }
-                    }
-                }
-
-                function recalcMarkupAmount() {
-                    var baseRate = parseFloat(wrap.querySelector('.ctr-cf-rate')?.value) || 0;
-                    var mkRate = parseFloat(wrap.querySelector('.ctr-mk-rate')?.value) || 0;
-                    var mkType = wrap.querySelector('.ctr-mk-ratetype')?.value;
-                    var markedUpRate = mkType === 'Fixed' ?
-                        baseRate + mkRate :
-                        baseRate + (baseRate * mkRate / 100);
-                    var amountField = wrap.querySelector('.ctr-mk-amount');
-                    if (amountField) amountField.value = markedUpRate.toFixed(5);
-                }
-                $(wrap).on('input', '.ctr-mk-rate, .ctr-cf-rate', recalcMarkupAmount);
-                $(wrap).on('change', '.ctr-mk-ratetype', recalcMarkupAmount);
-
-                // Initial toggle on form load
-                toggleAccruableReimbursable();
-
-                // Re-toggle when Charge Nature changes
-                $(wrap).find('.ctr-cf-nature').on('change', function() {
-                    toggleAccruableReimbursable();
-                });
-
-                // ── Auto‑fill description and currency on code selection ──
                 $(wrap).find('.ctr-cf-code').on('change', function() {
                     var $selected = $(this).find('option:selected');
                     var desc = $selected.data('description') || '';
                     var curr = $selected.data('currency') || '';
-                    if (desc) {
-                        $(wrap).find('.ctr-cf-desc').val(desc);
-                    }
+                    if (desc) $(wrap).find('.ctr-cf-desc').val(desc);
                     if (curr) {
                         var $currencySelect = $(wrap).find('.ctr-cf-currency');
-                        if ($currencySelect.find('option[value="' + curr + '"]').length) {
-                            $currencySelect.val(curr);
-                        }
+                        if ($currencySelect.find('option[value="' + curr + '"]').length) $currencySelect.val(
+                            curr);
                     }
                     if ($selected.val()) $selected.text($selected.val());
                 });
@@ -1677,8 +1775,14 @@
                 });
 
                 $(wrap).find('.ctr-cf-save').on('click', function() {
-                    saveCharge(svcId, wrap, chargeToEdit);
+                    saveCharge(svcId, chargeId, wrap, chargeToEdit, false);
                 });
+                $(wrap).find('.ctr-cf-save-add-more').on('click', function() {
+                    saveCharge(svcId, chargeId, wrap, chargeToEdit, true);
+                });
+
+                // Initial radio state
+                $(wrap).find('input[name="ctr-cf-natureaction"]:checked').trigger('change');
             }
 
             function appendFormulaToken(wrap, token) {
@@ -1701,6 +1805,12 @@
                 $(wrap).find('.ctr-fb-add-function').on('click', function() {
                     appendFormulaToken(wrap, $(wrap).find('.ctr-fb-functions').val());
                 });
+                $(wrap).find('.ctr-fb-fields, .ctr-fb-operators, .ctr-fb-functions').on('dblclick', 'option',
+                    function() {
+                        var token = $(this).val();
+                        var isField = $(this).closest('select').hasClass('ctr-fb-fields');
+                        appendFormulaToken(wrap, isField ? '{' + token + '}' : token);
+                    });
                 $(wrap).find('.ctr-fb-reset').on('click', function(e) {
                     e.preventDefault();
                     wrap.querySelector('.ctr-cf-formula').value = '';
@@ -1712,7 +1822,7 @@
                 renderFormulaRateArea(wrap, rtSelect.value);
             }
 
-            function saveCharge(svcId, wrap, chargeToEdit) {
+            function saveCharge(svcId, chargeId, wrap, chargeToEdit, keepOpen) {
                 var svc = findService(svcId);
 
                 if (!svc.serviceFilterId) {
@@ -1721,13 +1831,20 @@
                 }
 
                 var rateType = wrap.querySelector('.ctr-cf-ratetype').value;
+                var $uomField = wrap.querySelector('.ctr-cf-uom');
+                var uomNotNeeded = $uomField.disabled;
+
                 var required = {
                     category: wrap.querySelector('.ctr-cf-category').value,
                     code: wrap.querySelector('.ctr-cf-code').value.trim(),
                     desc: wrap.querySelector('.ctr-cf-desc').value.trim(),
                     basedOn: wrap.querySelector('.ctr-cf-basedon').value,
+                    currency: wrap.querySelector('.ctr-cf-currency').value,
                     rateType: rateType
                 };
+                if (!uomNotNeeded) {
+                    required.basedOnUOM = $uomField.value.trim();
+                }
                 var missing = Object.keys(required).filter(function(k) {
                     return !required[k];
                 });
@@ -1736,66 +1853,71 @@
                     return;
                 }
 
+                var naRadio = wrap.querySelector('input[name="ctr-cf-natureaction"]:checked');
+                if (!naRadio) {
+                    alert('Please select Revenue, Cost, or Cost with markup.');
+                    return;
+                }
+                var naVal = naRadio.value;
+                var derivedNature = (naVal === 'Revenue') ? 'Revenue' : 'Cost';
+                var derivedAction = (naVal === 'Revenue') ? 'A' : (naVal === 'CostMarkup') ? 'M' : 'R';
+
                 var charge = {
-                    chargeCategory: required.category,
+                    chargeNature: derivedNature,
                     chargeCode: required.code,
                     chargeDescription: required.desc,
                     chargeBasedOn: required.basedOn,
+                    chargeCategory: required.category,
                     chargeBasedOnUOM: wrap.querySelector('.ctr-cf-uom').value.trim(),
                     chargeCurr: wrap.querySelector('.ctr-cf-currency').value,
-                    minAmount: wrap.querySelector('.ctr-cf-min').value !== '' ? parseFloat(parseFloat(wrap
-                        .querySelector('.ctr-cf-min').value).toFixed(2)) : null,
-                    maxAmount: wrap.querySelector('.ctr-cf-max').value !== '' ? parseFloat(parseFloat(wrap
-                        .querySelector('.ctr-cf-max').value).toFixed(2)) : null,
+                    minAmount: wrap.querySelector('.ctr-cf-min').value !== '' ? parseFloat(parseFloat(
+                        wrap.querySelector('.ctr-cf-min').value).toFixed(2)) : null,
+                    maxAmount: wrap.querySelector('.ctr-cf-max').value !== '' ? parseFloat(parseFloat(
+                        wrap.querySelector('.ctr-cf-max').value).toFixed(2)) : null,
+                    quantity: wrap.querySelector('.ctr-cf-qty').value !== '' ? parseFloat(parseFloat(
+                        wrap.querySelector('.ctr-cf-qty').value).toFixed(2)) : null,
                     rateType: rateType,
                     rate: null,
                     rateSlab: null,
-                    formula: null,
-                    formulaRateType: null,
-                    formulaRate: null,
-                    formulaSlab: null
+                    formula: null
                 };
 
                 if (rateType === 'Single') {
-                    var rateVal = wrap.querySelector('.ctr-cf-rate').value;
-                    if (rateVal === '') {
+                    var rateInput = wrap.querySelector('.ctr-cf-rate');
+                    if (!rateInput || rateInput.value === '') {
                         alert('Rate is required for Single rate type.');
                         return;
                     }
-                    charge.rate = parseFloat(parseFloat(rateVal).toFixed(5));
+                    charge.rate = parseFloat(parseFloat(rateInput.value).toFixed(5));
                 } else if (rateType === 'Slab Based' || rateType === 'Step Up') {
+                    var slabType = wrap.querySelector('.ctr-slab-type')?.value || 'LessThanOrEqual';
                     var rows = wrap.querySelectorAll('.ctr-slab-rows tr');
                     var slabs = [];
                     var valid = true;
                     rows.forEach(function(row) {
-                        var isAbove = row.classList.contains('ctr-slab-above-row');
-                        var value = row.querySelector('.ctr-slab-value').value;
-                        if (isAbove) {
-                            if (value === '') {
-                                valid = false;
-                                return;
-                            }
-                            slabs.push({
-                                upto: null,
-                                value: parseFloat(value)
-                            });
-                        } else {
-                            var upto = row.querySelector('.ctr-slab-upto').value;
-                            if (upto === '' || value === '') {
-                                valid = false;
-                                return;
-                            }
-                            slabs.push({
-                                upto: parseFloat(upto),
-                                value: parseFloat(value)
-                            });
+                        var minVal = row.querySelector('.ctr-slab-min')?.value || '0';
+                        var upto = row.querySelector('.ctr-slab-upto')?.value;
+                        var value = row.querySelector('.ctr-slab-value')?.value;
+                        var formula = row.querySelector('.ctr-slab-formula')?.value || '';
+                        if (upto === '' || value === '') {
+                            valid = false;
+                            return;
                         }
+                        slabs.push({
+                            Min: parseFloat(minVal) || 0,
+                            Slab: parseFloat(upto),
+                            value: parseFloat(value),
+                            Formula: formula
+                        });
                     });
                     if (!valid || !slabs.length) {
-                        alert('Please fill all slab rows.');
+                        alert('Please fill all slab rows (Min, Slab, Value are required).');
                         return;
                     }
-                    charge.rateSlab = slabs;
+                    charge.rateSlab = {
+                        Type: slabType,
+                        Slabs: slabs
+                    };
                 } else if (rateType === 'Formula') {
                     var formulaVal = wrap.querySelector('.ctr-cf-formula').value.trim();
                     if (!formulaVal) {
@@ -1803,60 +1925,26 @@
                         return;
                     }
                     charge.formula = formulaVal;
-                    var formulaRateType = wrap.querySelector('.ctr-fb-ratetype').value;
-                    charge.formulaRateType = formulaRateType;
-                    if (formulaRateType === 'Slab Based') {
-                        var fRows = wrap.querySelectorAll('.ctr-fb-ratearea .ctr-slab-rows tr');
-                        var fSlabs = [];
-                        var fValid = true;
-                        fRows.forEach(function(row) {
-                            var isAbove = row.classList.contains('ctr-slab-above-row');
-                            var value = row.querySelector('.ctr-slab-value').value;
-                            if (isAbove) {
-                                if (value === '') {
-                                    fValid = false;
-                                    return;
-                                }
-                                fSlabs.push({
-                                    upto: null,
-                                    value: parseFloat(value)
-                                });
-                            } else {
-                                var upto = row.querySelector('.ctr-slab-upto').value;
-                                if (upto === '' || value === '') {
-                                    fValid = false;
-                                    return;
-                                }
-                                fSlabs.push({
-                                    upto: parseFloat(upto),
-                                    value: parseFloat(value)
-                                });
-                            }
-                        });
-
-                        if (!fValid || !fSlabs.length) {
-                            alert('Please fill all Formula slab rows.');
-                            return;
-                        }
-                        charge.formulaSlab = fSlabs;
-                    } else {
-                        var fRateVal = wrap.querySelector('.ctr-formula-rate').value;
-                        if (fRateVal === '') {
-                            alert('Rate is required for the Formula rate type.');
-                            return;
-                        }
-                        charge.formulaRate = parseFloat(parseFloat(fRateVal).toFixed(5));
-                    }
                 }
 
-                var natureVal = wrap.querySelector('.ctr-cf-nature').value;
-                var isAccruableChecked = wrap.querySelector('#ctrIsAccruable')?.checked || false;
-                var isReimbursableChecked = wrap.querySelector('#ctrIsReimbursable')?.checked || false;
-                charge.isAccruable = isAccruableChecked ? '1' : '0';
-                charge.isReimbursable = isReimbursableChecked ? '1' : '0';
-                charge.toBeAdded = (natureVal === 'CostMarkup' || isAccruableChecked || isReimbursableChecked) ? 1 : 0;
+                var actionVal = derivedAction;
+                charge.chargeAction = actionVal;
+                charge.isAccruable = wrap.querySelector('.ctr-cf-accruable').checked ? '1' : '0';
+                charge.isReimbursable = wrap.querySelector('.ctr-cf-reimbursable').checked ? '1' : '0';
 
-                if (natureVal === 'CostMarkup') {
+                // toBeAdded triggers the SP's auto-created counterpart charge — fires for
+                // Cost-with-Markup (actionVal === 'M') AND for plain Accruable/Reimbursable
+                // checkboxes, since both create a second row.
+                charge.toBeAdded = (actionVal === 'M' || charge.isAccruable === '1' || charge.isReimbursable === '1') ?
+                    1 :
+                    0;
+
+                charge.markupRateType = null;
+                charge.markupRate = null;
+                charge.markupFormula = null;
+                charge.markupRateSlab = null;
+
+                if (actionVal === 'M') {
                     var mkType = wrap.querySelector('.ctr-mk-ratetype').value;
                     var mkRateVal = wrap.querySelector('.ctr-mk-rate').value;
                     if (!mkType || mkRateVal === '') {
@@ -1869,26 +1957,18 @@
                         baseRateVal + mkRateNum :
                         baseRateVal + (baseRateVal * mkRateNum / 100);
 
-                    charge.chargeNature = 'Cost';
                     charge.markupRateType = 'Single';
                     charge.markupType = mkType;
                     charge.markupRate = parseFloat(markedUpRate.toFixed(5));
-                    charge.markupAmount = parseFloat(wrap.querySelector('.ctr-mk-amount').value) || 0;
-                } else {
-                    charge.chargeNature = natureVal;
-                    if (charge.toBeAdded === 1) {
-                        charge.markupRateType = charge.rateType;
-                        charge.markupRate = charge.rate;
-                        charge.markupRateSlab = charge.rateSlab;
-                        charge.markupFormula = charge.formula;
-                    }
+                } else if (charge.toBeAdded === 1) {
+                    charge.markupRateType = charge.rateType;
+                    charge.markupRate = charge.rate;
+                    charge.markupRateSlab = charge.rateSlab;
+                    charge.markupFormula = charge.formula;
                 }
 
-                var isEdit = !!chargeToEdit;
-                if (isEdit && !chargeToEdit.chargeId) {
-                    alert('This charge cannot be edited yet — please refresh and try again.');
-                    return;
-                }
+                var isEdit = !!chargeId;
+                if (chargeToEdit && chargeToEdit.chargeId && !chargeId) chargeId = chargeToEdit.chargeId;
 
                 var saveBtn = wrap.querySelector('.ctr-cf-save');
                 var originalText = saveBtn.textContent;
@@ -1897,7 +1977,7 @@
 
                 var baseUrl = '/contracts/' + encodeURIComponent(CONTRACT_ID) +
                     '/services/' + encodeURIComponent(svc.serviceFilterId) + '/charges';
-                var chargeUrl = isEdit ? baseUrl + '/' + encodeURIComponent(chargeToEdit.chargeId) : baseUrl;
+                var chargeUrl = isEdit ? baseUrl + '/' + encodeURIComponent(chargeId) : baseUrl;
 
                 $.ajax({
                     url: chargeUrl,
@@ -1913,7 +1993,7 @@
                     }
                     if (isEdit) {
                         charge.id = chargeToEdit.id;
-                        charge.chargeId = chargeToEdit.chargeId;
+                        charge.chargeId = chargeId;
                         var idx = svc.charges.findIndex(function(c) {
                             return c.id === chargeToEdit.id;
                         });
@@ -1924,9 +2004,36 @@
                         charge.chargeId = res.data && res.data.charge_id;
                         svc.charges.push(charge);
                     }
-                    $('#ctrAddChargeModal').modal('hide');
                     renderCharges(svc);
                     saveLocalDraft();
+
+                    if (keepOpen) {
+                        alert('Charge saved. Add another below.');
+                        var emptyCharge = {
+                            chargeId: null,
+                            chargeCode: '',
+                            chargeDescription: '',
+                            chargeBasedOn: '',
+                            chargeBasedOnUOM: '',
+                            chargeCurr: '',
+                            minAmount: null,
+                            maxAmount: null,
+                            rateType: '',
+                            rate: null,
+                            formula: null,
+                            rateSlab: null,
+                            chargeAction: '',
+                            markupRateType: null,
+                            markupRate: null,
+                            markupFormula: null,
+                            markupRateSlab: null
+                        };
+                        wrap.innerHTML = chargeFormHtml(svcId, false);
+                        bindChargeFormEvents(svcId, null, wrap, emptyCharge);
+                        loadChargeFormMasters(wrap, emptyCharge, svcId);
+                    } else {
+                        $('#ctrAddChargeModal').modal('hide');
+                    }
                 }).fail(function(xhr) {
                     var msg = (xhr.responseJSON && xhr.responseJSON.message) || 'Save failed.';
                     alert('Failed to save charge: ' + msg);

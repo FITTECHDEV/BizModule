@@ -398,10 +398,13 @@ class ContractController extends Controller
             'MarkFormula' => $charge['markupFormula'] ?? '',
             'MarkRateSlabJson' => !empty($charge['markupRateSlab']) ? json_encode($charge['markupRateSlab']) : '',
             'RevenueOrCost' => ($charge['chargeNature'] ?? '') === 'Cost' ? 'Cost' : 'Revenue',
+            'ChargeAction' => $charge['chargeAction'] ?? 'A',
             'Category' => $charge['chargeCategory'] ?? '',
             'ToBeAdded' => $charge['toBeAdded'] ?? 0,
             'IsAccruable' => $charge['isAccruable'] ?? '0',
             'IsReimbursable' => $charge['isReimbursable'] ?? '0',
+            'MarkupRateType' => $charge['markupRateType'] ?? '',
+            'MarkupCurr' => $charge['chargeCurr'] ?? '',
         ];
 
         $result = $this->callContractSP('sp_Contractinfo_ServiceCharges', $chargePayload);
@@ -460,10 +463,13 @@ class ContractController extends Controller
             // documented contract so no PHP change is needed once the DBA
             // enables them.
             'RevenueOrCost' => ($charge['chargeNature'] ?? '') === 'Cost' ? 'Cost' : 'Revenue',
+            'ChargeAction' => $charge['chargeAction'] ?? 'A',
             'Category' => $charge['chargeCategory'] ?? '',
             'ToBeAdded' => $charge['toBeAdded'] ?? 0,
             'IsAccruable' => $charge['isAccruable'] ?? '0',
             'IsReimbursable' => $charge['isReimbursable'] ?? '0',
+            'MarkupRateType' => $charge['markupRateType'] ?? '',
+            'MarkupCurr' => $charge['chargeCurr'] ?? '',
         ];
 
         $result = $this->callContractSP('sp_Contractinfo_ServiceCharges', $chargePayload);
@@ -1578,12 +1584,15 @@ class ContractController extends Controller
 
         $revenueOrCost = (int) $isRevenue === 1 ? 'Revenue' : 'Cost';
 
+        $draft = Session::get($this->sessionKey($contract));
+        $contractInfoId = $draft['contract_id'] ?? $contract;
+
         try {
             $pdo = DB::connection('sqlsrv')->getPdo();
             $stmt = $pdo->prepare(
                 'SET NOCOUNT ON; EXEC dbo.sp_Contract_FormulaList @RevenueOrCost = ?, @ContractID = ?, @ServiceFilterID = ?',
             );
-            $stmt->execute([$revenueOrCost, $contract, $serviceFilterId]);
+            $stmt->execute([$revenueOrCost, $contractInfoId, $serviceFilterId]);
 
             $rows = $stmt->fetchAll(\PDO::FETCH_NUM);
 
@@ -1605,6 +1614,7 @@ class ContractController extends Controller
         } catch (\Exception $e) {
             Log::error('getFormulaFields failed: ' . $e->getMessage(), [
                 'contract' => $contract,
+                'contract_info_id' => $contractInfoId,
                 'service_filter_id' => $serviceFilterId,
             ]);
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);

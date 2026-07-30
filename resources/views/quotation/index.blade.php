@@ -35,7 +35,7 @@
             </div>
 
             {{-- 1c. Pending Approval --}}
-            <div class="col-6 col-md-4 col-lg mb-2">
+            {{-- <div class="col-6 col-md-4 col-lg mb-2">
                 <div class="small-box bg-orange card-filter-trigger compact-card" data-filter="pending_approval">
                     <div class="inner">
                         <h3 id="stat-pending-approval">{{ $stats['pending_approval'] ?? 0 }}</h3>
@@ -45,7 +45,7 @@
                         <i class="fas fa-hourglass-half"></i>
                     </div>
                 </div>
-            </div>
+            </div> --}}
 
             {{-- 2. Won --}}
             <div class="col-6 col-md-4 col-lg mb-2">
@@ -2339,12 +2339,7 @@
 
                         // ── Per-record table ──────────────────────────────────────────
                         // Build company lookup from verification.recent
-                        var companyMap = {};
-                        if (res.verification && res.verification.recent) {
-                            res.verification.recent.forEach(function(v) {
-                                companyMap[String(v.bookingno)] = v.companyname || '';
-                            });
-                        }
+
 
                         function statusBadge(status) {
                             var cfg = {
@@ -2392,9 +2387,7 @@
                             records.forEach(function(r, idx) {
                                 var rowClass = r.status === 'failed' ?
                                     'class="table-danger"' : '';
-                                var company = esc(String(companyMap[String(r
-                                        .bookingno)] ||
-                                    '-'));
+                                var company = esc(String(r.company || '-'));
                                 var errorCell = r.error ? esc(String(r.error)) : '';
                                 html +=
                                     '<tr ' + rowClass + '>' +
