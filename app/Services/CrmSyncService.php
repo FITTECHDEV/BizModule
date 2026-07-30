@@ -66,16 +66,16 @@ class CrmSyncService
             if ($bookingNo) {
                 $stmt = $pdo->prepare(
                     'SELECT bookingno, bookingdetailsjson
-                     FROM   crm_details
-                     WHERE  bookingno = ?
-                     ORDER  BY bookingno ASC',
+                        FROM   crm_details
+                        WHERE  bookingno = ?
+                        ORDER  BY bookingno ASC',
                 );
                 $stmt->execute([$bookingNo]);
             } else {
                 $stmt = $pdo->query(
                     'SELECT bookingno, bookingdetailsjson
-                     FROM   crm_details
-                     ORDER  BY bookingno ASC',
+                        FROM   crm_details
+                        ORDER  BY bookingno ASC',
                 );
             }
 
@@ -127,18 +127,18 @@ class CrmSyncService
                 if (empty($row->bookingdetailsjson)) {
                     $skipped++;
                     // NEW — track skipped so UI can display it in the results table
-                    $records[] = ['bookingno' => $bno, 'status' => 'skipped', 'error' => null];
+                    $records[] = ['bookingno' => $bno, 'status' => 'skipped', 'error' => null, 'company' => null];
                     Log::warning('CRM Sync - Empty JSON skipped', ['bookingno' => $bno]);
                     continue;
                 }
 
-                json_decode($row->bookingdetailsjson, true);
+                $data = json_decode($row->bookingdetailsjson, true);
                 if (json_last_error() !== JSON_ERROR_NONE) {
                     $failed++;
                     $errorMsg = 'JSON parse error: ' . json_last_error_msg();
                     $errors[] = ['bookingno' => $bno, 'error' => $errorMsg];
                     // NEW — track failed with reason
-                    $records[] = ['bookingno' => $bno, 'status' => 'failed', 'error' => $errorMsg];
+                    $records[] = ['bookingno' => $bno, 'status' => 'failed', 'error' => $errorMsg, 'company' => null];
                     Log::error('CRM Sync - JSON parse error', ['bookingno' => $bno]);
                     continue;
                 }
@@ -153,7 +153,7 @@ class CrmSyncService
                     $existing ? $updated++ : $inserted++;
                     $processedBookingNos[] = $bno;
                     // NEW — track dry-run outcome so preview table shows inserted/updated split
-                    $records[] = ['bookingno' => $bno, 'status' => $action, 'error' => null];
+                    $records[] = ['bookingno' => $bno, 'status' => $action, 'error' => null, 'company' => $data['companyname'] ?? null];
 
                     Log::debug('CRM Sync - Dry run', [
                         'bookingno' => $bno,
@@ -162,14 +162,36 @@ class CrmSyncService
                     continue;
                 }
 
+                $populatedColumns = array_keys(array_filter($data, fn($v) => $v !== null && $v !== '' && $v !== 0));
+                Log::info('CRM Sync - Populated columns', [
+                    'bookingno' => $bno,
+                    'populated' => $populatedColumns,
+                    'count' => count($populatedColumns),
+                ]);
+
+                $spPayload = $this->buildSpPayload($data);
+                $modifiedJson = json_encode($spPayload);
+
+                Log::info('CRM Sync - Raw JSON (modified)', [
+                    'bookingno' => $bno,
+                    'json' => $modifiedJson,
+                ]);
+
                 $stmt = $scmPdo->prepare('EXEC dbo.sp_Quote_QuotationCreate ?');
-                $stmt->execute([$row->bookingdetailsjson]);
+                $stmt->execute([$modifiedJson]);
+
+                if (!empty($data['createdon'])) {
+                    DB::connection(self::SCM_CONNECTION)
+                        ->table('Quote_QuotationInfo')
+                        ->where('bookingno', $bno)
+                        ->update(['CreatedOn' => $this->parseDate($data['createdon'])]);
+                }
 
                 $action = $existing ? 'updated' : 'inserted';
                 $existing ? $updated++ : $inserted++;
                 $processedBookingNos[] = $bno;
                 // NEW — track real outcome
-                $records[] = ['bookingno' => $bno, 'status' => $action, 'error' => null];
+                $records[] = ['bookingno' => $bno, 'status' => $action, 'error' => null, 'company' => $data['companyname'] ?? null];
 
                 Log::info('CRM Sync - SP executed', [
                     'bookingno' => $bno,
@@ -179,7 +201,7 @@ class CrmSyncService
                 $failed++;
                 $errors[] = ['bookingno' => $bno, 'error' => $e->getMessage()];
                 // NEW — track exception failures
-                $records[] = ['bookingno' => $bno, 'status' => 'failed', 'error' => $e->getMessage()];
+                $records[] = ['bookingno' => $bno, 'status' => 'failed', 'error' => $e->getMessage(), 'company' => ($data ?? [])['companyname'] ?? null];
 
                 Log::error('CRM Sync - Record failed', [
                     'bookingno' => $bno,
@@ -250,11 +272,7 @@ class CrmSyncService
 
             // ── Company / contact ────────────────────────────────────
             'companyname' => $d['companyname'] ?? '',
-            'companyname_crm' => $d['companyname_crm'] ?? '',
             'contact_name' => $d['contact_name'] ?? '',
-            'partner_name' => $d['partner_name'] ?? '',
-            'type' => $d['type'] ?? '',
-            'function' => $d['function'] ?? '',
             'email_from' => $d['email_from'] ?? '',
             'phone' => $d['phone'] ?? '',
             'mobile' => $d['mobile'] ?? '',
@@ -262,8 +280,6 @@ class CrmSyncService
             'street2' => $d['street2'] ?? '',
             'zip' => $d['zip'] ?? '',
             'city' => $d['city'] ?? '',
-            'phone_sanitized' => $d['phone_sanitized'] ?? '',
-            'email_normalized' => $d['email_normalized'] ?? '',
 
             // ── Partner (company-level) ──────────────────────────────
             'partnermaster_name' => $d['partnermaster_name'] ?? '',
@@ -273,8 +289,8 @@ class CrmSyncService
             'partner_country_code' => $d['partner_country_code'] ?? '',
             'partner_countryname' => $d['partner_countryname'] ?? '',
             'industry_id' => $d['industry_id'] ?? null,
-            'partner_industrttypecode' => $d['partner_industrttypecode'] ?? '',
-            'partner_industrttype' => $d['partner_industrttype'] ?? '',
+            'partner_industrytypecode' => $d['partner_industrytypecode'] ?? '',
+            'partner_industrytype' => $d['partner_industrytype'] ?? '',
             'partner_function' => $d['partner_function'] ?? '',
             'partner_steet' => $d['partner_steet'] ?? '',
             'partner_steet2' => $d['partner_steet2'] ?? '',
@@ -293,8 +309,8 @@ class CrmSyncService
             'pri_partner_countrycode' => $d['pri_partner_countrycode'] ?? '',
             'pri_partner_countryname' => $d['pri_partner_countryname'] ?? '',
             'pri_rrp_industryid' => $d['pri_rrp_industryid'] ?? null,
-            'pri_partner_industrttypecode' => $d['pri_partner_industrttypecode'] ?? '',
-            'pri_partner_industrttype' => $d['pri_partner_industrttype'] ?? '',
+            'pri_partner_industrytypecode' => $d['pri_partner_industrytypecode'] ?? '',
+            'pri_partner_industrytype' => $d['pri_partner_industrytype'] ?? '',
             'pri_partner_function' => $d['pri_partner_function'] ?? '',
             'pri_partner_steet' => $d['pri_partner_steet'] ?? '',
             'pri_partner_steet2' => $d['pri_partner_steet2'] ?? '',
@@ -312,7 +328,6 @@ class CrmSyncService
             'destination_country_code' => $d['destination_country_code'] ?? '',
             'destinationcountry' => $d['destinationcountry'] ?? '',
             'stateid' => $d['stateid'] ?? null,
-            'statename' => $d['statename'] ?? '',
             'countryid' => $d['countryid'] ?? null,
             'countrycode' => $d['countrycode'] ?? '',
             'countryname' => $d['countryname'] ?? '',
@@ -323,53 +338,106 @@ class CrmSyncService
 
             // ── Service details ──────────────────────────────────────
             'serviceverticalid' => $d['serviceverticalid'] ?? null,
-            'serviceverticalname' => $d['svname'] ?? ($d['serviceverticalname'] ?? ''),
             'ServiceVertical' => $d['servicevertical'] ?? null,
-            'SVName' => $d['svname'] ?? '',
+            'SVName' => $d['servicevertical'] ?? '',
             'TransportMode' => $d['transportmode'] ?? '',
             'ServiceClass' => $d['serviceclass'] ?? '',
             'shipmentmode' => $d['shipmentmode'] ?? '',
             'incoterm' => $d['incoterm'] ?? '',
             'process' => $d['process'] ?? '',
-            'storage' => $d['storage'] ?? '',
-            'other' => $d['other'] ?? '',
 
             // ── Cargo ────────────────────────────────────────────────
             'commodity' => $d['commodity'] ?? '',
-            'scope_of_volume' => $d['scope_of_volume'] ?? '',
             'scopevolume' => $d['scopevolume'] ?? '',
-            'cargo_volume' => ($d['cargo_volume'] ?? 0) > 0 ? (float) $d['cargo_volume'] : null,
             'cargovolume' => ($d['cargovolume'] ?? 0) > 0 ? (float) $d['cargovolume'] : null,
             'containerlist' => $d['containerlist'] ?? '',
 
             // ── Revenue ──────────────────────────────────────────────
             'quoted_revenue' => ($d['quoted_revenue'] ?? 0) > 0 ? (float) $d['quoted_revenue'] : null,
             'expected_revenue' => ($d['expected_revenue'] ?? 0) > 0 ? (float) $d['expected_revenue'] : null,
-            'prorated_revenue' => ($d['prorated_revenue'] ?? 0) > 0 ? (float) $d['prorated_revenue'] : null,
 
             // ── CRM metadata ─────────────────────────────────────────
             'source_id' => $d['source_id'] ?? null,
             'source' => $d['source'] ?? '',
-            'source_name' => $d['source_name'] ?? '',
             'medium_id' => $d['medium_id'] ?? null,
             'medium' => $d['medium'] ?? '',
             'stage_id' => $d['stage_id'] ?? null,
-            'state' => $d['state'] ?? '',
-            'quotationo' => $d['quotationo'] ?? '',
-            'won_status' => $d['won_status'] ?? '',
+            'status' => $d['status'] ?? '',
 
             // ── Status ───────────────────────────────────────────────
-            'status' => $d['status'] ?? '',
             'QuoteStatus' => $this->deriveQuoteStatus($d['won_status'] ?? null, $d['status'] ?? null),
 
             // ── Dates ────────────────────────────────────────────────
-            'date_deadline' => $this->parseDate($d['date_deadline'] ?? null),
-            'date_closed' => $this->parseDate($d['date_closed'] ?? null),
             'CreatedOn' => $this->parseDate($d['createdon'] ?? null),
             'Updatedon' => $this->parseDate($d['updatedon'] ?? null),
 
             // ── Audit ────────────────────────────────────────────────
             'LastModifiedBy' => 'crm_sync',
+        ];
+    }
+
+    private function buildSpPayload(array $d): array
+    {
+        return [
+            'bookingno' => $d['bookingno'] ?? null,
+            'campaign_id' => $d['campaign_id'] ?? null,
+            'campaign' => $d['campaign'] ?? null,
+            'source_id' => $d['source_id'] ?? null,
+            'source' => $d['source'] ?? null,
+            'medium_id' => $d['medium_id'] ?? null,
+            'medium' => $d['medium'] ?? null,
+            'user_id' => $d['user_id'] ?? null,
+            'partner_id' => $d['partner_id'] ?? null,
+            'userlogin' => $d['userlogin'] ?? null,
+            'salespersoncode' => $d['salespersoncode'] ?? null,
+            'team_id' => $d['team_id'] ?? null,
+            'teamname' => $d['teamname'] ?? null,
+            'company_id' => $d['company_id'] ?? null,
+            'company' => $d['company'] ?? null,
+            'stage_id' => $d['stage_id'] ?? null,
+            'stage' => $d['stage'] ?? null,
+            'companyname' => $d['companyname'] ?? null,
+            'contactperson_tittle' => $d['contactperson_tittle'] ?? null,
+            'address_state' => $d['address_state'] ?? null,
+            'country_id' => $d['country_id'] ?? null,
+            'address_countrycode' => $d['address_countrycode'] ?? null,
+            'address_country' => $d['address_country'] ?? null,
+            'contactperson_phone' => $d['contactperson_phone'] ?? null,
+            'contactperson_email' => $d['contactperson_email'] ?? null,
+            'description' => $d['description'] ?? null,
+            'contactperson' => $d['contactperson'] ?? null,
+            'contactpersondesignation' => $d['contactpersondesignation'] ?? null,
+            'address_steet1' => $d['address_steet1'] ?? null,
+            'address_steet2' => $d['address_steet2'] ?? null,
+            'address_zip' => $d['address_zip'] ?? null,
+            'address_city' => $d['address_city'] ?? null,
+            'expected_revenue' => $d['expected_revenue'] ?? null,
+            'createdon' => $d['createdon'] ?? null,
+            'lastmodifiedon' => $d['lastmodifiedon'] ?? null,
+            'industry_type_id' => $d['industry_type_id'] ?? null,
+            'industryname' => $d['industryname'] ?? null,
+            'industrycode' => $d['industrycode'] ?? null,
+            'service_vertical_id' => $d['service_vertical_id'] ?? null,
+            'servicevertical' => $d['servicevertical'] ?? null,
+            'serviceprocess' => $d['serviceprocess'] ?? null,
+            'origin_country_id' => $d['origin_country_id'] ?? null,
+            'countryoforigincode' => $d['countryoforigincode'] ?? null,
+            'countryoforigin' => $d['countryoforigin'] ?? null,
+            'dest_country_id' => $d['dest_country_id'] ?? null,
+            'countryofdestinationcode' => $d['countryofdestinationcode'] ?? null,
+            'countryofdestination' => $d['countryofdestination'] ?? null,
+            'commodity' => $d['commodity'] ?? null,
+            'cargo_volume' => $d['cargo_volume'] ?? 0,
+            'shipment_mode_id' => $d['shipment_mode_id'] ?? null,
+            'shipmentmode' => $d['shipmentmode'] ?? null,
+            'inco_term_id' => $d['inco_term_id'] ?? null,
+            'incoterm' => $d['incoterm'] ?? null,
+            'scope_volume_id' => $d['scope_volume_id'] ?? null,
+            'scopeofvolume' => $d['scopeofvolume'] ?? null,
+            'serviceclass' => $d['serviceclass'] ?? null,
+            'serviceclasscode' => $d['serviceclasscode'] ?? null,
+            'containerdetails' => $d['containerdetails'] ?? null,
+            'ContainerList' => $d['ContainerList'] ?? [],
         ];
     }
 
@@ -395,12 +463,12 @@ class CrmSyncService
                     ->where('bookingno', $bookingNo)
                     ->first([
                         'bookingno',
-                        'companyname',
+                        'pri_partnermaster_name',
                         'teamname',
                         'username',
                         'origincountry',
                         'destinationcountry',
-                        'serviceverticalname',
+                        'ServiceVertical',
                         'QuoteStatus',
                         'status',
                         'Updatedon',
@@ -421,7 +489,7 @@ class CrmSyncService
             $total = $query->count();
             $recent = $query
                 ->orderByDesc('Updatedon')
-                ->get(['bookingno', 'companyname', 'teamname', 'QuoteStatus', 'Updatedon'])
+                ->get(['bookingno', 'pri_partnermaster_name', 'teamname', 'QuoteStatus', 'Updatedon'])
                 ->toArray();
 
             return compact('total', 'recent');

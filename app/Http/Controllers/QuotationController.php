@@ -21,14 +21,13 @@ class QuotationController extends Controller
     // ============================================
     // OFFICE BASE CURRENCY MAP
     // Source: Cust_Office + Bill_ChargeCodeOfficeMap (dominant currency per office)
-    // SA has no operational currency — defaults to KES
     // ============================================
     public const OFFICE_BASE_CURRENCY = [
         'DJ' => 'DJF',
         'ET' => 'ETB',
         'KE' => 'KES',
         'RW' => 'RWF',
-        'SA' => 'KES', // Sales office — no dedicated currency, falls back to KES
+        'SA' => 'KES',
         'SS' => 'SSP',
         'TZ' => 'TZS',
         'UG' => 'UGX',
@@ -196,20 +195,6 @@ class QuotationController extends Controller
                 $quoteStatus = trim($db->QuoteStatus ?? ($row->Status ?? ''));
                 $scmStatus = $db ? $db->SCMINTStatus : null;
 
-                // if ($quoteStatus === 'Completed') {
-                //     $completed++;
-                // } elseif ($quoteStatus === 'Won' && $scmStatus === 'Success') {
-                //     $completed++;
-                // } elseif ($quoteStatus === 'Won' && !is_null($scmStatus)) {
-                //     $failedInt++;
-                // } elseif ($quoteStatus === 'Won') {
-                //     $won++;
-                // } elseif ($quoteStatus === 'Failed Progress') {
-                //     $failedProgress++;
-                // } else {
-                //     $inProgress++;
-                // }
-
                 if ($quoteStatus === 'Completed') {
                     $completed++;
                 } elseif ($quoteStatus === 'Won') {
@@ -299,14 +284,6 @@ class QuotationController extends Controller
                                 : null)
                             : null;
 
-                        //                     return match ($cardFilter) {
-                        // 'in_progress' => !in_array($quoteStatus, ['WON', 'COMPLETED', 'LOST', 'CANCELLED', 'CANCEL', 'FAILED PROGRESS', 'FAILED INT', 'FAILED INT.'])
-                        //                  && !(!is_null($scmStatus) && $scmStatus !== 'SUCCESS' && $quoteStatus === 'WON'),                        'won' => $quoteStatus === 'WON' && is_null($scmStatus),
-                        //                         'completed' => $quoteStatus === 'COMPLETED' || ($quoteStatus === 'WON' && $scmStatus === 'SUCCESS'),
-                        //                         'failed_int' => $quoteStatus === 'WON' && !is_null($scmStatus) && $scmStatus !== 'SUCCESS',
-                        //                         default => true,
-                        //                     };
-
                         return match ($cardFilter) {
                             'in_progress' => !in_array($quoteStatus, [
                                 'WON',
@@ -364,7 +341,6 @@ class QuotationController extends Controller
                         'bookingno',
                         'teamname',
                         'teamid',
-                        'clientid',
                         'username',
                         'QuoteStatus',
                         'SCMINTStatus',
@@ -379,16 +355,6 @@ class QuotationController extends Controller
                 $db = $dbRecords->get($row->QuoteNo);
                 $quoteStatus = trim($db->QuoteStatus ?? ($row->Status ?? ''));
                 $scmStatus = $db->SCMINTStatus ?? null;
-
-                // $displayStatus = match (true) {
-                //     strtolower($quoteStatus) === 'completed' => 'Completed',
-                //     strtolower($quoteStatus) === 'won' && strtolower((string)$scmStatus) === 'success' => 'Completed',
-                //     strtolower($quoteStatus) === 'won' && !is_null($scmStatus) && strtolower((string)$scmStatus) !== 'success' => 'Failed Int.',
-                //     strtolower($quoteStatus) === 'won' => 'Won',
-                //     strtolower($quoteStatus) === 'failed progress' => 'Failed Progress',
-                //     in_array(strtolower($quoteStatus), ['lost', 'cancelled', 'cancel']) => 'Lost / Canceled',
-                //     default => 'In Progress',
-                // };
 
                 $displayStatus = match (true) {
                     strtolower($quoteStatus) === 'completed' => 'Completed',
@@ -744,19 +710,6 @@ class QuotationController extends Controller
             // ── Date range — day filters ignored, SP only supports FromDate/ToDate ──
             ['from' => $spFromDate, 'to' => $spToDate] = $this->resolveDateRange($days, $startDate, $endDate);
 
-            // ── Determine which SP call(s) to make per card ───────────────────
-            // SP branches:
-            //   'Total'          → all records (no status filter)
-            //   'In Progress'    → all records (same branch as Total — filter in PHP)
-            //   'Won'            → all records (same branch — filter in PHP by SCMINTStatus IS NULL)
-            //   'Completed'      → all records (same branch — filter in PHP by SCMINTStatus=Success)
-            //   'Failed Int.'    → all records (same branch — filter in PHP by SCMINTStatus=Failed)
-            //   'Lost','Cancelled' → WHERE QuoteStatus IN ('Lost','Cancelled')
-            //   'Failed Progress'  → WHERE QuoteStatus = 'Failed Progress'
-            //
-            // We call SP with 'Total' for in_progress/won/completed/failed_int/total
-            // and with the exact status for lost_canceled/failed_progress
-
             $spStatus = match ($cardFilter) {
                 'lost_canceled' => 'Lost', // SP returns both Lost+Cancelled in one call
                 'failed_progress' => 'Failed Progress',
@@ -799,7 +752,6 @@ class QuotationController extends Controller
                         'bookingno',
                         'teamname',
                         'teamid',
-                        'clientid',
                         'username',
                         'QuoteStatus',
                         'SCMINTStatus',
@@ -882,10 +834,7 @@ class QuotationController extends Controller
                     default => 'badge-info', // In Progress
                 };
 
-                // Remarks
                 // For Failed Int., QuoteStatusDescription holds the actual pipeline failure
-                // message written by markAsFailed(). The SP's Remark field contains the CRM
-                // reference number, which is not meaningful to the user.
                 $remark = trim($row->Remark ?? '');
 
                 if ($db) {
@@ -1126,11 +1075,11 @@ class QuotationController extends Controller
             $stmt = $pdo->prepare('SET NOCOUNT ON; EXEC dbo.sp_Quote_QuotationList ?');
             $stmt->execute([$inputJson]);
 
-            // Log::info('callQuotationListSP - executed', [
-            //     'status' => $status,
-            //     'office_code' => $officeCode ?: 'ALL',
-            //     'input_json' => $inputJson,
-            // ]);
+            Log::info('callQuotationListSP - executed', [
+                'status' => $status,
+                'office_code' => $officeCode ?: 'ALL',
+                'input_json' => $inputJson,
+            ]);
 
             $rows = [];
             do {
@@ -1257,6 +1206,7 @@ class QuotationController extends Controller
     // UPDATED data()
     // Same office validation pattern as stats()
     // ============================================================
+
     public function data(Request $request)
     {
         try {
@@ -1289,8 +1239,7 @@ class QuotationController extends Controller
                 'ID',
                 'QuoteNo',
                 'bookingno',
-                'companyname',
-                'clientid',
+                'pri_partnermaster_name',
                 'username',
                 'teamname',
                 'teamid',
@@ -1302,6 +1251,11 @@ class QuotationController extends Controller
                 'QuoteStatusDescription',
                 'CreatedOn',
                 'Updatedon',
+                'pri_id',
+                'countryname',
+                'ServiceVertical',
+                'process',
+                'incoterm',
             ]);
 
             // ── Date filter ──────────────────────────────────────────────
@@ -1411,8 +1365,8 @@ class QuotationController extends Controller
             // ── DataTables (unchanged below this line) ────────────────
             return DataTables::of($query)
                 ->filterColumn('OfficeName', fn($q, $k) => $q->where('teamname', 'like', "%$k%"))
-                ->filterColumn('ClientName', fn($q, $k) => $q->where('companyname', 'like', "%$k%"))
-                ->filterColumn('ClientID', fn($q, $k) => $q->where('clientid', 'like', "%$k%"))
+                ->filterColumn('ClientName', fn($q, $k) => $q->where('pri_partnermaster_name', 'like', "%$k%"))
+                ->filterColumn('ClientID', fn($q, $k) => $q->where('pri_id', 'like', "%$k%"))
                 ->filterColumn('SalesPerson', fn($q, $k) => $q->where('username', 'like', "%$k%"))
                 ->filterColumn('OriginCountry', fn($q, $k) => $q->where('origincountry', 'like', "%$k%"))
                 ->filterColumn('DestinationCountry', fn($q, $k) => $q->where('destinationcountry', 'like', "%$k%"))
@@ -1453,11 +1407,15 @@ class QuotationController extends Controller
                 })
                 ->addColumn('report_date', fn($r) => $r->CreatedOn ? date('Y-m-d H:i', strtotime($r->CreatedOn)) : '-')
                 ->addColumn('OfficeName', fn($r) => $r->teamname ?? '-')
-                ->addColumn('ClientName', fn($r) => $r->companyname ?? '-')
-                ->addColumn('ClientID', fn($r) => $r->clientid ?? '-')
+                ->addColumn('ClientName', fn($r) => $r->pri_partnermaster_name ?? '-')
+                ->addColumn('ClientID', fn($r) => $r->pri_id ?? '-')
                 ->addColumn('SalesPerson', fn($r) => $r->username ?? '-')
                 ->addColumn('OriginCountry', fn($r) => $r->origincountry ?? '-')
                 ->addColumn('DestinationCountry', fn($r) => $r->destinationcountry ?? '-')
+                ->addColumn('Service', fn($r) => $r->ServiceVertical ?? '-')
+                ->addColumn('CompanyName', fn($r) => $r->pri_partnermaster_name ?? '-')
+                ->addColumn('Process', fn($r) => $r->process ?? '-')
+                ->addColumn('IncoTerm', fn($r) => $r->incoterm ?? '-')
                 ->addColumn('BookingNo', fn($r) => $r->bookingno ?? '-')
                 ->addColumn('QuotationStatus', function ($row) {
                     $status = $row->QuoteStatus ?? ($row->status ?? 'Proposal');
@@ -1557,20 +1515,12 @@ class QuotationController extends Controller
     /**
      * QuotationController::update()
      * ─────────────────────────────────────────────────────────────────────────────
-     * WHAT CHANGED vs. the original:
-     *
      *   OLD: Hard-coded array passed every column on every save — partial saves
      *        from the show page would null-out columns not in the request.
      *
      *   NEW: Builds the update payload conditionally using $request->has().
      *        Only columns present in the incoming request are written.
      *        Columns absent from the request are left exactly as they are.
-     *
-     * This is fully backward-compatible:
-     *   • The full edit-page form sends all fields  → behaviour identical to before.
-     *   • Per-card saves send only that card's fields → only those columns change.
-     *
-     * Nothing else in the method was touched (try/catch, logging, response shape).
      * ─────────────────────────────────────────────────────────────────────────────
      */
 
@@ -1597,7 +1547,6 @@ class QuotationController extends Controller
                 'updated_by' => $submittedBy,
             ]);
 
-            // ── Whitelist every column that may ever be written ──────────────────
             // Map: request key → DB column name (they happen to match here, but
             // keeping them explicit makes future renames safe).
             $allowed = [
@@ -1618,7 +1567,7 @@ class QuotationController extends Controller
                 'containerlist' => 'containerlist',
 
                 // Customer
-                'companyname' => 'companyname',
+                'pri_partnermaster_name' => 'pri_partnermaster_name',
                 'pri_partner_steet' => 'pri_partner_steet',
                 'pri_partner_steet2' => 'pri_partner_steet2',
                 'pri_partner_city' => 'pri_partner_city',
@@ -1758,7 +1707,7 @@ class QuotationController extends Controller
             Log::info('Quotation data loaded', [
                 'id' => $quotation->ID,
                 'bookingno' => $quotation->bookingno,
-                'companyname' => $quotation->companyname,
+                'pri_partnermaster_name' => $quotation->pri_partnermaster_name,
             ]);
 
             return view('quotation.edit', compact('quotation', 'officeShortCode'));
@@ -1962,7 +1911,7 @@ class QuotationController extends Controller
         ]);
     }
 
-    private function resolveAllowedOfficeCodesViaSP(): \Illuminate\Support\Collection
+    public function resolveAllowedOfficeCodesViaSP(): \Illuminate\Support\Collection
     {
         $resolved = $this->resolveUserOfficesViaSP();
         $offices = $resolved['offices'];
@@ -2000,12 +1949,6 @@ class QuotationController extends Controller
         }
 
         try {
-            // ---------------------------------------------------------------
-            // FIX: Derive QuotationInfoID directly from the charge row itself.
-            // Previously we looked up Quote_QuotationInfo by bookingno, which
-            // returns the first match and fails when a booking has multiple
-            // quotation revisions — the charge may belong to a different one.
-            // ---------------------------------------------------------------
             $supplement = DB::selectOne(
                 "
             SELECT
@@ -2133,7 +2076,7 @@ class QuotationController extends Controller
                     ->first([
                         'ID',
                         'teamid',
-                        'ServiceVerticalname',
+                        'ServiceVertical',
                         'origincountry',
                         'destinationcountry',
                         'QuoteStatus',
@@ -2145,7 +2088,7 @@ class QuotationController extends Controller
                     ->first([
                         'ID',
                         'teamid',
-                        'ServiceVerticalname',
+                        'ServiceVertical',
                         'origincountry',
                         'destinationcountry',
                         'QuoteStatus',
@@ -2176,7 +2119,7 @@ class QuotationController extends Controller
                 'context' => [
                     'quotation_id' => $quotation->ID ?? 'N/A',
                     'office_code' => $officeCode,
-                    'service_type' => $quotation->ServiceVerticalname ?? 'N/A',
+                    'service_type' => $quotation->ServiceVertical ?? 'N/A',
                     'status' => $quotation->QuoteStatus ?? ($quotation->status ?? 'Unknown'),
                 ],
             ]);
@@ -2258,21 +2201,6 @@ class QuotationController extends Controller
                     : 'No user authenticated',
             ]);
 
-            // ============================================
-            // PREPARE STORED PROCEDURE INPUT
-            // ============================================
-            // $quoteNo = DB::table('Quote_QuotationInfo')
-            //     ->where('bookingno', $bookingNo)
-            //     ->where('OfficeCode', $request->input('office_code'))
-            //     ->value('QuoteNo');
-
-            // if (!$quoteNo) {
-            //     return response()->json([
-            //         'success' => false,
-            //         'message' => 'QuoteNo not found for booking: ' . $bookingNo,
-            //     ], 404);
-            // }
-
             $inputJson = json_encode([
                 'OperationType' => 'QuotationAddorEditCharge',
                 'SubmittedDatetime' => now()->format('YmdHis'),
@@ -2281,7 +2209,7 @@ class QuotationController extends Controller
                     : 'system',
                 'Action' => $request->input('action', 'Add'),
 
-                'QuotationID' => $quotation->ID ?? '', // ←←← THIS IS THE FIX
+                'QuotationID' => $quotation->ID ?? '',
 
                 'QuoteChargeID' => $request->input('quote_charge_id', ''),
                 'PartyCode' => $request->input('party_code', ''),
@@ -2390,7 +2318,7 @@ class QuotationController extends Controller
                                     'all_properties' => $properties,
                                     'context' => [
                                         'office_code' => $officeCode,
-                                        'service_type' => $quotation->ServiceVerticalname ?? 'N/A',
+                                        'service_type' => $quotation->ServiceVertical ?? 'N/A',
                                         'action' => $request->input('action'),
                                     ],
                                 ]);
@@ -2670,7 +2598,7 @@ class QuotationController extends Controller
                 ->first([
                     'ID',
                     'teamid',
-                    'ServiceVerticalname',
+                    'ServiceVertical',
                     'origincountry',
                     'destinationcountry',
                     'QuoteStatus',
@@ -2695,7 +2623,7 @@ class QuotationController extends Controller
                 'context' => [
                     'quotation_id' => $quotation->ID ?? 'N/A',
                     'office_code' => $officeCode,
-                    'service_type' => $quotation->ServiceVerticalname ?? 'N/A',
+                    'service_type' => $quotation->ServiceVertical ?? 'N/A',
                     'origin' => $quotation->origincountry ?? 'N/A',
                     'destination' => $quotation->destinationcountry ?? 'N/A',
                     'current_status' => $quotation->QuoteStatus ?? ($quotation->status ?? 'Unknown'),
@@ -2747,7 +2675,7 @@ class QuotationController extends Controller
             INNER JOIN Quote_QuotationInfo QI WITH (NOLOCK) ON QI.id = QC.QuotationInfoID
             LEFT JOIN [FITSCM].dbo.Bill_ChargeCode BC WITH (NOLOCK) ON BC.Id = QC.ChargeCodeId
             LEFT JOIN [FITSCM].dbo.Cust_Currency CC WITH (NOLOCK) ON CC.Id = QC.EstChargeCurrencyId
-            LEFT JOIN [FITSCM].dbo.Cust_ChargecodeBasedOn CB WITH (NOLOCK) ON CB.Id = QC.BasedOnId
+            LEFT JOIN Cust_ChargecodeBasedOn CB WITH (NOLOCK) ON CB.Id = QC.BasedOnId
             LEFT JOIN [FITSCM].dbo.Sys_UOM SU WITH (NOLOCK) ON SU.Id = QC.UOMId
             LEFT JOIN [FITSCM].dbo.Cust_Party CP WITH (NOLOCK) ON CP.Id = QC.PartyID
             WHERE QC.Id = ?
@@ -2787,7 +2715,7 @@ class QuotationController extends Controller
                             'all_properties' => $properties,
                             'context' => [
                                 'office_code' => $officeCode,
-                                'service_type' => $quotation->ServiceVerticalname ?? 'N/A',
+                                'service_type' => $quotation->ServiceVertical ?? 'N/A',
                             ],
                             'probable_cause' => 'Database schema mismatch or invalid charge ID',
                         ]);
@@ -2826,18 +2754,6 @@ class QuotationController extends Controller
             // ============================================
 
             $submittedBy = Auth::check() ? Auth::user()->displayName ?? (Auth::user()->Email ?? 'system') : 'system';
-
-            // $quoteNo = DB::table('Quote_QuotationInfo')
-            //     ->where('bookingno', $bookingNo)
-            //     ->when($officeCodeFromRequest, fn($q) => $q->where('OfficeCode', $officeCodeFromRequest))
-            //     ->value('QuoteNo');
-
-            // if (!$quoteNo) {
-            //     return response()->json([
-            //         'success' => false,
-            //         'message' => 'QuoteNo not found for booking: ' . $bookingNo,
-            //     ], 404);
-            // }public function getChargeBasedOnDefaults(Request $request)
 
             $inputJson = json_encode([
                 'OperationType' => 'QuotationAddorEditCharge',
@@ -3240,10 +3156,10 @@ class QuotationController extends Controller
                 'teamid',
                 'QuoteStatus',
                 'status',
-                'ServiceVerticalname',
+                'ServiceVertical',
                 'origincountry',
                 'destinationcountry',
-                'companyname',
+                'pri_partnermaster_name',
             ]);
 
             if (!$quotation) {
@@ -3284,8 +3200,8 @@ class QuotationController extends Controller
                 'context' => [
                     'quotation_id' => $quotation->ID,
                     'office_code' => $officeCode,
-                    'service_type' => $quotation->ServiceVerticalname ?? 'N/A',
-                    'company' => $quotation->companyname ?? 'N/A',
+                    'service_type' => $quotation->ServiceVertical ?? 'N/A',
+                    'company' => $quotation->pri_partnermaster_name ?? 'N/A',
                     'origin' => $quotation->origincountry ?? 'N/A',
                     'destination' => $quotation->destinationcountry ?? 'N/A',
                     'reason_code' => $reasonCode ?: 'N/A',
@@ -3554,7 +3470,7 @@ class QuotationController extends Controller
                     'reason_code' => $reasonCode,
                     'user' => $submittedBy,
                     'office_code' => $officeCode,
-                    'company' => $quotation->companyname ?? 'N/A',
+                    'company' => $quotation->pri_partnermaster_name ?? 'N/A',
                 ]);
 
                 return response()->json([
@@ -3699,7 +3615,7 @@ class QuotationController extends Controller
 
         $quotation = DB::table('Quote_QuotationInfo')
             ->where('ID', $quotationId)
-            ->first(['ID', 'QuoteNo', 'QuoteStatus', 'status', 'companyname', 'teamid']);
+            ->first(['ID', 'QuoteNo', 'QuoteStatus', 'status', 'pri_partnermaster_name', 'teamid']);
 
         if (!$quotation) {
             return response()->json(['success' => false, 'message' => 'Quotation not found'], 404);
@@ -4295,8 +4211,6 @@ class QuotationController extends Controller
                 'remark' => $pushResponse['message'] ?? 'Pushed to SCM successfully',
             ];
 
-            // Re-fetch after push
-            // AFTER:
             $quotation = DB::table('Quote_QuotationInfo')
                 ->where('ID', $quotation->ID)
                 ->first(['ID', 'QuoteNo', 'SCMBookingID', 'SCMBookingXML', 'ClientCreated', 'OfficeCode']);
@@ -4671,12 +4585,12 @@ class QuotationController extends Controller
             // ── Log current record state after heal ───────────────────────────────
             $record = DB::table('Quote_QuotationInfo')
                 ->where('QuoteNo', $bookingNo)
-                ->first(['QuoteNo', 'SVName', 'process', 'OfficeCode']);
+                ->first(['QuoteNo', 'ServiceVertical', 'process', 'OfficeCode']);
 
             Log::info('getCommunicationTemplatesViaSP - record state after heal', [
                 'booking_no' => $bookingNo,
                 'quote_no' => $record->QuoteNo ?? 'NULL',
-                'svname' => $record->SVName ?? 'NULL',
+                'svname' => $record->ServiceVertical ?? 'NULL',
                 'process' => $record->process ?? 'NULL',
                 'office_code' => $record->OfficeCode ?? 'NULL',
                 'office_bracketed' => '[' . ($record->OfficeCode ?? '') . ']',
@@ -5006,7 +4920,8 @@ class QuotationController extends Controller
             // ============================================
             // LOG VIA SP
             // ============================================
-            $clientName = DB::table('Quote_QuotationInfo')->where('bookingno', $bookingNo)->value('companyname') ?? '';
+            $clientName =
+                DB::table('Quote_QuotationInfo')->where('bookingno', $bookingNo)->value('pri_partnermaster_name') ?? '';
 
             $jsonData = json_encode([
                 'SchedulerType' => 'QuotationEmail',
@@ -5464,18 +5379,9 @@ class QuotationController extends Controller
 
                     if (isset($rows[0]->QuoteFormat)) {
                         $html = $rows[0]->QuoteFormat;
-                        // Log::info('getQuotationHtml - Found QuoteFormat in result set #' . $setIndex, [
-                        //     'quote_no' => $quoteNo,
-                        //     'length'   => strlen($html ?? ''),
-                        // ]);
                         break;
                     }
                 } catch (\PDOException $e) {
-                    // Skip unfetchable intermediate result sets (normal for temp table SPs)
-                    // Log::debug('getQuotationHtml - Skipping result set #' . $setIndex, [
-                    //     'quote_no' => $quoteNo,
-                    //     'error'    => $e->getMessage(),
-                    // ]);
                     continue;
                 }
             } while ($stmt->nextRowset());
@@ -5483,29 +5389,15 @@ class QuotationController extends Controller
             // SP CATCH block sets @QuoteFormat = 'Failed (Reason) - <message>'
             // instead of raising — detect this and treat as a failure.
             if (!empty($html) && str_starts_with(trim($html), 'Failed (Reason)')) {
-                // Log::error('getQuotationHtml - SP returned failure message', [
-                //     'quote_no' => $quoteNo,
-                //     'message'  => $html,
-                // ]);
                 return null;
             }
 
             if (empty($html) || trim($html) === '') {
-                // Log::warning('getQuotationHtml - SP returned empty HTML', [
-                //     'quote_no'         => $quoteNo,
-                //     'result_sets_seen' => $setIndex,
-                // ]);
                 return null;
             }
 
             return $html;
         } catch (\Exception $e) {
-            // Log::error('getQuotationHtml - Exception', [
-            //     'quote_no' => $quoteNo,
-            //     'error'    => $e->getMessage(),
-            //     'file'     => $e->getFile(),
-            //     'line'     => $e->getLine(),
-            // ]);
             return null;
         }
     }
@@ -5583,16 +5475,16 @@ class QuotationController extends Controller
         }
 
         try {
-            // Fetch quotation to get companyname for matching
+            // Fetch quotation to get pri_partnermaster_name for matching
             $quotation = DB::table('Quote_QuotationInfo')
                 ->where('bookingno', $bookingNo)
-                ->first(['companyname']);
+                ->first(['pri_partnermaster_name']);
             if (!$quotation) {
                 return response()->json(['success' => true, 'emails' => []]);
             }
 
             $emails = DB::table('email_emailscheduler')
-                ->where('ClientName', $quotation->companyname)
+                ->where('ClientName', $quotation->pri_partnermaster_name)
                 ->where('SchedulerType', 'QuotationEmail')
                 ->orderBy('SubmittedOn', 'desc')
                 ->get([
@@ -5712,10 +5604,6 @@ class QuotationController extends Controller
                     throw new \RuntimeException('sp_Quote_Quotation_ChargeList: ' . $firstVal);
                 }
 
-                // if (isset($fetched[0]->Id)) {
-                //     $rows = $fetched;
-                //     break;
-                // }
                 $rows = $fetched;
                 break;
             } catch (\PDOException $e) {
@@ -6008,7 +5896,7 @@ class QuotationController extends Controller
 
             $jobInfo = DB::table('Quote_QuotationInfo')
                 ->where('ID', $quotationId)
-                ->select(['companyname', 'origincountry', 'destinationcountry', 'pri_partnermaster_name', 'SCMJobNo'])
+                ->select(['origincountry', 'destinationcountry', 'pri_partnermaster_name', 'SCMJobNo'])
                 ->first();
 
             return response()->json([
@@ -6017,7 +5905,7 @@ class QuotationController extends Controller
                 'cost' => array_map(fn($r) => $map($r, false), $costRows),
                 'job_info' => $jobInfo
                     ? [
-                        'client' => $jobInfo->companyname ?? '',
+                        'client' => $jobInfo->pri_partnermaster_name ?? '',
                         'shipper' => $jobInfo->pri_partnermaster_name ?? '',
                         'consignee' => '',
                         'port_of_loading' => $jobInfo->origincountry ?? '',
@@ -6322,8 +6210,8 @@ class QuotationController extends Controller
                 r.CreatedOn
             FROM Quote_Quotation_RequestedQuote r WITH (NOLOCK)
             WHERE r.QuotationInfoID = ?
-              AND r.IsActive  = 1
-              AND r.IsDeleted = 0
+                AND r.IsActive  = 1
+                AND r.IsDeleted = 0
             ORDER BY r.CreatedOn ASC
         ",
                 [$quotationId],
@@ -6371,10 +6259,10 @@ class QuotationController extends Controller
             // ✅ FIX: Use TeamCode (int column), not TeamId
             $office = DB::connection('sqlsrv')
                 ->table('Cust_Office')
-                ->where('TeamCode', $teamId) // ✅ Changed from TeamId
-                ->where('IsActive', 1) // ✅ Added active filter
-                ->where('IsDeleted', 0) // ✅ Added deleted filter
-                ->select('Code', 'TeamCode') // ✅ Changed from TeamId
+                ->where('TeamCode', $teamId)
+                ->where('IsActive', 1)
+                ->where('IsDeleted', 0)
+                ->select('Code', 'TeamCode')
                 ->first();
 
             Log::info('Office lookup result', [
@@ -6394,7 +6282,7 @@ class QuotationController extends Controller
                 if ($quotation) {
                     $office = DB::connection('sqlsrv')
                         ->table('Cust_Office')
-                        ->where('TeamCode', $quotation->teamid) // ✅ Changed from TeamId
+                        ->where('TeamCode', $quotation->teamid)
                         ->where('IsActive', 1)
                         ->where('IsDeleted', 0)
                         ->select('Code')
@@ -6549,7 +6437,6 @@ class QuotationController extends Controller
         }
 
         // Accept any date format from frontend, normalize to '05/Mar/2026'
-        // AFTER
         try {
             $dateFor = $request->date_for
                 ? \Carbon\Carbon::parse($request->date_for)->format('d/M/Y')
@@ -6649,8 +6536,8 @@ class QuotationController extends Controller
             $quotation = DB::table('Quote_QuotationInfo')
                 ->where('bookingno', $bookingNo)
                 ->first([
-                    'clientid',
-                    'ServiceVerticalname',
+                    'pri_id',
+                    'ServiceVertical',
                     'process',
                     'origincountry',
                     'destinationcountry',
@@ -6679,9 +6566,9 @@ class QuotationController extends Controller
             }
 
             $inputJson = json_encode([
-                'Service' => $quotation->ServiceVerticalname ?? '',
+                'Service' => $quotation->ServiceVertical ?? '',
                 'Process' => $quotation->process ?? '',
-                'Client' => $quotation->clientid ?? '',
+                'Client' => $quotation->pri_id ?? '',
                 'Weight' => (float) ($quotation->scopevolume ?? 0),
                 'Volume' => (float) ($quotation->cargovolume ?? 0),
                 'Filter' => [
@@ -7114,7 +7001,7 @@ class QuotationController extends Controller
                         $userMessage = $firstVal;
                         if (str_contains($firstVal, 'Service Details')) {
                             $userMessage =
-                                'Service type is not configured on this quotation (SVName is missing or unrecognised).';
+                                'Service type is not configured on this quotation (ServiceVertical is missing or unrecognised).';
                         } elseif (str_contains($firstVal, 'Process Details')) {
                             $userMessage =
                                 'Process type is not configured on this quotation (Export/Import/Local required).';
@@ -8664,6 +8551,10 @@ class QuotationController extends Controller
             'quotation_id' => 'required|string',
             'shipment_mode' => 'required|string',
             'transport_mode' => 'required|string',
+            'pol_code' => 'nullable|string',
+            'pod_code' => 'nullable|string',
+            'place_of_receipt_code' => 'nullable|string',
+            'place_of_delivery_code' => 'nullable|string',
         ]);
 
         $submittedBy = auth()->user()->displayName ?? (auth()->user()->Email ?? 'system');
@@ -8676,6 +8567,10 @@ class QuotationController extends Controller
             'QuotationID' => $request->quotation_id,
             'CountryOfOriginCode' => $request->origincountry ?? '',
             'CountryOfDestinationCode' => $request->destinationcountry ?? '',
+            'POLCode' => $request->pol_code ?? '',
+            'PODCode' => $request->pod_code ?? '',
+            'PlaceOfReceiptCode' => $request->place_of_receipt_code ?? '',
+            'PlaceOfDeliveryCode' => $request->place_of_delivery_code ?? '',
             'IncoTermCode' => $request->incoterm ?? '',
             'ShipmentModeCode' => $request->shipment_mode,
             'TransportModeCode' => $request->transport_mode,
@@ -9130,7 +9025,7 @@ class QuotationController extends Controller
             'quotation_id' => 'required|string',
             'sales_person_code' => 'required|string',
             'sales_person_email' => 'required|email',
-            'quotation_currency' => 'required|string|size:3', // ADD
+            'quotation_currency' => 'required|string|size:3',
         ]);
 
         $submittedBy = auth()->user()->displayName ?? (auth()->user()->Email ?? 'system');
@@ -9143,7 +9038,7 @@ class QuotationController extends Controller
             'QuotationID' => $request->quotation_id,
             'SalesPersonCode' => $request->sales_person_code,
             'SalesPersonEmail' => $request->sales_person_email,
-            'QuotationCurrency' => $request->quotation_currency, // ADD
+            'QuotationCurrency' => $request->quotation_currency,
         ]);
 
         try {
@@ -9423,27 +9318,7 @@ class QuotationController extends Controller
         ]);
 
         try {
-            // ── Find original record ──────────────────────────────────────────────
-            // $original = DB::table('Quote_QuotationInfo')
-            //     ->where('BookingNo', $BookingNo, 'officeCode', $officeCode)
-            //     ->select('ID', 'bookingno', 'QuoteNo', 'officeCode')
-            //     ->first();
-
-            // if (!$original) {
-            //     return response()->json([
-            //         'success' => false,
-            //         'message' => 'Quotation not found for quote number: ' .   $BookingNo,
-            //     ], 404);
-            // }
-
             $submittedBy = Auth::check() ? Auth::user()->displayName ?? (Auth::user()->Email ?? 'system') : 'system';
-
-            // Log::info('processDuplicate - Original found', [
-            //     'original_bookingno' => $original->bookingno,
-            //     'original_id'        => $original->ID,
-            //     'original_quote_no'  => $original->QuoteNo,
-            //     'duplicated_by'      => $submittedBy,
-            // ]);
 
             // ── Call sp_Quote_QuotationCopy ───────────────────────────────────────
             // SP handles: header insert + charge sheet copy + equipment details internally.
@@ -9491,9 +9366,6 @@ class QuotationController extends Controller
             } while ($stmt->nextRowset());
 
             if (!$result) {
-                // Log::error('processDuplicate - SP returned no output', [
-                //     'original_id' => $original->ID,
-                // ]);
                 return response()->json(
                     [
                         'success' => false,
@@ -9506,7 +9378,6 @@ class QuotationController extends Controller
             $spStatus = strtolower(trim($result['Status'] ?? ''));
             if ($spStatus !== 'success') {
                 Log::error('processDuplicate - SP failed', [
-                    // 'original_id' => $original->ID,
                     'sp_status' => $result['Status'],
                     'sp_remark' => $result['Remark'],
                 ]);
@@ -9558,8 +9429,6 @@ class QuotationController extends Controller
             }
 
             Log::info('processDuplicate - Success', [
-                // 'original_bookingno' => $original->bookingno,
-                // 'original_quote_no'  => $original->QuoteNo,
                 'new_quote_no' => $newQuoteNo,
                 'new_bookingno' => $newQuotation->bookingno,
                 'new_id' => $newQuotation->ID,
@@ -10444,6 +10313,40 @@ class QuotationController extends Controller
         }
     }
 
+    public function salesIntelligence(Request $request)
+    {
+        $officeCode = $request->input('office_code');
+        $customer = $request->input('customer');
+
+        $inputJson = json_encode([
+            'OfficeCode' => $officeCode,
+            'Status' => 'Total',
+            'Customer' => $customer,
+            'FromDate' => '',
+            'ToDate' => '',
+            'Service' => '',
+            'Process' => '',
+        ]);
+
+        try {
+            $results = DB::select('EXEC sp_Quote_QuotationList @InputJson = ?', [$inputJson]);
+
+            // Exact match guard — SP uses LIKE, we enforce exact match here
+            $company = $customer;
+            $filtered = array_filter($results, fn($r) => trim($r->CompanyName) === trim($company));
+
+            return response()->json([
+                'success' => true,
+                'data' => array_values($filtered),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ]);
+        }
+    }
+
     public function showStatusResetForm()
     {
         return view('quotation.status-reset');
@@ -10505,5 +10408,214 @@ class QuotationController extends Controller
         return redirect()
             ->route('quotation.status-reset.form')
             ->with('success', "Quote {$quoteNo} has been moved from '{$currentStatus}' back to 'In Progress'.");
+    }
+
+    /**
+     * Returns the current approval status for a quotation.
+     *
+     * TODO: Replace with sp_Quote_ApprovalStatus once the DBA delivers the SP.
+     * Expected SP output shape (agreed contract):
+     *   status, required, approvedCount, approvers[] = {userId, name, status, date, comments}
+     */
+    public function getApprovalStatus($id)
+    {
+        // Once the SP exists, this becomes:
+        // $result = DB::select('EXEC sp_Quote_ApprovalStatus @QuotationID = ?', [$id]);
+        // ...map and return real data.
+
+        return response()->json(
+            [
+                'success' => false,
+                'message' => 'Approval status is not available yet — backend implementation pending.',
+                'data' => null,
+            ],
+            200,
+        );
+    }
+
+    /**
+     * Submits a quotation for approval.
+     *
+     * TODO: Replace with sp_Quote_ApprovalRequest once the DBA delivers the SP.
+     * Expected inputs: QuotationID, SubmittedBy (Auth::id()).
+     */
+    public function sendForApproval(Request $request, int $id)
+    {
+        Log::info('sendForApproval: triggered', ['quotationId' => $id]);
+
+        // TODO: replace with sp_ApprovalRequest call
+        // $approvers = DB::select('EXEC sp_ApprovalRequest @QuotationID = ?', [$id]);
+
+        $mockApprovers = [
+            [
+                'userId' => 1,
+                'name' => 'Imran',
+                'email' => 'imran@freight-in-time.com',
+            ],
+        ];
+
+        // TODO: replace mock quotation data with real lookup
+        $quotation = [
+            'quotationId' => $id,
+            'quoteNo' => 'QT-2026-' . str_pad($id, 4, '0', STR_PAD_LEFT),
+            'customer' => 'Pending SP',
+            'revenue' => 0,
+            'cost' => 0,
+            'profit' => 0,
+            'margin' => 0,
+            'currency' => 'USD',
+        ];
+
+        // TODO: resolve real PDF path from quotation record
+        $pdfPath = '';
+
+        $emailService = new \App\Services\ApprovalEmailService();
+        $results = $emailService->sendApprovalEmails($quotation, $mockApprovers, $pdfPath);
+
+        $allSent = collect($results)->every(fn($r) => $r['status'] === 'Sent');
+
+        return response()->json([
+            'success' => $allSent,
+            'message' => $allSent
+                ? 'Approval emails sent successfully.'
+                : 'Some approval emails failed. Check logs for details.',
+            'data' => $results,
+        ]);
+    }
+
+    /**
+     * Approvals Dashboard — lists all open/closed approval requests.
+     *
+     * TODO: Replace mock data with sp_Quote_ApprovalSummary once approved (see progress table #6).
+     * Expected SP output per row: requestId, quoteNo, customer, submittedBy,
+     * submittedDate, required, approvedCount, status, officeCode.
+     */
+    public function approvalsDashboard(Request $request)
+    {
+        // Once the SP exists, replace mock with sp_Quote_ApprovalSummary results
+        $mockRows = [
+            [
+                'requestId' => 1,
+                'quoteNo' => 'QT-2026-0001',
+                'customer' => 'Acme Logistics',
+                'submittedBy' => 'jane.doe',
+                'submittedDate' => '2026-06-25',
+                'required' => 2,
+                'approvedCount' => 1,
+                'status' => 'Pending Approval',
+                'officeCode' => 'NBO',
+            ],
+            [
+                'requestId' => 2,
+                'quoteNo' => 'QT-2026-0002',
+                'customer' => 'Globex Freight',
+                'submittedBy' => 'john.smith',
+                'submittedDate' => '2026-06-20',
+                'required' => 2,
+                'approvedCount' => 2,
+                'status' => 'Approved',
+                'officeCode' => 'MBA',
+            ],
+        ];
+
+        // fix: counts derived from the same rows — once SP lands, SP should
+        // ideally return these counts directly rather than recomputing client-side
+        $counts = [
+            'pending' => collect($mockRows)->where('status', 'Pending Approval')->count(),
+            'approved' => collect($mockRows)->where('status', 'Approved')->count(),
+            'rejected' => collect($mockRows)->where('status', 'Rejected')->count(),
+            'total' => count($mockRows),
+        ];
+
+        return view('quotation.approvals-dashboard', [
+            'rows' => $mockRows,
+            'counts' => $counts,
+        ]);
+    }
+
+    /**
+     * Submits an Approve/Reject decision from the dashboard.
+     *
+     * TODO: Replace with sp_Quote_ApprovalDecision once approved (see progress table #6).
+     * Server-side SP must validate the logged-in user is a configured approver
+     * for this request — UI-side disabling is not a security control.
+     */
+    public function submitApprovalDecision(Request $request, $requestId)
+    {
+        $request->validate([
+            'decision' => 'required|in:Approved,Rejected',
+            'comments' => 'nullable|string|max:1000',
+        ]);
+
+        // Once the SP exists:
+        // DB::statement('EXEC sp_Quote_ApprovalDecision @ApprovalRequestID = ?, @ApproverUserID = ?, @Decision = ?, @Comments = ?', [
+        //     $requestId, Auth::id(), $request->decision, $request->comments,
+        // ]);
+
+        return response()->json(
+            [
+                'success' => false,
+                'message' => 'Approval decision is not available yet — backend implementation pending.',
+            ],
+            200,
+        );
+    }
+
+    /**
+     * Show the approval decision page.
+     * Reached via email link — action and approver pre-filled from query params.
+     * Auth middleware ensures the approver is logged in before they can act.
+     */
+    public function approvePage(Request $request, int $id)
+    {
+        // TODO: Replace mock with real quotation lookup once SP contract is confirmed
+        $quotation = [
+            'quotationId' => $id,
+            'quoteNo' => 'QT-2026-' . str_pad($id, 4, '0', STR_PAD_LEFT),
+            'customer' => 'Pending SP',
+            'revenue' => 0,
+            'cost' => 0,
+            'profit' => 0,
+            'margin' => 0,
+            'currency' => 'USD',
+        ];
+
+        return view('quotation.approve', [
+            'quotation' => $quotation,
+            'action' => $request->query('action', 'approve'),
+            'approverId' => $request->query('approver', auth()->id()),
+        ]);
+    }
+
+    /**
+     * Handle Approve/Reject decision from the approval page.
+     *
+     * TODO: Replace stub with sp_ApprovalStatus call once DBA delivers SP.
+     * Expected inputs to SP: QuotationID, ApproverUserID, Decision, Comments.
+     */
+    public function approvalDecision(Request $request, int $id)
+    {
+        $request->validate([
+            'decision' => 'required|in:Approved,Rejected',
+            'approver_id' => 'required|integer',
+            'comments' => 'nullable|string|max:1000',
+        ]);
+
+        Log::info('approvalDecision: decision received', [
+            'quotationId' => $id,
+            'approverId' => $request->approver_id,
+            'decision' => $request->decision,
+        ]);
+
+        // TODO: wire to SP once delivered
+        // DB::statement('EXEC sp_ApprovalStatus @QuotationID = ?, @ApproverUserID = ?, @Decision = ?, @Comments = ?', [
+        //     $id, $request->approver_id, $request->decision, $request->comments,
+        // ]);
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Approval decision is not available yet — SP pending from DBA.',
+            'data' => null,
+        ]);
     }
 }

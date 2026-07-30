@@ -118,125 +118,6 @@
                     </div>
                 </div>
 
-                <!-- Shipment Details -->
-                <div class="card card-primary" id="shipmentDetailsCard">
-                    <div class="card-header">
-                        <h3 class="card-title">Shipment Details</h3>
-                        <div class="card-tools">
-                            <button type="button" class="btn btn-tool" data-card-widget="collapse">
-                                <i class="fas fa-chevron-up"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <div class="form-group row">
-                            <label class="col-sm-5 col-form-label">Service</label>
-                            <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->SVName ?? '' }}" readonly>
-                            </div>
-                        </div>
-                        <div class="form-group row">
-                            <label class="col-sm-5 col-form-label">Process</label>
-                            <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm"
-                                    value="{{ $quotation->process ?? '' }}" readonly>
-                            </div>
-                        </div>
-                        {{-- Origin Country field: --}}
-                        <div class="form-group row">
-                            <label class="col-sm-5 col-form-label">Origin Country</label>
-                            <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm" id="originCountryDisplay"
-                                    value="{{ $quotation->origincountry ?? '' }}" readonly>
-                                <div id="originCountryEditWrap" style="display:none;">
-                                    {{-- REMOVED: <input type="text" id="originCountrySearch"> --}}
-                                    <select class="form-control form-control-sm" id="originCountrySelect">
-                                        <option value="">-- Select --</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-
-                        {{-- Destination Country field: --}}
-                        <div class="form-group row">
-                            <label class="col-sm-5 col-form-label">Destination Country</label>
-                            <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm" id="destCountryDisplay"
-                                    value="{{ $quotation->destinationcountry ?? '' }}" readonly>
-                                <div id="destCountryEditWrap" style="display:none;">
-                                    {{-- REMOVED: <input type="text" id="destCountrySearch"> --}}
-                                    <select class="form-control form-control-sm" id="destCountrySelect">
-                                        <option value="">-- Select --</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                        {{-- InCo Terms --}}
-                        <div class="form-group row">
-                            <label class="col-sm-5 col-form-label">InCO Terms</label>
-                            <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm" id="incoTermDisplay"
-                                    value="{{ $quotation->incoterm ?? '' }}" readonly>
-                                <input type="hidden" id="incoTermCode" value="{{ $quotation->incoterm ?? '' }}">
-
-                                <select class="form-control form-control-sm d-none" id="incoTermSelect" disabled>
-                                    <option value="">-- Select --</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-group row">
-                            <label class="col-sm-5 col-form-label">Shipment Mode</label>
-                            <div class="col-sm-7">
-                                <select class="form-control form-control-sm" id="shipmentModeSelect" name="shipment_mode"
-                                    disabled>
-                                    <option value="">-- Loading... --</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-group row">
-                            <label class="col-sm-5 col-form-label">Transport Mode</label>
-                            <div class="col-sm-7">
-                                <select class="form-control form-control-sm" id="transportModeSelect"
-                                    name="transport_mode" disabled>
-                                    <option value="">-- Loading... --</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-group row mb-0">
-                            <label class="col-sm-5 col-form-label">Service Class</label>
-                            <div class="col-sm-7">
-                                <input type="text" class="form-control form-control-sm" id="serviceClassDisplay"
-                                    value="{{ $quotation->ServiceClass ?? '' }}" readonly>
-                                <select class="form-control form-control-sm d-none" id="serviceClassSelect" disabled>
-                                    <option value="">-- Select --</option>
-                                </select>
-                                {{-- keep this hidden field for the save payload --}}
-                                <input type="hidden" id="serviceClassCode"
-                                    value="{{ $quotation->ServiceClassCode ?? ($quotation->ServiceClass ?? '') }}">
-                            </div>
-                        </div>
-
-                        <div class="row mt-3 pt-2" style="border-top: 1px solid #dee2e6;">
-                            <div class="col-md-12 text-right">
-                                @if (!$isBookingCreated)
-                                    <button type="button" class="btn btn-warning btn-sm" id="editShipmentDetailsBtn">
-                                        <i class="fas fa-edit mr-1"></i> Edit
-                                    </button>
-                                @endif
-                                <button type="button" class="btn btn-primary btn-sm" id="saveShipmentDetailsBtn"
-                                    style="display:none">
-                                    <i class="fas fa-save mr-1"></i> Save
-                                </button>
-                                <button type="button" class="btn btn-secondary btn-sm" id="cancelShipmentDetailsBtn"
-                                    style="display:none">
-                                    <i class="fas fa-times mr-1"></i> Cancel
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Cargo Details -->
                 <div class="card card-primary" id="cargoDetailsCard">
                     <div class="card-header">
@@ -543,6 +424,67 @@
                     </div>
                 </div>
 
+                {{-- ── AUDIT INFORMATION ───────────────────────────────────────────────────── --}}
+                {{-- <div class="card card-primary" id="auditInformationCard">
+                    <div class="card-header d-flex justify-content-between align-items-center py-2">
+                        <h3 class="card-title mb-0">
+                            <i class="fas fa-history mr-2"></i>Audit Information
+                        </h3>
+                        <div class="d-flex align-items-center ml-auto">
+                            <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                <i class="fas fa-chevron-up"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group row">
+                            <label class="col-sm-5 col-form-label">Created On</label>
+                            <div class="col-sm-7">
+                                <input type="text" class="form-control form-control-sm"
+                                    value="{{ $quotation->CreatedOn ? date('d/m/Y H:i', strtotime($quotation->CreatedOn)) : '-' }}"
+                                    readonly>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="col-sm-5 col-form-label">Created By</label>
+                            <div class="col-sm-7">
+                                <input type="text" class="form-control form-control-sm"
+                                    value="{{ $quotation->CreatedBy ?? '-' }}" readonly>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="col-sm-5 col-form-label">Last Modified On</label>
+                            <div class="col-sm-7">
+                                <input type="text" class="form-control form-control-sm"
+                                    value="{{ $quotation->updatedon ? date('d/m/Y H:i', strtotime($quotation->updatedon)) : '-' }}"
+                                    readonly>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="col-sm-5 col-form-label">Last Modified By</label>
+                            <div class="col-sm-7">
+                                <input type="text" class="form-control form-control-sm"
+                                    value="{{ $quotation->LastModifiedBy ?? '-' }}" readonly>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="col-sm-5 col-form-label">Marked WON on</label>
+                            <div class="col-sm-7">
+                                <input type="text" class="form-control form-control-sm"
+                                    value="{{ $quotation->WonDate ? date('d/m/Y H:i', strtotime($quotation->WonDate)) : '-' }}"
+                                    readonly>
+                            </div>
+                        </div>
+                        <div class="form-group row mb-0">
+                            <label class="col-sm-5 col-form-label">Marked WON By</label>
+                            <div class="col-sm-7">
+                                <input type="text" class="form-control form-control-sm"
+                                    value="{{ $quotation->WonBy ?? '-' }}" readonly>
+                            </div>
+                        </div>
+                    </div>
+                </div> --}}
+
                 <!-- Integration Details -->
                 <div class="card card-primary">
                     <div class="card-header">
@@ -705,7 +647,7 @@
                                     <label class="col-sm-4 col-form-label">Client ID</label>
                                     <div class="col-sm-8">
                                         <input type="text" class="form-control form-control-sm" id="clientIdDisplay"
-                                            value="{{ $quotation->clientid ?? '' }}" readonly>
+                                            value="{{ $quotation->pri_id ?? '' }}" readonly>
                                     </div>
                                 </div>
                                 <div class="form-group row">
@@ -731,8 +673,8 @@
                                     </label>
                                     <div class="col-sm-8">
                                         <input type="text" class="form-control form-control-sm"
-                                            id="customerCountryDisplay"
-                                            value="{{ $quotation->pri_partner_countryname ?? '' }}" readonly>
+                                            id="customerCountryDisplay" value="{{ $quotation->countryname ?? '' }}"
+                                            readonly>
                                         <div id="customerCountryEditWrap" style="display:none;">
                                             <select class="form-control form-control-sm" id="customerCountrySelect">
                                                 <option value="">-- Select --</option>
@@ -786,6 +728,186 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Shipment Details -->
+                <div class="card card-primary" id="shipmentDetailsCard">
+                    <div class="card-header">
+                        <h3 class="card-title">Shipment Details</h3>
+                        <div class="card-tools">
+                            <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                <i class="fas fa-chevron-up"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group row">
+                                    <label class="col-sm-5 col-form-label">Service</label>
+                                    <div class="col-sm-7">
+                                        <input type="text" class="form-control form-control-sm"
+                                            value="{{ $quotation->ServiceVertical ?? '' }}" readonly>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-sm-5 col-form-label">InCO Terms</label>
+                                    <div class="col-sm-7">
+                                        <input type="text" class="form-control form-control-sm" id="incoTermDisplay"
+                                            value="{{ $quotation->incoterm ?? '' }}" readonly>
+                                        <input type="hidden" id="incoTermCode"
+                                            value="{{ $quotation->incoterm ?? '' }}">
+                                        <select class="form-control form-control-sm d-none" id="incoTermSelect" disabled>
+                                            <option value="">-- Select --</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-sm-5 col-form-label">Transport Mode</label>
+                                    <div class="col-sm-7">
+                                        <select class="form-control form-control-sm" id="transportModeSelect"
+                                            name="transport_mode" disabled>
+                                            <option value="">-- Loading... --</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-sm-5 col-form-label">Origin Country</label>
+                                    <div class="col-sm-7">
+                                        <input type="text" class="form-control form-control-sm"
+                                            id="originCountryDisplay" value="{{ $quotation->origincountry ?? '' }}"
+                                            readonly>
+                                        <div id="originCountryEditWrap" style="display:none;">
+                                            <select class="form-control form-control-sm" id="originCountrySelect">
+                                                <option value="">-- Select --</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-sm-5 col-form-label">Port of Loading</label>
+                                    <div class="col-sm-7">
+                                        <input type="text" class="form-control form-control-sm" id="polDisplay"
+                                            value="{{ $quotation->PortOfLoadingCode ?? '' }}" readonly>
+                                        <div id="polEditWrap" style="display:none;">
+                                            <input type="text" class="form-control form-control-sm" id="polSearch"
+                                                placeholder="Type to search..." autocomplete="off">
+                                            <input type="hidden" id="polCode"
+                                                value="{{ $quotation->PortOfLoadingCode ?? '' }}">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-group row mb-0">
+                                    <label class="col-sm-5 col-form-label">Place of Receipt</label>
+                                    <div class="col-sm-7">
+                                        <input type="text" class="form-control form-control-sm"
+                                            id="placeOfReceiptDisplay" value="{{ $quotation->PlaceOfReceiptCode ?? '' }}"
+                                            readonly>
+                                        <div id="placeOfReceiptEditWrap" style="display:none;">
+                                            <input type="text" class="form-control form-control-sm"
+                                                id="placeOfReceiptSearch" placeholder="Type to search..."
+                                                autocomplete="off">
+                                            <input type="hidden" id="placeOfReceiptCode"
+                                                value="{{ $quotation->PlaceOfReceiptCode ?? '' }}">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="form-group row">
+                                    <label class="col-sm-5 col-form-label">Process</label>
+                                    <div class="col-sm-7">
+                                        <input type="text" class="form-control form-control-sm"
+                                            value="{{ $quotation->process ?? '' }}" readonly>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-sm-5 col-form-label">Shipment Mode</label>
+                                    <div class="col-sm-7">
+                                        <select class="form-control form-control-sm" id="shipmentModeSelect"
+                                            name="shipment_mode" disabled>
+                                            <option value="">-- Loading... --</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-sm-5 col-form-label">Service Class</label>
+                                    <div class="col-sm-7">
+                                        <input type="text" class="form-control form-control-sm"
+                                            id="serviceClassDisplay" value="{{ $quotation->ServiceClass ?? '' }}"
+                                            readonly>
+                                        <select class="form-control form-control-sm d-none" id="serviceClassSelect"
+                                            disabled>
+                                            <option value="">-- Select --</option>
+                                        </select>
+                                        <input type="hidden" id="serviceClassCode"
+                                            value="{{ $quotation->ServiceClassCode ?? ($quotation->ServiceClass ?? '') }}">
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-sm-5 col-form-label">Destination Country</label>
+                                    <div class="col-sm-7">
+                                        <input type="text" class="form-control form-control-sm"
+                                            id="destCountryDisplay" value="{{ $quotation->destinationcountry ?? '' }}"
+                                            readonly>
+                                        <div id="destCountryEditWrap" style="display:none;">
+                                            <select class="form-control form-control-sm" id="destCountrySelect">
+                                                <option value="">-- Select --</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-sm-5 col-form-label">Port of Discharge</label>
+                                    <div class="col-sm-7">
+                                        <input type="text" class="form-control form-control-sm" id="podDisplay"
+                                            value="{{ $quotation->PortOfDischargeCode ?? '' }}" readonly>
+                                        <div id="podEditWrap" style="display:none;">
+                                            <input type="text" class="form-control form-control-sm" id="podSearch"
+                                                placeholder="Type to search..." autocomplete="off">
+                                            <input type="hidden" id="podCode"
+                                                value="{{ $quotation->PortOfDischargeCode ?? '' }}">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-group row mb-0">
+                                    <label class="col-sm-5 col-form-label">Place of Delivery</label>
+                                    <div class="col-sm-7">
+                                        <input type="text" class="form-control form-control-sm"
+                                            id="placeOfDeliveryDisplay"
+                                            value="{{ $quotation->PlaceOfDeliveryCode ?? '' }}" readonly>
+                                        <div id="placeOfDeliveryEditWrap" style="display:none;">
+                                            <input type="text" class="form-control form-control-sm"
+                                                id="placeOfDeliverySearch" placeholder="Type to search..."
+                                                autocomplete="off">
+                                            <input type="hidden" id="placeOfDeliveryCode"
+                                                value="{{ $quotation->PlaceOfDeliveryCode ?? '' }}">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-3 pt-2" style="border-top: 1px solid #dee2e6;">
+                            <div class="col-md-12 text-right">
+                                @if (!$isBookingCreated)
+                                    <button type="button" class="btn btn-warning btn-sm" id="editShipmentDetailsBtn">
+                                        <i class="fas fa-edit mr-1"></i> Edit
+                                    </button>
+                                @endif
+                                <button type="button" class="btn btn-primary btn-sm" id="saveShipmentDetailsBtn"
+                                    style="display:none">
+                                    <i class="fas fa-save mr-1"></i> Save
+                                </button>
+                                <button type="button" class="btn btn-secondary btn-sm" id="cancelShipmentDetailsBtn"
+                                    style="display:none">
+                                    <i class="fas fa-times mr-1"></i> Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
 
                 <!-- Revenue Section -->
                 <div class="card card-success">
@@ -980,8 +1102,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                    MODALS
-                                                                    ============================================ -->
+                                                                                                                                                    MODALS
+                                                                                                                                                    ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1134,8 +1256,8 @@
                                             style="display:none;">
                                             <label for="revenueSecondaryBillToParty" class="form-label">
                                                 <span class="text-danger">*</span> Secondary Bill To Party</label>
-                                            <input type="text" class="form-control"
-                                                id="revenueSecondaryBillToParty" placeholder="Select Secondary Party">
+                                            <input type="text" class="form-control" id="revenueSecondaryBillToParty"
+                                                placeholder="Select Secondary Party">
                                             <input type="hidden" id="revenueSecondaryBillToPartyCode">
                                         </div>
                                     </div>
@@ -1648,16 +1770,51 @@
                             <div class="cc-info-col">
                                 <div class="cc-info-row">
                                     <span class="cc-lbl">Service Type</span>
-                                    <span class="cc-val" id="ccServiceType">{{ $quotation->SVName ?? '' }}</span>
+                                    <span class="cc-val"
+                                        id="ccServiceType">{{ $quotation->ServiceVertical ?? '' }}</span>
                                 </div>
+                                {{-- Source toggle --}}
                                 <div class="cc-info-row">
+                                    <span class="cc-lbl">Quotation Source</span>
+                                    <div class="d-flex" style="gap:16px;">
+                                        <label class="d-flex align-items-center mb-0"
+                                            style="gap:6px; font-size:0.85rem; cursor:pointer;">
+                                            <input type="radio" name="ccSourceType" id="ccSourceJob"
+                                                value="job" checked>
+                                            Existing Job
+                                        </label>
+                                        <label class="d-flex align-items-center mb-0"
+                                            style="gap:6px; font-size:0.85rem; cursor:pointer;">
+                                            <input type="radio" name="ccSourceType" id="ccSourceTemplate"
+                                                value="template">
+                                            Standard Template
+                                        </label>
+                                    </div>
+                                </div>
+
+                                {{-- Existing Job dropdown --}}
+                                <div class="cc-info-row" id="ccJobSourceRow">
                                     <span class="cc-lbl cc-lbl-required">*&nbsp;Job No</span>
-                                    <div class="cc-input-group">
-                                        <input type="text" class="cc-input cc-input-highlight" id="ccJobNo"
-                                            placeholder="Enter Job No…" autocomplete="off">
-                                        <button type="button" class="cc-search-icon-btn" id="ccJobNoSearchBtn">
+                                    <div class="cc-input-group" style="flex:1;">
+                                        <select class="cc-input cc-input-highlight" id="ccJobSelect"
+                                            style="width:100%; height:28px;">
+                                            <option value="">-- Select Job --</option>
+                                        </select>
+                                        <button type="button" class="cc-search-icon-btn" id="ccJobNoSearchBtn"
+                                            title="Advanced search">
                                             <i class="fas fa-search"></i>
                                         </button>
+                                    </div>
+                                </div>
+
+                                {{-- Standard Template dropdown --}}
+                                <div class="cc-info-row" id="ccTemplateSourceRow" style="display:none;">
+                                    <span class="cc-lbl cc-lbl-required">*&nbsp;Template</span>
+                                    <div class="cc-input-group" style="flex:1;">
+                                        <select class="cc-input cc-input-highlight" id="ccTemplateSelect"
+                                            style="width:100%; height:28px;" disabled>
+                                            <option value="">-- Not available yet --</option>
+                                        </select>
                                     </div>
                                 </div>
                                 <div class="cc-info-row" id="ccClientRow" style="display:none;">
@@ -1966,13 +2123,13 @@
     </form>
 @stop
 
-
 @section('css')
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -2415,9 +2572,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -3330,7 +3487,7 @@
         const quotationId = '{{ $quotation->ID ?? '' }}';
         const officeId = '{{ $quotation->OfficeID ?? '' }}'; // ← ADD
         const tcAlreadyApplied = {{ $quotation->QuotationTCTemplate ? 'true' : 'false' }};
-        const quotationSVName = '{{ trim($quotation->SVName ?? '') }}';
+        const quotationSVName = '{{ trim($quotation->ServiceVertical ?? '') }}';
         const quotationProcess = '{{ trim($quotation->process ?? '') }}';
         // Mirrors QuotationController::OFFICE_BASE_CURRENCY — single source of truth via PHP
         const OFFICE_BASE_CURRENCY = @json(\App\Http\Controllers\QuotationController::OFFICE_BASE_CURRENCY);
@@ -3340,6 +3497,515 @@
         $(document).ready(function() {
 
             console.log('Booking Quotation Edit - Page Loaded');
+
+            // ═══════════════════════════════════════════════════════════
+            // SALES INTELLIGENCE
+            // ═══════════════════════════════════════════════════════════
+            (function() {
+
+                // Values already available on the page from PHP/JS
+                const SI_COMPANY = '{{ addslashes(trim($quotation->pri_partnermaster_name ?? '')) }}';
+                const SI_SERVICE = '{{ addslashes(trim($quotation->SVName ?? '')) }}';
+                const SI_OFFICE = '{{ addslashes(trim($officeShortCode ?? '')) }}';
+                const SI_CURRENCY = '{{ addslashes(trim($quotation->QuoteCurr ?? 'USD')) }}';
+
+                // Chart instances — kept so we can destroy before re-render
+                let siWinLossChartInst = null;
+                let siServiceChartInst = null;
+                let siTrendChartInst = null;
+                let siDataLoaded = false;
+
+                // ── Collapse toggle ───────────────────────────────────────
+                $('#salesIntelligenceHeader').on('click', function(e) {
+                    if ($(e.target).closest('button, .btn-group').length) return;
+                    const $body = $('#salesIntelligenceBody');
+                    const $icon = $('#siCollapseBtn i');
+                    $body.slideToggle(200);
+                    $icon.toggleClass('fa-chevron-up fa-chevron-down');
+                });
+
+                $('#siCollapseBtn').on('click', function(e) {
+                    e.stopPropagation();
+                    const $body = $('#salesIntelligenceBody');
+                    const $icon = $(this).find('i');
+                    $body.slideToggle(200);
+                    $icon.toggleClass('fa-chevron-up fa-chevron-down');
+                });
+
+                // ── View toggle ───────────────────────────────────────────
+                $('#siTableViewBtn').on('click', function() {
+                    $(this).addClass('active');
+                    $('#siChartViewBtn').removeClass('active');
+                    $('#siTableView').show();
+                    $('#siChartView').hide();
+                });
+
+                $('#siChartViewBtn').on('click', function() {
+                    $(this).addClass('active');
+                    $('#siTableViewBtn').removeClass('active');
+                    $('#siTableView').hide();
+                    $('#siChartView').show();
+                    // Render charts only when first switched to chart view
+                    if (siDataLoaded) renderCharts(window._siComputedData);
+                });
+
+                // ── Helpers ───────────────────────────────────────────────
+                function fmtCurrency(val, currency) {
+                    return new Intl.NumberFormat('en-US', {
+                        style: 'currency',
+                        currency: currency || 'USD',
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                    }).format(val);
+                }
+
+                function statusGroup(status) {
+                    if (['Won', 'Completed'].includes(status)) return 'won';
+                    if (['Lost', 'Cancelled'].includes(status)) return 'lost';
+                    if (['In Progress'].includes(status)) return 'open';
+                    return 'other';
+                }
+
+                // ── Probability engine ────────────────────────────────────
+                // Returns { probability: float|null, confidence: string, basis: string }
+                function computeProbability(allQuotes, targetService) {
+                    const closed = allQuotes.filter(q => ['Won', 'Completed', 'Lost', 'Cancelled'].includes(q
+                        .Status));
+
+                    // Insufficient data rule — minimum 3 closed quotes required
+                    if (closed.length < 3) {
+                        return {
+                            probability: null,
+                            confidence: 'Insufficient data',
+                            basis: closed.length + ' closed quote(s) — need at least 3',
+                            color: '#aaa',
+                        };
+                    }
+
+                    // Base win rate across all services
+                    const won = closed.filter(q => statusGroup(q.Status) === 'won').length;
+                    const baseRate = won / closed.length;
+
+                    // Service-specific win rate (weighted 60%)
+                    const svcQuotes = closed.filter(q => q.Service === targetService);
+                    let serviceRate = baseRate; // fallback to base if no service history
+                    if (svcQuotes.length >= 2) {
+                        const svcWon = svcQuotes.filter(q => statusGroup(q.Status) === 'won').length;
+                        serviceRate = svcWon / svcQuotes.length;
+                    }
+                    let probability = (baseRate * 0.4) + (serviceRate * 0.6);
+
+                    // Recency adjustment — days since most recent quote
+                    const dates = allQuotes.map(q => new Date(q.Date)).filter(d => !isNaN(d));
+                    const lastDate = dates.length ? new Date(Math.max(...dates)) : null;
+                    if (lastDate) {
+                        const daysSince = Math.floor((new Date() - lastDate) / 86400000);
+                        if (daysSince < 30) probability = Math.min(1, probability + 0.05);
+                        else if (daysSince > 180) probability = Math.max(0, probability - 0.10);
+                    }
+
+                    // Confidence tier
+                    let confidence, confColor;
+                    if (closed.length >= 10) {
+                        confidence = 'High';
+                        confColor = '#28a745';
+                    } else if (closed.length >= 5) {
+                        confidence = 'Medium';
+                        confColor = '#fd7e14';
+                    } else {
+                        confidence = 'Low';
+                        confColor = '#dc3545';
+                    }
+
+                    return {
+                        probability: Math.round(probability * 1000) / 10, // 1 decimal place
+                        confidence,
+                        confColor,
+                        basis: `Based on ${closed.length} closed quotes (${won} won)`,
+                    };
+                }
+
+                // ── Service history aggregation ───────────────────────────
+                function buildServiceHistory(allQuotes) {
+                    const map = {};
+                    allQuotes.forEach(function(q) {
+                        const svc = q.Service || 'Unknown';
+                        if (!map[svc]) map[svc] = {
+                            offered: 0,
+                            won: 0,
+                            lost: 0,
+                            lastDate: null
+                        };
+                        map[svc].offered++;
+                        const grp = statusGroup(q.Status);
+                        if (grp === 'won') map[svc].won++;
+                        if (grp === 'lost') map[svc].lost++;
+                        const d = new Date(q.Date);
+                        if (!isNaN(d) && (!map[svc].lastDate || d > map[svc].lastDate)) {
+                            map[svc].lastDate = d;
+                        }
+                    });
+                    return map;
+                }
+
+                // ── Render metrics ────────────────────────────────────────
+                function renderMetrics(prob, quotedRevenue, quotedCost, currency) {
+                    if (prob.probability === null) {
+                        $('#siProbabilityValue').text('N/A').css('color', '#aaa');
+                        $('#siProbabilityBasis').text(prob.basis);
+                        $('#siConfidenceValue').text('N/A').css('color', '#aaa');
+                        $('#siConfidenceBasis').text('Insufficient history');
+                        $('#siExpectedRevenue').text('N/A');
+                        $('#siExpectedProfit').text('N/A');
+                        $('#siProfitMargin').text('—');
+                        return;
+                    }
+
+                    const pct = prob.probability;
+                    const expectedRev = (quotedRevenue * pct) / 100;
+                    const profit = quotedRevenue - quotedCost;
+                    const expectedProfit = (profit * pct) / 100;
+                    const margin = quotedRevenue > 0 ?
+                        ((profit / quotedRevenue) * 100).toFixed(2) :
+                        null;
+
+                    $('#siProbabilityValue').text(pct.toFixed(1) + '%').css('color', '#4B49AC');
+                    $('#siProbabilityBasis').text(prob.basis);
+
+                    $('#siConfidenceValue').text(prob.confidence).css('color', prob.confColor);
+                    $('#siConfidenceBasis').text(closed => prob.basis);
+                    $('#siConfidenceBasis').text('');
+
+                    $('#siExpectedRevenue')
+                        .text(fmtCurrency(expectedRev, currency))
+                        .css('color', expectedRev >= 0 ? '#28a745' : '#dc3545');
+
+                    $('#siExpectedProfit')
+                        .text(fmtCurrency(expectedProfit, currency))
+                        .css('color', expectedProfit >= 0 ? '#28a745' : '#dc3545');
+
+                    $('#siProfitMargin').text(
+                        margin !== null ?
+                        'Margin: ' + margin + '%' :
+                        quotedCost === 0 ? 'No cost data' : '—'
+                    );
+                }
+
+                // ── Render service history table ──────────────────────────
+                function renderServiceHistory(svcMap) {
+                    const $tbody = $('#siServiceHistoryBody').empty();
+                    const rows = Object.entries(svcMap).sort((a, b) => b[1].offered - a[1].offered);
+
+                    if (!rows.length) {
+                        $tbody.html('<tr><td colspan="6" class="text-center text-muted">No history</td></tr>');
+                        return;
+                    }
+
+                    rows.forEach(function([svc, data]) {
+                        const winRate = data.offered > 0 ?
+                            ((data.won / data.offered) * 100).toFixed(1) + '%' :
+                            '—';
+                        const winColor = data.offered > 0 ?
+                            (data.won / data.offered >= 0.5 ? '#28a745' : '#dc3545') :
+                            '#aaa';
+                        const lastDate = data.lastDate ?
+                            data.lastDate.toLocaleDateString('en-GB') :
+                            '—';
+                        $tbody.append(`
+                <tr>
+                    <td>${svc}</td>
+                    <td class="text-center">${data.offered}</td>
+                    <td class="text-center">${data.won}</td>
+                    <td class="text-center">${data.lost}</td>
+                    <td class="text-center font-weight-bold" style="color:${winColor};">
+                        ${winRate}
+                    </td>
+                    <td>${lastDate}</td>
+                </tr>
+            `);
+                    });
+                }
+
+                // ── Render recent quotes table ────────────────────────────
+                function renderRecentQuotes(allQuotes) {
+                    const STATUS_COLORS = {
+                        'Won': 'success',
+                        'Completed': 'success',
+                        'Lost': 'danger',
+                        'Cancelled': 'danger',
+                        'In Progress': 'primary',
+                        'Failed Int.': 'warning',
+                        'Failed Progress': 'secondary',
+                    };
+
+                    const $tbody = $('#siRecentQuotesBody').empty();
+                    const sorted = [...allQuotes].sort((a, b) => new Date(b.Date) - new Date(a.Date));
+                    const recent = sorted.slice(0, 10);
+
+                    $('#siQuoteCount').text(allQuotes.length + ' total');
+
+                    if (!recent.length) {
+                        $tbody.html(
+                            '<tr><td colspan="5" class="text-center text-muted">No quotes found</td></tr>');
+                        return;
+                    }
+
+                    recent.forEach(function(q) {
+                        const badgeType = STATUS_COLORS[q.Status] || 'secondary';
+                        $tbody.append(`
+                <tr>
+                    <td><strong>${q.QuoteNo}</strong></td>
+                    <td>${q.Date || '—'}</td>
+                    <td>${q.Service || '—'}</td>
+                    <td>
+                        <span class="badge badge-${badgeType}">${q.Status}</span>
+                    </td>
+                    <td>${q.SalesPerson || '—'}</td>
+                </tr>
+            `);
+                    });
+                }
+
+                // ── Render charts ─────────────────────────────────────────
+                function renderCharts(data) {
+                    if (!data) return;
+
+                    const {
+                        allQuotes,
+                        svcMap
+                    } = data;
+
+                    // -- Win/Loss doughnut --
+                    const won = allQuotes.filter(q => statusGroup(q.Status) === 'won').length;
+                    const lost = allQuotes.filter(q => statusGroup(q.Status) === 'lost').length;
+                    const open = allQuotes.filter(q => statusGroup(q.Status) === 'open').length;
+                    const other = allQuotes.length - won - lost - open;
+
+                    if (siWinLossChartInst) siWinLossChartInst.destroy();
+                    siWinLossChartInst = new Chart(
+                        document.getElementById('siWinLossChart').getContext('2d'), {
+                            type: 'doughnut',
+                            data: {
+                                labels: ['Won / Completed', 'Lost / Cancelled', 'In Progress', 'Other'],
+                                datasets: [{
+                                    data: [won, lost, open, other],
+                                    backgroundColor: ['#28a745', '#dc3545', '#4B49AC', '#adb5bd'],
+                                    borderWidth: 1,
+                                }],
+                            },
+                            options: {
+                                responsive: true,
+                                plugins: {
+                                    legend: {
+                                        position: 'bottom',
+                                        labels: {
+                                            font: {
+                                                size: 11
+                                            }
+                                        }
+                                    }
+                                },
+                            },
+                        });
+
+                    // -- Service bar --
+                    const svcLabels = Object.keys(svcMap);
+                    const svcWon = svcLabels.map(s => svcMap[s].won);
+                    const svcLost = svcLabels.map(s => svcMap[s].lost);
+                    const svcOpen = svcLabels.map(s =>
+                        svcMap[s].offered - svcMap[s].won - svcMap[s].lost
+                    );
+
+                    if (siServiceChartInst) siServiceChartInst.destroy();
+                    siServiceChartInst = new Chart(
+                        document.getElementById('siServiceChart').getContext('2d'), {
+                            type: 'bar',
+                            data: {
+                                labels: svcLabels,
+                                datasets: [{
+                                        label: 'Won',
+                                        data: svcWon,
+                                        backgroundColor: '#28a745'
+                                    },
+                                    {
+                                        label: 'Lost',
+                                        data: svcLost,
+                                        backgroundColor: '#dc3545'
+                                    },
+                                    {
+                                        label: 'In Progress',
+                                        data: svcOpen,
+                                        backgroundColor: '#4B49AC'
+                                    },
+                                ],
+                            },
+                            options: {
+                                responsive: true,
+                                scales: {
+                                    x: {
+                                        stacked: true
+                                    },
+                                    y: {
+                                        stacked: true,
+                                        beginAtZero: true
+                                    }
+                                },
+                                plugins: {
+                                    legend: {
+                                        position: 'bottom',
+                                        labels: {
+                                            font: {
+                                                size: 11
+                                            }
+                                        }
+                                    }
+                                },
+                            },
+                        });
+
+                    // -- Monthly trend line (last 12 months) --
+                    const now = new Date();
+                    const months = [];
+                    const monthly = {};
+                    for (let i = 11; i >= 0; i--) {
+                        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                        const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+                        months.push(key);
+                        monthly[key] = {
+                            total: 0,
+                            won: 0
+                        };
+                    }
+                    allQuotes.forEach(function(q) {
+                        const d = new Date(q.Date);
+                        if (isNaN(d)) return;
+                        const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+                        if (monthly[key]) {
+                            monthly[key].total++;
+                            if (statusGroup(q.Status) === 'won') monthly[key].won++;
+                        }
+                    });
+
+                    if (siTrendChartInst) siTrendChartInst.destroy();
+                    siTrendChartInst = new Chart(
+                        document.getElementById('siTrendChart').getContext('2d'), {
+                            type: 'line',
+                            data: {
+                                labels: months,
+                                datasets: [{
+                                        label: 'Total Quotes',
+                                        data: months.map(m => monthly[m].total),
+                                        borderColor: '#4B49AC',
+                                        backgroundColor: 'rgba(75,73,172,0.08)',
+                                        tension: 0.3,
+                                        fill: true,
+                                    },
+                                    {
+                                        label: 'Won',
+                                        data: months.map(m => monthly[m].won),
+                                        borderColor: '#28a745',
+                                        backgroundColor: 'rgba(40,167,69,0.08)',
+                                        tension: 0.3,
+                                        fill: true,
+                                    },
+                                ],
+                            },
+                            options: {
+                                responsive: true,
+                                scales: {
+                                    y: {
+                                        beginAtZero: true
+                                    }
+                                },
+                                plugins: {
+                                    legend: {
+                                        position: 'bottom',
+                                        labels: {
+                                            font: {
+                                                size: 11
+                                            }
+                                        }
+                                    }
+                                },
+                            },
+                        });
+                }
+
+                // ── Main load function ────────────────────────────────────
+                function loadSalesIntelligence() {
+                    if (!SI_COMPANY || !SI_OFFICE) {
+                        $('#siLoading').hide();
+                        $('#siError').removeClass('d-none');
+                        $('#siErrorMsg').text('Client or office information not available.');
+                        return;
+                    }
+
+                    $.ajax({
+                        url: '{{ route('quotation.sales-intelligence') }}',
+                        type: 'GET',
+                        data: {
+                            office_code: SI_OFFICE,
+                            customer: SI_COMPANY
+                        },
+                        success: function(response) {
+                            $('#siLoading').hide();
+
+                            if (!response.success || !response.data.length) {
+                                $('#siError').removeClass('d-none');
+                                $('#siErrorMsg').text('No quote history found for this client.');
+                                return;
+                            }
+
+                            const allQuotes = response.data;
+
+                            // Read quoted revenue + cost from the page (already calculated)
+                            const parsePageFloat = function(selector) {
+                                const raw = $(selector).val() || '0';
+                                return parseFloat(raw.replace(/[^0-9.\-]/g, '')) || 0;
+                            };
+                            const quotedRevenue = parsePageFloat('#quotedRevenue');
+                            const quotedCost = parsePageFloat('#totalCostBaseAmount') ||
+                                parsePageFloat('#costTotalHeaderAmount');
+
+                            // Compute
+                            const prob = computeProbability(allQuotes, SI_SERVICE);
+                            const svcMap = buildServiceHistory(allQuotes);
+
+                            // Store for chart re-render on tab switch
+                            window._siComputedData = {
+                                allQuotes,
+                                svcMap
+                            };
+                            siDataLoaded = true;
+
+                            // Render
+                            renderMetrics(prob, quotedRevenue, quotedCost, SI_CURRENCY);
+                            renderServiceHistory(svcMap);
+                            renderRecentQuotes(allQuotes);
+
+                            // Show view toggle + content
+                            $('#siViewToggle').css('display', 'flex !important')
+                                .attr('style', 'display:flex !important; gap:4px;');
+                            $('#siContent').show();
+                        },
+                        error: function(xhr) {
+                            $('#siLoading').hide();
+                            $('#siError').removeClass('d-none');
+                            $('#siErrorMsg').text(
+                                xhr.responseJSON?.message ||
+                                'Failed to load sales intelligence.'
+                            );
+                        },
+                    });
+                }
+
+                // Delay slightly so page charges load first (they populate #quotedRevenue)
+                setTimeout(loadSalesIntelligence, 1200);
+
+            })();
+            // ═══════════════════════════════════════════════════════════
+            // END SALES INTELLIGENCE
+            // ═══════════════════════════════════════════════════════════
 
             // ============================================================
             // COPIED FLAG — highlight mandatory empty fields after duplication
@@ -3667,6 +4333,26 @@
             $('#editShipmentDetailsBtn').on('click', function() {
                 originalShipmentMode = $('#shipmentModeSelect').val();
                 originalTransportMode = $('#transportModeSelect').val();
+                originalPol = $('#polCode').val();
+                originalPod = $('#podCode').val();
+                originalPlaceOfReceipt = $('#placeOfReceiptCode').val();
+                originalPlaceOfDelivery = $('#placeOfDeliveryCode').val();
+
+                $('#polSearch').val($('#polDisplay').val());
+                $('#podSearch').val($('#podDisplay').val());
+                $('#placeOfReceiptSearch').val($('#placeOfReceiptDisplay').val());
+                $('#placeOfDeliverySearch').val($('#placeOfDeliveryDisplay').val());
+
+
+                // Show edit wrappers, hide display fields
+                $('#polDisplay, #podDisplay, #placeOfReceiptDisplay, #placeOfDeliveryDisplay').hide();
+                $('#polEditWrap, #podEditWrap, #placeOfReceiptEditWrap, #placeOfDeliveryEditWrap').show();
+
+                // Initialize autocomplete for each field (reuse existing function)
+                initLocationAutocomplete('polSearch', 'polCode');
+                initLocationAutocomplete('podSearch', 'podCode');
+                initLocationAutocomplete('placeOfReceiptSearch', 'placeOfReceiptCode');
+                initLocationAutocomplete('placeOfDeliverySearch', 'placeOfDeliveryCode');
 
                 // Sync IncoTerm display → select before snapshotting
                 const $incoSel = $('#incoTermSelect');
@@ -3710,55 +4396,58 @@
                 originalDestCountryName = $('#destCountryDisplay').val();
                 $('#shipmentModeSelect, #transportModeSelect').prop('disabled', false);
 
-            const savedIncoTerm = $('#incoTermCode').val() || $('#incoTermDisplay').val();
-            
-            if (!incoTermsLoaded) {
-                $.ajax({
-                    url: '{{ route('quotation.inco-terms') }}',
-                    type: 'GET',
-                    success: function(r) {
-                        const $sel = $('#incoTermSelect').empty()
-                            .append('<option value="">-- Select --</option>');
-                        (r.success ? r.data : []).forEach(function(item) {
-                            const code = item.IncoTermCode || '';
-                            $sel.append(`<option value="${code}">${code} — ${item.Name}</option>`);
-                        });
-                        incoTermsLoaded = true;
-            
-                        if (savedIncoTerm) {
-                            $sel.val(savedIncoTerm);
-                            // Fallback: match by partial text if exact code match fails
-                            if (!$sel.val()) {
-                                $sel.find('option').each(function() {
-                                    if ($(this).text().indexOf(savedIncoTerm) !== -1) {
-                                        $sel.val($(this).val());
-                                        return false;
-                                    }
-                                });
+                const savedIncoTerm = $('#incoTermCode').val() || $('#incoTermDisplay').val();
+
+                if (!incoTermsLoaded) {
+                    $.ajax({
+                        url: '{{ route('quotation.inco-terms') }}',
+                        type: 'GET',
+                        success: function(r) {
+                            const $sel = $('#incoTermSelect').empty()
+                                .append('<option value="">-- Select --</option>');
+                            (r.success ? r.data : []).forEach(function(item) {
+                                const code = item.IncoTermCode || '';
+                                $sel.append(
+                                    `<option value="${code}">${code} — ${item.Name}</option>`
+                                );
+                            });
+                            incoTermsLoaded = true;
+
+                            if (savedIncoTerm) {
+                                $sel.val(savedIncoTerm);
+                                // Fallback: match by partial text if exact code match fails
+                                if (!$sel.val()) {
+                                    $sel.find('option').each(function() {
+                                        if ($(this).text().indexOf(savedIncoTerm) !== -
+                                            1) {
+                                            $sel.val($(this).val());
+                                            return false;
+                                        }
+                                    });
+                                }
                             }
+
+                            // Only swap display → select AFTER options are loaded and pre-selected
+                            $('#incoTermDisplay').addClass('d-none');
+                            $sel.removeClass('d-none').prop('disabled', false);
                         }
-            
-                        // Only swap display → select AFTER options are loaded and pre-selected
-                        $('#incoTermDisplay').addClass('d-none');
-                        $sel.removeClass('d-none').prop('disabled', false);
+                    });
+                } else {
+                    const $sel = $('#incoTermSelect');
+                    if (savedIncoTerm) {
+                        $sel.val(savedIncoTerm);
+                        if (!$sel.val()) {
+                            $sel.find('option').each(function() {
+                                if ($(this).text().indexOf(savedIncoTerm) !== -1) {
+                                    $sel.val($(this).val());
+                                    return false;
+                                }
+                            });
+                        }
                     }
-                });
-            } else {
-                const $sel = $('#incoTermSelect');
-                if (savedIncoTerm) {
-                    $sel.val(savedIncoTerm);
-                    if (!$sel.val()) {
-                        $sel.find('option').each(function() {
-                            if ($(this).text().indexOf(savedIncoTerm) !== -1) {
-                                $sel.val($(this).val());
-                                return false;
-                            }
-                        });
-                    }
+                    $('#incoTermDisplay').addClass('d-none');
+                    $sel.removeClass('d-none').prop('disabled', false);
                 }
-                $('#incoTermDisplay').addClass('d-none');
-                $sel.removeClass('d-none').prop('disabled', false);
-            }
 
                 // Snapshot display values before any async loads mutate the DOM
                 originalServiceClass = $('#serviceClassCode').val() || $('#serviceClassDisplay').val();
@@ -3790,6 +4479,26 @@
                 $('#incoTermSelect').val(originalIncoTerm);
                 $('#originCountrySelect').val(originalOriginCountry);
                 $('#destCountrySelect').val(originalDestCountry);
+
+                // Restore display and hidden values
+                $('#polCode').val(originalPol);
+                $('#podCode').val(originalPod);
+                $('#placeOfReceiptCode').val(originalPlaceOfReceipt);
+                $('#placeOfDeliveryCode').val(originalPlaceOfDelivery);
+
+                $('#polDisplay').val(originalPol).show();
+                $('#podDisplay').val(originalPod).show();
+                $('#placeOfReceiptDisplay').val(originalPlaceOfReceipt).show();
+                $('#placeOfDeliveryDisplay').val(originalPlaceOfDelivery).show();
+
+                $('#polEditWrap, #podEditWrap, #placeOfReceiptEditWrap, #placeOfDeliveryEditWrap').hide();
+
+                // Destroy autocomplete instances to clean up
+                ['polSearch', 'podSearch', 'placeOfReceiptSearch', 'placeOfDeliverySearch'].forEach(
+                    function(id) {
+                        const $el = $('#' + id);
+                        if ($el.hasClass('ui-autocomplete-input')) $el.autocomplete('destroy');
+                    });
 
                 $('#shipmentModeSelect, #transportModeSelect').prop('disabled', true);
 
@@ -3839,6 +4548,10 @@
                         origincountry: originCountry,
                         destinationcountry: destCountry,
                         service_class: serviceClass,
+                        pol_code: $('#polCode').val(),
+                        pod_code: $('#podCode').val(),
+                        place_of_receipt_code: $('#placeOfReceiptCode').val(),
+                        place_of_delivery_code: $('#placeOfDeliveryCode').val(),
                     },
                     beforeSend: function() {
                         $('#saveShipmentDetailsBtn').prop('disabled', true)
@@ -3878,6 +4591,24 @@
                                 'd-none'); // code, same as page load
                             originalServiceClass = serviceClass;
                             originalServiceClassDisplay = serviceClass;
+
+                            // Switch POL/POD/Receipt/Delivery back to display mode
+                            $('#polDisplay').val($('#polCode').val()).show();
+                            $('#podDisplay').val($('#podCode').val()).show();
+                            $('#placeOfReceiptDisplay').val($('#placeOfReceiptCode').val())
+                                .show();
+                            $('#placeOfDeliveryDisplay').val($('#placeOfDeliveryCode').val())
+                                .show();
+                            $('#polEditWrap, #podEditWrap, #placeOfReceiptEditWrap, #placeOfDeliveryEditWrap')
+                                .hide();
+
+                            ['polSearch', 'podSearch', 'placeOfReceiptSearch',
+                                'placeOfDeliverySearch'
+                            ].forEach(function(id) {
+                                const $el = $('#' + id);
+                                if ($el.hasClass('ui-autocomplete-input')) $el
+                                    .autocomplete('destroy');
+                            });
 
                             $('#saveShipmentDetailsBtn, #cancelShipmentDetailsBtn').hide();
                             $('#editShipmentDetailsBtn').show();
@@ -5401,7 +6132,7 @@
             $(document).on('click', '.delete-revenue-charge, .delete-cost-charge', function() {
                 const chargeId = $(this).data('id');
                 if (!confirm('Are you sure you want to delete this charge?')) return;
-            
+
                 $.ajax({
                     url: '{{ route('quotation.charges.bulk-delete') }}',
                     type: 'POST',
@@ -5412,14 +6143,17 @@
                     },
                     success: function(response) {
                         if (response.success) {
-                            showNotification(response.message || 'Charge deleted successfully', 'success');
+                            showNotification(response.message || 'Charge deleted successfully',
+                                'success');
                             loadCharges();
                         } else {
-                            showNotification(response.message || 'Failed to delete charge', 'error');
+                            showNotification(response.message || 'Failed to delete charge',
+                                'error');
                         }
                     },
                     error: function(xhr) {
-                        showNotification(xhr.responseJSON?.message || 'Failed to delete charge', 'error');
+                        showNotification(xhr.responseJSON?.message || 'Failed to delete charge',
+                            'error');
                     }
                 });
             });
@@ -6432,6 +7166,118 @@
                 });
             });
 
+            // ============================================
+            // APPROVAL
+            // Backend (sp_Quote_ApprovalStatus / sp_Quote_ApprovalRequest) not yet
+            // implemented — controller currently returns {success:false, message:'...pending...'}.
+            // This UI calls the real endpoints; once the SP lands, only the controller
+            // body changes — nothing here needs to change.
+            // ============================================
+
+            function approvalStatusBadgeClass(status) {
+                if (status === 'Approved') return 'badge-success';
+                if (status === 'Rejected') return 'badge-danger';
+                if (status === 'Pending Approval') return 'badge-warning';
+                return 'badge-secondary';
+            }
+
+            function approverRowBadgeClass(status) {
+                if (status === 'Approved') return 'badge-success';
+                if (status === 'Rejected') return 'badge-danger';
+                return 'badge-secondary';
+            }
+
+            function renderApprovalStatus(data) {
+                $('#approvalEmptyState, #approvalUnavailable').hide();
+                $('#approvalContent').show();
+
+                $('#approvalStatusBadge')
+                    .removeClass()
+                    .addClass('badge px-2 py-1 ' + approvalStatusBadgeClass(data.status))
+                    .text(data.status);
+
+                const pct = data.required > 0 ? Math.min(100, (data.approvedCount / data.required) * 100) : 0;
+                $('#approvalProgressBar').css('width', pct + '%');
+                $('#approvalProgressLabel').text(`${data.approvedCount} of ${data.required} Approved`);
+
+                const $tbody = $('#approvalApproverTable tbody').empty();
+                (data.approvers || []).forEach(function(a) {
+                    $tbody.append(`
+            <tr>
+                <td style="font-size:0.85rem;">${a.name}</td>
+                <td class="text-right">
+                    <span class="badge ${approverRowBadgeClass(a.status)}" style="font-size:0.7rem;">${a.status}</span>
+                    ${a.date ? `<small class="text-muted ml-1">${a.date}</small>` : ''}
+                </td>
+            </tr>
+        `);
+                });
+
+                $('#sendForApprovalBtn').prop('disabled', data.status !== 'Draft' && data.status !== undefined);
+            }
+
+            function loadApprovalStatus() {
+                $('#approvalEmptyState, #approvalContent, #approvalUnavailable').hide();
+                $('#approvalLoading').show();
+
+                $.ajax({
+                    url: '{{ route('quotation.approval.status', $quotation->ID ?? 0) }}',
+                    type: 'GET',
+                    success: function(response) {
+                        $('#approvalLoading').hide();
+                        if (response.success && response.data && response.data.status) {
+                            renderApprovalStatus(response.data);
+                        } else if (response.message) {
+                            // Backend explicitly says "not implemented yet" — show that, not a fake state
+                            $('#approvalUnavailableMsg').text(response.message);
+                            $('#approvalUnavailable').show();
+                        } else {
+                            $('#approvalEmptyState').show();
+                        }
+                    },
+                    error: function(xhr) {
+                        $('#approvalLoading').hide();
+                        $('#approvalUnavailableMsg').text(xhr.responseJSON?.message ||
+                            'Unable to load approval status.');
+                        $('#approvalUnavailable').show();
+                    }
+                });
+            }
+
+            $('#sendForApprovalBtn').on('click', function() {
+                $.ajax({
+                    url: '{{ route('quotation.approval.send', $quotation->ID ?? 0) }}',
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}'
+                    },
+                    beforeSend: function() {
+                        $('#sendForApprovalBtn').prop('disabled', true)
+                            .html('<i class="fas fa-spinner fa-spin mr-1"></i> Sending...');
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            showNotification(response.message || 'Sent for approval',
+                                'success');
+                            loadApprovalStatus();
+                        } else {
+                            showNotification(response.message ||
+                                'Send for Approval is not yet available', 'warning');
+                        }
+                    },
+                    error: function(xhr) {
+                        showNotification(xhr.responseJSON?.message ||
+                            'Failed to send for approval', 'error');
+                    },
+                    complete: function() {
+                        $('#sendForApprovalBtn').html(
+                            '<i class="fas fa-paper-plane mr-1"></i> Send for Approval');
+                        $('#sendForApprovalBtn').prop('disabled', false);
+                    }
+                });
+            });
+
+            loadApprovalStatus();
 
             // ============================================
             // CREATE BOOKING MODAL
@@ -6921,8 +7767,8 @@
             // CUSTOMER — load country + industry dropdowns (once)
             // ============================================================
             let customerDropdownsLoaded = false;
-            const savedCustomerCountry = '{{ $quotation->pri_partner_countryname ?? '' }}';
-            const savedCustomerCountryCode = '{{ $quotation->pri_partner_countrycode ?? '' }}';
+            const savedCustomerCountry = '{{ $quotation->countryname ?? '' }}';
+            const savedCustomerCountryCode = '{{ $quotation->countrycode ?? '' }}';
 
             const savedCustomerIndustry = '{{ $quotation->industryname ?? '' }}';
 
@@ -8887,6 +9733,7 @@
             let ccCurrentPage = 1;
             let ccPageSize = 10;
             let ccSelectedJobRow = null;
+            let ccJobMap = {};
 
             const ccTableState = {
                 ccRevenueBody: {
@@ -8904,25 +9751,87 @@
             // ── Open modal ────────────────────────────────────────────────────────────
             $('#openCopyChargesBtn').on('click', function() {
                 resetCopyChargesModal();
+                $('#ccSourceJob').prop('checked', true);
+                $('#ccJobSourceRow').show();
+                $('#ccTemplateSourceRow').hide();
                 $('#copyChargesModal').modal('show');
+                loadCcJobDropdown();
             });
+
 
             // ── Open job search ───────────────────────────────────────────────────────
             $('#ccJobNoSearchBtn').on('click', function() {
-                const jobNo = $('#ccJobNo').val().trim();
-
-                // If a job number is already typed, search directly — skip the Search modal
-                if (jobNo) {
-                    triggerJobNoLoad();
-                    return;
-                }
-
-                // No job number entered — open the Search modal as before
                 ccSelectedJobRow = null;
                 $('#ccSearchOkBtn').prop('disabled', true);
                 resetSearchModal();
                 $('#ccSearchModal').css('z-index', 1060).modal('show');
             });
+
+            // ── Job No type-ahead — mirrors initSalesPersonAutocomplete / initCompanyAutocomplete ──
+            function initCcJobNoAutocomplete() {
+                const $input = $('#ccJobNo');
+
+                if ($input.hasClass('ui-autocomplete-input')) {
+                    $input.autocomplete('destroy');
+                }
+
+                $input.autocomplete({
+                    minLength: 2,
+                    delay: 300,
+                    appendTo: $input.closest('.cc-info-row'),
+                    source: function(request, response) {
+                        $.ajax({
+                            url: CC_SEARCH_URL,
+                            type: 'GET',
+                            data: {
+                                office_code: officeCode,
+                                quote_no: request.term
+                            },
+                            success: function(res) {
+                                if (!res.success || !res.data || !res.data.length) {
+                                    response([{
+                                        label: 'No jobs found for "' + request
+                                            .term + '"',
+                                        value: request.term,
+                                        disabled: true
+                                    }]);
+                                    return;
+                                }
+                                response(res.data.map(function(row) {
+                                    return {
+                                        label: (row.QuoteNo || '') + ' — ' + (
+                                            row.CompanyName || ''),
+                                        value: row.QuoteNo || '',
+                                        row: row
+                                    };
+                                }));
+                            },
+                            error: function() {
+                                response([{
+                                    label: 'Error loading jobs',
+                                    value: '',
+                                    disabled: true
+                                }]);
+                            }
+                        });
+                    },
+                    select: function(event, ui) {
+                        if (ui.item.disabled) {
+                            event.preventDefault();
+                            return false;
+                        }
+                        $input.val(ui.item.value);
+                        ccSelectedJobRow = ui.item.row;
+                        loadJobCharges(ui.item.row);
+                        return false;
+                    }
+                }).autocomplete('instance')._renderItem = function(ul, item) {
+                    return $('<li>')
+                        .addClass(item.disabled ? 'ui-state-disabled' : '')
+                        .append($('<div>').text(item.label))
+                        .appendTo(ul);
+                };
+            }
 
             // ── Search ────────────────────────────────────────────────────────────────
             $('#ccSearchGoBtn').on('click', function() {
@@ -9078,67 +9987,6 @@
                 });
             }
 
-            // function runSearch() {
-            //     const filterField = $('#ccSearchField').val();
-            //     const filterValue = $('#ccSearchValue').val().trim();
-
-            //     // Value is required; filter field is optional (no field = search by quote number)
-            //     if (!filterValue) {
-            //         showNotification('Please enter a search value', 'warning');
-            //         $('#ccSearchValue').focus();
-            //         return;
-            //     }
-
-            //     const fieldMap = {
-            //         customer: 'customer',
-            //         origin: 'origin',
-            //         destination: 'destination',
-            //         incoterm: 'incoterm',
-            //         por: 'por',
-            //         pod: 'pod',
-            //         equipment: 'equipment'
-            //     };
-
-            //     const params = {
-            //         office_code: officeCode
-            //     };
-
-            //     // No filter field selected → treat input as a direct quote number search
-            //     if (!filterField) {
-            //         params.quote_no = filterValue;
-            //     } else {
-            //         const paramKey = fieldMap[filterField];
-            //         if (paramKey) params[paramKey] = filterValue;
-            //     }
-
-            //     $.ajax({
-            //         url: CC_SEARCH_URL,
-            //         type: 'GET',
-            //         data: params,
-            //         beforeSend: function() {
-            //             $('#ccSearchGoBtn').prop('disabled', true)
-            //                 .html('<i class="fas fa-spinner fa-spin mr-1"></i> Searching...');
-            //             $('#ccSearchResultsBody').html(
-            //                 '<tr><td colspan="8" class="cc-empty-msg"><i class="fas fa-spinner fa-spin"></i> Searching...</td></tr>'
-            //             );
-            //         },
-            //         complete: function() {
-            //             $('#ccSearchGoBtn').prop('disabled', false).html('Search');
-            //         },
-            //         success: function(response) {
-            //             ccSearchResults = response.success ? (response.data || []) : [];
-            //             ccCurrentPage = 1;
-            //             renderSearchPage();
-            //         },
-            //         error: function(xhr) {
-            //             ccSearchResults = [];
-            //             renderSearchPage();
-            //             const msg = xhr.responseJSON?.message || 'Search failed. Please try again.';
-            //             showNotification(msg, 'error');
-            //         }
-            //     });
-            // }
-
             // ── Search pagination ─────────────────────────────────────────────────────
             $(document).on('click', '.cc-page-btn', function() {
                 const action = $(this).data('action');
@@ -9215,7 +10063,13 @@
             // ── Search Ok ─────────────────────────────────────────────────────────────
             $('#ccSearchOkBtn').on('click', function() {
                 if (!ccSelectedJobRow) return;
-                $('#ccJobNo').val(ccSelectedJobRow.QuoteNo);
+                ccJobMap[ccSelectedJobRow.id] = ccSelectedJobRow;
+                if (!$(`#ccJobSelect option[value="${ccSelectedJobRow.id}"]`).length) {
+                    $('#ccJobSelect').append(
+                        `<option value="${ccSelectedJobRow.id}">${ccSelectedJobRow.QuoteNo} — ${ccSelectedJobRow.CompanyName || ''}</option>`
+                    );
+                }
+                $('#ccJobSelect').val(ccSelectedJobRow.id);
                 $('#ccSearchModal').modal('hide');
                 loadJobCharges(ccSelectedJobRow);
             });
@@ -9476,41 +10330,41 @@
             });
 
             // ── Job No direct entry — load charges on Enter or blur ───────────────────
-            $('#ccJobNo').on('keypress', function(e) {
-                if (e.which === 13) triggerJobNoLoad();
-            });
-            $('#ccJobNo').on('blur', function() {
-                if ($(this).val().trim()) triggerJobNoLoad();
-            });
+            // $('#ccJobNo').on('keypress', function(e) {
+            //     if (e.which === 13) triggerJobNoLoad();
+            // });
+            // $('#ccJobNo').on('blur', function() {
+            //     if ($(this).val().trim()) triggerJobNoLoad();
+            // });
 
-            function triggerJobNoLoad() {
-                const jobNo = $('#ccJobNo').val().trim();
-                if (!jobNo) return;
+            // function triggerJobNoLoad() {
+            //     const jobNo = $('#ccJobNo').val().trim();
+            //     if (!jobNo) return;
 
-                // Search by quote number to get the quotation ID, then load charges
-                $.ajax({
-                    url: CC_SEARCH_URL,
-                    type: 'GET',
-                    data: {
-                        office_code: officeCode,
-                        quote_no: jobNo
-                    },
-                    success: function(response) {
-                        if (response.success && response.data && response.data.length > 0) {
-                            // Exact match first, fallback to first result
-                            const match = response.data.find(r => r.QuoteNo === jobNo) || response.data[
-                                0];
-                            ccSelectedJobRow = match;
-                            loadJobCharges(match);
-                        } else {
-                            showNotification('No quote found for: ' + jobNo, 'warning');
-                        }
-                    },
-                    error: function() {
-                        showNotification('Failed to search for Job No', 'error');
-                    }
-                });
-            }
+            //     // Search by quote number to get the quotation ID, then load charges
+            //     $.ajax({
+            //         url: CC_SEARCH_URL,
+            //         type: 'GET',
+            //         data: {
+            //             office_code: officeCode,
+            //             quote_no: jobNo
+            //         },
+            //         success: function(response) {
+            //             if (response.success && response.data && response.data.length > 0) {
+            //                 // Exact match first, fallback to first result
+            //                 const match = response.data.find(r => r.QuoteNo === jobNo) || response.data[
+            //                     0];
+            //                 ccSelectedJobRow = match;
+            //                 loadJobCharges(match);
+            //             } else {
+            //                 showNotification('No quote found for: ' + jobNo, 'warning');
+            //             }
+            //         },
+            //         error: function() {
+            //             showNotification('Failed to search for Job No', 'error');
+            //         }
+            //     });
+            // }
 
             // ── Search results sorting ────────────────────────────────────────────────
             let ccSortCol = null;
@@ -9560,10 +10414,68 @@
                 `;
             }
 
+            function loadCcJobDropdown() {
+                const $select = $('#ccJobSelect');
+                $select.prop('disabled', true).empty().append('<option value="">Loading...</option>');
+                ccJobMap = {};
+
+                $.ajax({
+                    url: CC_SEARCH_URL,
+                    type: 'GET',
+                    data: {
+                        office_code: officeCode
+                    },
+                    success: function(res) {
+                        $select.empty().append('<option value="">-- Select Job --</option>');
+                        if (res.success && res.data && res.data.length) {
+                            res.data.forEach(function(row) {
+                                ccJobMap[row.id] = row;
+                                const label = [row.QuoteNo, row.CompanyName,
+                                    (row.Origin && row.Destination) ? (row.Origin + ' → ' +
+                                        row.Destination) : '',
+                                    row.ServiceVertical || row.process || ''
+                                ].filter(Boolean).join(' | ');
+                                $select.append(`<option value="${row.id}">${label}</option>`);
+                            });
+                        } else {
+                            $select.append('<option value="" disabled>No jobs found</option>');
+                        }
+                    },
+                    error: function() {
+                        $select.empty().append(
+                            '<option value="" disabled>Failed to load jobs</option>');
+                    },
+                    complete: function() {
+                        $select.prop('disabled', false);
+                    }
+                });
+            }
+
+            $(document).on('change', '#ccJobSelect', function() {
+                const jobId = $(this).val();
+                if (!jobId || !ccJobMap[jobId]) return;
+                ccSelectedJobRow = ccJobMap[jobId];
+                loadJobCharges(ccSelectedJobRow);
+            });
+
+            $(document).on('change', 'input[name="ccSourceType"]', function() {
+                if ($('#ccSourceJob').is(':checked')) {
+                    $('#ccJobSourceRow').show();
+                    $('#ccTemplateSourceRow').hide();
+                    $('#ccTemplateSelect').val('');
+                } else {
+                    $('#ccJobSourceRow').hide();
+                    $('#ccTemplateSourceRow').show();
+                    $('#ccJobSelect').val('');
+                }
+                resetCopyChargesModal();
+            });
+
             // ── Helpers ───────────────────────────────────────────────────────────────
             function resetCopyChargesModal() {
                 $('#copyChargesModal .cc-modal-dialog').removeClass('cc-expanded cc-charges-loaded');
-                $('#ccJobNo').val('');
+                $('#ccJobSelect').val('');
+                $('#ccTemplateSelect').val('');
                 $('#ccJobDetails, #ccJobDetailsCost').hide();
                 $('#ccClientRow, #ccShipperRow, #ccConsigneeRow, #ccPolRow, #ccPodRow').hide();
                 $('#ccClient, #ccShipper, #ccConsignee, #ccPortOfLoading, #ccPortOfDischarge').text('');
