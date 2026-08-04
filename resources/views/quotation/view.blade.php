@@ -76,6 +76,236 @@
         <!-- LEFT COLUMN -->
         <div class="col-md-4">
 
+            {{-- SALES INTELLIGENCE CARD (read‑only) --}}
+            <div class="row mb-3" id="salesIntelligenceSection">
+                <div class="col-12">
+                    <div class="card" id="salesIntelligenceCard" style="border-top: 3px solid #4B49AC;">
+                        <div class="card-header d-flex justify-content-between align-items-center"
+                            style="background:#f4f4fb; cursor:pointer;" id="salesIntelligenceHeader">
+                            <h3 class="card-title mb-0" style="color:#4B49AC; font-weight:700;">
+                                <i class="fas fa-chart-line mr-2"></i> Sales Intelligence
+                            </h3>
+                            <div class="d-flex align-items-center" style="gap:8px;">
+                                <div class="btn-group btn-group-sm" id="siViewToggle" style="display:none !important;">
+                                    <button type="button" class="btn btn-outline-secondary active" id="siTableViewBtn"
+                                        title="Table view">
+                                        <i class="fas fa-table"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" id="siChartViewBtn"
+                                        title="Chart view">
+                                        <i class="fas fa-chart-bar"></i>
+                                    </button>
+                                </div>
+                                <button type="button" class="btn btn-tool" id="siCollapseBtn">
+                                    <i class="fas fa-chevron-up"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="card-body" id="salesIntelligenceBody">
+                            <!-- Loading, error, content (copy exactly from edit page) -->
+                            <div id="siLoading" class="text-center py-4">
+                                <i class="fas fa-spinner fa-spin text-primary" style="font-size:1.5rem;"></i>
+                                <p class="text-muted mt-2 mb-0">Loading client intelligence...</p>
+                            </div>
+                            <div id="siError" class="alert alert-warning d-none py-2 px-3">
+                                <i class="fas fa-exclamation-triangle mr-2"></i>
+                                <span id="siErrorMsg">Unable to load sales intelligence.</span>
+                            </div>
+
+                            {{-- Content (hidden until loaded) --}}
+                            <div id="siContent" style="display:none;">
+
+                                {{-- Top row: Probability + Expected Revenue + Profit --}}
+                                <div class="row mb-3" id="siMetricsRow">
+
+                                    {{-- Probability --}}
+                                    <div class="col-6 col-md-3 mb-2">
+                                        <div class="p-3 rounded text-center"
+                                            style="background:#f0f0fb; border:1px solid #dddcf5;">
+                                            <div
+                                                style="font-size:0.7rem; font-weight:700; text-transform:uppercase;
+                                    letter-spacing:0.08em; color:#4B49AC; margin-bottom:4px;">
+                                                Win Probability
+                                            </div>
+                                            <div id="siProbabilityValue"
+                                                style="font-size:2rem; font-weight:800; color:#4B49AC; line-height:1;">
+                                                —
+                                            </div>
+                                            <div id="siProbabilityBasis"
+                                                style="font-size:0.7rem; color:#888; margin-top:4px;">
+                                                —
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {{-- Confidence --}}
+                                    <div class="col-6 col-md-3 mb-2">
+                                        <div class="p-3 rounded text-center"
+                                            style="background:#f0f0fb; border:1px solid #dddcf5;">
+                                            <div
+                                                style="font-size:0.7rem; font-weight:700; text-transform:uppercase;
+                                    letter-spacing:0.08em; color:#4B49AC; margin-bottom:4px;">
+                                                Confidence
+                                            </div>
+                                            <div id="siConfidenceValue"
+                                                style="font-size:2rem; font-weight:800; line-height:1;">
+                                                —
+                                            </div>
+                                            <div id="siConfidenceBasis"
+                                                style="font-size:0.7rem; color:#888; margin-top:4px;">
+                                                —
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {{-- Expected Revenue --}}
+                                    <div class="col-6 col-md-3 mb-2">
+                                        <div class="p-3 rounded text-center"
+                                            style="background:#f0f0fb; border:1px solid #dddcf5;">
+                                            <div
+                                                style="font-size:0.7rem; font-weight:700; text-transform:uppercase;
+                                    letter-spacing:0.08em; color:#4B49AC; margin-bottom:4px;">
+                                                Expected Revenue
+                                            </div>
+                                            <div id="siExpectedRevenue"
+                                                style="font-size:1.4rem; font-weight:800; color:#28a745; line-height:1;">
+                                                —
+                                            </div>
+                                            <div style="font-size:0.7rem; color:#888; margin-top:4px;">
+                                                Quoted × Probability
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {{-- Expected Profit --}}
+                                    <div class="col-6 col-md-3 mb-2">
+                                        <div class="p-3 rounded text-center"
+                                            style="background:#f0f0fb; border:1px solid #dddcf5;">
+                                            <div
+                                                style="font-size:0.7rem; font-weight:700; text-transform:uppercase;
+                                    letter-spacing:0.08em; color:#4B49AC; margin-bottom:4px;">
+                                                Expected Profit
+                                            </div>
+                                            <div id="siExpectedProfit"
+                                                style="font-size:1.4rem; font-weight:800; line-height:1;">
+                                                —
+                                            </div>
+                                            <div id="siProfitMargin"
+                                                style="font-size:0.7rem; color:#888; margin-top:4px;">
+                                                —
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>{{-- END metrics row --}}
+
+                                {{-- TABLE VIEW --}}
+                                <div id="siTableView">
+
+                                    {{-- Service History --}}
+                                    <div class="mb-3">
+                                        <div
+                                            style="font-size:0.75rem; font-weight:700; text-transform:uppercase;
+                                letter-spacing:0.08em; color:#4B49AC; border-bottom:2px solid #4B49AC;
+                                padding-bottom:4px; margin-bottom:8px;">
+                                            Client Service History
+                                        </div>
+                                        <div class="table-responsive">
+                                            <table class="table table-sm table-bordered mb-0" style="font-size:0.82rem;">
+                                                <thead style="background:#f4f4fb;">
+                                                    <tr>
+                                                        <th>Service</th>
+                                                        <th class="text-center">Offered</th>
+                                                        <th class="text-center">Won</th>
+                                                        <th class="text-center">Lost/Cancelled</th>
+                                                        <th class="text-center">Win Rate</th>
+                                                        <th>Last Offer</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="siServiceHistoryBody">
+                                                    <tr>
+                                                        <td colspan="6" class="text-center text-muted">
+                                                            Loading...
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    {{-- Recent Quotes --}}
+                                    <div>
+                                        <div
+                                            style="font-size:0.75rem; font-weight:700; text-transform:uppercase;
+                                letter-spacing:0.08em; color:#4B49AC; border-bottom:2px solid #4B49AC;
+                                padding-bottom:4px; margin-bottom:8px;">
+                                            Recent Quote History
+                                            <span id="siQuoteCount" class="badge badge-secondary ml-1"
+                                                style="font-size:0.65rem; font-weight:600;">0</span>
+                                        </div>
+                                        <div class="table-responsive">
+                                            <table class="table table-sm table-bordered mb-0" style="font-size:0.82rem;">
+                                                <thead style="background:#f4f4fb;">
+                                                    <tr>
+                                                        <th>Quote No</th>
+                                                        <th>Date</th>
+                                                        <th>Service</th>
+                                                        <th>Status</th>
+                                                        <th>Sales Person</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="siRecentQuotesBody">
+                                                    <tr>
+                                                        <td colspan="5" class="text-center text-muted">
+                                                            Loading...
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                </div>{{-- END siTableView --}}
+
+                                {{-- CHART VIEW --}}
+                                <div id="siChartView" style="display:none;">
+                                    <div class="row">
+                                        <div class="col-md-4 mb-3">
+                                            <div
+                                                style="font-size:0.75rem; font-weight:700; text-transform:uppercase;
+                                    letter-spacing:0.08em; color:#4B49AC; margin-bottom:8px;">
+                                                Win / Loss Ratio
+                                            </div>
+                                            <canvas id="siWinLossChart" height="200"></canvas>
+                                        </div>
+                                        <div class="col-md-8 mb-3">
+                                            <div
+                                                style="font-size:0.75rem; font-weight:700; text-transform:uppercase;
+                                    letter-spacing:0.08em; color:#4B49AC; margin-bottom:8px;">
+                                                Service Performance
+                                            </div>
+                                            <canvas id="siServiceChart" height="200"></canvas>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-12">
+                                            <div
+                                                style="font-size:0.75rem; font-weight:700; text-transform:uppercase;
+                                    letter-spacing:0.08em; color:#4B49AC; margin-bottom:8px;">
+                                                Quote Activity (Last 12 Months)
+                                            </div>
+                                            <canvas id="siTrendChart" height="100"></canvas>
+                                        </div>
+                                    </div>
+                                </div>{{-- END siChartView --}}
+
+                            </div>{{-- END siContent --}}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Booking Details -->
             <div class="card card-primary">
                 <div class="card-header">
@@ -112,15 +342,22 @@
                         <label class="col-sm-5 col-form-label">Sales Person</label>
                         <div class="col-sm-7">
                             <input type="text" class="form-control form-control-sm" data-field="username"
-                                data-code="{{ $quotation->SalesPersonCode ?? '' }}" value="{{ $quotation->username ?? '' }}"
-                                readonly>
+                                data-code="{{ $quotation->SalesPersonCode ?? '' }}"
+                                value="{{ $quotation->username ?? '' }}" readonly>
                         </div>
                     </div>
-                    <div class="form-group row mb-0">
+                    <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Sales Person Email</label>
                         <div class="col-sm-7">
                             <input type="text" class="form-control form-control-sm" data-field="SalesPersonEmail"
                                 value="{{ $quotation->SalesPersonEmail ?? '' }}" readonly>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-5 col-form-label">Currency</label>
+                        <div class="col-sm-7">
+                            <input type="text" class="form-control form-control-sm"
+                                value="{{ $quotation->QuoteCurr ?? '' }}" readonly>
                         </div>
                     </div>
                 </div>
@@ -137,60 +374,101 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    <div class="form-group row">
-                        <label class="col-sm-5 col-form-label">Service</label>
-                        <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->SVName ?? '' }}" readonly>
+                    <div class="row">
+                        <!-- LEFT COLUMN -->
+                        <div class="col-md-6">
+                            <div class="form-group row">
+                                <label class="col-sm-5 col-form-label">Service</label>
+                                <div class="col-sm-7">
+                                    <input type="text" class="form-control form-control-sm"
+                                        value="{{ $quotation->SVName ?? '' }}" readonly>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-sm-5 col-form-label">InCO Terms</label>
+                                <div class="col-sm-7">
+                                    <input type="text" class="form-control form-control-sm" id="viewIncoTermDisplay"
+                                        value="{{ $quotation->incoterm ?? '' }}" readonly>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-sm-5 col-form-label">Transport Mode</label>
+                                <div class="col-sm-7">
+                                    <input type="text" class="form-control form-control-sm"
+                                        id="viewTransportModeDisplay" value="{{ $quotation->TransportMode ?? '' }}"
+                                        readonly>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-sm-5 col-form-label">Origin Country</label>
+                                <div class="col-sm-7">
+                                    <input type="text" class="form-control form-control-sm"
+                                        id="viewOriginCountryDisplay" value="{{ $quotation->origincountry ?? '' }}"
+                                        readonly>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-sm-5 col-form-label">Port of Loading</label>
+                                <div class="col-sm-7">
+                                    <input type="text" class="form-control form-control-sm"
+                                        value="{{ $quotation->PortOfLoadingCode ?? '' }}" readonly>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-sm-5 col-form-label">Place of Receipt</label>
+                                <div class="col-sm-7">
+                                    <input type="text" class="form-control form-control-sm"
+                                        value="{{ $quotation->PlaceOfReceiptCode ?? '' }}" readonly>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="form-group row">
-                        <label class="col-sm-5 col-form-label">Process</label>
-                        <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->process ?? '' }}" readonly>
-                        </div>
-                    </div>
-                    <div class="form-group row">
-                        <label class="col-sm-5 col-form-label">Origin Country</label>
-                        <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" id="viewOriginCountryDisplay"
-                                value="{{ $quotation->origincountry ?? '' }}" readonly>
-                        </div>
-                    </div>
-                    <div class="form-group row">
-                        <label class="col-sm-5 col-form-label">Destination Country</label>
-                        <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->destinationcountry ?? '' }}" readonly>
-                        </div>
-                    </div>
-                    <div class="form-group row">
-                        <label class="col-sm-5 col-form-label">InCO Terms</label>
-                        <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" id="viewIncoTermDisplay"
-                                value="{{ $quotation->incoterm ?? '' }}" readonly>
-                        </div>
-                    </div>
-                    <div class="form-group row">
-                        <label class="col-sm-5 col-form-label">Shipment Mode</label>
-                        <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" id="viewShipmentModeDisplay"
-                                value="{{ $quotation->shipmentmode ?? '' }}" readonly>
-                        </div>
-                    </div>
-                    <div class="form-group row">
-                        <label class="col-sm-5 col-form-label">Transport Mode</label>
-                        <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" id="viewTransportModeDisplay"
-                                value="{{ $quotation->TransportMode ?? '' }}" readonly>
-                        </div>
-                    </div>
-                    <div class="form-group row mb-0">
-                        <label class="col-sm-5 col-form-label">Service Class</label>
-                        <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" id="viewServiceClassDisplay"
-                                value="{{ $quotation->ServiceClass ?? '' }}" readonly>
+
+                        <!-- RIGHT COLUMN -->
+                        <div class="col-md-6">
+                            <div class="form-group row">
+                                <label class="col-sm-5 col-form-label">Process</label>
+                                <div class="col-sm-7">
+                                    <input type="text" class="form-control form-control-sm"
+                                        value="{{ $quotation->process ?? '' }}" readonly>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-sm-5 col-form-label">Shipment Mode</label>
+                                <div class="col-sm-7">
+                                    <input type="text" class="form-control form-control-sm"
+                                        id="viewShipmentModeDisplay" value="{{ $quotation->shipmentmode ?? '' }}"
+                                        readonly>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-sm-5 col-form-label">Service Class</label>
+                                <div class="col-sm-7">
+                                    <input type="text" class="form-control form-control-sm"
+                                        id="viewServiceClassDisplay" value="{{ $quotation->ServiceClass ?? '' }}"
+                                        readonly>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-sm-5 col-form-label">Destination Country</label>
+                                <div class="col-sm-7">
+                                    <input type="text" class="form-control form-control-sm"
+                                        value="{{ $quotation->destinationcountry ?? '' }}" readonly>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-sm-5 col-form-label">Port of Discharge</label>
+                                <div class="col-sm-7">
+                                    <input type="text" class="form-control form-control-sm"
+                                        value="{{ $quotation->PortOfDischargeCode ?? '' }}" readonly>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-sm-5 col-form-label">Place of Delivery</label>
+                                <div class="col-sm-7">
+                                    <input type="text" class="form-control form-control-sm"
+                                        value="{{ $quotation->PlaceOfDeliveryCode ?? '' }}" readonly>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -300,6 +578,51 @@
                     @else
                         <p class="text-muted text-center mb-0">No PDF versions generated yet</p>
                     @endif
+                    @if ($quotation->QuotationTCTemplate)
+                        <div class="mt-2 pt-2" style="border-top:1px solid #dee2e6;">
+                            <div class="form-group row mb-0">
+                                <label class="col-sm-4 col-form-label">Terms & Conditions</label>
+                                <div class="col-sm-8">
+                                    <input type="text" class="form-control form-control-sm"
+                                        value="{{ $quotation->QuotationTCTemplate }}" readonly>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+                </div>
+            </div>
+
+            <!-- Quote Communication -->
+            <div class="card card-primary">
+                <div class="card-header d-flex justify-content-between align-items-center py-2">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-envelope mr-2"></i>Quote Communication
+                    </h3>
+                    <div class="card-tools ml-auto">
+                        <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                            <i class="fas fa-chevron-up"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-sm table-hover mb-0">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>Sent On</th>
+                                    <th>To Email ID</th>
+                                    <th>Quote Version</th>
+                                </tr>
+                            </thead>
+                            <tbody id="viewEmailHistoryTable">
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted">
+                                        <i class="fas fa-spinner fa-spin"></i> Loading...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
@@ -333,6 +656,108 @@
                                 </tr>
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Approval -->
+            <div class="card card-primary" id="approvalCard">
+                <div class="card-header d-flex justify-content-between align-items-center py-2">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-check-double mr-2"></i>Approval
+                    </h3>
+                    <div class="card-tools ml-auto">
+                        <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                            <i class="fas fa-chevron-up"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="viewApprovalEmpty" class="text-center text-muted py-2">
+                        <i class="fas fa-info-circle mr-1"></i> Not yet sent for approval.
+                    </div>
+                    <div id="viewApprovalLoading" class="text-center py-2" style="display:none;">
+                        <i class="fas fa-spinner fa-spin text-primary"></i>
+                    </div>
+                    <div id="viewApprovalUnavailable" class="alert alert-secondary py-2 px-3 mb-0"
+                        style="display:none; font-size:0.85rem;">
+                        <i class="fas fa-tools mr-1"></i> <span id="viewApprovalUnavailableMsg"></span>
+                    </div>
+                    <div id="viewApprovalContent" style="display:none;">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span id="viewApprovalStatusBadge" class="badge badge-secondary px-2 py-1"
+                                style="font-size:0.8rem;">—</span>
+                            <span class="text-muted" style="font-size:0.8rem;" id="viewApprovalProgressLabel">0 of 0
+                                Approved</span>
+                        </div>
+                        <div class="progress mb-3" style="height: 8px;">
+                            <div id="viewApprovalProgressBar" class="progress-bar bg-success" role="progressbar"
+                                style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <table class="table table-sm table-borderless mb-0" id="viewApprovalApproverTable">
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Audit Information -->
+            <div class="card card-primary" id="auditInformationCard">
+                <div class="card-header d-flex justify-content-between align-items-center py-2">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-history mr-2"></i>Audit Information
+                    </h3>
+                    <div class="card-tools ml-auto">
+                        <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                            <i class="fas fa-chevron-up"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="form-group row">
+                        <label class="col-sm-5 col-form-label">Created On</label>
+                        <div class="col-sm-7">
+                            <input type="text" class="form-control form-control-sm"
+                                value="{{ $quotation->CreatedOn ? date('d/m/Y H:i', strtotime($quotation->CreatedOn)) : '-' }}"
+                                readonly>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-5 col-form-label">Created By</label>
+                        <div class="col-sm-7">
+                            <input type="text" class="form-control form-control-sm"
+                                value="{{ $quotation->CreatedBy ?? '-' }}" readonly>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-5 col-form-label">Last Modified On</label>
+                        <div class="col-sm-7">
+                            <input type="text" class="form-control form-control-sm"
+                                value="{{ $quotation->updatedon ? date('d/m/Y H:i', strtotime($quotation->updatedon)) : '-' }}"
+                                readonly>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-5 col-form-label">Last Modified By</label>
+                        <div class="col-sm-7">
+                            <input type="text" class="form-control form-control-sm"
+                                value="{{ $quotation->LastModifiedBy ?? '-' }}" readonly>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-5 col-form-label">Marked WON on</label>
+                        <div class="col-sm-7">
+                            <input type="text" class="form-control form-control-sm"
+                                value="{{ $quotation->WonDate ? date('d/m/Y H:i', strtotime($quotation->WonDate)) : '-' }}"
+                                readonly>
+                        </div>
+                    </div>
+                    <div class="form-group row mb-0">
+                        <label class="col-sm-5 col-form-label">Marked WON By</label>
+                        <div class="col-sm-7">
+                            <input type="text" class="form-control form-control-sm"
+                                value="{{ $quotation->WonBy ?? '-' }}" readonly>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -513,6 +938,100 @@
                                         value="{{ $quotation->industryname ?? '' }}" readonly>
                                 </div>
                             </div>
+
+                            {{-- Quote Includes --}}
+                            @php
+                                $insurance = 0;
+                                $lastMile = 0;
+                                $customDuty = 0;
+                                if (\Illuminate\Support\Facades\Schema::hasTable('Quote_Quotation_Includes')) {
+                                    $quoteIncludes = DB::table('Quote_Quotation_Includes')
+                                        ->where('QuotationInfoID', $quotation->ID)
+                                        ->first();
+                                    if ($quoteIncludes) {
+                                        $insurance = $quoteIncludes->Insurance ?? 0;
+                                        $lastMile = $quoteIncludes->LastMile ?? 0;
+                                        $customDuty = $quoteIncludes->CustomDuty ?? 0;
+                                    }
+                                }
+                            @endphp
+                            <div class="row mt-3 pt-2" style="border-top: 1px solid #dee2e6;">
+                                <div class="col-12">
+                                    <p class="text-uppercase font-weight-bold mb-2"
+                                        style="font-size: 0.75rem; letter-spacing: 0.08em; color: #003580;">
+                                        Quote Includes
+                                    </p>
+                                    <div class="d-flex flex-wrap" style="gap: 8px;">
+                                        <span class="d-inline-block border rounded px-3 py-2 mb-0"
+                                            style="background:#f8f9fa; font-size:0.875rem;">
+                                            <i
+                                                class="fas {{ $insurance ? 'fa-check-circle text-success' : 'fa-times-circle text-muted' }} mr-1"></i>
+                                            Insurance
+                                        </span>
+                                        <span class="d-inline-block border rounded px-3 py-2 mb-0"
+                                            style="background:#f8f9fa; font-size:0.875rem;">
+                                            <i
+                                                class="fas {{ $lastMile ? 'fa-check-circle text-success' : 'fa-times-circle text-muted' }} mr-1"></i>
+                                            Last Mile
+                                        </span>
+                                        <span class="d-inline-block border rounded px-3 py-2 mb-0"
+                                            style="background:#f8f9fa; font-size:0.875rem;">
+                                            <i
+                                                class="fas {{ $customDuty ? 'fa-check-circle text-success' : 'fa-times-circle text-muted' }} mr-1"></i>
+                                            Custom Duty
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- Product Details (if Custom Duty is checked) --}}
+                            @if ($customDuty == 1)
+                                @php
+                                    $products = [];
+                                    if (
+                                        \Illuminate\Support\Facades\Schema::hasTable('Quote_Quotation_ProductDetails')
+                                    ) {
+                                        $products = DB::table('Quote_Quotation_ProductDetails')
+                                            ->where('QuotationInfoID', $quotation->ID)
+                                            ->where('IsDeleted', 0)
+                                            ->get();
+                                    }
+                                @endphp
+                                @if ($products->isNotEmpty())
+                                    <div class="row mt-3">
+                                        <div class="col-12">
+                                            <p class="text-uppercase font-weight-bold mb-2"
+                                                style="font-size: 0.75rem; letter-spacing: 0.08em; color: #003580;">
+                                                Product Details
+                                            </p>
+                                            <div class="table-responsive">
+                                                <table class="table table-sm table-bordered mb-1">
+                                                    <thead class="thead-light">
+                                                        <tr>
+                                                            <th style="font-size:0.75rem;">Description</th>
+                                                            <th style="width:100px; font-size:0.75rem;">Weight (kg)</th>
+                                                            <th style="width:100px; font-size:0.75rem;">L×B×H (m³)</th>
+                                                            <th style="width:80px; font-size:0.75rem;">QTY</th>
+                                                            <th style="width:120px; font-size:0.75rem;">Price (USD)</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        @foreach ($products as $product)
+                                                            <tr>
+                                                                <td>{{ $product->Description ?? '' }}</td>
+                                                                <td>{{ $product->Weight ?? '' }}</td>
+                                                                <td>{{ $product->Dimensions ?? '' }}</td>
+                                                                <td>{{ $product->QTY ?? '' }}</td>
+                                                                <td>{{ number_format($product->Price ?? 0, 2) }}</td>
+                                                            </tr>
+                                                        @endforeach
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -763,6 +1282,510 @@
             const bookingNo = '{{ $quotation->bookingno ?? '' }}';
             const QUOTE_NO_VIEW = '{{ $quotation->QuoteNo ?? '' }}';
             const SCOPE_OF_VOLUME = '{{ $quotation->scopevolume ?? '' }}';
+
+            // SALES INTELLIGENCE
+            (function() {
+
+                // Values already available on the page from PHP/JS
+                const SI_COMPANY = '{{ addslashes(trim($quotation->pri_partnermaster_name ?? '')) }}';
+                const SI_SERVICE = '{{ addslashes(trim($quotation->SVName ?? '')) }}';
+                const SI_OFFICE = '{{ addslashes(trim($officeShortCode ?? '')) }}';
+                const SI_CURRENCY = '{{ addslashes(trim($quotation->QuoteCurr ?? 'USD')) }}';
+
+                // Chart instances — kept so we can destroy before re-render
+                let siWinLossChartInst = null;
+                let siServiceChartInst = null;
+                let siTrendChartInst = null;
+                let siDataLoaded = false;
+
+                // ── Collapse toggle ───────────────────────────────────────
+                $('#salesIntelligenceHeader').on('click', function(e) {
+                    if ($(e.target).closest('button, .btn-group').length) return;
+                    const $body = $('#salesIntelligenceBody');
+                    const $icon = $('#siCollapseBtn i');
+                    $body.slideToggle(200);
+                    $icon.toggleClass('fa-chevron-up fa-chevron-down');
+                });
+
+                $('#siCollapseBtn').on('click', function(e) {
+                    e.stopPropagation();
+                    const $body = $('#salesIntelligenceBody');
+                    const $icon = $(this).find('i');
+                    $body.slideToggle(200);
+                    $icon.toggleClass('fa-chevron-up fa-chevron-down');
+                });
+
+                // ── View toggle ───────────────────────────────────────────
+                $('#siTableViewBtn').on('click', function() {
+                    $(this).addClass('active');
+                    $('#siChartViewBtn').removeClass('active');
+                    $('#siTableView').show();
+                    $('#siChartView').hide();
+                });
+
+                $('#siChartViewBtn').on('click', function() {
+                    $(this).addClass('active');
+                    $('#siTableViewBtn').removeClass('active');
+                    $('#siTableView').hide();
+                    $('#siChartView').show();
+                    // Render charts only when first switched to chart view
+                    if (siDataLoaded) renderCharts(window._siComputedData);
+                });
+
+                // ── Helpers ───────────────────────────────────────────────
+                function fmtCurrency(val, currency) {
+                    return new Intl.NumberFormat('en-US', {
+                        style: 'currency',
+                        currency: currency || 'USD',
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                    }).format(val);
+                }
+
+                function statusGroup(status) {
+                    if (['Won', 'Completed'].includes(status)) return 'won';
+                    if (['Lost', 'Cancelled'].includes(status)) return 'lost';
+                    if (['In Progress'].includes(status)) return 'open';
+                    return 'other';
+                }
+
+                // ── Probability engine ────────────────────────────────────
+                // Returns { probability: float|null, confidence: string, basis: string }
+                function computeProbability(allQuotes, targetService) {
+                    const closed = allQuotes.filter(q => ['Won', 'Completed', 'Lost', 'Cancelled'].includes(q
+                        .Status));
+
+                    // Insufficient data rule — minimum 3 closed quotes required
+                    if (closed.length < 3) {
+                        return {
+                            probability: null,
+                            confidence: 'Insufficient data',
+                            basis: closed.length + ' closed quote(s) — need at least 3',
+                            color: '#aaa',
+                        };
+                    }
+
+                    // Base win rate across all services
+                    const won = closed.filter(q => statusGroup(q.Status) === 'won').length;
+                    const baseRate = won / closed.length;
+
+                    // Service-specific win rate (weighted 60%)
+                    const svcQuotes = closed.filter(q => q.Service === targetService);
+                    let serviceRate = baseRate; // fallback to base if no service history
+                    if (svcQuotes.length >= 2) {
+                        const svcWon = svcQuotes.filter(q => statusGroup(q.Status) === 'won').length;
+                        serviceRate = svcWon / svcQuotes.length;
+                    }
+                    let probability = (baseRate * 0.4) + (serviceRate * 0.6);
+
+                    // Recency adjustment — days since most recent quote
+                    const dates = allQuotes.map(q => new Date(q.Date)).filter(d => !isNaN(d));
+                    const lastDate = dates.length ? new Date(Math.max(...dates)) : null;
+                    if (lastDate) {
+                        const daysSince = Math.floor((new Date() - lastDate) / 86400000);
+                        if (daysSince < 30) probability = Math.min(1, probability + 0.05);
+                        else if (daysSince > 180) probability = Math.max(0, probability - 0.10);
+                    }
+
+                    // Confidence tier
+                    let confidence, confColor;
+                    if (closed.length >= 10) {
+                        confidence = 'High';
+                        confColor = '#28a745';
+                    } else if (closed.length >= 5) {
+                        confidence = 'Medium';
+                        confColor = '#fd7e14';
+                    } else {
+                        confidence = 'Low';
+                        confColor = '#dc3545';
+                    }
+
+                    return {
+                        probability: Math.round(probability * 1000) / 10, // 1 decimal place
+                        confidence,
+                        confColor,
+                        basis: `Based on ${closed.length} closed quotes (${won} won)`,
+                    };
+                }
+
+                // ── Service history aggregation ───────────────────────────
+                function buildServiceHistory(allQuotes) {
+                    const map = {};
+                    allQuotes.forEach(function(q) {
+                        const svc = q.Service || 'Unknown';
+                        if (!map[svc]) map[svc] = {
+                            offered: 0,
+                            won: 0,
+                            lost: 0,
+                            lastDate: null
+                        };
+                        map[svc].offered++;
+                        const grp = statusGroup(q.Status);
+                        if (grp === 'won') map[svc].won++;
+                        if (grp === 'lost') map[svc].lost++;
+                        const d = new Date(q.Date);
+                        if (!isNaN(d) && (!map[svc].lastDate || d > map[svc].lastDate)) {
+                            map[svc].lastDate = d;
+                        }
+                    });
+                    return map;
+                }
+
+                // ── Render metrics ────────────────────────────────────────
+                function renderMetrics(prob, quotedRevenue, quotedCost, currency) {
+                    if (prob.probability === null) {
+                        $('#siProbabilityValue').text('N/A').css('color', '#aaa');
+                        $('#siProbabilityBasis').text(prob.basis);
+                        $('#siConfidenceValue').text('N/A').css('color', '#aaa');
+                        $('#siConfidenceBasis').text('Insufficient history');
+                        $('#siExpectedRevenue').text('N/A');
+                        $('#siExpectedProfit').text('N/A');
+                        $('#siProfitMargin').text('—');
+                        return;
+                    }
+
+                    const pct = prob.probability;
+                    const expectedRev = (quotedRevenue * pct) / 100;
+                    const profit = quotedRevenue - quotedCost;
+                    const expectedProfit = (profit * pct) / 100;
+                    const margin = quotedRevenue > 0 ?
+                        ((profit / quotedRevenue) * 100).toFixed(2) :
+                        null;
+
+                    $('#siProbabilityValue').text(pct.toFixed(1) + '%').css('color', '#4B49AC');
+                    $('#siProbabilityBasis').text(prob.basis);
+
+                    $('#siConfidenceValue').text(prob.confidence).css('color', prob.confColor);
+                    $('#siConfidenceBasis').text(closed => prob.basis);
+                    $('#siConfidenceBasis').text('');
+
+                    $('#siExpectedRevenue')
+                        .text(fmtCurrency(expectedRev, currency))
+                        .css('color', expectedRev >= 0 ? '#28a745' : '#dc3545');
+
+                    $('#siExpectedProfit')
+                        .text(fmtCurrency(expectedProfit, currency))
+                        .css('color', expectedProfit >= 0 ? '#28a745' : '#dc3545');
+
+                    $('#siProfitMargin').text(
+                        margin !== null ?
+                        'Margin: ' + margin + '%' :
+                        quotedCost === 0 ? 'No cost data' : '—'
+                    );
+                }
+
+                // ── Render service history table ──────────────────────────
+                function renderServiceHistory(svcMap) {
+                    const $tbody = $('#siServiceHistoryBody').empty();
+                    const rows = Object.entries(svcMap).sort((a, b) => b[1].offered - a[1].offered);
+
+                    if (!rows.length) {
+                        $tbody.html('<tr><td colspan="6" class="text-center text-muted">No history</td></tr>');
+                        return;
+                    }
+
+                    rows.forEach(function([svc, data]) {
+                        const winRate = data.offered > 0 ?
+                            ((data.won / data.offered) * 100).toFixed(1) + '%' :
+                            '—';
+                        const winColor = data.offered > 0 ?
+                            (data.won / data.offered >= 0.5 ? '#28a745' : '#dc3545') :
+                            '#aaa';
+                        const lastDate = data.lastDate ?
+                            data.lastDate.toLocaleDateString('en-GB') :
+                            '—';
+                        $tbody.append(`
+                <tr>
+                    <td>${svc}</td>
+                    <td class="text-center">${data.offered}</td>
+                    <td class="text-center">${data.won}</td>
+                    <td class="text-center">${data.lost}</td>
+                    <td class="text-center font-weight-bold" style="color:${winColor};">
+                        ${winRate}
+                    </td>
+                    <td>${lastDate}</td>
+                </tr>
+            `);
+                    });
+                }
+
+                // ── Render recent quotes table ────────────────────────────
+                function renderRecentQuotes(allQuotes) {
+                    const STATUS_COLORS = {
+                        'Won': 'success',
+                        'Completed': 'success',
+                        'Lost': 'danger',
+                        'Cancelled': 'danger',
+                        'In Progress': 'primary',
+                        'Failed Int.': 'warning',
+                        'Failed Progress': 'secondary',
+                    };
+
+                    const $tbody = $('#siRecentQuotesBody').empty();
+                    const sorted = [...allQuotes].sort((a, b) => new Date(b.Date) - new Date(a.Date));
+                    const recent = sorted.slice(0, 10);
+
+                    $('#siQuoteCount').text(allQuotes.length + ' total');
+
+                    if (!recent.length) {
+                        $tbody.html(
+                            '<tr><td colspan="5" class="text-center text-muted">No quotes found</td></tr>');
+                        return;
+                    }
+
+                    recent.forEach(function(q) {
+                        const badgeType = STATUS_COLORS[q.Status] || 'secondary';
+                        $tbody.append(`
+                <tr>
+                    <td><strong>${q.QuoteNo}</strong></td>
+                    <td>${q.Date || '—'}</td>
+                    <td>${q.Service || '—'}</td>
+                    <td>
+                        <span class="badge badge-${badgeType}">${q.Status}</span>
+                    </td>
+                    <td>${q.SalesPerson || '—'}</td>
+                </tr>
+            `);
+                    });
+                }
+
+                // ── Render charts ─────────────────────────────────────────
+                function renderCharts(data) {
+                    if (!data) return;
+
+                    const {
+                        allQuotes,
+                        svcMap
+                    } = data;
+
+                    // -- Win/Loss doughnut --
+                    const won = allQuotes.filter(q => statusGroup(q.Status) === 'won').length;
+                    const lost = allQuotes.filter(q => statusGroup(q.Status) === 'lost').length;
+                    const open = allQuotes.filter(q => statusGroup(q.Status) === 'open').length;
+                    const other = allQuotes.length - won - lost - open;
+
+                    if (siWinLossChartInst) siWinLossChartInst.destroy();
+                    siWinLossChartInst = new Chart(
+                        document.getElementById('siWinLossChart').getContext('2d'), {
+                            type: 'doughnut',
+                            data: {
+                                labels: ['Won / Completed', 'Lost / Cancelled', 'In Progress', 'Other'],
+                                datasets: [{
+                                    data: [won, lost, open, other],
+                                    backgroundColor: ['#28a745', '#dc3545', '#4B49AC', '#adb5bd'],
+                                    borderWidth: 1,
+                                }],
+                            },
+                            options: {
+                                responsive: true,
+                                plugins: {
+                                    legend: {
+                                        position: 'bottom',
+                                        labels: {
+                                            font: {
+                                                size: 11
+                                            }
+                                        }
+                                    }
+                                },
+                            },
+                        });
+
+                    // -- Service bar --
+                    const svcLabels = Object.keys(svcMap);
+                    const svcWon = svcLabels.map(s => svcMap[s].won);
+                    const svcLost = svcLabels.map(s => svcMap[s].lost);
+                    const svcOpen = svcLabels.map(s =>
+                        svcMap[s].offered - svcMap[s].won - svcMap[s].lost
+                    );
+
+                    if (siServiceChartInst) siServiceChartInst.destroy();
+                    siServiceChartInst = new Chart(
+                        document.getElementById('siServiceChart').getContext('2d'), {
+                            type: 'bar',
+                            data: {
+                                labels: svcLabels,
+                                datasets: [{
+                                        label: 'Won',
+                                        data: svcWon,
+                                        backgroundColor: '#28a745'
+                                    },
+                                    {
+                                        label: 'Lost',
+                                        data: svcLost,
+                                        backgroundColor: '#dc3545'
+                                    },
+                                    {
+                                        label: 'In Progress',
+                                        data: svcOpen,
+                                        backgroundColor: '#4B49AC'
+                                    },
+                                ],
+                            },
+                            options: {
+                                responsive: true,
+                                scales: {
+                                    x: {
+                                        stacked: true
+                                    },
+                                    y: {
+                                        stacked: true,
+                                        beginAtZero: true
+                                    }
+                                },
+                                plugins: {
+                                    legend: {
+                                        position: 'bottom',
+                                        labels: {
+                                            font: {
+                                                size: 11
+                                            }
+                                        }
+                                    }
+                                },
+                            },
+                        });
+
+                    // -- Monthly trend line (last 12 months) --
+                    const now = new Date();
+                    const months = [];
+                    const monthly = {};
+                    for (let i = 11; i >= 0; i--) {
+                        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                        const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+                        months.push(key);
+                        monthly[key] = {
+                            total: 0,
+                            won: 0
+                        };
+                    }
+                    allQuotes.forEach(function(q) {
+                        const d = new Date(q.Date);
+                        if (isNaN(d)) return;
+                        const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+                        if (monthly[key]) {
+                            monthly[key].total++;
+                            if (statusGroup(q.Status) === 'won') monthly[key].won++;
+                        }
+                    });
+
+                    if (siTrendChartInst) siTrendChartInst.destroy();
+                    siTrendChartInst = new Chart(
+                        document.getElementById('siTrendChart').getContext('2d'), {
+                            type: 'line',
+                            data: {
+                                labels: months,
+                                datasets: [{
+                                        label: 'Total Quotes',
+                                        data: months.map(m => monthly[m].total),
+                                        borderColor: '#4B49AC',
+                                        backgroundColor: 'rgba(75,73,172,0.08)',
+                                        tension: 0.3,
+                                        fill: true,
+                                    },
+                                    {
+                                        label: 'Won',
+                                        data: months.map(m => monthly[m].won),
+                                        borderColor: '#28a745',
+                                        backgroundColor: 'rgba(40,167,69,0.08)',
+                                        tension: 0.3,
+                                        fill: true,
+                                    },
+                                ],
+                            },
+                            options: {
+                                responsive: true,
+                                scales: {
+                                    y: {
+                                        beginAtZero: true
+                                    }
+                                },
+                                plugins: {
+                                    legend: {
+                                        position: 'bottom',
+                                        labels: {
+                                            font: {
+                                                size: 11
+                                            }
+                                        }
+                                    }
+                                },
+                            },
+                        });
+                }
+
+                // ── Main load function ────────────────────────────────────
+                function loadSalesIntelligence() {
+                    if (!SI_COMPANY || !SI_OFFICE) {
+                        $('#siLoading').hide();
+                        $('#siError').removeClass('d-none');
+                        $('#siErrorMsg').text('Client or office information not available.');
+                        return;
+                    }
+
+                    $.ajax({
+                        url: '{{ route('quotation.sales-intelligence') }}',
+                        type: 'GET',
+                        data: {
+                            office_code: SI_OFFICE,
+                            customer: SI_COMPANY
+                        },
+                        success: function(response) {
+                            $('#siLoading').hide();
+
+                            if (!response.success || !response.data.length) {
+                                $('#siError').removeClass('d-none');
+                                $('#siErrorMsg').text('No quote history found for this client.');
+                                return;
+                            }
+
+                            const allQuotes = response.data;
+
+                            // Read quoted revenue + cost from the page (already calculated)
+                            const parsePageFloat = function(selector) {
+                                const raw = $(selector).val() || '0';
+                                return parseFloat(raw.replace(/[^0-9.\-]/g, '')) || 0;
+                            };
+                            const quotedRevenue = parsePageFloat('#viewQuotedRevenue');
+                            const quotedCost = parsePageFloat('#costTotalHeaderAmount');
+
+                            // Compute
+                            const prob = computeProbability(allQuotes, SI_SERVICE);
+                            const svcMap = buildServiceHistory(allQuotes);
+
+                            // Store for chart re-render on tab switch
+                            window._siComputedData = {
+                                allQuotes,
+                                svcMap
+                            };
+                            siDataLoaded = true;
+
+                            // Render
+                            renderMetrics(prob, quotedRevenue, quotedCost, SI_CURRENCY);
+                            renderServiceHistory(svcMap);
+                            renderRecentQuotes(allQuotes);
+
+                            // Show view toggle + content
+                            $('#siViewToggle').css('display', 'flex !important')
+                                .attr('style', 'display:flex !important; gap:4px;');
+                            $('#siContent').show();
+                        },
+                        error: function(xhr) {
+                            $('#siLoading').hide();
+                            $('#siError').removeClass('d-none');
+                            $('#siErrorMsg').text(
+                                xhr.responseJSON?.message ||
+                                'Failed to load sales intelligence.'
+                            );
+                        },
+                    });
+                }
+
+                // Delay slightly so page charges load first (they populate #quotedRevenue)
+                setTimeout(loadSalesIntelligence, 1200);
+
+            })();
+            // END SALES INTELLIGENCE
 
             // ============================================================
             // VIEW PAGE — Load containers (read-only)
@@ -1277,6 +2300,108 @@
                 $('#viewQuotedRevenue').val(bc + ' ' + totalRevenue.toFixed(2));
                 $('#viewQuotedMargin').val(bc + ' ' + margin.toFixed(2) + ' (' + marginPct.toFixed(2) + '%)');
             }
+
+            // Load email history
+            function loadViewEmailHistory() {
+                $.ajax({
+                    url: '{{ route('quotation.email.history') }}',
+                    type: 'GET',
+                    data: {
+                        booking_no: '{{ $quotation->bookingno ?? '' }}'
+                    },
+                    beforeSend: function() {
+                        $('#viewEmailHistoryTable').html(
+                            '<tr><td colspan="3" class="text-center text-muted"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>'
+                        );
+                    },
+                    success: function(response) {
+                        var tbody = $('#viewEmailHistoryTable');
+                        tbody.empty();
+                        if (response.emails && response.emails.length) {
+                            response.emails.forEach(function(email) {
+                                tbody.append(`
+                        <tr>
+                            <td>${email.sent_on ?? ''}</td>
+                            <td>${email.to_email ?? ''}</td>
+                            <td>${email.quote_version ?? ''}</td>
+                        </tr>
+                    `);
+                            });
+                        } else {
+                            tbody.html(
+                                '<tr><td colspan="3" class="text-center text-muted">No emails sent yet</td></tr>'
+                            );
+                        }
+                    },
+                    error: function() {
+                        $('#viewEmailHistoryTable').html(
+                            '<tr><td colspan="3" class="text-center text-danger">Failed to load</td></tr>'
+                        );
+                    }
+                });
+            }
+            // Call it on page load
+            loadViewEmailHistory();
+
+            function loadViewApprovalStatus() {
+                $('#viewApprovalEmpty, #viewApprovalContent, #viewApprovalUnavailable').hide();
+                $('#viewApprovalLoading').show();
+
+                $.ajax({
+                    url: '{{ route('quotation.approval.status', $quotation->ID ?? 0) }}',
+                    type: 'GET',
+                    success: function(response) {
+                        $('#viewApprovalLoading').hide();
+                        if (response.success && response.data && response.data.status) {
+                            renderViewApproval(response.data);
+                        } else if (response.message) {
+                            $('#viewApprovalUnavailableMsg').text(response.message);
+                            $('#viewApprovalUnavailable').show();
+                        } else {
+                            $('#viewApprovalEmpty').show();
+                        }
+                    },
+                    error: function(xhr) {
+                        $('#viewApprovalLoading').hide();
+                        $('#viewApprovalUnavailableMsg').text(xhr.responseJSON?.message ||
+                            'Unable to load approval status.');
+                        $('#viewApprovalUnavailable').show();
+                    }
+                });
+            }
+
+            function renderViewApproval(data) {
+                $('#viewApprovalEmpty, #viewApprovalUnavailable').hide();
+                $('#viewApprovalContent').show();
+
+                var badgeClass = data.status === 'Approved' ? 'badge-success' :
+                    data.status === 'Rejected' ? 'badge-danger' :
+                    data.status === 'Pending Approval' ? 'badge-warning' : 'badge-secondary';
+                $('#viewApprovalStatusBadge').removeClass().addClass('badge px-2 py-1 ' + badgeClass).text(data
+                    .status);
+
+                var pct = data.required > 0 ? Math.min(100, (data.approvedCount / data.required) * 100) : 0;
+                $('#viewApprovalProgressBar').css('width', pct + '%');
+                $('#viewApprovalProgressLabel').text(data.approvedCount + ' of ' + data.required + ' Approved');
+
+                var tbody = $('#viewApprovalApproverTable tbody').empty();
+                (data.approvers || []).forEach(function(a) {
+                    var badge = a.status === 'Approved' ? 'badge-success' :
+                        a.status === 'Rejected' ? 'badge-danger' : 'badge-secondary';
+                    tbody.append(`
+            <tr>
+                <td style="font-size:0.85rem;">${a.name}</td>
+                <td class="text-right">
+                    <span class="badge ${badge}" style="font-size:0.7rem;">${a.status}</span>
+                    ${a.date ? `<small class="text-muted ml-1">${a.date}</small>` : ''}
+                </td>
+            </tr>
+        `);
+                });
+            }
+
+            // Call on load
+            loadViewApprovalStatus();
 
             // ============================================================
             // SHOW MORE / SHOW LESS

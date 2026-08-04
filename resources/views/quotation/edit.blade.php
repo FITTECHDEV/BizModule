@@ -3975,9 +3975,7 @@
 
             console.log('Booking Quotation Edit - Page Loaded');
 
-            // ═══════════════════════════════════════════════════════════
             // SALES INTELLIGENCE
-            // ═══════════════════════════════════════════════════════════
             (function() {
 
                 // Values already available on the page from PHP/JS
@@ -4480,9 +4478,7 @@
                 setTimeout(loadSalesIntelligence, 1200);
 
             })();
-            // ═══════════════════════════════════════════════════════════
             // END SALES INTELLIGENCE
-            // ═══════════════════════════════════════════════════════════
 
             // ============================================================
             // COPIED FLAG — highlight mandatory empty fields after duplication
