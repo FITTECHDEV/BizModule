@@ -116,11 +116,18 @@
                                 readonly>
                         </div>
                     </div>
-                    <div class="form-group row mb-0">
+                    <div class="form-group row">
                         <label class="col-sm-5 col-form-label">Sales Person Email</label>
                         <div class="col-sm-7">
                             <input type="text" class="form-control form-control-sm" data-field="SalesPersonEmail"
                                 value="{{ $quotation->SalesPersonEmail ?? '' }}" readonly>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-5 col-form-label">Currency</label>
+                        <div class="col-sm-7">
+                            <input type="text" class="form-control form-control-sm"
+                                value="{{ $quotation->QuoteCurr ?? '' }}" readonly>
                         </div>
                     </div>
                 </div>
@@ -137,60 +144,101 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    <div class="form-group row">
-                        <label class="col-sm-5 col-form-label">Service</label>
-                        <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->SVName ?? '' }}" readonly>
+                    <div class="row">
+                        <!-- LEFT COLUMN -->
+                        <div class="col-md-6">
+                            <div class="form-group row">
+                                <label class="col-sm-5 col-form-label">Service</label>
+                                <div class="col-sm-7">
+                                    <input type="text" class="form-control form-control-sm"
+                                        value="{{ $quotation->SVName ?? '' }}" readonly>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-sm-5 col-form-label">InCO Terms</label>
+                                <div class="col-sm-7">
+                                    <input type="text" class="form-control form-control-sm" id="viewIncoTermDisplay"
+                                        value="{{ $quotation->incoterm ?? '' }}" readonly>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-sm-5 col-form-label">Transport Mode</label>
+                                <div class="col-sm-7">
+                                    <input type="text" class="form-control form-control-sm"
+                                        id="viewTransportModeDisplay" value="{{ $quotation->TransportMode ?? '' }}"
+                                        readonly>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-sm-5 col-form-label">Origin Country</label>
+                                <div class="col-sm-7">
+                                    <input type="text" class="form-control form-control-sm"
+                                        id="viewOriginCountryDisplay" value="{{ $quotation->origincountry ?? '' }}"
+                                        readonly>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-sm-5 col-form-label">Port of Loading</label>
+                                <div class="col-sm-7">
+                                    <input type="text" class="form-control form-control-sm"
+                                        value="{{ $quotation->PortOfLoadingCode ?? '' }}" readonly>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-sm-5 col-form-label">Place of Receipt</label>
+                                <div class="col-sm-7">
+                                    <input type="text" class="form-control form-control-sm"
+                                        value="{{ $quotation->PlaceOfReceiptCode ?? '' }}" readonly>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="form-group row">
-                        <label class="col-sm-5 col-form-label">Process</label>
-                        <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->process ?? '' }}" readonly>
-                        </div>
-                    </div>
-                    <div class="form-group row">
-                        <label class="col-sm-5 col-form-label">Origin Country</label>
-                        <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" id="viewOriginCountryDisplay"
-                                value="{{ $quotation->origincountry ?? '' }}" readonly>
-                        </div>
-                    </div>
-                    <div class="form-group row">
-                        <label class="col-sm-5 col-form-label">Destination Country</label>
-                        <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm"
-                                value="{{ $quotation->destinationcountry ?? '' }}" readonly>
-                        </div>
-                    </div>
-                    <div class="form-group row">
-                        <label class="col-sm-5 col-form-label">InCO Terms</label>
-                        <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" id="viewIncoTermDisplay"
-                                value="{{ $quotation->incoterm ?? '' }}" readonly>
-                        </div>
-                    </div>
-                    <div class="form-group row">
-                        <label class="col-sm-5 col-form-label">Shipment Mode</label>
-                        <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" id="viewShipmentModeDisplay"
-                                value="{{ $quotation->shipmentmode ?? '' }}" readonly>
-                        </div>
-                    </div>
-                    <div class="form-group row">
-                        <label class="col-sm-5 col-form-label">Transport Mode</label>
-                        <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" id="viewTransportModeDisplay"
-                                value="{{ $quotation->TransportMode ?? '' }}" readonly>
-                        </div>
-                    </div>
-                    <div class="form-group row mb-0">
-                        <label class="col-sm-5 col-form-label">Service Class</label>
-                        <div class="col-sm-7">
-                            <input type="text" class="form-control form-control-sm" id="viewServiceClassDisplay"
-                                value="{{ $quotation->ServiceClass ?? '' }}" readonly>
+
+                        <!-- RIGHT COLUMN -->
+                        <div class="col-md-6">
+                            <div class="form-group row">
+                                <label class="col-sm-5 col-form-label">Process</label>
+                                <div class="col-sm-7">
+                                    <input type="text" class="form-control form-control-sm"
+                                        value="{{ $quotation->process ?? '' }}" readonly>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-sm-5 col-form-label">Shipment Mode</label>
+                                <div class="col-sm-7">
+                                    <input type="text" class="form-control form-control-sm"
+                                        id="viewShipmentModeDisplay" value="{{ $quotation->shipmentmode ?? '' }}"
+                                        readonly>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-sm-5 col-form-label">Service Class</label>
+                                <div class="col-sm-7">
+                                    <input type="text" class="form-control form-control-sm"
+                                        id="viewServiceClassDisplay" value="{{ $quotation->ServiceClass ?? '' }}"
+                                        readonly>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-sm-5 col-form-label">Destination Country</label>
+                                <div class="col-sm-7">
+                                    <input type="text" class="form-control form-control-sm"
+                                        value="{{ $quotation->destinationcountry ?? '' }}" readonly>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-sm-5 col-form-label">Port of Discharge</label>
+                                <div class="col-sm-7">
+                                    <input type="text" class="form-control form-control-sm"
+                                        value="{{ $quotation->PortOfDischargeCode ?? '' }}" readonly>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-sm-5 col-form-label">Place of Delivery</label>
+                                <div class="col-sm-7">
+                                    <input type="text" class="form-control form-control-sm"
+                                        value="{{ $quotation->PlaceOfDeliveryCode ?? '' }}" readonly>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -300,6 +348,51 @@
                     @else
                         <p class="text-muted text-center mb-0">No PDF versions generated yet</p>
                     @endif
+                    @if ($quotation->QuotationTCTemplate)
+                        <div class="mt-2 pt-2" style="border-top:1px solid #dee2e6;">
+                            <div class="form-group row mb-0">
+                                <label class="col-sm-4 col-form-label">Terms & Conditions</label>
+                                <div class="col-sm-8">
+                                    <input type="text" class="form-control form-control-sm"
+                                        value="{{ $quotation->QuotationTCTemplate }}" readonly>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+                </div>
+            </div>
+
+            <!-- Quote Communication -->
+            <div class="card card-primary">
+                <div class="card-header d-flex justify-content-between align-items-center py-2">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-envelope mr-2"></i>Quote Communication
+                    </h3>
+                    <div class="card-tools ml-auto">
+                        <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                            <i class="fas fa-chevron-up"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-sm table-hover mb-0">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>Sent On</th>
+                                    <th>To Email ID</th>
+                                    <th>Quote Version</th>
+                                </tr>
+                            </thead>
+                            <tbody id="viewEmailHistoryTable">
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted">
+                                        <i class="fas fa-spinner fa-spin"></i> Loading...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
@@ -333,6 +426,67 @@
                                 </tr>
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Audit Information -->
+            <div class="card card-primary" id="auditInformationCard">
+                <div class="card-header d-flex justify-content-between align-items-center py-2">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-history mr-2"></i>Audit Information
+                    </h3>
+                    <div class="card-tools ml-auto">
+                        <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                            <i class="fas fa-chevron-up"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="form-group row">
+                        <label class="col-sm-5 col-form-label">Created On</label>
+                        <div class="col-sm-7">
+                            <input type="text" class="form-control form-control-sm"
+                                value="{{ $quotation->CreatedOn ? date('d/m/Y H:i', strtotime($quotation->CreatedOn)) : '-' }}"
+                                readonly>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-5 col-form-label">Created By</label>
+                        <div class="col-sm-7">
+                            <input type="text" class="form-control form-control-sm"
+                                value="{{ $quotation->CreatedBy ?? '-' }}" readonly>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-5 col-form-label">Last Modified On</label>
+                        <div class="col-sm-7">
+                            <input type="text" class="form-control form-control-sm"
+                                value="{{ $quotation->updatedon ? date('d/m/Y H:i', strtotime($quotation->updatedon)) : '-' }}"
+                                readonly>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-5 col-form-label">Last Modified By</label>
+                        <div class="col-sm-7">
+                            <input type="text" class="form-control form-control-sm"
+                                value="{{ $quotation->LastModifiedBy ?? '-' }}" readonly>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-5 col-form-label">Marked WON on</label>
+                        <div class="col-sm-7">
+                            <input type="text" class="form-control form-control-sm"
+                                value="{{ $quotation->WonDate ? date('d/m/Y H:i', strtotime($quotation->WonDate)) : '-' }}"
+                                readonly>
+                        </div>
+                    </div>
+                    <div class="form-group row mb-0">
+                        <label class="col-sm-5 col-form-label">Marked WON By</label>
+                        <div class="col-sm-7">
+                            <input type="text" class="form-control form-control-sm"
+                                value="{{ $quotation->WonBy ?? '-' }}" readonly>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1277,6 +1431,48 @@
                 $('#viewQuotedRevenue').val(bc + ' ' + totalRevenue.toFixed(2));
                 $('#viewQuotedMargin').val(bc + ' ' + margin.toFixed(2) + ' (' + marginPct.toFixed(2) + '%)');
             }
+
+            // Load email history
+            function loadViewEmailHistory() {
+                $.ajax({
+                    url: '{{ route('quotation.email.history') }}',
+                    type: 'GET',
+                    data: {
+                        booking_no: '{{ $quotation->bookingno ?? '' }}'
+                    },
+                    beforeSend: function() {
+                        $('#viewEmailHistoryTable').html(
+                            '<tr><td colspan="3" class="text-center text-muted"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>'
+                        );
+                    },
+                    success: function(response) {
+                        var tbody = $('#viewEmailHistoryTable');
+                        tbody.empty();
+                        if (response.emails && response.emails.length) {
+                            response.emails.forEach(function(email) {
+                                tbody.append(`
+                        <tr>
+                            <td>${email.sent_on ?? ''}</td>
+                            <td>${email.to_email ?? ''}</td>
+                            <td>${email.quote_version ?? ''}</td>
+                        </tr>
+                    `);
+                            });
+                        } else {
+                            tbody.html(
+                                '<tr><td colspan="3" class="text-center text-muted">No emails sent yet</td></tr>'
+                            );
+                        }
+                    },
+                    error: function() {
+                        $('#viewEmailHistoryTable').html(
+                            '<tr><td colspan="3" class="text-center text-danger">Failed to load</td></tr>'
+                        );
+                    }
+                });
+            }
+            // Call it on page load
+            loadViewEmailHistory();
 
             // ============================================================
             // SHOW MORE / SHOW LESS
