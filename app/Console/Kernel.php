@@ -119,7 +119,7 @@ class Kernel extends ConsoleKernel
                 Log::error('TZ ZReport scheduled task failed at ' . now());
             });
 
-
+        // $schedule->command('scheduler:test')->everyMinute();
 
 
         // Send shipment status reports to clients daily at 17:00 EAT

@@ -18,31 +18,7 @@ class RRAInvoices extends Command
         parent::__construct();
     }
 
-    // public function handle()
-    // {
-    //     Log::notice("RRA push running");
 
-    //     $invoiceId = $this->argument('invoiceId');
-    //     $pendingInvoices = $this->fetchPendingInvoices($invoiceId);
-
-    //     if ($pendingInvoices->isEmpty()) {
-    //         // Log::info("No pending invoices found RRA.");
-    //         return 0;
-    //     }
-
-    //     foreach ($pendingInvoices as $invoice) {
-    //         $jsonData = json_decode($invoice->RRAJsonFile, true);
-
-    //         if ($jsonData) {
-    //             $this->submitToApi($invoice, $jsonData);
-    //         } else {
-    //             Log::error("Failed to decode JSON data for invoice ID: {$invoice->ID}");
-    //         }
-    //     }
-
-    //     Log::notice("RRA push completed");
-    //     return 0;
-    // }
 public function handle()
 {
     // Log::notice("RRA push running");
@@ -226,77 +202,7 @@ public function handle()
     }
 
 
-    // protected function handleSuccessfulSubmission($invoice, $responseData)
-    // {
-    //     $result = $responseData['result'] ?? [];
-    //     $errorMessage = trim($result['error'] ?? '');
 
-    //     $sdcData = $result['sdc_data'] ?? null;
-    //     $cisData = $result['cis_data'] ?? null;
-    //     $journal = $result['journal'] ?? null;
-
-    //     // Convert comma-separated sdcData to hash-separated format
-    //     if (!empty($sdcData)) {
-    //         $sdcData = str_replace(',', '#', $sdcData);
-    //     }
-
-    //     $receiptNumber = $sdcID = $sdcDate = $sdcSignature = $sdcInternalData = null;
-    //     if (!empty($sdcData)) {
-    //         $sdcParts = explode('#', $sdcData);
-    //         if (count($sdcParts) >= 7) {
-    //             $sdcID = $sdcParts[0];
-    //             $receiptNumber = "{$sdcParts[1]}/{$sdcParts[2]}  {$sdcParts[3]}";
-    //             $sdcDate = $sdcParts[4];
-    //             $sdcSignature = $this->formatWithDashes($sdcParts[5]);
-    //             $sdcInternalData = $this->formatWithDashes(end($sdcParts));
-    //         }
-    //     }
-
-    //     $cisDate = $cisReceiptNumber = $cisMRC = null;
-    //     if (!empty($cisData)) {
-    //         $cisParts = explode(',', $cisData);
-    //         if (count($cisParts) >= 3) {
-    //             $cisDate = $cisParts[0];
-    //             $cisReceiptNumber = $cisParts[1];
-    //             $cisMRC = $cisParts[2];
-    //         }
-    //     }
-
-    //     $formattedCisDate = null;
-    //     if (!empty($cisDate)) {
-    //         $formattedCisDate = DateTime::createFromFormat('Y-m-d H:i:s.u', $cisDate)
-    //                 ?->format('Y-m-d H:i:s');
-    //     }
-
-    //     $updateData = [
-    //         'RRA_SDC_Receipt_Number' => $receiptNumber,
-    //         'RRA_SDC_Date' => $sdcDate,
-    //         'RRA_SDC_ID' => $sdcID,
-    //         'RRA_SDC_Data_QRCode' => $sdcData, // Now hash-separated
-    //         'RRA_SDC_InternalData' => $sdcInternalData,
-    //         'RRA_SDC_Signature' => $sdcSignature,
-    //         'RRA_CIS_Date' => $formattedCisDate,
-    //         'RRA_CIS_Receipt_Number' => $cisReceiptNumber,
-    //         'RRA_CIS_MRC' => $cisMRC,
-    //         'RRA_Journal' => $journal,
-    //         'SubmissionStatus' => $errorMessage ?: 'Success',
-    //     ];
-
-    //     // Update DocStatus logic (Checking if errorMessage exactly matches "ERROR_EXIST")
-    //     if ($errorMessage === '' || $errorMessage === 'ERROR_EXIST') {
-    //         $updateData['DocStatus'] = 'Submitted';
-    //     } else {
-    //         $updateData['DocStatus'] = 'Failed';
-    //     }
-
-    //     RRABillingHeader::where('ID', $invoice->ID)->update($updateData);
-
-    //     if ($errorMessage === '' || $errorMessage === 'ERROR_EXIST') {
-    //         Log::info("Invoice ID: {$invoice->ID} submitted successfully with Receipt No: {$receiptNumber}.");
-    //     } else {
-    //         Log::error("Invoice ID: {$invoice->ID} encountered an issue: {$errorMessage}.");
-    //     }
-    // }
 
     protected function handleFailedSubmission($invoice, $responseData, $responseBody)
     {

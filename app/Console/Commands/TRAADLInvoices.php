@@ -28,7 +28,7 @@ class TRAADLInvoices extends Command
             return 0;
         }
 
-        Log::info('─── TRA ADL Invoice Push Started ───');
+        // Log::info('─── TRA ADL Invoice Push Started ───');
 
         $bearerToken = env('TRA_TOKEN');
         if (!$bearerToken) {
@@ -46,12 +46,12 @@ class TRAADLInvoices extends Command
         $pendingInvoices = $this->fetchPendingInvoices($invoiceId);
 
         if ($pendingInvoices->isEmpty()) {
-            Log::info('No pending invoices found. Nothing to process.');
+            // Log::info('No pending invoices found. Nothing to process.');
             $this->info('No pending invoices found.');
             return 0;
         }
 
-        Log::info("Found {$pendingInvoices->count()} pending invoice(s) to process.");
+        // Log::info("Found {$pendingInvoices->count()} pending invoice(s) to process.");
 
         if (!$this->isApiAvailable($bearerToken, $activeBusinessId)) {
             $this->logAndFail('TRA API health check failed. Skipping all invoices.');
@@ -75,7 +75,7 @@ class TRAADLInvoices extends Command
             $this->submitToApi($invoice, $jsonData, $bearerToken, $activeBusinessId);
         }
 
-        Log::info('─── TRA ADL Invoice Push Completed ───');
+        // Log::info('─── TRA ADL Invoice Push Completed ───');
         $this->info('TRA ADL push completed.');
         return 0;
     }
@@ -309,10 +309,10 @@ class TRAADLInvoices extends Command
             'ResponseJson'    => $responseData ? json_encode($responseData) : null,
         ]);
 
-        Log::error("Invoice {$invoice->DocNo} (ID: {$invoice->ID}) failed.", [
-            'error'         => $submissionStatus,
-            'response_data' => $responseData,
-        ]);
+        // Log::error("Invoice {$invoice->DocNo} (ID: {$invoice->ID}) failed.", [
+        //     'error'         => $submissionStatus,
+        //     'response_data' => $responseData,
+        // ]);
     }
 
     protected function logAndFail(string $message): void

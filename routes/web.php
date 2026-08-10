@@ -10,6 +10,10 @@ use App\Http\Controllers\AzureUserManagementController;
 use App\Http\Controllers\OdooSyncController;
 use App\Http\Controllers\ShipmentReportController;
 use App\Http\Controllers\ScmProfitIntegrationController;
+use App\Http\Controllers\AdminController;
+
+
+
 
 use App\Models\Category;
 use App\Models\Office;
@@ -52,16 +56,26 @@ Route::get('/logout', function () {
 });
 
 Route::get('quote-logger', function () {
-
     $auth_user = Auth::user();
 
     // todo: permissions
-    return redirect()->away('https://quotesuat.freightintime.com/?username=' . $auth_user->LoginID . '&code=' . $auth_user->password . '&email=' . $auth_user->Email, 302, ['enc_data' => '']);
+    return redirect()->away(
+        'https://quotesuat.freightintime.com/?username=' .
+            $auth_user->LoginID .
+            '&code=' .
+            $auth_user->password .
+            '&email=' .
+            $auth_user->Email,
+        302,
+        ['enc_data' => ''],
+    );
 
     // return Http::post('https://quotes.freightintime.com/', [
     //     'enc_data' => $enc_user
     // ]);
-})->middleware(['auth', 'signed'])->name('quote-logger');
+})
+    ->middleware(['auth', 'signed'])
+    ->name('quote-logger');
 
 /**
  * AZURE AUTH
@@ -71,20 +85,27 @@ Route::get('quote-logger', function () {
 // Route::get('/login/azurecallback', '\RootInc\LaravelAzureMiddleware\Azure@azurecallback')
 //     ->name('azure.callback');
 
-Route::get('/login/azure', '\App\Http\Middleware\AppAzure@azure')
-    ->name('azure.login');
-Route::get('/login/azurecallback', '\App\Http\Middleware\AppAzure@azurecallback')
-    ->name('azure.callback');
-Route::get('/logout/azure', '\App\Http\Middleware\AppAzure@azurelogout')
-    ->name('azure.logout');
+Route::get('/login/azure', '\App\Http\Middleware\AppAzure@azure')->name('azure.login');
+Route::get('/login/azurecallback', '\App\Http\Middleware\AppAzure@azurecallback')->name('azure.callback');
+Route::get('/logout/azure', '\App\Http\Middleware\AppAzure@azurelogout')->name('azure.logout');
 
 /**
  * Reset password routes
  */
-Route::get('forget-password', [App\Http\Controllers\ForgotPasswordController::class, 'showForgetPasswordForm'])->name('forget.password.get');
-Route::post('forget-password', [App\Http\Controllers\ForgotPasswordController::class, 'submitForgetPasswordForm'])->name('forget.password.post');
-Route::get('reset-password/{token}', [App\Http\Controllers\ForgotPasswordController::class, 'showResetPasswordForm'])->name('reset.password.get');
-Route::post('reset-password', [App\Http\Controllers\ForgotPasswordController::class, 'submitResetPasswordForm'])->name('reset.password.post');
+Route::get('forget-password', [App\Http\Controllers\ForgotPasswordController::class, 'showForgetPasswordForm'])->name(
+    'forget.password.get',
+);
+Route::post('forget-password', [
+    App\Http\Controllers\ForgotPasswordController::class,
+    'submitForgetPasswordForm',
+])->name('forget.password.post');
+Route::get('reset-password/{token}', [
+    App\Http\Controllers\ForgotPasswordController::class,
+    'showResetPasswordForm',
+])->name('reset.password.get');
+Route::post('reset-password', [App\Http\Controllers\ForgotPasswordController::class, 'submitResetPasswordForm'])->name(
+    'reset.password.post',
+);
 // , 'change.password'
 
 // logs
@@ -96,9 +117,13 @@ Route::group(['middleware' => ['auth', 'HtmlMinifier']], function () {
      */
     Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
     Route::get('/archive', [App\Http\Controllers\HomeController::class, 'archive'])->name('archive');
-    Route::post('/reports/filter', [App\Http\Controllers\HomeController::class, 'reportsFilter'])->name('reportsFilter');
+    Route::post('/reports/filter', [App\Http\Controllers\HomeController::class, 'reportsFilter'])->name(
+        'reportsFilter',
+    );
     Route::get('/archive/data', [App\Http\Controllers\HomeController::class, 'getMasterData'])->name('archive.data');
-    Route::get('/archive/data/details/{id}', [App\Http\Controllers\HomeController::class, 'getDetailsData'])->name('archive.data.details');
+    Route::get('/archive/data/details/{id}', [App\Http\Controllers\HomeController::class, 'getDetailsData'])->name(
+        'archive.data.details',
+    );
     /**
      * USERS
      */
@@ -120,20 +145,19 @@ Route::group(['middleware' => ['auth', 'HtmlMinifier']], function () {
         ->name('bizpro.users.stats')
         ->middleware('auth');
 
-    Route::post('users/ajax-update', [App\Http\Controllers\UsersController::class, 'updateAjax'])
-        ->name('users.update_ajax');
+    Route::post('users/ajax-update', [App\Http\Controllers\UsersController::class, 'updateAjax'])->name(
+        'users.update_ajax',
+    );
 
     // ✅ RESOURCE ROUTES - Come AFTER specific routes
     Route::resource('users', App\Http\Controllers\UsersController::class);
 
     // ✅ POST ROUTES WITH {user} PARAMETER - Can come after resource routes
-    Route::post('users/profile/{user}', [App\Http\Controllers\UsersController::class, 'update'])
-        ->name('user.update');
+    Route::post('users/profile/{user}', [App\Http\Controllers\UsersController::class, 'update'])->name('user.update');
 
-    Route::post('users/pass/{user}', [App\Http\Controllers\UsersController::class, 'pass'])
-        ->name('user.update.password');
-
-
+    Route::post('users/pass/{user}', [App\Http\Controllers\UsersController::class, 'pass'])->name(
+        'user.update.password',
+    );
 
     /**
      * TICKETS
@@ -141,9 +165,15 @@ Route::group(['middleware' => ['auth', 'HtmlMinifier']], function () {
     Route::resource('tickets', 'App\Http\Controllers\TicketController')->except('show');
     // Route::put('tickets/{ticket}', 'App\Http\Controllers\TicketController@update')->name('tickets.update');
     Route::get('tickets/{ticket}', 'App\Http\Controllers\TicketController@show')->name('tickets.show');
-    Route::get('ticktes/my-tickets', [App\Http\Controllers\TicketController::class, 'myTickets'])->name('tickets.my_tickets');
-    Route::get('ticktes/my-office-tickets', [App\Http\Controllers\TicketController::class, 'myOfficeTickets'])->name('tickets.my_office_tickets');
-    Route::get('ticktes/assigned', [App\Http\Controllers\TicketController::class, 'assigned'])->name('tickets.assigned');
+    Route::get('ticktes/my-tickets', [App\Http\Controllers\TicketController::class, 'myTickets'])->name(
+        'tickets.my_tickets',
+    );
+    Route::get('ticktes/my-office-tickets', [App\Http\Controllers\TicketController::class, 'myOfficeTickets'])->name(
+        'tickets.my_office_tickets',
+    );
+    Route::get('ticktes/assigned', [App\Http\Controllers\TicketController::class, 'assigned'])->name(
+        'tickets.assigned',
+    );
 
     // Route::post('ticktes/update/title_description', [App\Http\Controllers\TicketController::class, 'updateTicket'])->name('tickets.update_ticket');
 
@@ -151,52 +181,97 @@ Route::group(['middleware' => ['auth', 'HtmlMinifier']], function () {
     // Route::get('ticktes/closed-tickets', [App\Http\Controllers\TicketController::class, 'closedTickets'])->name('tickets.closed_tickets');
     // Route::get('ticktes/solved-tickets', [App\Http\Controllers\TicketController::class, 'solvedTickets'])->name('tickets.solved_tickets');
     // Route::get('ticktes/re-opened-tickets', [App\Http\Controllers\TicketController::class, 'reOpenedTickets'])->name('tickets.re_opened_tickets');
-    Route::get('ticktes/open-tickets', [App\Http\Controllers\TicketController::class, 'openTickets'])->name('tickets.open_tickets');
-    Route::get('ticktes/closed-tickets', [App\Http\Controllers\TicketController::class, 'closedTickets'])->name('tickets.closed_tickets');
-    Route::get('ticktes/solved-tickets', [App\Http\Controllers\TicketController::class, 'solvedTickets'])->name('tickets.solved_tickets');
-    Route::get('ticktes/re-opened-tickets', [App\Http\Controllers\TicketController::class, 'reOpenedTickets'])->name('tickets.re_opened_tickets');
+    Route::get('ticktes/open-tickets', [App\Http\Controllers\TicketController::class, 'openTickets'])->name(
+        'tickets.open_tickets',
+    );
+    Route::get('ticktes/closed-tickets', [App\Http\Controllers\TicketController::class, 'closedTickets'])->name(
+        'tickets.closed_tickets',
+    );
+    Route::get('ticktes/solved-tickets', [App\Http\Controllers\TicketController::class, 'solvedTickets'])->name(
+        'tickets.solved_tickets',
+    );
+    Route::get('ticktes/re-opened-tickets', [App\Http\Controllers\TicketController::class, 'reOpenedTickets'])->name(
+        'tickets.re_opened_tickets',
+    );
     Route::get('ticktes/pick/{id}', [App\Http\Controllers\TicketController::class, 'pick'])->name('tickets.pick');
-    Route::get('tickets/update/ticket/status', [App\Http\Controllers\TicketController::class, 'updateStatus'])->name('tickets.update_status');
+    Route::get('tickets/update/ticket/status', [App\Http\Controllers\TicketController::class, 'updateStatus'])->name(
+        'tickets.update_status',
+    );
     // Route::get('tickets/assign/ticket/{id?}', [App\Http\Controllers\TicketController::class, 'assignTicket'])->name('tickets.assign_ticket');
-    Route::post('tickets/assign/ticket', [App\Http\Controllers\TicketController::class, 'assignTicket'])->name('tickets.assign_ticket_user');
-    Route::get('tickets/{filter}/{filter_id}', [App\Http\Controllers\TicketController::class, 'filterTicket'])->name('tickets.filter_ticket');
+    Route::post('tickets/assign/ticket', [App\Http\Controllers\TicketController::class, 'assignTicket'])->name(
+        'tickets.assign_ticket_user',
+    );
+    Route::get('tickets/{filter}/{filter_id}', [App\Http\Controllers\TicketController::class, 'filterTicket'])->name(
+        'tickets.filter_ticket',
+    );
     /**
      * DATATABLES
      */
-    Route::get('datatables/all-tickets', [App\Http\Controllers\DataTablesController::class, 'allTickets'])->name('datatables.all_tickets');
-    Route::get('datatables/my-tickets', [App\Http\Controllers\DataTablesController::class, 'myTickets'])->name('datatables.my_tickets');
-    Route::get('datatables/my-office-tickets', [App\Http\Controllers\DataTablesController::class, 'myOfficeTickets'])->name('datatables.my_office_tickets');
-    Route::get('datatables/assigned', [App\Http\Controllers\DataTablesController::class, 'assigned'])->name('datatables.assigned');
+    Route::get('datatables/all-tickets', [App\Http\Controllers\DataTablesController::class, 'allTickets'])->name(
+        'datatables.all_tickets',
+    );
+    Route::get('datatables/my-tickets', [App\Http\Controllers\DataTablesController::class, 'myTickets'])->name(
+        'datatables.my_tickets',
+    );
+    Route::get('datatables/my-office-tickets', [
+        App\Http\Controllers\DataTablesController::class,
+        'myOfficeTickets',
+    ])->name('datatables.my_office_tickets');
+    Route::get('datatables/assigned', [App\Http\Controllers\DataTablesController::class, 'assigned'])->name(
+        'datatables.assigned',
+    );
     // Route::get('datatables/closed-tickets', [App\Http\Controllers\DataTablesController::class, 'closedTickets'])->name('datatables.closed_tickets');
     // Route::get('datatables/open-tickets', [App\Http\Controllers\DataTablesController::class, 'openTickets'])->name('datatables.open_tickets');
     // Route::get('datatables/solved-tickets', [App\Http\Controllers\DataTablesController::class, 'solvedTickets'])->name('datatables.solved_tickets');
     // Route::get('datatables/re-opened-tickets', [App\Http\Controllers\DataTablesController::class, 'reOpenedTickets'])->name('datatables.re_opened_tickets');
-    Route::get('datatables/closed-tickets', [App\Http\Controllers\DataTablesController::class, 'closedTickets'])->name('datatables.closed_tickets');
-    Route::get('datatables/open-tickets', [App\Http\Controllers\DataTablesController::class, 'openTickets'])->name('datatables.open_tickets');
-    Route::get('datatables/solved-tickets', [App\Http\Controllers\DataTablesController::class, 'solvedTickets'])->name('datatables.solved_tickets');
-    Route::get('datatables/re-opened-tickets', [App\Http\Controllers\DataTablesController::class, 'reOpenedTickets'])->name('datatables.re_opened_tickets');
-    Route::get('datatables/settled-tickets', [App\Http\Controllers\DataTablesController::class, 'settledTickets'])->name('datatables.settled_tickets');
+    Route::get('datatables/closed-tickets', [App\Http\Controllers\DataTablesController::class, 'closedTickets'])->name(
+        'datatables.closed_tickets',
+    );
+    Route::get('datatables/open-tickets', [App\Http\Controllers\DataTablesController::class, 'openTickets'])->name(
+        'datatables.open_tickets',
+    );
+    Route::get('datatables/solved-tickets', [App\Http\Controllers\DataTablesController::class, 'solvedTickets'])->name(
+        'datatables.solved_tickets',
+    );
+    Route::get('datatables/re-opened-tickets', [
+        App\Http\Controllers\DataTablesController::class,
+        'reOpenedTickets',
+    ])->name('datatables.re_opened_tickets');
+    Route::get('datatables/settled-tickets', [
+        App\Http\Controllers\DataTablesController::class,
+        'settledTickets',
+    ])->name('datatables.settled_tickets');
 
-    Route::get('datatables/users', [App\Http\Controllers\DataTablesController::class, 'users'])->name('datatables.users');
+    Route::get('datatables/users', [App\Http\Controllers\DataTablesController::class, 'users'])->name(
+        'datatables.users',
+    );
 
     Route::get('datatables/tims', [App\Http\Controllers\DataTablesController::class, 'tims'])->name('datatables.tims');
 
-    Route::get('datatables/efris', [App\Http\Controllers\DataTablesController::class, 'efris'])->name('datatables.efris');
+    Route::get('datatables/efris', [App\Http\Controllers\DataTablesController::class, 'efris'])->name(
+        'datatables.efris',
+    );
 
     Route::get('datatables/tra', [App\Http\Controllers\DataTablesController::class, 'tra'])->name('datatables.tra');
 
-    Route::get('datatables/tra_fit_tz', [App\Http\Controllers\DataTablesController::class, 'traFITTZ'])->name('datatables.tra_tz');
+    Route::get('datatables/tra_fit_tz', [App\Http\Controllers\DataTablesController::class, 'traFITTZ'])->name(
+        'datatables.tra_tz',
+    );
 
     Route::get('datatables/rra', [App\Http\Controllers\DataTablesController::class, 'rra'])->name('datatables.rra');
 
     /**
      * OFFICE
      */
-    Route::get('offices/get-name', [App\Http\Controllers\OfficeController::class, 'getOfficeName'])->name('office.get_name');
+    Route::get('offices/get-name', [App\Http\Controllers\OfficeController::class, 'getOfficeName'])->name(
+        'office.get_name',
+    );
     /**
      * MODULES
      */
-    Route::get('modules/get-data', [App\Http\Controllers\ModuleController::class, 'getModuleData'])->name('modules.get_data');
+    Route::get('modules/get-data', [App\Http\Controllers\ModuleController::class, 'getModuleData'])->name(
+        'modules.get_data',
+    );
     /**
      * ROLES AND PERMISSIONS
      */
@@ -204,9 +279,15 @@ Route::group(['middleware' => ['auth', 'HtmlMinifier']], function () {
     /**
      * FILES
      */
-    Route::get('attachment/{id}/download', [App\Http\Controllers\AttachmentController::class, 'download'])->name('attachment.download');
-    Route::post('attachment/upload/file', [App\Http\Controllers\AttachmentController::class, 'upload'])->name('attachment.upload');
-    Route::delete('attachment/delete/', [App\Http\Controllers\AttachmentController::class, 'destroy'])->name('attachment.destroy');
+    Route::get('attachment/{id}/download', [App\Http\Controllers\AttachmentController::class, 'download'])->name(
+        'attachment.download',
+    );
+    Route::post('attachment/upload/file', [App\Http\Controllers\AttachmentController::class, 'upload'])->name(
+        'attachment.upload',
+    );
+    Route::delete('attachment/delete/', [App\Http\Controllers\AttachmentController::class, 'destroy'])->name(
+        'attachment.destroy',
+    );
     /**
      * MESSAGES
      */
@@ -234,9 +315,17 @@ Route::group(['middleware' => ['auth', 'HtmlMinifier']], function () {
      */
     // Route::resource('categories', App\Http\Controllers\CategoryController::class);
     Route::get('categories', [App\Http\Controllers\CategoryController::class, 'index'])->name('categories.index');
-    Route::get('categories/get-category/{id?}/{type?}', [App\Http\Controllers\CategoryController::class, 'getCategory'])->name('getCategory');
-    Route::post('categories/save-category', [App\Http\Controllers\CategoryController::class, 'store'])->name('saveCategory');
-    Route::post('categories/update/submodule', [App\Http\Controllers\CategoryController::class, 'subModuleUpdateAjax'])->name('submodule.update_ajax');
+    Route::get('categories/get-category/{id?}/{type?}', [
+        App\Http\Controllers\CategoryController::class,
+        'getCategory',
+    ])->name('getCategory');
+    Route::post('categories/save-category', [App\Http\Controllers\CategoryController::class, 'store'])->name(
+        'saveCategory',
+    );
+    Route::post('categories/update/submodule', [
+        App\Http\Controllers\CategoryController::class,
+        'subModuleUpdateAjax',
+    ])->name('submodule.update_ajax');
     // * push notification
     Route::post('/push', [App\Http\Controllers\PushController::class, 'store']);
     Route::get('/push', [App\Http\Controllers\PushController::class, 'push'])->name('push');
@@ -244,42 +333,112 @@ Route::group(['middleware' => ['auth', 'HtmlMinifier']], function () {
     /**
      *! CLIENT PARTY ENTITY ROUTES
      */
-    Route::get('/get-countries', [App\Http\Controllers\ClientPartyController::class, 'getCountries'])->name('clientParty.getCountries');
-    Route::get('/get-cities', [App\Http\Controllers\ClientPartyController::class, 'getCities'])->name('clientParty.getCities');
-    Route::get('/get-clients/{type}', [App\Http\Controllers\ClientPartyController::class, 'getClients'])->name('clientParty.getClients');
-    Route::get('/autocomplete-client', [App\Http\Controllers\ClientPartyController::class, 'autocompleteClient'])->name('autocomplete-client');
-    Route::get('/client-details/{companyName}', [App\Http\Controllers\ClientPartyController::class, 'fetchClientDetails'])->name('client.details');
-    Route::get('/get-tarrif-list', [App\Http\Controllers\ClientPartyController::class, 'getTarrif'])->name('clientParty.getTarrif');
-    Route::get('/get-debtor-vendor/{type}', [App\Http\Controllers\ClientPartyController::class, 'getDebtorVendor'])->name('clientParty.getDebtorVendor');
-    Route::get('/get-provinces', [App\Http\Controllers\ClientPartyController::class, 'getProvinces'])->name('clientParty.getProvinces');
-    Route::get('/get-offices', [App\Http\Controllers\ClientPartyController::class, 'getOffices'])->name('clientParty.getOffices');
-    Route::get('/get-licenceType', [App\Http\Controllers\ClientPartyController::class, 'getLicenceType'])->name('clientParty.getLicenceType');
-    Route::get('/get-party-entity', [App\Http\Controllers\ClientPartyController::class, 'getPartyEntity'])->name('clientParty.getPartyEntity');
-    Route::get('/get-inco-terms', [App\Http\Controllers\ClientPartyController::class, 'getIncoTerms'])->name('clientParty.getIncoTerms');
-    Route::get('/get-payment-term-list', [App\Http\Controllers\ClientPartyController::class, 'getPaymentTermList'])->name('clientParty.getPaymentTermList');
-    Route::get('/get-currency-list', [App\Http\Controllers\ClientPartyController::class, 'getCurrencyList'])->name('clientParty.getCurrencyList');
-    Route::get('/get-base-currency', [App\Http\Controllers\ClientPartyController::class, 'getBaseCurrency'])->name('clientParty.getBaseCurrency');
-    Route::get('/get-office-debtor-vendor-list', [App\Http\Controllers\ClientPartyController::class, 'getDebtorVendorList'])->name('clientParty.getDebtorVendorList');
+    Route::get('/get-countries', [App\Http\Controllers\ClientPartyController::class, 'getCountries'])->name(
+        'clientParty.getCountries',
+    );
+    Route::get('/get-cities', [App\Http\Controllers\ClientPartyController::class, 'getCities'])->name(
+        'clientParty.getCities',
+    );
+    Route::get('/get-clients/{type}', [App\Http\Controllers\ClientPartyController::class, 'getClients'])->name(
+        'clientParty.getClients',
+    );
+    Route::get('/autocomplete-client', [App\Http\Controllers\ClientPartyController::class, 'autocompleteClient'])->name(
+        'autocomplete-client',
+    );
+    Route::get('/client-details/{companyName}', [
+        App\Http\Controllers\ClientPartyController::class,
+        'fetchClientDetails',
+    ])->name('client.details');
+    Route::get('/get-tarrif-list', [App\Http\Controllers\ClientPartyController::class, 'getTarrif'])->name(
+        'clientParty.getTarrif',
+    );
+    Route::get('/get-debtor-vendor/{type}', [
+        App\Http\Controllers\ClientPartyController::class,
+        'getDebtorVendor',
+    ])->name('clientParty.getDebtorVendor');
+    Route::get('/get-provinces', [App\Http\Controllers\ClientPartyController::class, 'getProvinces'])->name(
+        'clientParty.getProvinces',
+    );
+    Route::get('/get-offices', [App\Http\Controllers\ClientPartyController::class, 'getOffices'])->name(
+        'clientParty.getOffices',
+    );
+    Route::get('/get-licenceType', [App\Http\Controllers\ClientPartyController::class, 'getLicenceType'])->name(
+        'clientParty.getLicenceType',
+    );
+    Route::get('/get-party-entity', [App\Http\Controllers\ClientPartyController::class, 'getPartyEntity'])->name(
+        'clientParty.getPartyEntity',
+    );
+    Route::get('/get-inco-terms', [App\Http\Controllers\ClientPartyController::class, 'getIncoTerms'])->name(
+        'clientParty.getIncoTerms',
+    );
+    Route::get('/get-payment-term-list', [
+        App\Http\Controllers\ClientPartyController::class,
+        'getPaymentTermList',
+    ])->name('clientParty.getPaymentTermList');
+    Route::get('/get-currency-list', [App\Http\Controllers\ClientPartyController::class, 'getCurrencyList'])->name(
+        'clientParty.getCurrencyList',
+    );
+    Route::get('/get-base-currency', [App\Http\Controllers\ClientPartyController::class, 'getBaseCurrency'])->name(
+        'clientParty.getBaseCurrency',
+    );
+    Route::get('/get-office-debtor-vendor-list', [
+        App\Http\Controllers\ClientPartyController::class,
+        'getDebtorVendorList',
+    ])->name('clientParty.getDebtorVendorList');
 
-    Route::get('/get-sales-account-pic/{type}', [App\Http\Controllers\ClientPartyController::class, 'salesAccountPCI'])->name('clientParty.salesAccountPCI');
+    Route::get('/get-sales-account-pic/{type}', [
+        App\Http\Controllers\ClientPartyController::class,
+        'salesAccountPCI',
+    ])->name('clientParty.salesAccountPCI');
 
-    Route::get('/get-notify-party-list/{type}', [App\Http\Controllers\ClientPartyController::class, 'getNotifyPartyList'])->name('clientParty.getNotifyPartyList');
-    Route::get('/get-plo-pld/{type}', [App\Http\Controllers\ClientPartyController::class, 'getPOLPOD'])->name('clientParty.getPOLPOD');
+    Route::get('/get-notify-party-list/{type}', [
+        App\Http\Controllers\ClientPartyController::class,
+        'getNotifyPartyList',
+    ])->name('clientParty.getNotifyPartyList');
+    Route::get('/get-plo-pld/{type}', [App\Http\Controllers\ClientPartyController::class, 'getPOLPOD'])->name(
+        'clientParty.getPOLPOD',
+    );
 
-    Route::get('client-party', [App\Http\Controllers\ClientPartyController::class, 'index'])->name('client-party.index');
-    Route::get('client-party/show/{clientParty}', [App\Http\Controllers\ClientPartyController::class, 'show'])->name('client-party.show');
-    Route::get('client-party/create', [App\Http\Controllers\ClientPartyController::class, 'create'])->name('client-party.create');
-    Route::post('client-party', [App\Http\Controllers\ClientPartyController::class, 'store'])->name('client-party.store');
-    Route::put('client-party/{id}/update', [App\Http\Controllers\ClientPartyController::class, 'update'])->name('client-party.update');
-    Route::get('client-party/view/{path}', [App\Http\Controllers\ClientPartyController::class, 'preview'])->name('client-party.preview');
-    Route::post('client-party/reject', [App\Http\Controllers\ClientPartyController::class, 'reject'])->name('client-party.reject');
-    Route::post('client-party/approve', [App\Http\Controllers\ClientPartyController::class, 'approve'])->name('client-party.approve');
-    Route::get('client-party/approve', [App\Http\Controllers\ClientPartyController::class, 'approvals'])->name('client-party.approvals');
-    Route::post('/delete-client-party-attachment/{id}', [App\Http\Controllers\ClientPartyController::class, 'deleteFile'])->name('client-party.deleteFile');
+    Route::get('client-party', [App\Http\Controllers\ClientPartyController::class, 'index'])->name(
+        'client-party.index',
+    );
+    Route::get('client-party/show/{clientParty}', [App\Http\Controllers\ClientPartyController::class, 'show'])->name(
+        'client-party.show',
+    );
+    Route::get('client-party/create', [App\Http\Controllers\ClientPartyController::class, 'create'])->name(
+        'client-party.create',
+    );
+    Route::post('client-party', [App\Http\Controllers\ClientPartyController::class, 'store'])->name(
+        'client-party.store',
+    );
+    Route::put('client-party/{id}/update', [App\Http\Controllers\ClientPartyController::class, 'update'])->name(
+        'client-party.update',
+    );
+    Route::get('client-party/view/{path}', [App\Http\Controllers\ClientPartyController::class, 'preview'])->name(
+        'client-party.preview',
+    );
+    Route::post('client-party/reject', [App\Http\Controllers\ClientPartyController::class, 'reject'])->name(
+        'client-party.reject',
+    );
+    Route::post('client-party/approve', [App\Http\Controllers\ClientPartyController::class, 'approve'])->name(
+        'client-party.approve',
+    );
+    Route::get('client-party/approve', [App\Http\Controllers\ClientPartyController::class, 'approvals'])->name(
+        'client-party.approvals',
+    );
+    Route::post('/delete-client-party-attachment/{id}', [
+        App\Http\Controllers\ClientPartyController::class,
+        'deleteFile',
+    ])->name('client-party.deleteFile');
     /**!client party datatables */
     Route::group(['prefix' => 'datatables'], function () {
-        Route::get('client-party', [App\Http\Controllers\DataTablesController::class, 'allEntityRequests'])->name('datatables.allEntityRequests');
-        Route::get('client-party-approval', [App\Http\Controllers\DataTablesController::class, 'approvalEntityRequests'])->name('datatables.approvalEntityRequests');
+        Route::get('client-party', [App\Http\Controllers\DataTablesController::class, 'allEntityRequests'])->name(
+            'datatables.allEntityRequests',
+        );
+        Route::get('client-party-approval', [
+            App\Http\Controllers\DataTablesController::class,
+            'approvalEntityRequests',
+        ])->name('datatables.approvalEntityRequests');
     });
     /**!SECTION TIMS */
     Route::group(['prefix' => 'tims', 'middleware' => ['auth', 'web']], function () {
@@ -288,43 +447,67 @@ Route::group(['middleware' => ['auth', 'HtmlMinifier']], function () {
         Route::get('manual', [App\Http\Controllers\TIMSController::class, 'manual']);
         Route::get('re-trigger/{docNo}', [App\Http\Controllers\TIMSController::class, 'reTrigger']);
         Route::get('json/{id}', [App\Http\Controllers\TIMSController::class, 'jsonGenerate'])->name('tims.json');
-        Route::get('invoice/download/{id}', [App\Http\Controllers\TIMSController::class, 'invoiceDownload'])->name('tims.invoiceDownload')->middleware(['signed']);
-        Route::post('update-invoice', [App\Http\Controllers\TIMSController::class, 'updateInvoice'])->name('tims.updateInvoice');
+        Route::get('invoice/download/{id}', [App\Http\Controllers\TIMSController::class, 'invoiceDownload'])
+            ->name('tims.invoiceDownload')
+            ->middleware(['signed']);
+        Route::post('update-invoice', [App\Http\Controllers\TIMSController::class, 'updateInvoice'])->name(
+            'tims.updateInvoice',
+        );
     });
 
     /**!SECTION EFRIS */
     Route::group(['prefix' => 'efris'], function () {
         Route::get('/', [App\Http\Controllers\EfrisController::class, 'index'])->name('efris.index');
-        Route::get('re-trigger/{docNo}', [App\Http\Controllers\EfrisController::class, 'reTrigger'])->name('efris.reTrigger');
-        Route::post('update-invoice', [App\Http\Controllers\EfrisController::class, 'updateInvoice'])->name('efris.updateInvoice');
+        Route::get('re-trigger/{docNo}', [App\Http\Controllers\EfrisController::class, 'reTrigger'])->name(
+            'efris.reTrigger',
+        );
+        Route::post('update-invoice', [App\Http\Controllers\EfrisController::class, 'updateInvoice'])->name(
+            'efris.updateInvoice',
+        );
     });
 
     /**!SECTION TRA FIT*/
     Route::group(['prefix' => 'tra'], function () {
         Route::get('/', [App\Http\Controllers\TraController::class, 'index'])->name('tra.index');
         Route::get('/get-stats', [App\Http\Controllers\TraController::class, 'getStats'])->name('tra.get_stats');
-        Route::get('re-trigger/{docNo}', [App\Http\Controllers\TraController::class, 'reTrigger'])->name('tra.reTrigger');
-        Route::post('update-invoice', [App\Http\Controllers\TraController::class, 'updateInvoice'])->name('tra.updateInvoice');
+        Route::get('re-trigger/{docNo}', [App\Http\Controllers\TraController::class, 'reTrigger'])->name(
+            'tra.reTrigger',
+        );
+        Route::post('update-invoice', [App\Http\Controllers\TraController::class, 'updateInvoice'])->name(
+            'tra.updateInvoice',
+        );
     });
 
     /**!SECTION TRA ADL*/
     Route::group(['prefix' => 'traADL'], function () {
         Route::get('/', [App\Http\Controllers\TraADLController::class, 'index'])->name('traADL.index');
         Route::get('/get-stats', [App\Http\Controllers\TraADLController::class, 'getStats'])->name('traADL.get_stats');
-        Route::get('re-trigger/{docNo}', [App\Http\Controllers\TraADLController::class, 'reTrigger'])->name('traADL.reTrigger');
+        Route::get('re-trigger/{docNo}', [App\Http\Controllers\TraADLController::class, 'reTrigger'])->name(
+            'traADL.reTrigger',
+        );
         Route::get('json/{id}', [App\Http\Controllers\TraADLController::class, 'jsonGenerate'])->name('traADL.json');
-        Route::get('invoice/download/{id}', [App\Http\Controllers\TraADLController::class, 'invoiceDownload'])->name('traADL.invoiceDownload')->middleware(['signed']);
-        Route::post('update-invoice', [App\Http\Controllers\TraADLController::class, 'updateInvoice'])->name('traADL.updateInvoice');
+        Route::get('invoice/download/{id}', [App\Http\Controllers\TraADLController::class, 'invoiceDownload'])
+            ->name('traADL.invoiceDownload')
+            ->middleware(['signed']);
+        Route::post('update-invoice', [App\Http\Controllers\TraADLController::class, 'updateInvoice'])->name(
+            'traADL.updateInvoice',
+        );
     });
 
     /**!SECTION RRA */
     Route::group(['prefix' => 'rra'], function () {
         Route::get('/', [App\Http\Controllers\RRAController::class, 'index'])->name('rra.index');
         Route::get('/get-stats', [App\Http\Controllers\RRAController::class, 'getStats'])->name('rra.get_stats');
-        Route::get('re-trigger/{docNo}', [App\Http\Controllers\RRAController::class, 'reTrigger'])->name('rra.reTrigger');
+        Route::get('re-trigger/{docNo}', [App\Http\Controllers\RRAController::class, 'reTrigger'])->name(
+            'rra.reTrigger',
+        );
         Route::get('json/{id}', [App\Http\Controllers\RRAController::class, 'jsonGenerate'])->name('rra.json');
-        Route::get('invoice/download/{id}', [App\Http\Controllers\RRAController::class, 'invoiceDownload'])->name('rra.invoiceDownload')->middleware(['signed']);
-        Route::post('update-invoice', [App\Http\Controllers\RRAController::class, 'updateInvoice'])->name('rra.updateInvoice');
+        Route::get('invoice/download/{id}', [App\Http\Controllers\RRAController::class, 'invoiceDownload'])
+            ->name('rra.invoiceDownload')
+            ->middleware(['signed']);
+        Route::post('update-invoice', [App\Http\Controllers\RRAController::class, 'updateInvoice'])->name(
+            'rra.updateInvoice',
+        );
     });
 });
 
@@ -344,366 +527,499 @@ Route::group(['middleware' => ['auth', 'HtmlMinifier']], function () {
 //         });
 // })->middleware('auth'); // Ensure only authenticated users can access
 
-Route::post('/client-party/check-license', [ClientPartyController::class, 'checkLicense'])->name('client-party.check-license');
+Route::post('/client-party/check-license', [ClientPartyController::class, 'checkLicense'])->name(
+    'client-party.check-license',
+);
 Route::get('/api/companies', [ClientPartyController::class, 'getCompanies'])->name('companies');
 Route::get('/api/company-details', [ClientPartyController::class, 'getCompanyDetails'])->name('company.details');
-Route::post('/client-party/fetch-address-details', [ClientPartyController::class, 'fetchAddressDetails'])->name('client-party.fetch-address-details');
+Route::post('/client-party/fetch-address-details', [ClientPartyController::class, 'fetchAddressDetails'])->name(
+    'client-party.fetch-address-details',
+);
 Route::get('/api/clients', [ClientPartyController::class, 'getClients'])->name('clients');
-Route::post('/create-client-party-scm', [ClientPartyController::class, 'CreateClientPartySCM'])->middleware('auth:api')->name('client.create-party-scm');
+Route::post('/create-client-party-scm', [ClientPartyController::class, 'CreateClientPartySCM'])
+    ->middleware('auth:api')
+    ->name('client.create-party-scm');
 
 // ============================================================================
 // AZURE MANAGEMENT SYSTEM ROUTES
 // ============================================================================
 
-Route::prefix('azure')->name('azure.')->middleware(['auth'])->group(function () {
-    // Root redirect
-    Route::get('/', function () {
-        return redirect()->route('azure.dashboard.index');
-    })->name('home');
-
-    // ============================================================================
-    // DASHBOARD ROUTES
-    // ============================================================================
-
-    Route::prefix('dashboard')->name('dashboard.')->group(function () {
-        Route::get('/', [App\Http\Controllers\AzureDashboardController::class, 'index'])->name('index');
-        Route::get('/stats', [App\Http\Controllers\AzureDashboardController::class, 'getStats'])
-            ->name('stats')
-            ->middleware('throttle:dashboard');
-        Route::get('/reports', [App\Http\Controllers\AzureDashboardController::class, 'reports'])->name('reports');
-        Route::get('/activity', [App\Http\Controllers\AzureDashboardController::class, 'getRecentActivity'])
-            ->name('activity')
-            ->middleware('throttle:dashboard');
-
-        // AJAX get users
-        Route::get('/get-users', [App\Http\Controllers\AzureDashboardController::class, 'getUsers'])->name('get-users');
-    });
-
-    // ============================================================================
-    // USER MANAGEMENT ROUTES (with rate limiting)
-    // ============================================================================
-
-    Route::prefix('users')->name('users.')->group(function () {
-        // ============================================================================
-        // STATIC ROUTES - Must come first to prevent matching as {user} parameter
-        // ============================================================================
-
-        // List and create routes
-        Route::get('/', [App\Http\Controllers\AzureUserManagementController::class, 'index'])->name('index');
-        Route::get('/create', [App\Http\Controllers\AzureUserManagementController::class, 'create'])->name('create');
-
-        // Status filter routes - MUST come before /{user} routes
-        Route::get('/active', [App\Http\Controllers\AzureUserManagementController::class, 'active'])->name('active');
-        Route::get('/pending', [App\Http\Controllers\AzureUserManagementController::class, 'pending'])->name('pending');
-        Route::get('/inactive', [App\Http\Controllers\AzureUserManagementController::class, 'inactive'])->name('inactive');
-
-        // Stats endpoint (must come before {user} parameter)
-        Route::get('/stats', [App\Http\Controllers\AzureUserManagementController::class, 'stats'])->name('stats');
-
-        // ============================================================================
-        // POST ROUTES - Order doesn't matter as much (different HTTP method)
-        // ============================================================================
-
-        // POST: Create user (rate limited - 10 per minute)
-        Route::post('/', [App\Http\Controllers\AzureUserManagementController::class, 'store'])
-            ->name('store')
-            ->middleware('throttle:user_actions');
-
-        // ============================================================================
-        // DYNAMIC ROUTES - {user} parameter routes come last
-        // ============================================================================
-
-        // User-specific action routes (POST methods with {user} parameter)
-        // These are rate limited to prevent abuse
-        Route::post('/{user}/disable', [App\Http\Controllers\AzureUserManagementController::class, 'disable'])
-            ->name('disable')
-            ->middleware('throttle:user_actions');
-
-        Route::post('/{user}/enable', [App\Http\Controllers\AzureUserManagementController::class, 'enable'])
-            ->name('enable')
-            ->middleware('throttle:user_actions');
-
-        Route::post('/{user}/retry-modules', [App\Http\Controllers\AzureUserManagementController::class, 'retryModuleAssignments'])
-            ->name('retry-modules')
-            ->middleware('throttle:user_actions');
-
-        Route::post('/{user}/reset-password', [App\Http\Controllers\AzureUserManagementController::class, 'resetPassword'])
-            ->name('reset-password')
-            ->middleware('throttle:user_actions');
-
-        Route::post('/{user}/retry-d365', [App\Http\Controllers\AzureUserManagementController::class, 'retryD365Provisioning'])
-            ->name('retry-d365')
-            ->middleware('throttle:user_actions');
-
-        Route::post('/{user}/retry-scm', [App\Http\Controllers\AzureUserManagementController::class, 'retrySCMProvisioning'])
-            ->name('retry-scm')
-            ->middleware('throttle:user_actions');
-
-        Route::post('/{user}/sync-azure-id', [AzureUserManagementController::class, 'syncAzureId'])
-            ->name('sync-azure-id');
-
-        // BIZ/FITSYS Provisioning
-        Route::post('/{user}/retry-biz', [App\Http\Controllers\AzureUserManagementController::class, 'retryBIZProvisioning'])
-            ->name('retry-biz')
-            ->middleware('throttle:user_actions');
-
-        // FIT Express Provisioning
-        Route::post('/{user}/retry-fitexpress', [App\Http\Controllers\AzureUserManagementController::class, 'retryFITExpressProvisioning'])
-            ->name('retry-fitexpress')
-            ->middleware('throttle:user_actions');
-
-        // Office-specific assignment configuration
-        Route::post('/{user}/configure-office', [App\Http\Controllers\AzureUserManagementController::class, 'configureOfficeAssignments'])
-            ->name('configure-office')
-            ->middleware('throttle:user_actions');
-
-        Route::get('/{user}/offices/{office}/assignments', [App\Http\Controllers\AzureUserManagementController::class, 'getOfficeAssignments'])
-            ->name('office-assignments')
-            ->middleware('throttle:api');
-
-        // Quick module assignment
-        Route::post('/{user}/quick-assign-module', [App\Http\Controllers\AzureUserManagementController::class, 'quickAssignModule'])
-            ->name('quick-assign-module')
-            ->middleware('throttle:user_actions');
-
-        Route::get('/{user}/modules/{module}/assignments', [App\Http\Controllers\AzureUserManagementController::class, 'getUserModuleAssignments'])
-            ->name('module-assignments')
-            ->middleware('throttle:api');
-
-        // GET: Get user's current application access status
-        Route::get('/{user}/application-status', [App\Http\Controllers\AzureUserManagementController::class, 'getUserApplicationStatus'])
-            ->name('application-status')
-            ->middleware('throttle:api');
-
-        // POST: Manage user access across multiple applications
-        Route::post('/{user}/manage-access', [App\Http\Controllers\AzureUserManagementController::class, 'manageUserApplicationAccess'])
-            ->name('manage-access')
-            ->middleware('throttle:user_actions');
-
-        // ============================================================================
-        // GENERIC CRUD ROUTES - Must come after all specific {user} routes
-        // ============================================================================
-
-        Route::get('/{user}', [App\Http\Controllers\AzureUserManagementController::class, 'show'])
-            ->name('show');
-
-        Route::get('/{user}/edit', [App\Http\Controllers\AzureUserManagementController::class, 'edit'])
-            ->name('edit');
-
-        // PUT/PATCH: Update user (rate limited - 10 per minute)
-        Route::put('/{user}', [App\Http\Controllers\AzureUserManagementController::class, 'update'])
-            ->name('update')
-            ->middleware('throttle:user_actions');
-
-        Route::patch('/{user}', [App\Http\Controllers\AzureUserManagementController::class, 'update'])
-            ->name('patch')
-            ->middleware('throttle:user_actions');
-
-        // DELETE: Remove user (rate limited)
-        Route::delete('/{user}', [App\Http\Controllers\AzureUserManagementController::class, 'destroy'])
-            ->name('destroy')
-            ->middleware('throttle:user_actions');
-    });
-
-    // ============================================================================
-    // MODULE MANAGEMENT ROUTES
-    // ============================================================================
-
-    Route::prefix('modules')->name('modules.')->group(function () {
+Route::prefix('azure')
+    ->name('azure.')
+    ->middleware(['auth'])
+    ->group(function () {
+        // Root redirect
         Route::get('/', function () {
-            return view('azure-management.modules.index');
-        })->name('index');
+            return redirect()->route('azure.dashboard.index');
+        })->name('home');
 
-        Route::get('/assign', function () {
-            return view('azure-management.modules.assign');
-        })->name('assign');
+        // ============================================================================
+        // DASHBOARD ROUTES
+        // ============================================================================
 
-        // API endpoints for dynamic module assignment
-        Route::get('/scm-functions', [App\Http\Controllers\AzureUserManagementController::class, 'getSCMFunctions'])
-            ->name('scm-functions')
-            ->middleware('throttle:api');
+        Route::prefix('dashboard')
+            ->name('dashboard.')
+            ->group(function () {
+                Route::get('/', [App\Http\Controllers\AzureDashboardController::class, 'index'])->name('index');
+                Route::get('/stats', [App\Http\Controllers\AzureDashboardController::class, 'getStats'])
+                    ->name('stats')
+                    ->middleware('throttle:dashboard');
+                Route::get('/reports', [App\Http\Controllers\AzureDashboardController::class, 'reports'])->name(
+                    'reports',
+                );
+                Route::get('/activity', [App\Http\Controllers\AzureDashboardController::class, 'getRecentActivity'])
+                    ->name('activity')
+                    ->middleware('throttle:dashboard');
 
-        Route::get('/roles', [App\Http\Controllers\AzureUserManagementController::class, 'getModuleRolesByCode'])
-            ->name('roles')
-            ->middleware('throttle:api');
+                // AJAX get users
+                Route::get('/get-users', [App\Http\Controllers\AzureDashboardController::class, 'getUsers'])->name(
+                    'get-users',
+                );
+            });
+
+        // ============================================================================
+        // USER MANAGEMENT ROUTES (with rate limiting)
+        // ============================================================================
+
+        Route::prefix('users')
+            ->name('users.')
+            ->group(function () {
+                // ============================================================================
+                // STATIC ROUTES - Must come first to prevent matching as {user} parameter
+                // ============================================================================
+
+                // List and create routes
+                Route::get('/', [App\Http\Controllers\AzureUserManagementController::class, 'index'])->name('index');
+                Route::get('/create', [App\Http\Controllers\AzureUserManagementController::class, 'create'])->name(
+                    'create',
+                );
+
+                // Status filter routes - MUST come before /{user} routes
+                Route::get('/active', [App\Http\Controllers\AzureUserManagementController::class, 'active'])->name(
+                    'active',
+                );
+                Route::get('/pending', [App\Http\Controllers\AzureUserManagementController::class, 'pending'])->name(
+                    'pending',
+                );
+                Route::get('/inactive', [App\Http\Controllers\AzureUserManagementController::class, 'inactive'])->name(
+                    'inactive',
+                );
+
+                // Stats endpoint (must come before {user} parameter)
+                Route::get('/stats', [App\Http\Controllers\AzureUserManagementController::class, 'stats'])->name(
+                    'stats',
+                );
+
+                // ============================================================================
+                // POST ROUTES - Order doesn't matter as much (different HTTP method)
+                // ============================================================================
+
+                // POST: Create user (rate limited - 10 per minute)
+                Route::post('/', [App\Http\Controllers\AzureUserManagementController::class, 'store'])
+                    ->name('store')
+                    ->middleware('throttle:user_actions');
+
+                // ============================================================================
+                // DYNAMIC ROUTES - {user} parameter routes come last
+                // ============================================================================
+
+                // User-specific action routes (POST methods with {user} parameter)
+                // These are rate limited to prevent abuse
+                Route::post('/{user}/disable', [App\Http\Controllers\AzureUserManagementController::class, 'disable'])
+                    ->name('disable')
+                    ->middleware('throttle:user_actions');
+
+                Route::post('/{user}/enable', [App\Http\Controllers\AzureUserManagementController::class, 'enable'])
+                    ->name('enable')
+                    ->middleware('throttle:user_actions');
+
+                Route::post('/{user}/retry-modules', [
+                    App\Http\Controllers\AzureUserManagementController::class,
+                    'retryModuleAssignments',
+                ])
+                    ->name('retry-modules')
+                    ->middleware('throttle:user_actions');
+
+                Route::post('/{user}/reset-password', [
+                    App\Http\Controllers\AzureUserManagementController::class,
+                    'resetPassword',
+                ])
+                    ->name('reset-password')
+                    ->middleware('throttle:user_actions');
+
+                Route::post('/{user}/retry-d365', [
+                    App\Http\Controllers\AzureUserManagementController::class,
+                    'retryD365Provisioning',
+                ])
+                    ->name('retry-d365')
+                    ->middleware('throttle:user_actions');
+
+                Route::post('/{user}/retry-scm', [
+                    App\Http\Controllers\AzureUserManagementController::class,
+                    'retrySCMProvisioning',
+                ])
+                    ->name('retry-scm')
+                    ->middleware('throttle:user_actions');
+
+                Route::post('/{user}/sync-azure-id', [AzureUserManagementController::class, 'syncAzureId'])->name(
+                    'sync-azure-id',
+                );
+
+                // BIZ/FITSYS Provisioning
+                Route::post('/{user}/retry-biz', [
+                    App\Http\Controllers\AzureUserManagementController::class,
+                    'retryBIZProvisioning',
+                ])
+                    ->name('retry-biz')
+                    ->middleware('throttle:user_actions');
+
+                // FIT Express Provisioning
+                Route::post('/{user}/retry-fitexpress', [
+                    App\Http\Controllers\AzureUserManagementController::class,
+                    'retryFITExpressProvisioning',
+                ])
+                    ->name('retry-fitexpress')
+                    ->middleware('throttle:user_actions');
+
+                // Office-specific assignment configuration
+                Route::post('/{user}/configure-office', [
+                    App\Http\Controllers\AzureUserManagementController::class,
+                    'configureOfficeAssignments',
+                ])
+                    ->name('configure-office')
+                    ->middleware('throttle:user_actions');
+
+                Route::get('/{user}/offices/{office}/assignments', [
+                    App\Http\Controllers\AzureUserManagementController::class,
+                    'getOfficeAssignments',
+                ])
+                    ->name('office-assignments')
+                    ->middleware('throttle:api');
+
+                // Quick module assignment
+                Route::post('/{user}/quick-assign-module', [
+                    App\Http\Controllers\AzureUserManagementController::class,
+                    'quickAssignModule',
+                ])
+                    ->name('quick-assign-module')
+                    ->middleware('throttle:user_actions');
+
+                Route::get('/{user}/modules/{module}/assignments', [
+                    App\Http\Controllers\AzureUserManagementController::class,
+                    'getUserModuleAssignments',
+                ])
+                    ->name('module-assignments')
+                    ->middleware('throttle:api');
+
+                // GET: Get user's current application access status
+                Route::get('/{user}/application-status', [
+                    App\Http\Controllers\AzureUserManagementController::class,
+                    'getUserApplicationStatus',
+                ])
+                    ->name('application-status')
+                    ->middleware('throttle:api');
+
+                // POST: Manage user access across multiple applications
+                Route::post('/{user}/manage-access', [
+                    App\Http\Controllers\AzureUserManagementController::class,
+                    'manageUserApplicationAccess',
+                ])
+                    ->name('manage-access')
+                    ->middleware('throttle:user_actions');
+
+                // ============================================================================
+                // GENERIC CRUD ROUTES - Must come after all specific {user} routes
+                // ============================================================================
+
+                Route::get('/{user}', [App\Http\Controllers\AzureUserManagementController::class, 'show'])->name(
+                    'show',
+                );
+
+                Route::get('/{user}/edit', [App\Http\Controllers\AzureUserManagementController::class, 'edit'])->name(
+                    'edit',
+                );
+
+                // PUT/PATCH: Update user (rate limited - 10 per minute)
+                Route::put('/{user}', [App\Http\Controllers\AzureUserManagementController::class, 'update'])
+                    ->name('update')
+                    ->middleware('throttle:user_actions');
+
+                Route::patch('/{user}', [App\Http\Controllers\AzureUserManagementController::class, 'update'])
+                    ->name('patch')
+                    ->middleware('throttle:user_actions');
+
+                // DELETE: Remove user (rate limited)
+                Route::delete('/{user}', [App\Http\Controllers\AzureUserManagementController::class, 'destroy'])
+                    ->name('destroy')
+                    ->middleware('throttle:user_actions');
+            });
+
+        // ============================================================================
+        // MODULE MANAGEMENT ROUTES
+        // ============================================================================
+
+        Route::prefix('modules')
+            ->name('modules.')
+            ->group(function () {
+                Route::get('/', function () {
+                    return view('azure-management.modules.index');
+                })->name('index');
+
+                Route::get('/assign', function () {
+                    return view('azure-management.modules.assign');
+                })->name('assign');
+
+                // API endpoints for dynamic module assignment
+                Route::get('/scm-functions', [
+                    App\Http\Controllers\AzureUserManagementController::class,
+                    'getSCMFunctions',
+                ])
+                    ->name('scm-functions')
+                    ->middleware('throttle:api');
+
+                Route::get('/roles', [
+                    App\Http\Controllers\AzureUserManagementController::class,
+                    'getModuleRolesByCode',
+                ])
+                    ->name('roles')
+                    ->middleware('throttle:api');
+            });
+
+        // ============================================================================
+        // REPORTS ROUTES (with rate limiting for exports)
+        // ============================================================================
+
+        Route::prefix('reports')
+            ->name('reports.')
+            ->group(function () {
+                Route::get('/', [App\Http\Controllers\AzureReportController::class, 'index'])->name('index');
+                Route::get('/users', [App\Http\Controllers\AzureReportController::class, 'users'])->name('users');
+                Route::get('/activity', [App\Http\Controllers\AzureReportController::class, 'activity'])->name(
+                    'activity',
+                );
+                Route::get('/provisioning', [App\Http\Controllers\AzureReportController::class, 'provisioning'])->name(
+                    'provisioning',
+                );
+
+                // Export is a heavy operation - limit to 5 per minute
+                Route::get('/export/{type}', [App\Http\Controllers\AzureReportController::class, 'export'])
+                    ->name('export')
+                    ->middleware('throttle:heavy_operations');
+            });
+
+        // ============================================================================
+        // AZURE AUTHENTICATION ROUTES
+        // ============================================================================
+
+        Route::prefix('auth')
+            ->name('auth.')
+            ->group(function () {
+                Route::get('/', [App\Http\Controllers\AzureAuthController::class, 'redirectToProvider'])->name(
+                    'redirect',
+                );
+                Route::get('/callback', [
+                    App\Http\Controllers\AzureAuthController::class,
+                    'handleProviderCallback',
+                ])->name('callback');
+                Route::post('/test-connection', [
+                    App\Http\Controllers\AzureAuthController::class,
+                    'testConnection',
+                ])->name('test');
+                Route::post('/disconnect', [App\Http\Controllers\AzureAuthController::class, 'disconnect'])->name(
+                    'disconnect',
+                );
+            });
+
+        // ============================================================================
+        // API ROUTES (AJAX/JSON endpoints with rate limiting)
+        // ============================================================================
+
+        Route::prefix('api')
+            ->name('api.')
+            ->group(function () {
+                // Company API
+                Route::get('/companies/{location}', [
+                    App\Http\Controllers\Api\AzureCompanyController::class,
+                    'getByLocation',
+                ])
+                    ->name('companies.by-location')
+                    ->middleware('throttle:api');
+
+                // User Management API (for AJAX operations)
+                Route::prefix('users')
+                    ->name('users.')
+                    ->group(function () {
+                        // List and create routes
+                        Route::get('/', [App\Http\Controllers\AzureUserManagementController::class, 'index'])->name(
+                            'index',
+                        );
+                        Route::get('/create', [
+                            App\Http\Controllers\AzureUserManagementController::class,
+                            'create',
+                        ])->name('create');
+
+                        // POST: Create user (rate limited - 10 per minute)
+                        Route::post('/', [App\Http\Controllers\AzureUserManagementController::class, 'store'])
+                            ->name('store')
+                            ->middleware('throttle:user_actions');
+
+                        // Stats endpoint (must come before {user} parameter)
+                        Route::get('/stats', [
+                            App\Http\Controllers\AzureUserManagementController::class,
+                            'stats',
+                        ])->name('stats');
+
+                        // User-specific action routes (MUST come before generic {user} routes)
+                        // These are rate limited to prevent abuse
+                        Route::post('/{user}/disable', [
+                            App\Http\Controllers\AzureUserManagementController::class,
+                            'disable',
+                        ])
+                            ->name('disable')
+                            ->middleware('throttle:user_actions');
+
+                        Route::post('/{user}/enable', [
+                            App\Http\Controllers\AzureUserManagementController::class,
+                            'enable',
+                        ])
+                            ->name('enable')
+                            ->middleware('throttle:user_actions');
+
+                        Route::post('/{user}/retry-modules', [
+                            App\Http\Controllers\AzureUserManagementController::class,
+                            'retryModuleAssignments',
+                        ])
+                            ->name('retry-modules')
+                            ->middleware('throttle:user_actions');
+
+                        // Generic CRUD routes (come after specific actions)
+                        Route::get('/{user}', [
+                            App\Http\Controllers\AzureUserManagementController::class,
+                            'show',
+                        ])->name('show');
+
+                        Route::get('/{user}/edit', [
+                            App\Http\Controllers\AzureUserManagementController::class,
+                            'edit',
+                        ])->name('edit');
+
+                        // PUT/PATCH: Update user (rate limited - 10 per minute)
+                        Route::put('/{user}', [App\Http\Controllers\AzureUserManagementController::class, 'update'])
+                            ->name('update')
+                            ->middleware('throttle:user_actions');
+
+                        Route::patch('/{user}', [App\Http\Controllers\AzureUserManagementController::class, 'update'])
+                            ->name('patch')
+                            ->middleware('throttle:user_actions');
+
+                        // DELETE: Remove user (rate limited)
+                        Route::delete('/{user}', [App\Http\Controllers\AzureUserManagementController::class, 'destroy'])
+                            ->name('destroy')
+                            ->middleware('throttle:user_actions');
+                    });
+
+                // Dashboard API (rate limited)
+                Route::prefix('dashboard')
+                    ->name('dashboard.')
+                    ->group(function () {
+                        Route::get('/stats', [App\Http\Controllers\AzureDashboardController::class, 'getStats'])
+                            ->name('stats')
+                            ->middleware('throttle:dashboard');
+                        Route::get('/activity', [
+                            App\Http\Controllers\AzureDashboardController::class,
+                            'getRecentActivity',
+                        ])
+                            ->name('activity')
+                            ->middleware('throttle:dashboard');
+                    });
+            });
+
+        // ============================================================================
+        // PROFILE ROUTES
+        // ============================================================================
+
+        Route::prefix('profile')
+            ->name('profile.')
+            ->group(function () {
+                Route::get('/', [App\Http\Controllers\AzureProfileController::class, 'edit'])->name('edit');
+                Route::patch('/', [App\Http\Controllers\AzureProfileController::class, 'update'])
+                    ->name('update')
+                    ->middleware('throttle:user_actions');
+                Route::delete('/', [App\Http\Controllers\AzureProfileController::class, 'destroy'])
+                    ->name('destroy')
+                    ->middleware('throttle:user_actions');
+            });
+
+        // ============================================================================
+        // HEALTH CHECK
+        // ============================================================================
+
+        Route::get('/health', function () {
+            return response()->json([
+                'status' => 'ok',
+                'system' => 'Azure Management',
+                'timestamp' => now()->toIso8601String(),
+                'environment' => app()->environment(),
+            ]);
+        })->name('health');
     });
-
-    // ============================================================================
-    // REPORTS ROUTES (with rate limiting for exports)
-    // ============================================================================
-
-    Route::prefix('reports')->name('reports.')->group(function () {
-        Route::get('/', [App\Http\Controllers\AzureReportController::class, 'index'])->name('index');
-        Route::get('/users', [App\Http\Controllers\AzureReportController::class, 'users'])->name('users');
-        Route::get('/activity', [App\Http\Controllers\AzureReportController::class, 'activity'])->name('activity');
-        Route::get('/provisioning', [App\Http\Controllers\AzureReportController::class, 'provisioning'])->name('provisioning');
-
-        // Export is a heavy operation - limit to 5 per minute
-        Route::get('/export/{type}', [App\Http\Controllers\AzureReportController::class, 'export'])
-            ->name('export')
-            ->middleware('throttle:heavy_operations');
-    });
-
-    // ============================================================================
-    // AZURE AUTHENTICATION ROUTES
-    // ============================================================================
-
-    Route::prefix('auth')->name('auth.')->group(function () {
-        Route::get('/', [App\Http\Controllers\AzureAuthController::class, 'redirectToProvider'])->name('redirect');
-        Route::get('/callback', [App\Http\Controllers\AzureAuthController::class, 'handleProviderCallback'])->name('callback');
-        Route::post('/test-connection', [App\Http\Controllers\AzureAuthController::class, 'testConnection'])->name('test');
-        Route::post('/disconnect', [App\Http\Controllers\AzureAuthController::class, 'disconnect'])->name('disconnect');
-    });
-
-    // ============================================================================
-    // API ROUTES (AJAX/JSON endpoints with rate limiting)
-    // ============================================================================
-
-    Route::prefix('api')->name('api.')->group(function () {
-
-        // Company API
-        Route::get('/companies/{location}', [App\Http\Controllers\Api\AzureCompanyController::class, 'getByLocation'])
-            ->name('companies.by-location')
-            ->middleware('throttle:api');
-
-        // User Management API (for AJAX operations)
-        Route::prefix('users')->name('users.')->group(function () {
-            // List and create routes
-            Route::get('/', [App\Http\Controllers\AzureUserManagementController::class, 'index'])->name('index');
-            Route::get('/create', [App\Http\Controllers\AzureUserManagementController::class, 'create'])->name('create');
-
-            // POST: Create user (rate limited - 10 per minute)
-            Route::post('/', [App\Http\Controllers\AzureUserManagementController::class, 'store'])
-                ->name('store')
-                ->middleware('throttle:user_actions');
-
-            // Stats endpoint (must come before {user} parameter)
-            Route::get('/stats', [App\Http\Controllers\AzureUserManagementController::class, 'stats'])->name('stats');
-
-            // User-specific action routes (MUST come before generic {user} routes)
-            // These are rate limited to prevent abuse
-            Route::post('/{user}/disable', [App\Http\Controllers\AzureUserManagementController::class, 'disable'])
-                ->name('disable')
-                ->middleware('throttle:user_actions');
-
-            Route::post('/{user}/enable', [App\Http\Controllers\AzureUserManagementController::class, 'enable'])
-                ->name('enable')
-                ->middleware('throttle:user_actions');
-
-            Route::post('/{user}/retry-modules', [App\Http\Controllers\AzureUserManagementController::class, 'retryModuleAssignments'])
-                ->name('retry-modules')
-                ->middleware('throttle:user_actions');
-
-            // Generic CRUD routes (come after specific actions)
-            Route::get('/{user}', [App\Http\Controllers\AzureUserManagementController::class, 'show'])
-                ->name('show');
-
-            Route::get('/{user}/edit', [App\Http\Controllers\AzureUserManagementController::class, 'edit'])
-                ->name('edit');
-
-            // PUT/PATCH: Update user (rate limited - 10 per minute)
-            Route::put('/{user}', [App\Http\Controllers\AzureUserManagementController::class, 'update'])
-                ->name('update')
-                ->middleware('throttle:user_actions');
-
-            Route::patch('/{user}', [App\Http\Controllers\AzureUserManagementController::class, 'update'])
-                ->name('patch')
-                ->middleware('throttle:user_actions');
-
-            // DELETE: Remove user (rate limited)
-            Route::delete('/{user}', [App\Http\Controllers\AzureUserManagementController::class, 'destroy'])
-                ->name('destroy')
-                ->middleware('throttle:user_actions');
-        });
-
-        // Dashboard API (rate limited)
-        Route::prefix('dashboard')->name('dashboard.')->group(function () {
-            Route::get('/stats', [App\Http\Controllers\AzureDashboardController::class, 'getStats'])
-                ->name('stats')
-                ->middleware('throttle:dashboard');
-            Route::get('/activity', [App\Http\Controllers\AzureDashboardController::class, 'getRecentActivity'])
-                ->name('activity')
-                ->middleware('throttle:dashboard');
-        });
-    });
-
-    // ============================================================================
-    // PROFILE ROUTES
-    // ============================================================================
-
-    Route::prefix('profile')->name('profile.')->group(function () {
-        Route::get('/', [App\Http\Controllers\AzureProfileController::class, 'edit'])->name('edit');
-        Route::patch('/', [App\Http\Controllers\AzureProfileController::class, 'update'])
-            ->name('update')
-            ->middleware('throttle:user_actions');
-        Route::delete('/', [App\Http\Controllers\AzureProfileController::class, 'destroy'])
-            ->name('destroy')
-            ->middleware('throttle:user_actions');
-    });
-
-    // ============================================================================
-    // HEALTH CHECK
-    // ============================================================================
-
-    Route::get('/health', function () {
-        return response()->json([
-            'status' => 'ok',
-            'system' => 'Azure Management',
-            'timestamp' => now()->toIso8601String(),
-            'environment' => app()->environment(),
-        ]);
-    })->name('health');
-});
 
 // ============================================================================
 // AZURE USER SYNC ROUTES (Manual Triggers)
 // ============================================================================
 
-Route::middleware(['auth'])->prefix('azure/sync')->name('azure.sync.')->group(function () {
+Route::middleware(['auth'])
+    ->prefix('azure/sync')
+    ->name('azure.sync.')
+    ->group(function () {
+        // Manual Odoo User Sync (web-based trigger)
+        Route::post('/odoo-users', [OdooSyncController::class, 'syncUsersManual'])
+            ->name('odoo-users')
+            ->middleware('throttle:user_actions');
 
-    // Manual Odoo User Sync (web-based trigger)
-    Route::post('/odoo-users', [OdooSyncController::class, 'syncUsersManual'])
-        ->name('odoo-users')
-        ->middleware('throttle:user_actions');
+        // Odoo Sync Routes
+        Route::post('/odoo/sync-users-ajax', [OdooSyncController::class, 'syncUsersAjax'])->name('odoo.sync.ajax');
 
-    // Odoo Sync Routes
-    Route::post('/odoo/sync-users-ajax', [OdooSyncController::class, 'syncUsersAjax'])
-        ->name('odoo.sync.ajax');
+        // Manual User Activation (web-based trigger)
+        Route::post('/activate-users', [
+            App\Http\Controllers\AzureUserManagementController::class,
+            'activatePendingUsersManual',
+        ])
+            ->name('activate-users')
+            ->middleware('throttle:user_actions');
 
-    // Manual User Activation (web-based trigger)
-    Route::post('/activate-users', [App\Http\Controllers\AzureUserManagementController::class, 'activatePendingUsersManual'])
-        ->name('activate-users')
-        ->middleware('throttle:user_actions');
+        // Combined Full Sync (Odoo + Activation)
+        Route::post('/full-sync', [App\Http\Controllers\AzureUserManagementController::class, 'fullSyncManual'])
+            ->name('full')
+            ->middleware('throttle:user_actions');
 
-    // Combined Full Sync (Odoo + Activation)
-    Route::post('/full-sync', [App\Http\Controllers\AzureUserManagementController::class, 'fullSyncManual'])
-        ->name('full')
-        ->middleware('throttle:user_actions');
+        // Sync status endpoint (AJAX)
+        Route::get('/status', function () {
+            try {
+                $stats = [
+                    'pending_users' => DB::connection('sqlsrv')
+                        ->table('Azure_Users')
+                        ->where('Status', 'Pending')
+                        ->count(),
+                    'last_sync' => Cache::get('last_odoo_sync'),
+                    'last_activation' => Cache::get('last_user_activation'),
+                ];
 
-    // Sync status endpoint (AJAX)
-    Route::get('/status', function () {
-        try {
-            $stats = [
-                'pending_users' => DB::connection('sqlsrv')
-                    ->table('Azure_Users')
-                    ->where('Status', 'Pending')
-                    ->count(),
-                'last_sync' => Cache::get('last_odoo_sync'),
-                'last_activation' => Cache::get('last_user_activation'),
-            ];
-
-            return response()->json([
-                'success' => true,
-                'data' => $stats,
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-            ], 500);
-        }
-    })->name('status');
-});
+                return response()->json([
+                    'success' => true,
+                    'data' => $stats,
+                ]);
+            } catch (\Exception $e) {
+                return response()->json(
+                    [
+                        'success' => false,
+                        'message' => $e->getMessage(),
+                    ],
+                    500,
+                );
+            }
+        })->name('status');
+    });
 
 Route::get('/sync-odoo-users', [App\Http\Controllers\OdooSyncController::class, 'syncUsers']);
 Route::get('/test-odoo-columns', [App\Http\Controllers\OdooSyncController::class, 'testColumns']);
@@ -787,7 +1103,9 @@ Route::get('/test-stored-procedures', function () {
             }
         } catch (\Exception $e) {
             echo "<p class='error'>❌ Error: " . htmlspecialchars($e->getMessage()) . '</p>';
-            echo "<pre style='background: #fff3cd; padding: 10px; border-radius: 4px;'>" . htmlspecialchars($e->getTraceAsString()) . '</pre>';
+            echo "<pre style='background: #fff3cd; padding: 10px; border-radius: 4px;'>" .
+                htmlspecialchars($e->getTraceAsString()) .
+                '</pre>';
         }
         echo '</div>';
 
@@ -818,7 +1136,7 @@ Route::get('/test-stored-procedures', function () {
                     try {
                         $roles = DB::connection('sqlsrv')->select(
                             'EXEC sp_UserCreation_ResourceRole @ApplicationCode = ?',
-                            [$appCode]
+                            [$appCode],
                         );
 
                         echo "<p class='success'>✅ Execution successful! Found " . count($roles) . ' roles</p>';
@@ -856,7 +1174,9 @@ Route::get('/test-stored-procedures', function () {
             }
         } catch (\Exception $e) {
             echo "<p class='error'>❌ Error: " . htmlspecialchars($e->getMessage()) . '</p>';
-            echo "<pre style='background: #fff3cd; padding: 10px; border-radius: 4px;'>" . htmlspecialchars($e->getTraceAsString()) . '</pre>';
+            echo "<pre style='background: #fff3cd; padding: 10px; border-radius: 4px;'>" .
+                htmlspecialchars($e->getTraceAsString()) .
+                '</pre>';
         }
         echo '</div>';
 
@@ -883,7 +1203,9 @@ Route::get('/test-stored-procedures', function () {
 
                 foreach ($modules as $module) {
                     $isSCM = in_array($module->ApplicationId, ['OPS', 'OPSUAT']);
-                    $scmBadge = $isSCM ? "<span style='background: #27ae60; color: white; padding: 2px 8px; border-radius: 3px; font-size: 0.85em;'>SCM</span>" : '';
+                    $scmBadge = $isSCM
+                        ? "<span style='background: #27ae60; color: white; padding: 2px 8px; border-radius: 3px; font-size: 0.85em;'>SCM</span>"
+                        : '';
 
                     echo '<tr>';
                     echo '<td>' . htmlspecialchars($module->Id) . '</td>';
@@ -969,16 +1291,12 @@ Route::get('/test-azure-users', function () {
 // SHIPMENT EMAIL REPORTS ROUTES - Must come before wildcard routes
 // ============================================================================
 Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function () {
-    Route::get('/shipment-reports', [ShipmentReportController::class, 'index'])
-        ->name('shipment-reports.index');
+    Route::get('/shipment-reports', [ShipmentReportController::class, 'index'])->name('shipment-reports.index');
 
-    Route::get('/shipment-reports/data', [ShipmentReportController::class, 'getData'])
-        ->name('shipment-reports.data');
+    Route::get('/shipment-reports/data', [ShipmentReportController::class, 'getData'])->name('shipment-reports.data');
 
-    Route::get('/shipment-reprts/stats', [ShipmentReportController::class, 'getstats'])
-        ->name('shipment-reports.stats');
+    Route::get('/shipment-reprts/stats', [ShipmentReportController::class, 'getstats'])->name('shipment-reports.stats');
 });
-
 
 // ============================================================================
 // QUOTATION INTEGRATION ROUTES
@@ -1159,8 +1477,9 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
         'lookupEquipmentTypes',
     ])->name('quotation.lookup.equipmentTypes');
 
-    Route::get('/quotation/offices', [App\Http\Controllers\QuotationController::class, 'getOfficeList'])
-    ->name('quotation.offices');
+    Route::get('/quotation/offices', [App\Http\Controllers\QuotationController::class, 'getOfficeList'])->name(
+        'quotation.offices',
+    );
 
     // ============================================
     // WRITE ACTIONS (POST)
@@ -1273,53 +1592,109 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
         'getRequestOfficeHistory',
     ])->name('quotation.request-office-history');
 
-    // ============================================
-    // WILDCARD ROUTES — must be last
-    // {id} in a GET route matches ANY path segment.
-    // Nothing with a static segment may come after /quotation/{id}.
-    // ============================================
-    Route::post('/quotation/{id}/generate-pdf', [App\Http\Controllers\QuotationController::class, 'generatePdf'])->name(
-        'quotation.generate-pdf',
-    );
-    Route::post('/quotation/{quoteno}/duplicate', [
-        App\Http\Controllers\QuotationController::class,
-        'processDuplicate',
-    ])->name('quotation.processDuplicate');
-    Route::post('/quotation/{bookingno}/copy', [App\Http\Controllers\QuotationController::class, 'copy'])->name(
-        'quotation.copy',
+    Route::get('/quotation/website-requests', [App\Http\Controllers\WebsiteQuotationController::class, 'index'])->name(
+        'quotation.website-requests',
     );
 
-    Route::get('/quotation/{id}/versions', [
-        App\Http\Controllers\QuotationController::class,
-        'getQuotationVersions',
-    ])->name('quotation.versions');
-    Route::get('/quotation/{id}/download-pdf/{version}', [
-        App\Http\Controllers\QuotationController::class,
-        'downloadPdf',
-    ])->name('quotation.download-pdf');
-    Route::get('/quotation/{id}/edit', [App\Http\Controllers\QuotationController::class, 'edit'])->name(
-        'quotation.edit',
-    );
-    Route::post('/quotation/{id}/update', [App\Http\Controllers\QuotationController::class, 'update'])->name(
-        'quotation.update',
+    // WEBSITE QUOTATION REQUESTS
+    // ============================================
+    Route::get('/quotation/website-requests', [App\Http\Controllers\WebsiteQuotationController::class, 'index'])->name(
+        'quotation.website-requests',
     );
 
-    // ⚠️ ABSOLUTE LAST — catches /quotation/<anything>
-    Route::get('/quotation/{id}', [App\Http\Controllers\QuotationController::class, 'view'])->name('quotation.view');
+    Route::get('/quotation/website-requests/portal', [
+        App\Http\Controllers\WebsiteQuotationController::class,
+        'portal',
+    ])->name('quotation.website-requests.portal');
 
-    // ============================================
-    // CRM SYNC
-    // ============================================
-    Route::get('/crm/sync/history', [App\Http\Controllers\CrmSyncController::class, 'history'])->name(
-        'crm.sync.history',
+    Route::get('/quotation/sales-intelligence', [
+        App\Http\Controllers\QuotationController::class,
+        'salesIntelligence',
+    ])->name('quotation.sales-intelligence');
+
+    Route::get('/quotation/status-reset', [
+        App\Http\Controllers\QuotationController::class,
+        'showStatusResetForm',
+    ])->name('quotation.status-reset.form');
+    Route::post('/quotation/status-reset', [App\Http\Controllers\QuotationController::class, 'resetStatus'])->name(
+        'quotation.status-reset',
     );
-    Route::post('/crm/sync/run', [App\Http\Controllers\CrmSyncController::class, 'run'])->name('crm.sync.run');
+
+    Route::get('/quotation/{id}/approval-status', [
+        App\Http\Controllers\QuotationController::class,
+        'getApprovalStatus',
+    ])->name('quotation.approval.status');
+
+    Route::post('/quotation/{id}/send-for-approval', [
+        App\Http\Controllers\QuotationController::class,
+        'sendForApproval',
+    ])->name('quotation.approval.send');
+
+    // fix: add approvals dashboard route — separate from per-quote approval endpoints
+    Route::get('/quotation/approvals', [App\Http\Controllers\QuotationController::class, 'approvalsDashboard'])->name(
+        'quotation.approvals',
+    );
+
+    Route::post('/quotation/approvals/{requestId}/decision', [
+        App\Http\Controllers\QuotationController::class,
+        'submitApprovalDecision',
+    ])->name('quotation.approvals.decision');
+
+    // Approval page — reached via email link
+    Route::get('/quotation/{id}/approve', [App\Http\Controllers\QuotationController::class, 'approvePage'])
+        ->name('quotation.approve.page')
+        ->middleware('auth');
+
+    // Decision submission from approval page
+    Route::post('/quotation/{id}/approval-decision', [
+        App\Http\Controllers\QuotationController::class,
+        'approvalDecision',
+    ])
+        ->name('quotation.approval.decision')
+        ->middleware('auth');
 });
+
+// ============================================
+// WILDCARD ROUTES — must be last
+// {id} in a GET route matches ANY path segment.
+// Nothing with a static segment may come after /quotation/{id}.
+// ============================================
+Route::post('/quotation/{id}/generate-pdf', [App\Http\Controllers\QuotationController::class, 'generatePdf'])->name(
+    'quotation.generate-pdf',
+);
+Route::post('/quotation/{quoteno}/duplicate', [
+    App\Http\Controllers\QuotationController::class,
+    'processDuplicate',
+])->name('quotation.processDuplicate');
+Route::post('/quotation/{bookingno}/copy', [App\Http\Controllers\QuotationController::class, 'copy'])->name(
+    'quotation.copy',
+);
+
+Route::get('/quotation/{id}/versions', [App\Http\Controllers\QuotationController::class, 'getQuotationVersions'])->name(
+    'quotation.versions',
+);
+Route::get('/quotation/{id}/download-pdf/{version}', [
+    App\Http\Controllers\QuotationController::class,
+    'downloadPdf',
+])->name('quotation.download-pdf');
+Route::get('/quotation/{id}/edit', [App\Http\Controllers\QuotationController::class, 'edit'])->name('quotation.edit');
+Route::post('/quotation/{id}/update', [App\Http\Controllers\QuotationController::class, 'update'])->name(
+    'quotation.update',
+);
+
+// ⚠️ ABSOLUTE LAST — catches /quotation/<anything>
+Route::get('/quotation/{id}', [App\Http\Controllers\QuotationController::class, 'view'])->name('quotation.view');
+
+// ============================================
+// CRM SYNC
+// ============================================
+Route::get('/crm/sync/history', [App\Http\Controllers\CrmSyncController::class, 'history'])->name('crm.sync.history');
+Route::post('/crm/sync/run', [App\Http\Controllers\CrmSyncController::class, 'run'])->name('crm.sync.run');
+
 Route::post('/quotation/booking-integration-response', [
     App\Http\Controllers\QuotationController::class,
     'handleBookingIntegrationResponse',
 ])->name('quotation.bookingIntegrationResponse');
-
 
 // ============================================================================
 // LOGIN TRACKER SYSTEM ROUTES (User Activity Monitoring)
@@ -1331,33 +1706,39 @@ Route::pattern('user', '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}|\w{8}-\w{
 // ----------------------
 // Reporting routes (Login Tracker)
 // ----------------------
-Route::prefix('reporting')->middleware('auth')->group(function () {
-    // Explicit show route (needed for dashboard links)
-    Route::get('/users/{user}', [\App\Http\Controllers\UserController::class, 'show'])
-        ->name('reporting.users.show');
+Route::prefix('reporting')
+    ->middleware('auth')
+    ->group(function () {
+        // Explicit show route (needed for dashboard links)
+        Route::get('/users/{user}', [\App\Http\Controllers\UserController::class, 'show'])->name(
+            'reporting.users.show',
+        );
 
-    Route::get('/users/active-this-month', [\App\Http\Controllers\UserController::class, 'activeThisMonth'])
-        ->name('reporting.users.active-this-month');
+        Route::get('/users/active-this-month', [\App\Http\Controllers\UserController::class, 'activeThisMonth'])->name(
+            'reporting.users.active-this-month',
+        );
 
-    Route::get('/users/active-last-month', [\App\Http\Controllers\UserController::class, 'activeLastMonth'])
-        ->name('reporting.users.active-last-month');
+        Route::get('/users/active-last-month', [\App\Http\Controllers\UserController::class, 'activeLastMonth'])->name(
+            'reporting.users.active-last-month',
+        );
 
-    Route::get('/users/inactive', [\App\Http\Controllers\UserController::class, 'inactiveUsers'])
-        ->name('reporting.users.inactive');
+        Route::get('/users/inactive', [\App\Http\Controllers\UserController::class, 'inactiveUsers'])->name(
+            'reporting.users.inactive',
+        );
 
-    // Resource routes except show
-    Route::resource('/users', \App\Http\Controllers\UserController::class)
-        ->parameters(['users' => 'user'])
-        ->except(['show'])
-        ->names([
-            'index' => 'reporting.users.index',
-            'create' => 'reporting.users.create',
-            'store' => 'reporting.users.store',
-            'edit' => 'reporting.users.edit',
-            'update' => 'reporting.users.update',
-            'destroy' => 'reporting.users.destroy',
-        ]);
-});
+        // Resource routes except show
+        Route::resource('/users', \App\Http\Controllers\UserController::class)
+            ->parameters(['users' => 'user'])
+            ->except(['show'])
+            ->names([
+                'index' => 'reporting.users.index',
+                'create' => 'reporting.users.create',
+                'store' => 'reporting.users.store',
+                'edit' => 'reporting.users.edit',
+                'update' => 'reporting.users.update',
+                'destroy' => 'reporting.users.destroy',
+            ]);
+    });
 
 // ----------------------
 // Dashboard route (Login Tracker Dashboard)
@@ -1375,7 +1756,9 @@ Route::get('/dashboard/debug-user-logins', [\App\Http\Controllers\DashboardContr
 // ----------------------
 Route::get('/imports', function () {
     return view('logintracker.imports.index');
-})->middleware('auth')->name('imports.index');
+})
+    ->middleware('auth')
+    ->name('imports.index');
 
 // ----------------------
 // Activity report (Login Tracker)
@@ -1430,7 +1813,7 @@ Route::get('/debug-import-data', function () {
     foreach ($uniqueApps as $app) {
         $appLower = strtolower(trim($app));
         $isMapped = isset($systemMap[$appLower]) || isset($systemMap[$app]);
-        $mappedTo = $systemMap[$appLower] ?? $systemMap[$app] ?? 'UNMAPPED';
+        $mappedTo = $systemMap[$appLower] ?? ($systemMap[$app] ?? 'UNMAPPED');
 
         $appMappingStatus[$app] = [
             'is_mapped' => $isMapped,
@@ -1450,9 +1833,11 @@ Route::get('/debug-import-data', function () {
         ];
     }
 
-    $amayData = $data->filter(function ($record) {
-        return stripos($record->username, 'amay') !== false;
-    })->values();
+    $amayData = $data
+        ->filter(function ($record) {
+            return stripos($record->username, 'amay') !== false;
+        })
+        ->values();
 
     return response()->json([
         'dates_checked' => $dates,
@@ -1462,7 +1847,6 @@ Route::get('/debug-import-data', function () {
         'amay_records' => [
             'count' => $amayData->count(),
             'data' => $amayData,
-
         ],
         'all_records' => $data->toArray(),
         'display_systems' => [
@@ -1487,54 +1871,64 @@ Route::get('/debug-import-data', function () {
 Route::post('/webhooks/jimi/notifications', [JimiWebhookController::class, 'receiveNotification']);
 
 // Tracker routes (authenticated)
-Route::middleware(['auth'])->prefix('tracker')->name('tracker.')->group(function () {
+Route::middleware(['auth'])
+    ->prefix('tracker')
+    ->name('tracker.')
+    ->group(function () {
+        // Dashboard
+        Route::get('/dashboard', [TrackerController::class, 'dashboard'])->name('dashboard');
 
-    // Dashboard
-    Route::get('/dashboard', [TrackerController::class, 'dashboard'])->name('dashboard');
+        // Trips
+        Route::get('/trips/get/{filter?}', [TrackerController::class, 'getTrips']);
+        Route::get('/trips/{id}', [TrackerController::class, 'getTripDetails']);
+        Route::post('/trips/create', [TrackerController::class, 'createTrip']);
+        Route::post('/trips/{tripId}/start', [TrackerController::class, 'startTrip']);
+        Route::post('/trips/{tripId}/end', [TrackerController::class, 'endTrip']);
 
-    // Trips
-    Route::get('/trips/get/{filter?}', [TrackerController::class, 'getTrips']);
-    Route::get('/trips/{id}', [TrackerController::class, 'getTripDetails']);
-    Route::post('/trips/create', [TrackerController::class, 'createTrip']);
-    Route::post('/trips/{tripId}/start', [TrackerController::class, 'startTrip']);
-    Route::post('/trips/{tripId}/end', [TrackerController::class, 'endTrip']);
+        // Jobs
+        Route::post('/trips/{tripId}/jobs/add', [TrackerController::class, 'addJobToTrip']);
+        Route::post('/trips/{tripId}/jobs/{jobId}/start', [TrackerController::class, 'startJob']);
+        Route::post('/trips/{tripId}/jobs/{jobId}/complete', [TrackerController::class, 'completeJob']);
+        Route::get('/jobs/available', [TrackerController::class, 'getAvailableJobs']);
 
-    // Jobs
-    Route::post('/trips/{tripId}/jobs/add', [TrackerController::class, 'addJobToTrip']);
-    Route::post('/trips/{tripId}/jobs/{jobId}/start', [TrackerController::class, 'startJob']);
-    Route::post('/trips/{tripId}/jobs/{jobId}/complete', [TrackerController::class, 'completeJob']);
-    Route::get('/jobs/available', [TrackerController::class, 'getAvailableJobs']);
+        // Vehicles & Locations
+        Route::get('/vehicles/list', [TrackerController::class, 'getVehicles']);
+        Route::get('/locations', [TrackerController::class, 'getLocations']);
 
-    // Vehicles & Locations
-    Route::get('/vehicles/list', [TrackerController::class, 'getVehicles']);
-    Route::get('/locations', [TrackerController::class, 'getLocations']);
+        // List pending geofence notifications for a vehicle (used in modal)
+        Route::get('/notifications/vehicle', [TrackerController::class, 'getVehicleNotifications'])->name(
+            'notifications.vehicle',
+        );
 
-    // List pending geofence notifications for a vehicle (used in modal)
-    Route::get('/notifications/vehicle', [TrackerController::class, 'getVehicleNotifications'])
-        ->name('notifications.vehicle');
+        // List pending geofence notifications filtered by trip + vehicle
+        // (you can use the same method and filter in PHP, or create a separate one later)
+        Route::get('/notifications/trip', [TrackerController::class, 'getVehicleNotifications'])->name(
+            'notifications.trip',
+        );
 
-    // List pending geofence notifications filtered by trip + vehicle
-    // (you can use the same method and filter in PHP, or create a separate one later)
-    Route::get('/notifications/trip', [TrackerController::class, 'getVehicleNotifications'])
-        ->name('notifications.trip');
+        // Simple count – used for badge on trip modal / list
+        Route::get('/notifications/count', [TrackerController::class, 'getNotificationCount'])->name(
+            'notifications.count',
+        );
 
-    // Simple count – used for badge on trip modal / list
-    Route::get('/notifications/count', [TrackerController::class, 'getNotificationCount'])
-        ->name('notifications.count');
-
-    // Notifications
-    // Route::get('/notifications/get', [TrackerController::class, 'getNotifications'])->name('notifications.get');
-    Route::get('/notifications/alarm-types', [TrackerController::class, 'getAlarmTypes'])->name('notifications.alarm-types');
-    Route::get('/notifications/stats', [TrackerController::class, 'getNotificationStats'])->name('notifications.stats');
-    Route::post('/notifications/{id}/read', [TrackerController::class, 'markNotificationAsRead'])->name('notifications.read');
-    Route::delete('/notifications/{id}', [TrackerController::class, 'deleteNotification'])->name('notifications.delete');
-    Route::post('/notifications/map-to-trip', [TrackerController::class, 'mapNotificationsToTrip'])
-        ->name('notifications.map-to-trip');
-});
-
-
-
-
+        // Notifications
+        // Route::get('/notifications/get', [TrackerController::class, 'getNotifications'])->name('notifications.get');
+        Route::get('/notifications/alarm-types', [TrackerController::class, 'getAlarmTypes'])->name(
+            'notifications.alarm-types',
+        );
+        Route::get('/notifications/stats', [TrackerController::class, 'getNotificationStats'])->name(
+            'notifications.stats',
+        );
+        Route::post('/notifications/{id}/read', [TrackerController::class, 'markNotificationAsRead'])->name(
+            'notifications.read',
+        );
+        Route::delete('/notifications/{id}', [TrackerController::class, 'deleteNotification'])->name(
+            'notifications.delete',
+        );
+        Route::post('/notifications/map-to-trip', [TrackerController::class, 'mapNotificationsToTrip'])->name(
+            'notifications.map-to-trip',
+        );
+    });
 
 // // Temporary redirect - forwards notifications from production to UAT
 // Route::post('/webhooks/jimi/notifications', function (Request $request) {
@@ -1547,30 +1941,30 @@ Route::middleware(['auth'])->prefix('tracker')->name('tracker.')->group(function
 //     return response()->json(['success' => true, 'message' => 'Forwarded to UAT']);
 // });
 
-Route::middleware(['auth'])->prefix('jimi-test')->group(function () {
+Route::middleware(['auth'])
+    ->prefix('jimi-test')
+    ->group(function () {
+        // Test page
+        Route::get('/', [JimiTestController::class, 'testPage'])->name('jimi.test');
 
-    // Test page
-    Route::get('/', [JimiTestController::class, 'testPage'])->name('jimi.test');
+        // Test connection
+        Route::get('/connection', [JimiTestController::class, 'testConnection'])->name('jimi.test.connection');
 
-    // Test connection
-    Route::get('/connection', [JimiTestController::class, 'testConnection'])->name('jimi.test.connection');
+        // Get all vehicles
+        Route::get('/vehicles', [JimiTestController::class, 'getVehicles'])->name('jimi.test.vehicles');
 
-    // Get all vehicles
-    Route::get('/vehicles', [JimiTestController::class, 'getVehicles'])->name('jimi.test.vehicles');
+        // Get current location
+        Route::get('/location/{imei}', [JimiTestController::class, 'getCurrentLocation'])->name('jimi.test.location');
 
-    // Get current location
-    Route::get('/location/{imei}', [JimiTestController::class, 'getCurrentLocation'])->name('jimi.test.location');
+        // Get mileage
+        Route::post('/mileage', [JimiTestController::class, 'getMileage'])->name('jimi.test.mileage');
 
-    // Get mileage
-    Route::post('/mileage', [JimiTestController::class, 'getMileage'])->name('jimi.test.mileage');
+        // Get track data
+        Route::post('/track', [JimiTestController::class, 'getTrackData'])->name('jimi.test.track');
+    });
 
-    // Get track data
-    Route::post('/track', [JimiTestController::class, 'getTrackData'])->name('jimi.test.track');
-});
-
-Route::get('zreport',        [App\Http\Controllers\ZReportRunnerController::class, 'index'])->name('zreport.index');
-Route::post('zreport/run',   [App\Http\Controllers\ZReportRunnerController::class, 'run'])->name('zreport.run');
-
+Route::get('zreport', [App\Http\Controllers\ZReportRunnerController::class, 'index'])->name('zreport.index');
+Route::post('zreport/run', [App\Http\Controllers\ZReportRunnerController::class, 'run'])->name('zreport.run');
 
 Route::get('/azure-sync-user-apps/{email}', function ($email) {
     try {
@@ -1610,14 +2004,12 @@ Route::get('/azure-sync-user-apps/{email}', function ($email) {
         return view('azure-sync-result', [
             'user' => $user,
             'modules' => $modules,
-            'results' => $results
+            'results' => $results,
         ]);
     } catch (\Exception $e) {
-        return "❌ Error: " . $e->getMessage();
+        return '❌ Error: ' . $e->getMessage();
     }
 })->middleware('auth');
-
-
 
 Route::get('/debug-permissions', function () {
     // Find the Azure user first to get their email
@@ -1633,17 +2025,17 @@ Route::get('/debug-permissions', function () {
 
     if (!$authUser) {
         return response()->json([
-            'error'       => 'Auth user not found',
+            'error' => 'Auth user not found',
             'azure_email' => $email,
         ]);
     }
 
     return response()->json([
-        'auth_user_id'       => $authUser->id,
-        'email'              => $authUser->email,
-        'roles'              => $authUser->getRoleNames(),
+        'auth_user_id' => $authUser->id,
+        'email' => $authUser->email,
+        'roles' => $authUser->getRoleNames(),
         'direct_permissions' => $authUser->getDirectPermissions()->pluck('name'),
-        'all_permissions'    => $authUser->getAllPermissions()->pluck('name'),
+        'all_permissions' => $authUser->getAllPermissions()->pluck('name'),
     ]);
 });
 // Add a temporary debug route in web.php or api.php
@@ -1652,3 +2044,17 @@ Route::get('/debug-azure-files/{prefix}', function ($prefix) {
     $filtered = array_filter($files, fn($f) => str_contains($f, $prefix));
     return response()->json(array_values($filtered));
 });
+// routes/web.php
+Route::get('/admin/entity-tools', [AdminController::class, 'entityToolsForm'])->name('admin.entity.tools');
+Route::post('/admin/entity-delete', [AdminController::class, 'entityDelete'])->name('admin.entity.delete');
+Route::post('/admin/entity-status', [AdminController::class, 'entityStatusChange'])->name('admin.entity.status');
+
+// ZRA Smart Invoice
+Route::get('/zra', [App\Http\Controllers\ZraController::class, 'index'])
+    ->name('zra.index')
+    ->middleware('auth');
+Route::get('/zra/get-stats', [App\Http\Controllers\ZraController::class, 'getStats'])->middleware('auth');
+Route::post('/zra/update-invoice', [App\Http\Controllers\ZraController::class, 'updateInvoice'])->middleware('auth');
+Route::get('/zra/re-trigger/{docNo}', [App\Http\Controllers\ZraController::class, 'reTrigger'])->middleware('auth');
+Route::get('/datatables/zra', [App\Http\Controllers\ZraController::class, 'datatable'])->middleware('auth');
+

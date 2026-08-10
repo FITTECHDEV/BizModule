@@ -1081,91 +1081,190 @@ class ClientPartyController extends Controller
      */
 
     public function preview($attachmentId)
-    {
-        try {
-            $attachment = ClientPartyAttahment::where('ID', $attachmentId)->firstOrFail();
+{
+    try {
+        $attachment = ClientPartyAttahment::where('ID', $attachmentId)->firstOrFail();
 
-            Log::info('Preview attachment request:', [
-                'attachmentId' => $attachmentId,
-                'fileName'     => $attachment->FileName,
-                'filePath'     => $attachment->FilePath,
-                'entityId'     => $attachment->CustEntityID,
-            ]);
+        Log::info('Preview attachment request:', [
+            'attachmentId' => $attachmentId,
+            'fileName'     => $attachment->FileName,
+            'filePath'     => $attachment->FilePath,
+            'entityId'     => $attachment->CustEntityID,
+        ]);
 
-            $resolvedPath = null;
+        $resolvedPath = null;
 
-            // Step 1: Try exact DB path first
-            if (Storage::disk('azure')->exists($attachment->FilePath)) {
-                $resolvedPath = $attachment->FilePath;
-            } else {
-                // Step 2: List Azure folder and match by normalizing both sides to ASCII
-                $directory = dirname($attachment->FilePath);  // e.g. "Kenya/ClientParty"
-                $dbFilename = basename($attachment->FilePath); // e.g. "KE2601641_Ingilizce faaliyet belgesi 23.09.pdf"
+        // Helper: normalize filename for matching (strip non-safe characters)
+        $normalizeForMatch = function (string $name): string {
+            // Keep only letters, digits, dots, underscores, hyphens and spaces
+            $name = preg_replace('/[^A-Za-z0-9._\-\s]/u', '', $name);
+            return strtolower(trim(preg_replace('/\s+/', ' ', $name)));
+        };
 
-                $azureFiles = Storage::disk('azure')->files($directory);
+        // Step 1: Try exact DB path first
+        if (Storage::disk('azure')->exists($attachment->FilePath)) {
+            $resolvedPath = $attachment->FilePath;
+        } else {
+            // Step 2: List Azure folder and match by normalized name
+            $directory  = dirname($attachment->FilePath); // e.g. "Kenya/ClientParty"
+            $dbFilename = basename($attachment->FilePath);
 
-                foreach ($azureFiles as $azureFile) {
-                    $azureFilename   = basename($azureFile);
-                    $normalizedAzure = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $azureFilename);
-                    $normalizedDb    = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $dbFilename);
+            $azureFiles = Storage::disk('azure')->files($directory);
 
-                    Log::info('Comparing filenames:', [
-                        'azureFile'       => $azureFile,
-                        'azureFilename'   => $azureFilename,
-                        'dbFilename'      => $dbFilename,
-                        'normalizedAzure' => $normalizedAzure,
-                        'normalizedDb'    => $normalizedDb,
-                    ]);
+            foreach ($azureFiles as $azureFile) {
+                $azureFilename = basename($azureFile);
 
-                    if ($normalizedAzure === $normalizedDb) {
-                        $resolvedPath = $azureFile;
-                        Log::info('Matched via normalization:', ['resolvedPath' => $resolvedPath]);
-                        break;
-                    }
+                $normalizedAzure = $normalizeForMatch($azureFilename);
+                $normalizedDb    = $normalizeForMatch($dbFilename);
+
+                Log::info('Comparing filenames:', [
+                    'azureFile'       => $azureFile,
+                    'azureFilename'   => $azureFilename,
+                    'dbFilename'      => $dbFilename,
+                    'normalizedAzure' => $normalizedAzure,
+                    'normalizedDb'    => $normalizedDb,
+                ]);
+
+                if ($normalizedAzure === $normalizedDb) {
+                    $resolvedPath = $azureFile;
+                    Log::info('Matched via normalization:', ['resolvedPath' => $resolvedPath]);
+                    break;
                 }
             }
-
-            if (! $resolvedPath) {
-                Log::error('File not found in Azure storage (tried exact and normalized match):', [
-                    'filePath'     => $attachment->FilePath,
-                    'attachmentId' => $attachmentId,
-                ]);
-                abort(404, 'File not found in storage');
-            }
-
-            $extension = pathinfo($attachment->FileName, PATHINFO_EXTENSION);
-            $mimeType  = strtolower($extension) === 'pdf' ? 'application/pdf' : 'application/octet-stream';
-
-            Log::info('File retrieved successfully:', [
-                'attachmentId' => $attachmentId,
-                'fileName'     => $attachment->FileName,
-                'resolvedPath' => $resolvedPath,
-                'mimeType'     => $mimeType,
-            ]);
-
-            return Storage::disk('azure')->download(
-                $resolvedPath,
-                $attachment->FileName,
-                [
-                    'Content-Type'        => $mimeType,
-                    'Content-Disposition' => 'inline; filename="' . $attachment->FileName . '"',
-                ]
-            );
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            Log::error('Attachment not found in database:', [
-                'attachmentId' => $attachmentId,
-                'error'        => $e->getMessage(),
-            ]);
-            return response()->json(['error' => 'Attachment not found'], 404);
-        } catch (\Exception $e) {
-            Log::error('Preview failed with exception:', [
-                'attachmentId' => $attachmentId,
-                'error'        => $e->getMessage(),
-                'trace'        => $e->getTraceAsString(),
-            ]);
-            return response()->json(['error' => 'Error retrieving file: ' . $e->getMessage()], 500);
         }
+
+        if (!$resolvedPath) {
+            Log::error('File not found in Azure storage (tried exact and normalized match):', [
+                'filePath'     => $attachment->FilePath,
+                'attachmentId' => $attachmentId,
+            ]);
+            abort(404, 'File not found in storage');
+        }
+
+        $extension = strtolower(pathinfo($attachment->FileName, PATHINFO_EXTENSION));
+        $mimeType  = $extension === 'pdf' ? 'application/pdf' : 'application/octet-stream';
+
+        Log::info('File retrieved successfully:', [
+            'attachmentId' => $attachmentId,
+            'fileName'     => $attachment->FileName,
+            'resolvedPath' => $resolvedPath,
+            'mimeType'     => $mimeType,
+        ]);
+
+        // Proper Content-Disposition so browsers show Chinese filenames correctly
+        $disposition = 'inline; filename="' . rawurlencode($attachment->FileName) . '"; '
+                     . "filename*=UTF-8''" . rawurlencode($attachment->FileName);
+
+        return Storage::disk('azure')->download(
+            $resolvedPath,
+            $attachment->FileName,
+            [
+                'Content-Type'        => $mimeType,
+                'Content-Disposition' => $disposition,
+            ]
+        );
+    } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        Log::error('Attachment not found in database:', [
+            'attachmentId' => $attachmentId,
+            'error'        => $e->getMessage(),
+        ]);
+        return response()->json(['error' => 'Attachment not found'], 404);
+    } catch (\Exception $e) {
+        Log::error('Preview failed with exception:', [
+            'attachmentId' => $attachmentId,
+            'error'        => $e->getMessage(),
+            'trace'        => $e->getTraceAsString(),
+        ]);
+        return response()->json(['error' => 'Error retrieving file: ' . $e->getMessage()], 500);
     }
+}
+
+    // public function preview($attachmentId)
+    // {
+    //     try {
+    //         $attachment = ClientPartyAttahment::where('ID', $attachmentId)->firstOrFail();
+
+    //         Log::info('Preview attachment request:', [
+    //             'attachmentId' => $attachmentId,
+    //             'fileName'     => $attachment->FileName,
+    //             'filePath'     => $attachment->FilePath,
+    //             'entityId'     => $attachment->CustEntityID,
+    //         ]);
+
+    //         $resolvedPath = null;
+
+    //         // Step 1: Try exact DB path first
+    //         if (Storage::disk('azure')->exists($attachment->FilePath)) {
+    //             $resolvedPath = $attachment->FilePath;
+    //         } else {
+    //             // Step 2: List Azure folder and match by normalizing both sides to ASCII
+    //             $directory = dirname($attachment->FilePath);  // e.g. "Kenya/ClientParty"
+    //             $dbFilename = basename($attachment->FilePath); // e.g. "KE2601641_Ingilizce faaliyet belgesi 23.09.pdf"
+
+    //             $azureFiles = Storage::disk('azure')->files($directory);
+
+    //             foreach ($azureFiles as $azureFile) {
+    //                 $azureFilename   = basename($azureFile);
+    //                 $normalizedAzure = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $azureFilename);
+    //                 $normalizedDb    = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $dbFilename);
+
+    //                 Log::info('Comparing filenames:', [
+    //                     'azureFile'       => $azureFile,
+    //                     'azureFilename'   => $azureFilename,
+    //                     'dbFilename'      => $dbFilename,
+    //                     'normalizedAzure' => $normalizedAzure,
+    //                     'normalizedDb'    => $normalizedDb,
+    //                 ]);
+
+    //                 if ($normalizedAzure === $normalizedDb) {
+    //                     $resolvedPath = $azureFile;
+    //                     Log::info('Matched via normalization:', ['resolvedPath' => $resolvedPath]);
+    //                     break;
+    //                 }
+    //             }
+    //         }
+
+    //         if (! $resolvedPath) {
+    //             Log::error('File not found in Azure storage (tried exact and normalized match):', [
+    //                 'filePath'     => $attachment->FilePath,
+    //                 'attachmentId' => $attachmentId,
+    //             ]);
+    //             abort(404, 'File not found in storage');
+    //         }
+
+    //         $extension = pathinfo($attachment->FileName, PATHINFO_EXTENSION);
+    //         $mimeType  = strtolower($extension) === 'pdf' ? 'application/pdf' : 'application/octet-stream';
+
+    //         Log::info('File retrieved successfully:', [
+    //             'attachmentId' => $attachmentId,
+    //             'fileName'     => $attachment->FileName,
+    //             'resolvedPath' => $resolvedPath,
+    //             'mimeType'     => $mimeType,
+    //         ]);
+
+    //         return Storage::disk('azure')->download(
+    //             $resolvedPath,
+    //             $attachment->FileName,
+    //             [
+    //                 'Content-Type'        => $mimeType,
+    //                 'Content-Disposition' => 'inline; filename="' . $attachment->FileName . '"',
+    //             ]
+    //         );
+    //     } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+    //         Log::error('Attachment not found in database:', [
+    //             'attachmentId' => $attachmentId,
+    //             'error'        => $e->getMessage(),
+    //         ]);
+    //         return response()->json(['error' => 'Attachment not found'], 404);
+    //     } catch (\Exception $e) {
+    //         Log::error('Preview failed with exception:', [
+    //             'attachmentId' => $attachmentId,
+    //             'error'        => $e->getMessage(),
+    //             'trace'        => $e->getTraceAsString(),
+    //         ]);
+    //         return response()->json(['error' => 'Error retrieving file: ' . $e->getMessage()], 500);
+    //     }
+    // }
 
     // public function createLegalEntityType(string $type, array $post_data)
     // {
@@ -1644,270 +1743,610 @@ class ClientPartyController extends Controller
     }
 
 
+public function update(UpdateClientPartyRequest $request, $id)
+{
+    $user = Auth::user();
 
+    Log::info('=== UPDATE CONTROLLER START ===', [
+        'id'        => $id,
+        'user_id'   => $user?->Id,
+        'method'    => $request->method(),
+        'createBtn' => $request->input('createBtn'),
+        'all_input' => $request->except(['_token', '_method', 'attachmentNames', 'attachmentDescription']),
+        'ip'        => $request->ip(),
+    ]);
 
-    public function update(UpdateClientPartyRequest $request, $id)
-    {
-        $user = Auth::user();
+    if (!$user->can('update-client-party')) {
+        Log::warning('Unauthorized access attempt', ['user_id' => $user?->Id, 'id' => $id]);
+        Alert::warning('Warning', 'Unauthorized.')->persistent(true, false);
+        return redirect()->back();
+    }
 
-        Log::info('=== UPDATE CONTROLLER START ===', [
-            'id' => $id,
-            'user_id' => $user?->Id,
-            'method' => $request->method(),
-            'createBtn' => $request->input('createBtn'),
-            'all_input' => $request->all(),
-            'ip' => $request->ip(),
-        ]);
+    $entity = ClientParty::findOrFail($id);
+    $currentStatus = $entity->Status;
 
-        if (!$user->can('update-client-party')) {
-            Log::warning('Unauthorized access attempt', ['user_id' => $user?->Id, 'id' => $id]);
-            Alert::warning('Warning', 'Unauthorized.')->persistent(true, false);
-            return redirect()->back();
-        }
+    Log::info('Entity loaded successfully', [
+        'id'                => $id,
+        'code'              => $entity->Code,
+        'status'            => $currentStatus,
+        'legal_entity_type' => $entity->LegalEntityType,
+        'request_debtor'    => $entity->RequestforDebtor,
+        'request_vendor'    => $entity->RequestforVendor,
+    ]);
 
-        $entity = ClientParty::findOrFail($id);
-        $currentStatus = $entity->Status;
+    // ── Review branch: user correcting data, re-submit via SP ───────────
+    if ($currentStatus === 'Review') {
+        Log::info('Entity in Review - processing data update via SP');
 
-        Log::info('Entity loaded successfully', [
-            'id' => $id,
-            'code' => $entity->Code,
-            'status' => $currentStatus,
-            'legal_entity_type' => $entity->LegalEntityType,
-            'request_debtor' => $entity->RequestforDebtor,
-            'request_vendor' => $entity->RequestforVendor,
-        ]);
+        $rawCreditLimit   = str_replace(',', '', $request->maxCreditLimit ?? '0');
+        $creditLimitValue = is_numeric($rawCreditLimit) && $rawCreditLimit !== '' ? $rawCreditLimit : '0';
+        $creditDaysValue  = is_numeric($request->creditDays) ? $request->creditDays : '0';
+        $licenceTypeCode  = !empty(trim($request->licenceTypeCode ?? '')) ? $request->licenceTypeCode : 'NIL';
 
-        if (!isset($request->createBtn)) {
-            Log::info('No createBtn present - redirecting to show');
-            Alert::info('Info', 'Use Create/Approve for status changes.')->persistent(true, false);
-            return redirect()->route('client-party.show', $id);
-        }
+        $partyEntityType = $entity->OperationalEntityType ?? '';
+        $isClientType    = in_array($partyEntityType, ['Client', 'Agent / Forwarder']);
 
-        // Determine target status
-        $targetStatus = 'Created';
-        if ($currentStatus === 'PendingGroupLevelApproval') {
-            $targetStatus = 'PendingITVerification';
-        }
+        $otherPartyCode = $request->otherCode
+            ?? ($isClientType ? null : ($request->companyCode ?? null))
+            ?? $entity->OtherPartyCode
+            ?? '';
 
-        Log::info('Target status determined', ['from' => $currentStatus, 'to' => $targetStatus]);
+        $clientCode = $isClientType
+            ? ($request->clientCode ?? $request->companyCode ?? $entity->ClientCode ?? '')
+            : '';
 
-        // Validate transition
-        $allowedTransitions = [
-            'PendingGroupLevelApproval' => ['PendingITVerification'],
-            'PendingITVerification'     => ['Created'],
+        $payload = [
+            'OperationType'         => 'AccountingEntity',
+            'Action'                => 'Update',
+            'SubmittedDatetime'     => now()->format('YmdHis'),
+            'SubmittedBy'           => $user->LoginID ?? $user->full_name ?? 'system',
+            'OfficeCode'            => $entity->OfficeCode,
+            'OperationalEntityType' => $partyEntityType,
+            'LegalEntityType'       => $request->legalEntityType ?? $entity->LegalEntityType,
+            'ClientCode'            => $clientCode,
+            'OtherPartyCode'        => $otherPartyCode,
+            'BillingCurrencyCode'   => $request->billingCurrencyCode ?? $entity->BillingCurrencyCode,
+            'CreditDays'            => $creditDaysValue,
+            'CreditLimit'           => $creditLimitValue,
+            'LicenceTypeCode'       => $licenceTypeCode,
+            'LicenceTypeValue'      => $licenceTypeCode !== 'NIL'
+                                            ? ($request->licenceTypeValue ?? $entity->LicenceTypeValue ?? '')
+                                            : '',
+            'DebtorType'            => $request->debtorType ?? $entity->DebtorType ?? '',
+            'VendorType'            => $request->vendorType ?? $entity->VendorType ?? '',
+            'EntityID'              => $entity->Id,
         ];
 
-        if (!isset($allowedTransitions[$currentStatus]) || !in_array($targetStatus, $allowedTransitions[$currentStatus])) {
-            Log::warning('Invalid status transition attempted', [
-                'current' => $currentStatus,
-                'target'  => $targetStatus,
+        Log::info('Review update payload prepared', [
+            'entity_id'   => $entity->Id,
+            'code'        => $entity->Code,
+            'payload_json' => json_encode($payload),
+        ]);
+
+        try {
+            $response = $this->executeJsonEntityProcedure($payload);
+
+            if (($response['Status'] ?? '') !== 'Success') {
+                $remark = $response['Remarks'][0]['Remark'] ?? 'Unknown error';
+                Log::error('Review update SP failed', [
+                    'remark' => $remark,
+                    'code'   => $entity->Code,
+                ]);
+                Alert::error('Error', $remark)->persistent(true, false);
+                return redirect()->back()->withInput();
+            }
+
+            Log::info('Review update succeeded - entity resubmitted', [
+                'code'   => $entity->Code,
+                'status' => 'Submitted',
             ]);
-            Alert::error('Error', 'Invalid status transition from ' . $currentStatus)->persistent(true, false);
-            return redirect()->back();
+
+            return redirect()->route('client-party.show', $id)
+                ->with('swal_success_title', 'Success')
+                ->with('swal_success_text', "Entity {$entity->Code} updated and resubmitted for approval.");
+
+        } catch (\Exception $e) {
+            Log::error('Review update exception', [
+                'code'  => $entity->Code,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            Alert::error('Error', $e->getMessage())->persistent(true, false);
+            return redirect()->back()->withInput();
         }
+    }
+    // ── End Review branch ────────────────────────────────────────────────
 
-        // STEP 1: PendingGroupLevelApproval → PendingITVerification
-        if ($targetStatus === 'PendingITVerification') {
-            Log::info('Entering Group → IT Verification transition');
+    if (!isset($request->createBtn)) {
+        Log::info('No createBtn present - redirecting to show');
+        Alert::info('Info', 'Use Create/Approve for status changes.')->persistent(true, false);
+        return redirect()->route('client-party.show', $id);
+    }
 
-            $payload = [
-                'OperationType'     => 'AccountingEntityUpdate',
-                'Action'            => 'Add',
-                'SubmittedDatetime' => now()->format('YmdHis'),
-                'SubmittedBy'       => $user->LoginID ?? $user->full_name ?? 'system',
-                'RequestNo'         => $entity->Code,
-                'Status'            => $targetStatus,
-                'Remark'            => $request->input('comment', 'Group level approved - pending IT verification'),
-            ];
+    // Determine target status
+    $targetStatus = 'Created';
+    if ($currentStatus === 'PendingGroupLevelApproval') {
+        $targetStatus = 'PendingITVerification';
+    }
 
-            Log::info('Sending status update payload to SP', ['payload' => $payload]);
+    Log::info('Target status determined', ['from' => $currentStatus, 'to' => $targetStatus]);
 
-            try {
-                $response = $this->executeJsonEntityProcedure($payload);
+    // Validate transition
+    $allowedTransitions = [
+        'PendingGroupLevelApproval' => ['PendingITVerification'],
+        'PendingITVerification'     => ['Created'],
+    ];
 
-                Log::info('Status update SP response', [
-                    'status' => $response['Status'] ?? 'missing',
-                    'remarks' => $response['Remarks'] ?? [],
-                ]);
+    if (!isset($allowedTransitions[$currentStatus]) || !in_array($targetStatus, $allowedTransitions[$currentStatus])) {
+        Log::warning('Invalid status transition attempted', [
+            'current' => $currentStatus,
+            'target'  => $targetStatus,
+        ]);
+        Alert::error('Error', 'Invalid status transition from ' . $currentStatus)->persistent(true, false);
+        return redirect()->back();
+    }
 
-                if ($response['Status'] !== 'Success') {
-                    $remark = $response['Remarks'][0]['Remark'] ?? 'Unknown error';
-                    Log::error('Status update failed', ['remark' => $remark]);
-                    throw new Exception('SP failed: ' . $remark);
-                }
+    // STEP 1: PendingGroupLevelApproval → PendingITVerification
+    if ($targetStatus === 'PendingITVerification') {
+        Log::info('Entering Group → IT Verification transition');
 
-                Log::info('Group → IT transition completed successfully');
-                return redirect()->route('client-party.show', $id)
-                    ->with('swal_success_title', 'Success')
-                    ->with('swal_success_text', 'Entity moved to Pending IT Verification');
-                return redirect()->route('client-party.show', $id);
-            } catch (\Exception $e) {
-                Log::error('Group → IT transition failed', [
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                ]);
-                Alert::error('Error', $e->getMessage())->persistent(true, false);
-                return redirect()->back();
-            }
-        }
-
-        // STEP 2: PendingITVerification → Created (final creation)
-        if ($currentStatus !== 'PendingITVerification') {
-            Log::warning('Invalid final transition - not in PendingITVerification');
-            Alert::error('Error', 'Can only finalize from Pending IT Verification')->persistent(true, false);
-            return redirect()->back();
-        }
-
-        Log::info('Entering FINAL CREATION STEP (PendingITVerification → Created)');
-
-        $isAccounting = !empty($entity->LegalEntityType) || $entity->RequestforDebtor || $entity->RequestforVendor;
-        if (!$isAccounting) {
-            Log::warning('Entity is not accounting type - skipping creation');
-            Alert::error('Error', 'This is not an accounting entity')->persistent(true, false);
-            return redirect()->back();
-        }
-
-        $d365Results = [];
-
-        // Debtor creation (now using dynamic payload)
-        if ($entity->RequestforDebtor || stripos($entity->LegalEntityType, 'debtor') !== false) {
-            Log::info('Starting Debtor D365 creation (dynamic payload)');
-
-            try {
-                $debtorPayload = $this->buildD365Payload($entity, 'debtor');
-
-                Log::info('Debtor payload built successfully - sending to D365', [
-                    'payload_summary' => array_keys($debtorPayload),
-                    'no_series'       => $debtorPayload['NoSeries'] ?? 'MISSING',
-                    'office'          => $debtorPayload['office'] ?? 'unknown',
-                ]);
-
-                $d365Response = $this->createLegalEntityType('debtor', $debtorPayload);
-
-                Log::info('Debtor D365 API response', [
-                    'status'       => $d365Response['status'] ?? 'missing',
-                    'response_code' => $d365Response['responseCode'] ?? null,
-                    'full_response' => $d365Response,
-                ]);
-                // Debtor block
-                // Debtor block
-                if (!$d365Response['status'] || empty($d365Response['responseCode'])) {
-                    $d365Error = $d365Response['error'] ?? $d365Response['responseDescription'] ?? 'Unknown D365 error';
-                    Log::error('Debtor D365 creation failed', ['error' => $d365Error]);
-                    return redirect()->back()->withInput()
-                        ->with('swal_error_title', 'Debtor Creation Failed')
-                        ->with('swal_error_text', $d365Error);
-                }
-                $d365Results['debtor'] = $d365Response['responseCode'];
-                Log::info('Debtor successfully created in D365', ['code' => $d365Results['debtor']]);
-            } catch (\Exception $e) {
-                Log::error('Debtor D365 exception', [
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                ]);
-                Alert::error('D365 Exception (Debtor)', $e->getMessage())->persistent(true, false);
-                return redirect()->back();
-            }
-        } else {
-            Log::info('Debtor processing skipped (not requested)');
-        }
-
-        // Vendor creation (now using dynamic payload)
-        if ($entity->RequestforVendor || stripos($entity->LegalEntityType, 'vendor') !== false) {
-            Log::info('Starting Vendor D365 creation (dynamic payload)');
-
-            try {
-                $vendorPayload = $this->buildD365Payload($entity, 'vendor');
-
-                Log::info('Vendor payload built successfully - sending to D365', [
-                    'payload_summary' => array_keys($vendorPayload),
-                    'no_series'       => $vendorPayload['NoSeries'] ?? 'MISSING',
-                    'office'          => $vendorPayload['office'] ?? 'unknown',
-                ]);
-
-                $d365Response = $this->createLegalEntityType('vendor', $vendorPayload);
-
-                Log::info('Vendor D365 API response', [
-                    'status'       => $d365Response['status'] ?? 'missing',
-                    'response_code' => $d365Response['responseCode'] ?? null,
-                    'full_response' => $d365Response,
-                ]);
-
-                // Vendor block
-                if (!$d365Response['status'] || empty($d365Response['responseCode'])) {
-                    $d365Error = $d365Response['error'] ?? $d365Response['responseDescription'] ?? 'Unknown D365 error';
-                    Log::error('Vendor D365 creation failed', ['error' => $d365Error]);
-                    return redirect()->back()->withInput()
-                        ->with('swal_error_title', 'Vendor Creation Failed')
-                        ->with('swal_error_text', $d365Error);
-                }
-
-                $d365Results['vendor'] = $d365Response['responseCode'];
-                Log::info('Vendor successfully created in D365', ['code' => $d365Results['vendor']]);
-            } catch (\Exception $e) {
-                Log::error('Vendor D365 exception', [
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                ]);
-                Alert::error('D365 Exception (Vendor)', $e->getMessage())->persistent(true, false);
-                return redirect()->back();
-            }
-        } else {
-            Log::info('Vendor processing skipped (not requested)');
-        }
-
-        // Final SP payload
         $payload = [
-            'OperationType'     => 'AccountingEntityCreation',
+            'OperationType'     => 'AccountingEntityUpdate',
             'Action'            => 'Add',
             'SubmittedDatetime' => now()->format('YmdHis'),
             'SubmittedBy'       => $user->LoginID ?? $user->full_name ?? 'system',
             'RequestNo'         => $entity->Code,
-            'Status'            => 'Create',
-            'Remark'            => $request->input('comment', 'Final creation from update'),
+            'Status'            => $targetStatus,
+            'Remark'            => $request->input('comment', 'Group level approved - pending IT verification'),
         ];
 
-        if (isset($d365Results['debtor'])) $payload['DebtorNo'] = $d365Results['debtor'];
-        if (isset($d365Results['vendor'])) $payload['VendorNo'] = $d365Results['vendor'];
-
-        // Ensure LicenceTypeValue is never null when passed to SP (Cust_PartyLicense.License_Code is NOT NULL)
-        $payload['LicenceTypeCode']  = !empty(trim($entity->LicenceTypeCode ?? ''))  ? $entity->LicenceTypeCode  : 'NIL';
-        $payload['LicenceTypeValue'] = !empty(trim($entity->LicenceTypeValue ?? '')) ? $entity->LicenceTypeValue : 'NIL';
-
-
-        Log::info('Final SP payload prepared', ['payload' => $payload]);
+        Log::info('Sending status update payload to SP', ['payload' => $payload]);
 
         try {
-            Log::info('Calling main SP (sp_EntityMain) for final creation');
             $response = $this->executeJsonEntityProcedure($payload);
 
-            Log::info('Main SP response received', [
+            Log::info('Status update SP response', [
                 'status'  => $response['Status'] ?? 'missing',
                 'remarks' => $response['Remarks'] ?? [],
             ]);
 
             if ($response['Status'] !== 'Success') {
                 $remark = $response['Remarks'][0]['Remark'] ?? 'Unknown error';
-                Log::error('Main SP returned failure', ['remark' => $remark]);
-                throw new Exception('SP failed: ' . $remark);
+                Log::error('Status update failed', ['remark' => $remark]);
+                throw new \Exception('SP failed: ' . $remark);
             }
 
-            Log::info('FINAL CREATION SUCCESS - entity created');
-            return redirect()->route('client-party.index')->with('entity_type', $type ?? 'operational')
+            Log::info('Group → IT transition completed successfully');
+
+            return redirect()->route('client-party.show', $id)
                 ->with('swal_success_title', 'Success')
-                ->with('swal_success_text', 'Entity created successfully');
-            return redirect()->route('client-party.index')->with('entity_type', $type ?? 'operational');
+                ->with('swal_success_text', 'Entity moved to Pending IT Verification');
+
         } catch (\Exception $e) {
-            Log::error('Final creation FAILED - exception caught', [
-                'error_message' => $e->getMessage(),
-                'file'          => $e->getFile(),
-                'line'          => $e->getLine(),
-                'trace'         => $e->getTraceAsString(),
+            Log::error('Group → IT transition failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
             Alert::error('Error', $e->getMessage())->persistent(true, false);
             return redirect()->back();
         }
     }
+
+    // STEP 2: PendingITVerification → Created (final creation)
+    if ($currentStatus !== 'PendingITVerification') {
+        Log::warning('Invalid final transition - not in PendingITVerification');
+        Alert::error('Error', 'Can only finalize from Pending IT Verification')->persistent(true, false);
+        return redirect()->back();
+    }
+
+    Log::info('Entering FINAL CREATION STEP (PendingITVerification → Created)');
+
+    $isAccounting = !empty($entity->LegalEntityType) || $entity->RequestforDebtor || $entity->RequestforVendor;
+    if (!$isAccounting) {
+        Log::warning('Entity is not accounting type - skipping creation');
+        Alert::error('Error', 'This is not an accounting entity')->persistent(true, false);
+        return redirect()->back();
+    }
+
+    $d365Results = [];
+
+    // Debtor creation
+    if ($entity->RequestforDebtor || stripos($entity->LegalEntityType, 'debtor') !== false) {
+        Log::info('Starting Debtor D365 creation');
+
+        try {
+            $debtorPayload = $this->buildD365Payload($entity, 'debtor');
+
+            Log::info('Debtor payload built - sending to D365', [
+                'no_series' => $debtorPayload['NoSeries'] ?? 'MISSING',
+                'office'    => $debtorPayload['office'] ?? 'unknown',
+            ]);
+
+            $d365Response = $this->createLegalEntityType('debtor', $debtorPayload);
+
+            Log::info('Debtor D365 API response', [
+                'status'        => $d365Response['status'] ?? 'missing',
+                'response_code' => $d365Response['responseCode'] ?? null,
+            ]);
+
+            if (!$d365Response['status'] || empty($d365Response['responseCode'])) {
+                $d365Error = $d365Response['error'] ?? $d365Response['responseDescription'] ?? 'Unknown D365 error';
+                Log::error('Debtor D365 creation failed', ['error' => $d365Error]);
+                return redirect()->back()->withInput()
+                    ->with('swal_error_title', 'Debtor Creation Failed')
+                    ->with('swal_error_text', $d365Error);
+            }
+
+            $d365Results['debtor'] = $d365Response['responseCode'];
+            Log::info('Debtor created in D365', ['code' => $d365Results['debtor']]);
+
+        } catch (\Exception $e) {
+            Log::error('Debtor D365 exception', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            Alert::error('D365 Exception (Debtor)', $e->getMessage())->persistent(true, false);
+            return redirect()->back();
+        }
+    } else {
+        Log::info('Debtor processing skipped (not requested)');
+    }
+
+    // Vendor creation
+    if ($entity->RequestforVendor || stripos($entity->LegalEntityType, 'vendor') !== false) {
+        Log::info('Starting Vendor D365 creation');
+
+        try {
+            $vendorPayload = $this->buildD365Payload($entity, 'vendor');
+
+            Log::info('Vendor payload built - sending to D365', [
+                'no_series' => $vendorPayload['NoSeries'] ?? 'MISSING',
+                'office'    => $vendorPayload['office'] ?? 'unknown',
+            ]);
+
+            $d365Response = $this->createLegalEntityType('vendor', $vendorPayload);
+
+            Log::info('Vendor D365 API response', [
+                'status'        => $d365Response['status'] ?? 'missing',
+                'response_code' => $d365Response['responseCode'] ?? null,
+            ]);
+
+            if (!$d365Response['status'] || empty($d365Response['responseCode'])) {
+                $d365Error = $d365Response['error'] ?? $d365Response['responseDescription'] ?? 'Unknown D365 error';
+                Log::error('Vendor D365 creation failed', ['error' => $d365Error]);
+                return redirect()->back()->withInput()
+                    ->with('swal_error_title', 'Vendor Creation Failed')
+                    ->with('swal_error_text', $d365Error);
+            }
+
+            $d365Results['vendor'] = $d365Response['responseCode'];
+            Log::info('Vendor created in D365', ['code' => $d365Results['vendor']]);
+
+        } catch (\Exception $e) {
+            Log::error('Vendor D365 exception', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            Alert::error('D365 Exception (Vendor)', $e->getMessage())->persistent(true, false);
+            return redirect()->back();
+        }
+    } else {
+        Log::info('Vendor processing skipped (not requested)');
+    }
+
+    // Final SP payload
+    $payload = [
+        'OperationType'     => 'AccountingEntityCreation',
+        'Action'            => 'Add',
+        'SubmittedDatetime' => now()->format('YmdHis'),
+        'SubmittedBy'       => $user->LoginID ?? $user->full_name ?? 'system',
+        'RequestNo'         => $entity->Code,
+        'Status'            => 'Create',
+        'Remark'            => $request->input('comment', 'Final creation from update'),
+        'LicenceTypeCode'   => !empty(trim($entity->LicenceTypeCode ?? ''))  ? $entity->LicenceTypeCode  : 'NIL',
+        'LicenceTypeValue'  => !empty(trim($entity->LicenceTypeValue ?? '')) ? $entity->LicenceTypeValue : 'NIL',
+    ];
+
+    if (isset($d365Results['debtor'])) $payload['DebtorNo'] = $d365Results['debtor'];
+    if (isset($d365Results['vendor'])) $payload['VendorNo'] = $d365Results['vendor'];
+
+    Log::info('Final SP payload prepared', ['payload' => $payload]);
+
+    try {
+        Log::info('Calling SP for final creation');
+        $response = $this->executeJsonEntityProcedure($payload);
+
+        Log::info('Final SP response', [
+            'status'  => $response['Status'] ?? 'missing',
+            'remarks' => $response['Remarks'] ?? [],
+        ]);
+
+        if ($response['Status'] !== 'Success') {
+            $remark = $response['Remarks'][0]['Remark'] ?? 'Unknown error';
+            Log::error('Final SP returned failure', ['remark' => $remark]);
+            throw new \Exception('SP failed: ' . $remark);
+        }
+
+        Log::info('FINAL CREATION SUCCESS');
+
+        return redirect()->route('client-party.index')
+            ->with('swal_success_title', 'Success')
+            ->with('swal_success_text', 'Entity created successfully');
+
+    } catch (\Exception $e) {
+        Log::error('Final creation failed', [
+            'error' => $e->getMessage(),
+            'file'  => $e->getFile(),
+            'line'  => $e->getLine(),
+            'trace' => $e->getTraceAsString(),
+        ]);
+        Alert::error('Error', $e->getMessage())->persistent(true, false);
+        return redirect()->back();
+    }
+}
+
+    // public function update(UpdateClientPartyRequest $request, $id)
+    // {
+    //     $user = Auth::user();
+
+    //     Log::info('=== UPDATE CONTROLLER START ===', [
+    //         'id' => $id,
+    //         'user_id' => $user?->Id,
+    //         'method' => $request->method(),
+    //         'createBtn' => $request->input('createBtn'),
+    //         'all_input' => $request->all(),
+    //         'ip' => $request->ip(),
+    //     ]);
+
+    //     if (!$user->can('update-client-party')) {
+    //         Log::warning('Unauthorized access attempt', ['user_id' => $user?->Id, 'id' => $id]);
+    //         Alert::warning('Warning', 'Unauthorized.')->persistent(true, false);
+    //         return redirect()->back();
+    //     }
+
+    //     $entity = ClientParty::findOrFail($id);
+    //     $currentStatus = $entity->Status;
+
+    //     Log::info('Entity loaded successfully', [
+    //         'id' => $id,
+    //         'code' => $entity->Code,
+    //         'status' => $currentStatus,
+    //         'legal_entity_type' => $entity->LegalEntityType,
+    //         'request_debtor' => $entity->RequestforDebtor,
+    //         'request_vendor' => $entity->RequestforVendor,
+    //     ]);
+
+    //     if (!isset($request->createBtn)) {
+    //         Log::info('No createBtn present - redirecting to show');
+    //         Alert::info('Info', 'Use Create/Approve for status changes.')->persistent(true, false);
+    //         return redirect()->route('client-party.show', $id);
+    //     }
+
+    //     // Determine target status
+    //     $targetStatus = 'Created';
+    //     if ($currentStatus === 'PendingGroupLevelApproval') {
+    //         $targetStatus = 'PendingITVerification';
+    //     }
+
+    //     Log::info('Target status determined', ['from' => $currentStatus, 'to' => $targetStatus]);
+
+    //     // Validate transition
+    //     $allowedTransitions = [
+    //         'PendingGroupLevelApproval' => ['PendingITVerification'],
+    //         'PendingITVerification'     => ['Created'],
+    //     ];
+
+    //     if (!isset($allowedTransitions[$currentStatus]) || !in_array($targetStatus, $allowedTransitions[$currentStatus])) {
+    //         Log::warning('Invalid status transition attempted', [
+    //             'current' => $currentStatus,
+    //             'target'  => $targetStatus,
+    //         ]);
+    //         Alert::error('Error', 'Invalid status transition from ' . $currentStatus)->persistent(true, false);
+    //         return redirect()->back();
+    //     }
+
+    //     // STEP 1: PendingGroupLevelApproval → PendingITVerification
+    //     if ($targetStatus === 'PendingITVerification') {
+    //         Log::info('Entering Group → IT Verification transition');
+
+    //         $payload = [
+    //             'OperationType'     => 'AccountingEntityUpdate',
+    //             'Action'            => 'Add',
+    //             'SubmittedDatetime' => now()->format('YmdHis'),
+    //             'SubmittedBy'       => $user->LoginID ?? $user->full_name ?? 'system',
+    //             'RequestNo'         => $entity->Code,
+    //             'Status'            => $targetStatus,
+    //             'Remark'            => $request->input('comment', 'Group level approved - pending IT verification'),
+    //         ];
+
+    //         Log::info('Sending status update payload to SP', ['payload' => $payload]);
+
+    //         try {
+    //             $response = $this->executeJsonEntityProcedure($payload);
+
+    //             Log::info('Status update SP response', [
+    //                 'status' => $response['Status'] ?? 'missing',
+    //                 'remarks' => $response['Remarks'] ?? [],
+    //             ]);
+
+    //             if ($response['Status'] !== 'Success') {
+    //                 $remark = $response['Remarks'][0]['Remark'] ?? 'Unknown error';
+    //                 Log::error('Status update failed', ['remark' => $remark]);
+    //                 throw new Exception('SP failed: ' . $remark);
+    //             }
+
+    //             Log::info('Group → IT transition completed successfully');
+    //             return redirect()->route('client-party.show', $id)
+    //                 ->with('swal_success_title', 'Success')
+    //                 ->with('swal_success_text', 'Entity moved to Pending IT Verification');
+    //             return redirect()->route('client-party.show', $id);
+    //         } catch (\Exception $e) {
+    //             Log::error('Group → IT transition failed', [
+    //                 'error' => $e->getMessage(),
+    //                 'trace' => $e->getTraceAsString(),
+    //             ]);
+    //             Alert::error('Error', $e->getMessage())->persistent(true, false);
+    //             return redirect()->back();
+    //         }
+    //     }
+
+    //     // STEP 2: PendingITVerification → Created (final creation)
+    //     if ($currentStatus !== 'PendingITVerification') {
+    //         Log::warning('Invalid final transition - not in PendingITVerification');
+    //         Alert::error('Error', 'Can only finalize from Pending IT Verification')->persistent(true, false);
+    //         return redirect()->back();
+    //     }
+
+    //     Log::info('Entering FINAL CREATION STEP (PendingITVerification → Created)');
+
+    //     $isAccounting = !empty($entity->LegalEntityType) || $entity->RequestforDebtor || $entity->RequestforVendor;
+    //     if (!$isAccounting) {
+    //         Log::warning('Entity is not accounting type - skipping creation');
+    //         Alert::error('Error', 'This is not an accounting entity')->persistent(true, false);
+    //         return redirect()->back();
+    //     }
+
+    //     $d365Results = [];
+
+    //     // Debtor creation (now using dynamic payload)
+    //     if ($entity->RequestforDebtor || stripos($entity->LegalEntityType, 'debtor') !== false) {
+    //         Log::info('Starting Debtor D365 creation (dynamic payload)');
+
+    //         try {
+    //             $debtorPayload = $this->buildD365Payload($entity, 'debtor');
+
+    //             Log::info('Debtor payload built successfully - sending to D365', [
+    //                 'payload_summary' => array_keys($debtorPayload),
+    //                 'no_series'       => $debtorPayload['NoSeries'] ?? 'MISSING',
+    //                 'office'          => $debtorPayload['office'] ?? 'unknown',
+    //             ]);
+
+    //             $d365Response = $this->createLegalEntityType('debtor', $debtorPayload);
+
+    //             Log::info('Debtor D365 API response', [
+    //                 'status'       => $d365Response['status'] ?? 'missing',
+    //                 'response_code' => $d365Response['responseCode'] ?? null,
+    //                 'full_response' => $d365Response,
+    //             ]);
+    //             // Debtor block
+    //             // Debtor block
+    //             if (!$d365Response['status'] || empty($d365Response['responseCode'])) {
+    //                 $d365Error = $d365Response['error'] ?? $d365Response['responseDescription'] ?? 'Unknown D365 error';
+    //                 Log::error('Debtor D365 creation failed', ['error' => $d365Error]);
+    //                 return redirect()->back()->withInput()
+    //                     ->with('swal_error_title', 'Debtor Creation Failed')
+    //                     ->with('swal_error_text', $d365Error);
+    //             }
+    //             $d365Results['debtor'] = $d365Response['responseCode'];
+    //             Log::info('Debtor successfully created in D365', ['code' => $d365Results['debtor']]);
+    //         } catch (\Exception $e) {
+    //             Log::error('Debtor D365 exception', [
+    //                 'error' => $e->getMessage(),
+    //                 'trace' => $e->getTraceAsString(),
+    //             ]);
+    //             Alert::error('D365 Exception (Debtor)', $e->getMessage())->persistent(true, false);
+    //             return redirect()->back();
+    //         }
+    //     } else {
+    //         Log::info('Debtor processing skipped (not requested)');
+    //     }
+
+    //     // Vendor creation (now using dynamic payload)
+    //     if ($entity->RequestforVendor || stripos($entity->LegalEntityType, 'vendor') !== false) {
+    //         Log::info('Starting Vendor D365 creation (dynamic payload)');
+
+    //         try {
+    //             $vendorPayload = $this->buildD365Payload($entity, 'vendor');
+
+    //             Log::info('Vendor payload built successfully - sending to D365', [
+    //                 'payload_summary' => array_keys($vendorPayload),
+    //                 'no_series'       => $vendorPayload['NoSeries'] ?? 'MISSING',
+    //                 'office'          => $vendorPayload['office'] ?? 'unknown',
+    //             ]);
+
+    //             $d365Response = $this->createLegalEntityType('vendor', $vendorPayload);
+
+    //             Log::info('Vendor D365 API response', [
+    //                 'status'       => $d365Response['status'] ?? 'missing',
+    //                 'response_code' => $d365Response['responseCode'] ?? null,
+    //                 'full_response' => $d365Response,
+    //             ]);
+
+    //             // Vendor block
+    //             if (!$d365Response['status'] || empty($d365Response['responseCode'])) {
+    //                 $d365Error = $d365Response['error'] ?? $d365Response['responseDescription'] ?? 'Unknown D365 error';
+    //                 Log::error('Vendor D365 creation failed', ['error' => $d365Error]);
+    //                 return redirect()->back()->withInput()
+    //                     ->with('swal_error_title', 'Vendor Creation Failed')
+    //                     ->with('swal_error_text', $d365Error);
+    //             }
+
+    //             $d365Results['vendor'] = $d365Response['responseCode'];
+    //             Log::info('Vendor successfully created in D365', ['code' => $d365Results['vendor']]);
+    //         } catch (\Exception $e) {
+    //             Log::error('Vendor D365 exception', [
+    //                 'error' => $e->getMessage(),
+    //                 'trace' => $e->getTraceAsString(),
+    //             ]);
+    //             Alert::error('D365 Exception (Vendor)', $e->getMessage())->persistent(true, false);
+    //             return redirect()->back();
+    //         }
+    //     } else {
+    //         Log::info('Vendor processing skipped (not requested)');
+    //     }
+
+    //     // Final SP payload
+    //     $payload = [
+    //         'OperationType'     => 'AccountingEntityCreation',
+    //         'Action'            => 'Add',
+    //         'SubmittedDatetime' => now()->format('YmdHis'),
+    //         'SubmittedBy'       => $user->LoginID ?? $user->full_name ?? 'system',
+    //         'RequestNo'         => $entity->Code,
+    //         'Status'            => 'Create',
+    //         'Remark'            => $request->input('comment', 'Final creation from update'),
+    //     ];
+
+    //     if (isset($d365Results['debtor'])) $payload['DebtorNo'] = $d365Results['debtor'];
+    //     if (isset($d365Results['vendor'])) $payload['VendorNo'] = $d365Results['vendor'];
+
+    //     // Ensure LicenceTypeValue is never null when passed to SP (Cust_PartyLicense.License_Code is NOT NULL)
+    //     $payload['LicenceTypeCode']  = !empty(trim($entity->LicenceTypeCode ?? ''))  ? $entity->LicenceTypeCode  : 'NIL';
+    //     $payload['LicenceTypeValue'] = !empty(trim($entity->LicenceTypeValue ?? '')) ? $entity->LicenceTypeValue : 'NIL';
+
+
+    //     Log::info('Final SP payload prepared', ['payload' => $payload]);
+
+    //     try {
+    //         Log::info('Calling main SP (sp_EntityMain) for final creation');
+    //         $response = $this->executeJsonEntityProcedure($payload);
+
+    //         Log::info('Main SP response received', [
+    //             'status'  => $response['Status'] ?? 'missing',
+    //             'remarks' => $response['Remarks'] ?? [],
+    //         ]);
+
+    //         if ($response['Status'] !== 'Success') {
+    //             $remark = $response['Remarks'][0]['Remark'] ?? 'Unknown error';
+    //             Log::error('Main SP returned failure', ['remark' => $remark]);
+    //             throw new Exception('SP failed: ' . $remark);
+    //         }
+
+    //         Log::info('FINAL CREATION SUCCESS - entity created');
+    //         return redirect()->route('client-party.index')->with('entity_type', $type ?? 'operational')
+    //             ->with('swal_success_title', 'Success')
+    //             ->with('swal_success_text', 'Entity created successfully');
+    //         return redirect()->route('client-party.index')->with('entity_type', $type ?? 'operational');
+    //     } catch (\Exception $e) {
+    //         Log::error('Final creation FAILED - exception caught', [
+    //             'error_message' => $e->getMessage(),
+    //             'file'          => $e->getFile(),
+    //             'line'          => $e->getLine(),
+    //             'trace'         => $e->getTraceAsString(),
+    //         ]);
+    //         Alert::error('Error', $e->getMessage())->persistent(true, false);
+    //         return redirect()->back();
+    //     }
+    // }
 
 
     // In your update() controller, replace both D365 error blocks with this helper approach
@@ -2599,7 +3038,7 @@ class ClientPartyController extends Controller
     //         ], 500);
     //     }
     // }
-    
+
     public function getCompanies()
     {
         try {

@@ -28,7 +28,7 @@ class TRATZInvoices extends Command
             return 0;
         }
 
-        Log::info('─── TRA FIT Invoice Push Started ───');
+        // Log::info('─── TRA FIT Invoice Push Started ───');
 
         $bearerToken = env('FITTRA_TOKEN');
         if (!$bearerToken) {
@@ -46,7 +46,7 @@ class TRATZInvoices extends Command
         $pendingInvoices = $this->fetchPendingInvoices($invoiceId);
 
         if ($pendingInvoices->isEmpty()) {
-            Log::info('TRA FIT: No pending invoices found. Nothing to process.');
+            // Log::info('TRA FIT: No pending invoices found. Nothing to process.');
             $this->info('No pending invoices found.');
             return 0;
         }

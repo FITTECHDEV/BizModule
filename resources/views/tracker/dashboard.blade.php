@@ -2301,10 +2301,10 @@
                         </div>
 
                         ${trip.start_date ? `
-                                 <div class="alert alert-info mb-3" style="padding: 8px 12px; font-size: 0.9rem;">
-                                   <strong>Trip Started:</strong> ${moment(trip.start_date).format('DD/MM/YY HH:mm')}
-                                    </div>
-                                     ` : ''}
+                                         <div class="alert alert-info mb-3" style="padding: 8px 12px; font-size: 0.9rem;">
+                                           <strong>Trip Started:</strong> ${moment(trip.start_date).format('DD/MM/YY HH:mm')}
+                                            </div>
+                                             ` : ''}
 
                         <div class="form-group mb-3">
                             <label style="font-weight: 600; margin-bottom: 5px;">
@@ -2324,11 +2324,11 @@
                         </div>
 
                         ${!trip.start_date ? `
-                                                                                                                                <div class="alert alert-info mb-3" style="padding: 8px 12px; font-size: 0.85rem;">
-                                                                                                                                    <i class="fa fa-info-circle"></i>
-                                                                                                                                    <strong>Note:</strong> This is the first job. The trip will be started automatically with this time.
-                                                                                                                                </div>
-                                                                                                                                ` : ''}
+                                                                                                                                        <div class="alert alert-info mb-3" style="padding: 8px 12px; font-size: 0.85rem;">
+                                                                                                                                            <i class="fa fa-info-circle"></i>
+                                                                                                                                            <strong>Note:</strong> This is the first job. The trip will be started automatically with this time.
+                                                                                                                                        </div>
+                                                                                                                                        ` : ''}
 
                         <button class="btn btn-success btn-block" id="submitManualStartBtn" type="button">
                             <i class="fa fa-play"></i> Start Job with this Time
@@ -3634,12 +3634,12 @@
                                 <i class="fa fa-map"></i>
                             </a>
                             ${isNew ? `
-                                                                                        <button class="btn btn-sm btn-success markReadBtn"
-                                                                                                data-id="${notif.Id}"
-                                                                                                title="Mark as Read">
-                                                                                            <i class="fa fa-check"></i>
-                                                                                        </button>
-                                                                                    ` : ''}
+                                                                                                <button class="btn btn-sm btn-success markReadBtn"
+                                                                                                        data-id="${notif.Id}"
+                                                                                                        title="Mark as Read">
+                                                                                                    <i class="fa fa-check"></i>
+                                                                                                </button>
+                                                                                            ` : ''}
                             <button class="btn btn-sm btn-danger deleteNotifBtn"
                                     data-id="${notif.Id}"
                                     title="Delete">
@@ -3996,7 +3996,7 @@
                                     selectedNotifications.clear();
                                     updateSelectionUI();
                                     loadTripNotifications(tripId, $('#notifVehicleNo')
-                                    .text().trim());
+                                        .text().trim());
                                 } else {
                                     Swal.fire({
                                         title: 'Warning',

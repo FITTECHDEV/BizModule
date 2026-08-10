@@ -7552,10 +7552,13 @@ class QuotationController extends Controller
             }
 
             $filePath = $document->FilePath;
+            $fileName = $document->Name ?: "quote_{$quotation->bookingno}_v{$version}.pdf";
 
-            // ── Check if this is an Azure path (starts with 'Quotation/') ──
+            // Determine disposition: inline for preview, attachment otherwise
+            $disposition = request()->has('preview') ? 'inline' : 'attachment';
+
+            // ── Azure storage path ──
             if (str_starts_with($filePath, 'Quotation/')) {
-                // Serve from Azure
                 if (!\Storage::disk('azure')->exists($filePath)) {
                     Log::error('downloadPdf - Azure blob not found', [
                         'id' => $id,
@@ -7570,15 +7573,16 @@ class QuotationController extends Controller
                     'booking_no' => $quotation->bookingno,
                     'version' => $version,
                     'blob_path' => $filePath,
+                    'disposition' => $disposition,
                 ]);
 
                 $contents = \Storage::disk('azure')->get($filePath);
                 return response($contents, 200)
                     ->header('Content-Type', 'application/pdf')
-                    ->header('Content-Disposition', 'attachment; filename="' . $document->Name . '"');
+                    ->header('Content-Disposition', $disposition . '; filename="' . $fileName . '"');
             }
 
-            // ── Legacy local disk path ──
+            // ── Local disk path ──
             $relativePath = $this->normalizeFilePath($filePath);
 
             if (!\Storage::disk('public')->exists($relativePath)) {
@@ -7595,10 +7599,15 @@ class QuotationController extends Controller
                 'id' => $id,
                 'booking_no' => $quotation->bookingno,
                 'version' => $version,
-                'file' => $document->Name,
+                'file' => $fileName,
+                'disposition' => $disposition,
             ]);
 
-            return \Storage::disk('public')->download($relativePath, $document->Name);
+            // Read file contents to allow custom disposition header
+            $contents = \Storage::disk('public')->get($relativePath);
+            return response($contents, 200)
+                ->header('Content-Type', 'application/pdf')
+                ->header('Content-Disposition', $disposition . '; filename="' . $fileName . '"');
         } catch (\Exception $e) {
             Log::error('downloadPdf - Failed', [
                 'id' => $id,
