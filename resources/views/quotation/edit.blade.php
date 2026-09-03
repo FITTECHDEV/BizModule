@@ -440,185 +440,6 @@
                     </div>
                 </div>
 
-                <!-- Shipment Details -->
-                <div class="card card-primary" id="shipmentDetailsCard">
-                    <div class="card-header">
-                        <h3 class="card-title">Shipment Details</h3>
-                        <div class="card-tools">
-                            <button type="button" class="btn btn-tool" data-card-widget="collapse">
-                                <i class="fas fa-chevron-up"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group row">
-                                    <label class="col-sm-5 col-form-label">Service</label>
-                                    <div class="col-sm-7">
-                                        <input type="text" class="form-control form-control-sm"
-                                            value="{{ $quotation->ServiceVertical ?? '' }}" readonly>
-                                    </div>
-                                </div>
-                                <div class="form-group row">
-                                    <label class="col-sm-5 col-form-label">InCO Terms</label>
-                                    <div class="col-sm-7">
-                                        <input type="text" class="form-control form-control-sm" id="incoTermDisplay"
-                                            value="{{ $quotation->incoterm ?? '' }}" readonly>
-                                        <input type="hidden" id="incoTermCode"
-                                            value="{{ $quotation->incoterm ?? '' }}">
-                                        <select class="form-control form-control-sm d-none" id="incoTermSelect" disabled>
-                                            <option value="">-- Select --</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="form-group row">
-                                    <label class="col-sm-5 col-form-label">Transport Mode</label>
-                                    <div class="col-sm-7">
-                                        <select class="form-control form-control-sm" id="transportModeSelect"
-                                            name="transport_mode" disabled>
-                                            <option value="">-- Loading... --</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="form-group row">
-                                    <label class="col-sm-5 col-form-label">Origin Country</label>
-                                    <div class="col-sm-7">
-                                        <input type="text" class="form-control form-control-sm"
-                                            id="originCountryDisplay" value="{{ $quotation->origincountry ?? '' }}"
-                                            readonly>
-                                        <div id="originCountryEditWrap" style="display:none;">
-                                            <select class="form-control form-control-sm" id="originCountrySelect">
-                                                <option value="">-- Select --</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="form-group row">
-                                    <label class="col-sm-5 col-form-label">Port of Loading</label>
-                                    <div class="col-sm-7">
-                                        <input type="text" class="form-control form-control-sm" id="polDisplay"
-                                            value="{{ $quotation->PortOfLoadingCode ?? '' }}" readonly>
-                                        <div id="polEditWrap" style="display:none;">
-                                            <input type="text" class="form-control form-control-sm" id="polSearch"
-                                                placeholder="Type to search..." autocomplete="off">
-                                            <input type="hidden" id="polCode"
-                                                value="{{ $quotation->PortOfLoadingCode ?? '' }}">
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="form-group row mb-0">
-                                    <label class="col-sm-5 col-form-label">Place of Receipt</label>
-                                    <div class="col-sm-7">
-                                        <input type="text" class="form-control form-control-sm"
-                                            id="placeOfReceiptDisplay" value="{{ $quotation->PlaceOfReceiptCode ?? '' }}"
-                                            readonly>
-                                        <div id="placeOfReceiptEditWrap" style="display:none;">
-                                            <input type="text" class="form-control form-control-sm"
-                                                id="placeOfReceiptSearch" placeholder="Type to search..."
-                                                autocomplete="off">
-                                            <input type="hidden" id="placeOfReceiptCode"
-                                                value="{{ $quotation->PlaceOfReceiptCode ?? '' }}">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="col-md-6">
-                                <div class="form-group row">
-                                    <label class="col-sm-5 col-form-label">Process</label>
-                                    <div class="col-sm-7">
-                                        <input type="text" class="form-control form-control-sm"
-                                            value="{{ $quotation->process ?? '' }}" readonly>
-                                    </div>
-                                </div>
-                                <div class="form-group row">
-                                    <label class="col-sm-5 col-form-label">Shipment Mode</label>
-                                    <div class="col-sm-7">
-                                        <select class="form-control form-control-sm" id="shipmentModeSelect"
-                                            name="shipment_mode" disabled>
-                                            <option value="">-- Loading... --</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="form-group row">
-                                    <label class="col-sm-5 col-form-label">Service Class</label>
-                                    <div class="col-sm-7">
-                                        <input type="text" class="form-control form-control-sm"
-                                            id="serviceClassDisplay" value="{{ $quotation->ServiceClass ?? '' }}"
-                                            readonly>
-                                        <select class="form-control form-control-sm d-none" id="serviceClassSelect"
-                                            disabled>
-                                            <option value="">-- Select --</option>
-                                        </select>
-                                        <input type="hidden" id="serviceClassCode"
-                                            value="{{ $quotation->ServiceClassCode ?? ($quotation->ServiceClass ?? '') }}">
-                                    </div>
-                                </div>
-                                <div class="form-group row">
-                                    <label class="col-sm-5 col-form-label">Destination Country</label>
-                                    <div class="col-sm-7">
-                                        <input type="text" class="form-control form-control-sm"
-                                            id="destCountryDisplay" value="{{ $quotation->destinationcountry ?? '' }}"
-                                            readonly>
-                                        <div id="destCountryEditWrap" style="display:none;">
-                                            <select class="form-control form-control-sm" id="destCountrySelect">
-                                                <option value="">-- Select --</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="form-group row">
-                                    <label class="col-sm-5 col-form-label">Port of Discharge</label>
-                                    <div class="col-sm-7">
-                                        <input type="text" class="form-control form-control-sm" id="podDisplay"
-                                            value="{{ $quotation->PortOfDischargeCode ?? '' }}" readonly>
-                                        <div id="podEditWrap" style="display:none;">
-                                            <input type="text" class="form-control form-control-sm" id="podSearch"
-                                                placeholder="Type to search..." autocomplete="off">
-                                            <input type="hidden" id="podCode"
-                                                value="{{ $quotation->PortOfDischargeCode ?? '' }}">
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="form-group row mb-0">
-                                    <label class="col-sm-5 col-form-label">Place of Delivery</label>
-                                    <div class="col-sm-7">
-                                        <input type="text" class="form-control form-control-sm"
-                                            id="placeOfDeliveryDisplay"
-                                            value="{{ $quotation->PlaceOfDeliveryCode ?? '' }}" readonly>
-                                        <div id="placeOfDeliveryEditWrap" style="display:none;">
-                                            <input type="text" class="form-control form-control-sm"
-                                                id="placeOfDeliverySearch" placeholder="Type to search..."
-                                                autocomplete="off">
-                                            <input type="hidden" id="placeOfDeliveryCode"
-                                                value="{{ $quotation->PlaceOfDeliveryCode ?? '' }}">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row mt-3 pt-2" style="border-top: 1px solid #dee2e6;">
-                            <div class="col-md-12 text-right">
-                                @if (!$isBookingCreated)
-                                    <button type="button" class="btn btn-warning btn-sm" id="editShipmentDetailsBtn">
-                                        <i class="fas fa-edit mr-1"></i> Edit
-                                    </button>
-                                @endif
-                                <button type="button" class="btn btn-primary btn-sm" id="saveShipmentDetailsBtn"
-                                    style="display:none">
-                                    <i class="fas fa-save mr-1"></i> Save
-                                </button>
-                                <button type="button" class="btn btn-secondary btn-sm" id="cancelShipmentDetailsBtn"
-                                    style="display:none">
-                                    <i class="fas fa-times mr-1"></i> Cancel
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Quotation Document (with Generate Quote button in title bar + T&C in body) -->
                 <div class="card card-primary">
                     <div class="card-header d-flex justify-content-between align-items-center">
@@ -1367,6 +1188,201 @@
                     </div>
                 </div>
 
+
+                <!-- Shipment Details -->
+                <div class="card card-primary" id="shipmentDetailsCard">
+                    <div class="card-header">
+                        <h3 class="card-title">Shipment Details</h3>
+                        <div class="card-tools">
+                            <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                <i class="fas fa-chevron-up"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group row">
+                                    <label class="col-sm-5 col-form-label">Service</label>
+                                    <div class="col-sm-7">
+                                        <input type="text" class="form-control form-control-sm"
+                                            value="{{ $quotation->ServiceVertical ?? '' }}" readonly>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-sm-5 col-form-label">InCO Terms</label>
+                                    <div class="col-sm-7">
+                                        <input type="text" class="form-control form-control-sm" id="incoTermDisplay"
+                                            value="{{ $quotation->incoterm ?? '' }}" readonly>
+                                        <input type="hidden" id="incoTermCode"
+                                            value="{{ $quotation->incoterm ?? '' }}">
+                                        <select class="form-control form-control-sm d-none" id="incoTermSelect" disabled>
+                                            <option value="">-- Select --</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-sm-5 col-form-label">Transport Mode</label>
+                                    <div class="col-sm-7">
+                                        <select class="form-control form-control-sm" id="transportModeSelect"
+                                            name="transport_mode" disabled>
+                                            <option value="">-- Loading... --</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-sm-5 col-form-label">Origin Country</label>
+                                    <div class="col-sm-7">
+                                        <input type="text" class="form-control form-control-sm"
+                                            id="originCountryDisplay" value="{{ $quotation->origincountry ?? '' }}"
+                                            readonly>
+                                        <div id="originCountryEditWrap" style="display:none;">
+                                            <select class="form-control form-control-sm" id="originCountrySelect">
+                                                <option value="">-- Select --</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-sm-5 col-form-label">Port of Loading</label>
+                                    <div class="col-sm-7">
+                                        <input type="text" class="form-control form-control-sm" id="polDisplay"
+                                            value="{{ $quotation->PortOfLoadingCode ?? '' }}" readonly>
+                                        <div id="polEditWrap" style="display:none;">
+                                            <input type="text" class="form-control form-control-sm" id="polSearch"
+                                                placeholder="Type to search..." autocomplete="off">
+                                            <input type="hidden" id="polCode"
+                                                value="{{ $quotation->PortOfLoadingCode ?? '' }}">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-group row mb-0">
+                                    <label class="col-sm-5 col-form-label">Place of Receipt</label>
+                                    <div class="col-sm-7">
+                                        <input type="text" class="form-control form-control-sm"
+                                            id="placeOfReceiptDisplay" value="{{ $quotation->PlaceOfReceiptCode ?? '' }}"
+                                            readonly>
+                                        <div id="placeOfReceiptEditWrap" style="display:none;">
+                                            <input type="text" class="form-control form-control-sm"
+                                                id="placeOfReceiptSearch" placeholder="Type to search..."
+                                                autocomplete="off">
+                                            <input type="hidden" id="placeOfReceiptCode"
+                                                value="{{ $quotation->PlaceOfReceiptCode ?? '' }}">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="form-group row">
+                                    <label class="col-sm-5 col-form-label">Process</label>
+                                    <div class="col-sm-7">
+                                        <input type="text" class="form-control form-control-sm"
+                                            value="{{ $quotation->process ?? '' }}" readonly>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-sm-5 col-form-label">Shipment Mode</label>
+                                    <div class="col-sm-7">
+                                        <select class="form-control form-control-sm" id="shipmentModeSelect"
+                                            name="shipment_mode" disabled>
+                                            <option value="">-- Loading... --</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-sm-5 col-form-label">Service Class</label>
+                                    <div class="col-sm-7">
+                                        <input type="text" class="form-control form-control-sm"
+                                            id="serviceClassDisplay" value="{{ $quotation->ServiceClass ?? '' }}"
+                                            readonly>
+                                        <select class="form-control form-control-sm d-none" id="serviceClassSelect"
+                                            disabled>
+                                            <option value="">-- Select --</option>
+                                        </select>
+                                        <input type="hidden" id="serviceClassCode"
+                                            value="{{ $quotation->ServiceClassCode ?? ($quotation->ServiceClass ?? '') }}">
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-sm-5 col-form-label">Destination Country</label>
+                                    <div class="col-sm-7">
+                                        <input type="text" class="form-control form-control-sm"
+                                            id="destCountryDisplay" value="{{ $quotation->destinationcountry ?? '' }}"
+                                            readonly>
+                                        <div id="destCountryEditWrap" style="display:none;">
+                                            <select class="form-control form-control-sm" id="destCountrySelect">
+                                                <option value="">-- Select --</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-sm-5 col-form-label">Port of Discharge</label>
+                                    <div class="col-sm-7">
+                                        <input type="text" class="form-control form-control-sm" id="podDisplay"
+                                            value="{{ $quotation->PortOfDischargeCode ?? '' }}" readonly>
+                                        <div id="podEditWrap" style="display:none;">
+                                            <input type="text" class="form-control form-control-sm" id="podSearch"
+                                                placeholder="Type to search..." autocomplete="off">
+                                            <input type="hidden" id="podCode"
+                                                value="{{ $quotation->PortOfDischargeCode ?? '' }}">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-group row mb-0">
+                                    <label class="col-sm-5 col-form-label">Place of Delivery</label>
+                                    <div class="col-sm-7">
+                                        <input type="text" class="form-control form-control-sm"
+                                            id="placeOfDeliveryDisplay"
+                                            value="{{ $quotation->PlaceOfDeliveryCode ?? '' }}" readonly>
+                                        <div id="placeOfDeliveryEditWrap" style="display:none;">
+                                            <input type="text" class="form-control form-control-sm"
+                                                id="placeOfDeliverySearch" placeholder="Type to search..."
+                                                autocomplete="off">
+                                            <input type="hidden" id="placeOfDeliveryCode"
+                                                value="{{ $quotation->PlaceOfDeliveryCode ?? '' }}">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-group row mb-0">
+                                    <label class="col-sm-5 col-form-label">Forwarder</label>
+                                    <div class="col-sm-7">
+                                        <input type="text" class="form-control form-control-sm"
+                                            id="shipmentForwarderDisplay" value="{{ $quotation->Forwarder ?? '' }}"
+                                            readonly>
+                                        <select class="form-control form-control-sm d-none" id="shipmentForwarderSelect"
+                                            disabled>
+                                            <option value="">-- Select --</option>
+                                        </select>
+                                        <input type="hidden" id="shipmentForwarderCode"
+                                            value="{{ $quotation->ForwarderCode ?? '' }}">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-3 pt-2" style="border-top: 1px solid #dee2e6;">
+                            <div class="col-md-12 text-right">
+                                @if (!$isBookingCreated)
+                                    <button type="button" class="btn btn-warning btn-sm" id="editShipmentDetailsBtn">
+                                        <i class="fas fa-edit mr-1"></i> Edit
+                                    </button>
+                                @endif
+                                <button type="button" class="btn btn-primary btn-sm" id="saveShipmentDetailsBtn"
+                                    style="display:none">
+                                    <i class="fas fa-save mr-1"></i> Save
+                                </button>
+                                <button type="button" class="btn btn-secondary btn-sm" id="cancelShipmentDetailsBtn"
+                                    style="display:none">
+                                    <i class="fas fa-times mr-1"></i> Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
                 <!-- Revenue Section -->
                 <div class="card card-success">
                     <div class="card-header d-flex justify-content-between align-items-center">
@@ -1564,8 +1580,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                            MODALS
-                                                                                                                                                                            ============================================ -->
+                                                                                                                                                                                            MODALS
+                                                                                                                                                                                            ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -2605,8 +2621,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -3049,9 +3065,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -4727,6 +4743,8 @@
             let shipmentCountriesLoaded = false;
             let incoTermsLoaded = false;
             let originalIncoTerm = '';
+            let originalShipmentForwarderCode = '';
+            let shipmentForwardersLoaded = false;
 
             let serviceClassesLoaded = false;
             let originalServiceClass = '';
@@ -4762,6 +4780,35 @@
                     },
                     complete: function() {
                         if (typeof callback === 'function') callback();
+                    }
+                });
+            }
+
+            function loadShipmentForwarders(callback) {
+                const $sel = $('#shipmentForwarderSelect');
+                if (shipmentForwardersLoaded) {
+                    if (callback) callback();
+                    return;
+                }
+                $.ajax({
+                    url: '{{ route('quotation.booking.forwarders') }}',
+                    type: 'GET',
+                    data: {
+                        team_id: teamId
+                    },
+                    success: function(response) {
+                        $sel.empty().append('<option value="">-- Select --</option>');
+                        if (response.success && response.parties.length) {
+                            response.parties.forEach(p => $sel.append(
+                                `<option value="${p.PartyCode}" data-id="${p.PartyID}">${p.PartyName}</option>`
+                            ));
+                        }
+                        const current = $('#shipmentForwarderCode').val();
+                        if (current) $sel.val(current);
+                        shipmentForwardersLoaded = true;
+                    },
+                    complete: function() {
+                        if (callback) callback();
                     }
                 });
             }
@@ -4810,6 +4857,11 @@
                 originalPod = $('#podCode').val();
                 originalPlaceOfReceipt = $('#placeOfReceiptCode').val();
                 originalPlaceOfDelivery = $('#placeOfDeliveryCode').val();
+                originalShipmentForwarderCode = $('#shipmentForwarderCode').val();
+                loadShipmentForwarders(function() {
+                    $('#shipmentForwarderDisplay').addClass('d-none');
+                    $('#shipmentForwarderSelect').removeClass('d-none').prop('disabled', false);
+                });
 
                 $('#polSearch').val($('#polDisplay').val());
                 $('#podSearch').val($('#podDisplay').val());
@@ -4947,6 +4999,9 @@
             });
 
             $('#cancelShipmentDetailsBtn').on('click', function() {
+                $('#shipmentForwarderSelect').val(originalShipmentForwarderCode).addClass('d-none').prop(
+                    'disabled', true);
+                $('#shipmentForwarderDisplay').removeClass('d-none');
                 $('#shipmentModeSelect').val(originalShipmentMode);
                 $('#transportModeSelect').val(originalTransportMode);
                 $('#incoTermSelect').val(originalIncoTerm);
@@ -5025,6 +5080,7 @@
                         pod_code: $('#podCode').val(),
                         place_of_receipt_code: $('#placeOfReceiptCode').val(),
                         place_of_delivery_code: $('#placeOfDeliveryCode').val(),
+                        forwarder_code: $('#shipmentForwarderSelect').val(),
                     },
                     beforeSend: function() {
                         $('#saveShipmentDetailsBtn').prop('disabled', true)
@@ -5085,6 +5141,13 @@
 
                             $('#saveShipmentDetailsBtn, #cancelShipmentDetailsBtn').hide();
                             $('#editShipmentDetailsBtn').show();
+                            originalShipmentForwarderCode = $('#shipmentForwarderSelect').val();
+                            $('#shipmentForwarderCode').val(originalShipmentForwarderCode);
+                            $('#shipmentForwarderDisplay').val($(
+                                    '#shipmentForwarderSelect option:selected').text())
+                                .removeClass('d-none');
+                            $('#shipmentForwarderSelect').addClass('d-none').prop('disabled',
+                                true);
                         } else {
                             showNotification(response.message || 'Failed to save', 'error');
                         }
@@ -6871,15 +6934,15 @@
                             <td class="text-right">${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
                             <td class="text-center">
                                 ${charge.source === 'template' ? '<span class="badge badge-info">Template</span>' : `
-                                                <button type="button" class="btn btn-warning btn-action edit-cost-charge"
-                                                    data-index="${index}" data-id="${charge.id}">
-                                                    <i class="fas fa-edit"></i>
-                                                </button>
-                                                <button type="button" class="btn btn-danger btn-action delete-cost-charge"
-                                                    data-index="${index}" data-id="${charge.id}">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            `}
+                                                                <button type="button" class="btn btn-warning btn-action edit-cost-charge"
+                                                                    data-index="${index}" data-id="${charge.id}">
+                                                                    <i class="fas fa-edit"></i>
+                                                                </button>
+                                                                <button type="button" class="btn btn-danger btn-action delete-cost-charge"
+                                                                    data-index="${index}" data-id="${charge.id}">
+                                                                    <i class="fas fa-trash"></i>
+                                                                </button>
+                                                            `}
                             </td>
                         </tr>
                     `);
@@ -7148,23 +7211,29 @@
                         `/quotation/${quotationId}/download-pdf/${versionNo}`;
 
                     html += `
-            <div class="form-group row align-items-center mb-2">
-                <label class="col-sm-4 col-form-label fw-bold">${versionLabel}</label>
-                <div class="col-sm-8 d-flex align-items-center">
-                    <button type="button"
-                        class="btn btn-sm btn-outline-primary btn-download-pdf"
-                        data-url="${downloadUrl}"
-                        data-version="${versionNo}">
-                        <i class="fas fa-download mr-1"></i> Download
-                    </button>
-                    <span class="ml-2 text-success"
-                        id="download-success-${versionNo}"
-                        style="display:none; font-size:0.8rem;">
-                        <i class="fas fa-check-circle mr-1"></i> Downloaded
-                    </span>
-                </div>
-            </div>
-        `;
+<div class="form-group row align-items-center mb-2">
+    <label class="col-sm-4 col-form-label fw-bold">${versionLabel}</label>
+    <div class="col-sm-8 d-flex align-items-center">
+        <button type="button"
+            class="btn btn-sm btn-outline-primary btn-view-pdf mr-1"
+            data-url="${downloadUrl}?preview=1"
+            data-version="${versionNo}">
+            <i class="fas fa-eye mr-1"></i> View
+        </button>
+        <button type="button"
+            class="btn btn-sm btn-outline-primary btn-download-pdf"
+            data-url="${downloadUrl}"
+            data-version="${versionNo}">
+            <i class="fas fa-download mr-1"></i> Download
+        </button>
+        <span class="ml-2 text-success"
+            id="download-success-${versionNo}"
+            style="display:none; font-size:0.8rem;">
+            <i class="fas fa-check-circle mr-1"></i> Downloaded
+        </span>
+    </div>
+</div>
+`;
                 });
 
                 if (html) {
@@ -7258,6 +7327,12 @@
             // Load versions on page init
             loadVersions();
             loadTermsTemplates();
+
+            $(document).on('click', '.btn-view-pdf', function(e) {
+                e.preventDefault();
+                const url = $(this).data('url');
+                window.open(url, '_blank');
+            });
 
             // ============================================
             // EMAIL QUOTE — TEMPLATE LOADING
@@ -7400,6 +7475,7 @@
                 $('#emailBody').val(emailTemplateMap[name] || '');
                 if (!$('#emailSubject').val().trim()) $('#emailSubject').val(name);
             });
+
 
             // ============================================
             // EMAIL QUOTE — SEND
@@ -7823,6 +7899,22 @@
             // Load all dropdowns when modal opens
             $('#createBookingModal').on('show.bs.modal', function() {
                 loadServiceTemplates();
+                const savedForwarderCode = $('#shipmentForwarderCode').val();
+                if (savedForwarderCode) {
+                    const savedForwarderText = $('#shipmentForwarderDisplay').val();
+                    const trySelect = setInterval(function() {
+                        const $cb = $('#cb_forwarder');
+                        if ($cb.find('option').length > 1) {
+                            if (!$cb.find(`option[value="${savedForwarderCode}"]`).length) {
+                                $cb.append(
+                                    `<option value="${savedForwarderCode}">${savedForwarderText}</option>`
+                                    );
+                            }
+                            $cb.val(savedForwarderCode).prop('disabled', true);
+                            clearInterval(trySelect);
+                        }
+                    }, 100);
+                }
                 loadBillToParties();
                 loadForwarders();
                 // Small delay ensures modal DOM is visible before autocomplete binds
