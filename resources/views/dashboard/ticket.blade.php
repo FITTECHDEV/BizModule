@@ -390,7 +390,7 @@
 
 
             {{-- AR/AP Smart Invoices - Zambia Revenue Authority (ZRA) Integration --}}
-            @php
+            {{-- @php
                 $zraOfficeFlags = [
                     'KE' => 'kenya_flag.png',
                     'ZM' => 'zambia-flag.png',
@@ -399,7 +399,7 @@
                     'UG' => 'uganda_flag.png',
                     'RW' => 'rwanda_flag.png',
                 ];
-                
+
 
                 $zraOfficeLabels = [
                     'KE' => 'KRA Integration',
@@ -467,9 +467,48 @@
                         </div>
                     </div>
                 </a>
+            </div> --}}
+
+            {{-- ZRA Integration - Zambia only (replace with dynamic version above when multi-country is ready) --}}
+            <div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-3">
+                <a href="/zra" style="text-decoration: none; color: inherit;">
+                    <div class="d-flex h-100 flex-column card card-widget widget-user shadow service-card"
+                        style="cursor: pointer;">
+                        <div class="widget-user-header"
+                            style="background: linear-gradient(135deg, #198754 10%, #0a3d1f 100%);">
+                            <h3 class="widget-user-username">ZRA INTEGRATION</h3>
+                            <h5 class="widget-user-desc">Smart Invoice Dashboard</h5>
+                        </div>
+                        <div class="widget-user-image">
+                            <img class="img-circle elevation-2" src="{{ asset('site_imgs/Flag_of_Zambia.gif') }}"
+                                alt="Zambia Flag"
+                                style="background: white; padding: 4px; width: 65px; height: 65px; object-fit: cover;">
+                        </div>
+                        <div class="card-footer">
+                            <div class="row">
+                                <div class="col-4 border-right">
+                                    <div class="description-block">
+                                        <h5 class="description-header text-danger">0</h5>
+                                        <span class="description-text">Failed</span>
+                                    </div>
+                                </div>
+                                <div class="col-4 border-right">
+                                    <div class="description-block">
+                                        <h5 class="description-header text-warning">0</h5>
+                                        <span class="description-text">Pending</span>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="description-block">
+                                        <h5 class="description-header text-success">0</h5>
+                                        <span class="description-text">Submitted</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </a>
             </div>
-
-
             <!-- Azure Management Card -->
             @if (Auth::user()->can('approve-all-entity-request'))
                 <div class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-3">

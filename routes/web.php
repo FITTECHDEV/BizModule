@@ -1704,6 +1704,7 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
             );
             Route::get('/{contract}/edit', [App\Http\Controllers\ContractController::class, 'edit'])->name('edit');
             Route::put('/{contract}', [App\Http\Controllers\ContractController::class, 'updateHeader'])->name('update');
+            Route::delete('/{contract}', [App\Http\Controllers\ContractController::class, 'destroy'])->name('destroy');
             Route::post('/{contract}/services', [App\Http\Controllers\ContractController::class, 'storeService'])->name(
                 'services.store',
             );
@@ -1733,6 +1734,10 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
                 App\Http\Controllers\ContractController::class,
                 'getFormulaFields',
             ])->name('services.formula-fields');
+            Route::get('/{contract}/charges/display', [
+                App\Http\Controllers\ContractController::class,
+                'chargeDisplay',
+            ])->name('charges.display');
         });
 
     Route::get('/quotation/website-requests', [App\Http\Controllers\WebsiteQuotationController::class, 'index'])->name(
@@ -2154,3 +2159,51 @@ Route::get('/datatables/zra', [App\Http\Controllers\ZraController::class, 'datat
 Route::get('/approval/{id}/approve', [ApprovalController::class, 'approve'])
     ->name('approval.approve')
     ->middleware('signed'); // rejects invalid/expired signatures automatically
+
+Route::get('/debug/find-company/{name}', function (string $name) {
+    $pdo = DB::connection('pgsql')->getPdo();
+
+    // Find columns likely to hold a company/partner name
+    $cols = $pdo
+        ->query(
+            "SELECT table_name, column_name
+         FROM information_schema.columns
+         WHERE table_schema = 'public'
+           AND (column_name ILIKE '%company%' OR column_name ILIKE '%partner%name%')
+         ORDER BY table_name",
+        )
+        ->fetchAll(PDO::FETCH_ASSOC);
+
+    $needle = '%' . $name . '%';
+    $hits = [];
+
+    foreach ($cols as $c) {
+        $table = $c['table_name'];
+        $column = $c['column_name'];
+
+        try {
+            $stmt = $pdo->prepare("SELECT * FROM \"$table\" WHERE \"$column\" ILIKE ? LIMIT 5");
+            $stmt->execute([$needle]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            if (count($rows) > 0) {
+                $hits[] = ['table' => $table, 'column' => $column, 'rows' => $rows];
+            }
+        } catch (\Exception $e) {
+            continue;
+        }
+    }
+
+    return response()->json([
+        'success' => true,
+        'message' =>
+            count($hits) > 0
+                ? 'Found matches in ' . count($hits) . ' table(s)'
+                : "No matches for '$name' in any company/partner name column",
+        'data' => [
+            'search_term' => $name,
+            'columns_checked' => $cols,
+            'hits' => $hits,
+        ],
+    ]);
+});

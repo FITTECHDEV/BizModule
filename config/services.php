@@ -36,6 +36,9 @@ return [
         'redirect' => env('AZURE_REDIRECT_URI'),
         'tenant' => env('AZURE_TENANT_ID', 'common'), // Optional, use 'common' for multi-tenant or specific tenant ID
     ],
-
+    'dbinvoices' => [
+    'base_url' => env('DBINVOICES_BASE_URL', 'https://dbinvoices.com'),
+    'api_key'  => env('DBINVOICES_API_KEY'),
+    ],
 
 ];
