@@ -121,86 +121,178 @@ public function handle()
         return implode('-', str_split($data, 4));
     }
 
-    protected function handleSuccessfulSubmission($invoice, $responseData)
-    {
-        $result = $responseData['result'] ?? [];
-        $errorMessage = trim($result['error'] ?? '');
+    // protected function handleSuccessfulSubmission($invoice, $responseData)
+    // {
+    //     $result = $responseData['result'] ?? [];
+    //     $errorMessage = trim($result['error'] ?? '');
 
-        $sdcData = $result['sdc_data'] ?? null;
-        $cisData = $result['cis_data'] ?? null;
-        $journal = $result['journal'] ?? null;
+    //     $sdcData = $result['sdc_data'] ?? null;
+    //     $cisData = $result['cis_data'] ?? null;
+    //     $journal = $result['journal'] ?? null;
 
-        // Convert comma-separated sdcData to hash-separated format
-        if (!empty($sdcData)) {
-            $sdcData = str_replace(',', '#', $sdcData);
-        }
+    //     // Convert comma-separated sdcData to hash-separated format
+    //     if (!empty($sdcData)) {
+    //         $sdcData = str_replace(',', '#', $sdcData);
+    //     }
 
-        $receiptNumber = $sdcID = $sdcDate = $sdcSignature = $sdcInternalData = null;
+    //     $receiptNumber = $sdcID = $sdcDate = $sdcSignature = $sdcInternalData = null;
 
-        if (!empty($sdcData)) {
-            $sdcParts = explode('#', $sdcData);
-            if (count($sdcParts) >= 7) {
-                $sdcID = $sdcParts[0];
-                $receiptNumber = "{$sdcParts[1]}/{$sdcParts[2]} {$sdcParts[3]}";
-                $sdcDate = $sdcParts[4];
-                $sdcSignature = $this->formatWithDashes($sdcParts[5]);
-                $sdcInternalData = $this->formatWithDashes($sdcParts[6]); // Use correct index
-            }
-        }
+    //     if (!empty($sdcData)) {
+    //         $sdcParts = explode('#', $sdcData);
+    //         if (count($sdcParts) >= 7) {
+    //             $sdcID = $sdcParts[0];
+    //             $receiptNumber = "{$sdcParts[1]}/{$sdcParts[2]} {$sdcParts[3]}";
+    //             $sdcDate = $sdcParts[4];
+    //             $sdcSignature = $this->formatWithDashes($sdcParts[5]);
+    //             $sdcInternalData = $this->formatWithDashes($sdcParts[6]); // Use correct index
+    //         }
+    //     }
 
-        $cisDate = $cisReceiptNumber = $cisMRC = null;
-        if (!empty($cisData)) {
-            $cisParts = explode(',', $cisData);
-            if (count($cisParts) >= 3) {
-                $cisDate = $cisParts[0];
-                $cisReceiptNumber = $cisParts[1];
-                $cisMRC = $cisParts[2];
-            }
-        }
+    //     $cisDate = $cisReceiptNumber = $cisMRC = null;
+    //     if (!empty($cisData)) {
+    //         $cisParts = explode(',', $cisData);
+    //         if (count($cisParts) >= 3) {
+    //             $cisDate = $cisParts[0];
+    //             $cisReceiptNumber = $cisParts[1];
+    //             $cisMRC = $cisParts[2];
+    //         }
+    //     }
 
-        $formattedCisDate = null;
-        if (!empty($cisDate)) {
-            $dateObj = DateTime::createFromFormat('Y-m-d H:i:s.u', $cisDate);
-            if ($dateObj) {
-                $formattedCisDate = $dateObj->format('Y-m-d H:i:s');
-            }
-        }
+    //     $formattedCisDate = null;
+    //     if (!empty($cisDate)) {
+    //         $dateObj = DateTime::createFromFormat('Y-m-d H:i:s.u', $cisDate);
+    //         if ($dateObj) {
+    //             $formattedCisDate = $dateObj->format('Y-m-d H:i:s');
+    //         }
+    //     }
 
-        // Set SubmissionStatus based on errorMessage
-        $submissionStatus = ($errorMessage === 'ERROR_EXIST')
-            ? "Invoice with trader invoice No already exists"
-            : ($errorMessage ?: 'Invoice generated successfully');
+    //     // Set SubmissionStatus based on errorMessage
+    //     $submissionStatus = ($errorMessage === 'ERROR_EXIST')
+    //         ? "Invoice with trader invoice No already exists"
+    //         : ($errorMessage ?: 'Invoice generated successfully');
 
-        $updateData = [
-            'RRA_SDC_Receipt_Number' => $receiptNumber,
-            'RRA_SDC_Date' => $sdcDate,
-            'RRA_SDC_ID' => $sdcID,
-            'RRA_SDC_Data_QRCode' => $sdcData, // Now hash-separated
-            'RRA_SDC_InternalData' => $sdcInternalData, // Now formatted with dashes
-            'RRA_SDC_Signature' => $sdcSignature, // Now formatted with dashes
-            'RRA_CIS_Date' => $formattedCisDate,
-            'RRA_CIS_Receipt_Number' => $cisReceiptNumber,
-            'RRA_CIS_MRC' => $cisMRC,
-            'RRA_Journal' => $journal,
-            'SubmissionStatus' => $submissionStatus,
-        ];
+    //     $updateData = [
+    //         'RRA_SDC_Receipt_Number' => $receiptNumber,
+    //         'RRA_SDC_Date' => $sdcDate,
+    //         'RRA_SDC_ID' => $sdcID,
+    //         'RRA_SDC_Data_QRCode' => $sdcData, // Now hash-separated
+    //         'RRA_SDC_InternalData' => $sdcInternalData, // Now formatted with dashes
+    //         'RRA_SDC_Signature' => $sdcSignature, // Now formatted with dashes
+    //         'RRA_CIS_Date' => $formattedCisDate,
+    //         'RRA_CIS_Receipt_Number' => $cisReceiptNumber,
+    //         'RRA_CIS_MRC' => $cisMRC,
+    //         'RRA_Journal' => $journal,
+    //         'SubmissionStatus' => $submissionStatus,
+    //     ];
 
-        // Update DocStatus logic (Checking if errorMessage exactly matches "ERROR_EXIST")
-        if ($errorMessage === '' || $errorMessage === 'ERROR_EXIST') {
-            $updateData['DocStatus'] = 'Submitted';
-        } else {
-            $updateData['DocStatus'] = 'Failed';
-        }
+    //     // Update DocStatus logic (Checking if errorMessage exactly matches "ERROR_EXIST")
+    //     if ($errorMessage === '' || $errorMessage === 'ERROR_EXIST') {
+    //         $updateData['DocStatus'] = 'Submitted';
+    //     } else {
+    //         $updateData['DocStatus'] = 'Failed';
+    //     }
 
-        RRABillingHeader::where('ID', $invoice->ID)->update($updateData);
+    //     RRABillingHeader::where('ID', $invoice->ID)->update($updateData);
 
-        if ($errorMessage === '' || $errorMessage === 'ERROR_EXIST') {
-            Log::info("Invoice ID: {$invoice->ID} submitted successfully with Receipt No: {$receiptNumber}.");
-        } else {
-            Log::error("Invoice ID: {$invoice->ID} encountered an issue: {$errorMessage}. Response Data: " . json_encode($responseData));
+    //     if ($errorMessage === '' || $errorMessage === 'ERROR_EXIST') {
+    //         Log::info("Invoice ID: {$invoice->ID} submitted successfully with Receipt No: {$receiptNumber}.");
+    //     } else {
+    //         Log::error("Invoice ID: {$invoice->ID} encountered an issue: {$errorMessage}. Response Data: " . json_encode($responseData));
+    //     }
+    // }
+protected function handleSuccessfulSubmission($invoice, $responseData)
+{
+    $result = $responseData['result'] ?? [];
+    $errorMessage = trim($result['error'] ?? '');
+
+    $sdcData = $result['sdc_data'] ?? null;
+    $cisData = $result['cis_data'] ?? null;
+    $journal = $result['journal'] ?? null;
+
+    // Convert comma-separated sdcData to hash-separated format
+    if (!empty($sdcData)) {
+        $sdcData = str_replace(',', '#', $sdcData);
+    }
+
+    $receiptNumber = $sdcID = $sdcDate = $sdcSignature = $sdcInternalData = null;
+
+    if (!empty($sdcData)) {
+        $sdcParts = explode('#', $sdcData);
+        if (count($sdcParts) >= 7) {
+            $sdcID = $sdcParts[0];
+            $receiptNumber = "{$sdcParts[1]}/{$sdcParts[2]} {$sdcParts[3]}";
+            $sdcDate = $sdcParts[4];
+            $sdcSignature = $this->formatWithDashes($sdcParts[5]);
+            $sdcInternalData = $this->formatWithDashes($sdcParts[6]);
         }
     }
 
+    $cisDate = $cisReceiptNumber = $cisMRC = null;
+    if (!empty($cisData)) {
+        $cisParts = explode(',', $cisData);
+        if (count($cisParts) >= 3) {
+            $cisDate = $cisParts[0];
+            $cisReceiptNumber = $cisParts[1];
+            $cisMRC = $cisParts[2];
+        }
+    }
+
+    $formattedCisDate = null;
+    if (!empty($cisDate)) {
+        $dateObj = DateTime::createFromFormat('Y-m-d H:i:s.u', $cisDate);
+        if ($dateObj) {
+            $formattedCisDate = $dateObj->format('Y-m-d H:i:s');
+        }
+    }
+
+    // -------------------------------------------------
+    // Decision logic
+    // -------------------------------------------------
+    $hasValidSdc = !empty($sdcID) && !empty($receiptNumber) && !empty($sdcData);
+    $hasValidCis = !empty($cisReceiptNumber);
+
+    if ($errorMessage === 'ERROR_EXIST') {
+        $submissionStatus = "Invoice with trader invoice No already exists";
+        $docStatus = 'Submitted';
+    } elseif ($errorMessage !== '') {
+        // Real error from RRA → mark Failed so it stops being retried
+        $submissionStatus = $errorMessage;
+        $docStatus = 'Failed';
+    } elseif ($hasValidSdc && $hasValidCis) {
+        // Clean success
+        $submissionStatus = 'Invoice generated successfully';
+        $docStatus = 'Submitted';
+    } else {
+        // No error message but missing critical data → keep Pending for retry
+        $submissionStatus = 'Incomplete RRA response – missing SDC/CIS data';
+        $docStatus = 'Pending';
+    }
+
+    $updateData = [
+        'RRA_SDC_Receipt_Number' => $receiptNumber,
+        'RRA_SDC_Date'           => $sdcDate,
+        'RRA_SDC_ID'             => $sdcID,
+        'RRA_SDC_Data_QRCode'    => $sdcData,
+        'RRA_SDC_InternalData'   => $sdcInternalData,
+        'RRA_SDC_Signature'      => $sdcSignature,
+        'RRA_CIS_Date'           => $formattedCisDate,
+        'RRA_CIS_Receipt_Number' => $cisReceiptNumber,
+        'RRA_CIS_MRC'            => $cisMRC,
+        'RRA_Journal'            => $journal,
+        'SubmissionStatus'       => $submissionStatus,
+        'DocStatus'              => $docStatus,
+    ];
+
+    RRABillingHeader::where('ID', $invoice->ID)->update($updateData);
+
+    if ($docStatus === 'Submitted') {
+        Log::info("Invoice ID: {$invoice->ID} submitted successfully with Receipt No: {$receiptNumber}.");
+    } elseif ($docStatus === 'Failed') {
+        Log::error("Invoice ID: {$invoice->ID} marked as Failed. Reason: {$submissionStatus}");
+    } else {
+        Log::warning("Invoice ID: {$invoice->ID} kept as Pending (incomplete data). Response: " . json_encode($responseData));
+    }
+}
 
 
 

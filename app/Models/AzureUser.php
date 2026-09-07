@@ -625,16 +625,16 @@ class AzureUser extends Authenticatable
     /**
      * Get Azure user statistics
      * Used by dashboard to display user counts by status
-     * 
+     *
      * @return array
      */
     public static function getStatistics(): array
     {
         try {
-            \Log::info('Azure Statistics - Starting query', [
-                'connection' => (new self())->getConnectionName(),
-                'table' => (new self())->getTable(),
-            ]);
+            // \Log::info('Azure Statistics - Starting query', [
+            //     'connection' => (new self())->getConnectionName(),
+            //     'table' => (new self())->getTable(),
+            // ]);
 
             $total = self::count();
             $active = self::where('Status', 'Active')->count();

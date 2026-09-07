@@ -8,34 +8,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
-/**
- * php artisan zra:sync-invoices
- *
- * Loop:
- *   1. SELECT TOP (limit) Id FROM Bill_BillingDocumentHeader
- *        WHERE DocStatus = 'Pending ZRA Int.'          -> get a batch of invoice IDs to process
- *   2. For each Id:
- *        EXEC sp_ZRA_ARIntegration @InvoiceID = Id      -> generates the submission JSON for that invoice
- *        POST {{baseUrl}}/api/invoices/save              -> submit to DBInvoices / ZRA
- *        EXEC sp_ZRA_ARIntegration_Response               -> wraps the DBInvoices response, marks the invoice synced
- *
- * IMPORTANT: sp_ZRA_ARIntegration's success status is literally the string
- * 'Pending ZRA Int.', not 'Success' — only 'Failed' indicates an actual error.
- * Don't compare against 'Success' here the way sp_ZRA_ItemJson does.
- *
- * IMPORTANT: sp_ZRA_ARIntegration_Response's success status is literally the string
- * 'Completed' (confirmed against a real production run, invoice ZMR2600005), with
- * @Remark = 'Success'. Comparing against 'Completed' below (and keeping the old
- * 'success'/'sucess'/'succes' variants as a defensive fallback in case behavior
- * differs on other invoice shapes).
- *
- * Any invoice that doesn't come back successful (push failure, or the response SP
- * not returning 'Completed') gets DocStatus flipped to 'Failed' on
- * Bill_BillingDocumentHeader, so it doesn't sit at 'Pending ZRA Int.' forever and
- * get silently re-attempted (or silently ignored) on every run.
- *
- * Intended to run on a schedule (Task Scheduler on D9/D21, or Laravel scheduler ->everyFiveMinutes())
- */
+
 class SyncZraInvoices extends Command
 {
     protected $signature = 'zra:sync-invoices
@@ -50,115 +23,118 @@ class SyncZraInvoices extends Command
     protected string $clientIdCacheKey = 'dbinvoices_client_id';
 
     public function handle(): int
-    {
-        $limit = (int) $this->option('limit');
-        $dryRun = (bool) $this->option('dry-run');
+{
+    $limit = (int) $this->option('limit');
+    $dryRun = (bool) $this->option('dry-run');
 
-        $this->info("Starting ZRA invoice sync (limit={$limit}, dry-run=" . ($dryRun ? 'yes' : 'no') . ')');
-        Log::info('zra:sync-invoices starting', ['limit' => $limit, 'dry_run' => $dryRun]);
+    $this->info("Starting ZRA invoice sync (limit={$limit}, dry-run=" . ($dryRun ? 'yes' : 'no') . ')');
+    Log::info('zra:sync-invoices starting', ['limit' => $limit, 'dry_run' => $dryRun]);
 
-        $invoiceIds = $this->fetchPendingInvoiceIds($limit);
+    $invoiceIds = $this->fetchPendingInvoiceIds($limit);
 
-        if (empty($invoiceIds)) {
-            $this->info('No invoices with DocStatus = Pending ZRA Int. found.');
-            Log::info('zra:sync-invoices: no pending invoices found');
-            return self::SUCCESS;
-        }
-
-        $this->info('Found ' . count($invoiceIds) . ' pending invoice(s).');
-        Log::info('zra:sync-invoices: pending invoice ids fetched', ['count' => count($invoiceIds), 'ids' => $invoiceIds]);
-
-        $synced = 0;
-        $failed = 0;
-
-        foreach ($invoiceIds as $i => $invoiceId) {
-            $generated = $this->fetchInvoiceSubmissionJson($invoiceId);
-
-            if ($generated === null) {
-                // Data-specific failure on this one invoice (e.g. sp_ZRA_ARIntegration
-                // returned 'Failed', or the JSON it produced didn't parse). Other invoices
-                // in this batch are independent records, so we log and move on rather than
-                // aborting the whole run.
-                $failed++;
-                continue;
-            }
-
-            $invoiceRef = $generated['submissionJson']['cisInvcNo'] ?? 'unknown';
-
-            $this->line("[{$i}] invoice_id={$invoiceId} cisInvcNo={$invoiceRef}");
-            Log::info('zra:sync-invoices: generated submission JSON', [
-                'invoice_id' => $invoiceId,
-                'cisInvcNo' => $invoiceRef,
-                'submission_json' => $generated['submissionJson'],
-            ]);
-
-            if ($dryRun) {
-                $this->line('  (dry-run) skipping API push and response SP');
-                Log::info('zra:sync-invoices: dry-run, skipping push and response SP', [
-                    'invoice_id' => $invoiceId,
-                ]);
-                continue;
-            }
-
-            try {
-                $response = $this->pushInvoiceToDbInvoices($generated['submissionJson']);
-            } catch (\Throwable $e) {
-                $failed++;
-                Log::error('ZRA invoice sync: DBInvoices push failed', [
-                    'invoice_id' => $invoiceId,
-                    'cisInvcNo' => $invoiceRef,
-                    'error' => $e->getMessage(),
-                ]);
-                $this->error("  Failed to push {$invoiceRef}: {$e->getMessage()}");
-                $this->markInvoiceFailed($invoiceId, $e->getMessage());
-                // Push failures are more likely systemic (auth, network, DBInvoices down)
-                // than data-specific, so stop the whole run rather than burning through
-                // the rest of the batch against a broken connection.
-                break;
-            }
-
-            Log::info('zra:sync-invoices: pushed invoice to DBInvoices', [
-                'invoice_id' => $invoiceId,
-                'cisInvcNo' => $invoiceRef,
-                'dbinvoices_id' => $response['data']['id'] ?? null,
-            ]);
-
-            $updateResult = $this->markInvoiceSynced($response);
-
-            // Confirmed against a real production run (invoice ZMR2600005): the SP
-            // returns @Status = 'Completed' and @Remark = 'Success' on success.
-            // Keeping the 'success'/'sucess'/'succes' variants as a defensive fallback
-            // in case other invoice shapes behave differently.
-            $statusNormalized = strtolower(trim((string) $updateResult['status']));
-            $looksSuccessful = in_array($statusNormalized, ['completed', 'success', 'sucess', 'succes'], true);
-
-            if (! $looksSuccessful) {
-                $failed++;
-                Log::error('ZRA invoice sync: sp_ZRA_ARIntegration_Response failed', [
-                    'invoice_id' => $invoiceId,
-                    'cisInvcNo' => $invoiceRef,
-                    'status' => $updateResult['status'],
-                    'remark' => $updateResult['remark'],
-                ]);
-                $this->error("  Response SP failed for {$invoiceRef}: {$updateResult['remark']}");
-                $this->markInvoiceFailed($invoiceId, $updateResult['remark']);
-                continue;
-            }
-
-            $synced++;
-            $this->info("  Synced {$invoiceRef} -> DBInvoices id={$response['data']['id']}");
-            Log::info('zra:sync-invoices: marked invoice synced', [
-                'invoice_id' => $invoiceId,
-                'cisInvcNo' => $invoiceRef,
-                'dbinvoices_id' => $response['data']['id'] ?? null,
-            ]);
-        }
-
-        $this->info("Done. Synced={$synced} Failed={$failed}");
-        Log::info('zra:sync-invoices finished', ['synced' => $synced, 'failed' => $failed]);
-
-        return $failed > 0 ? self::FAILURE : self::SUCCESS;
+    if (empty($invoiceIds)) {
+        $this->info('No invoices with DocStatus = Pending ZRA Int. found.');
+        Log::info('zra:sync-invoices: no pending invoices found');
+        return self::SUCCESS;
     }
+
+    $this->info('Found ' . count($invoiceIds) . ' pending invoice(s).');
+    Log::info('zra:sync-invoices: pending invoice ids fetched', ['count' => count($invoiceIds), 'ids' => $invoiceIds]);
+
+    $synced = 0;
+    $failed = 0;
+
+    foreach ($invoiceIds as $i => $invoiceId) {
+        $generated = $this->fetchInvoiceSubmissionJson($invoiceId);
+
+        if ($generated === null) {
+            // Data-specific failure on this one invoice (e.g. sp_ZRA_ARIntegration
+            // returned 'Failed', or the JSON it produced didn't parse). Other invoices
+            // in this batch are independent records, so we log and move on rather than
+            // aborting the whole run.
+            $failed++;
+            continue;
+        }
+
+        $invoiceRef = $generated['submissionJson']['cisInvcNo'] ?? 'unknown';
+
+        $this->line("[{$i}] invoice_id={$invoiceId} cisInvcNo={$invoiceRef}");
+        Log::info('zra:sync-invoices: generated submission JSON', [
+            'invoice_id' => $invoiceId,
+            'cisInvcNo' => $invoiceRef,
+            'submission_json' => $generated['submissionJson'],
+        ]);
+
+        if ($dryRun) {
+            $this->line('  (dry-run) skipping API push and response SP');
+            Log::info('zra:sync-invoices: dry-run, skipping push and response SP', [
+                'invoice_id' => $invoiceId,
+            ]);
+            continue;
+        }
+
+        try {
+            $response = $this->pushInvoiceToDbInvoices($generated['submissionJson']);
+        } catch (\Throwable $e) {
+            $failed++;
+            Log::error('ZRA invoice sync: DBInvoices push failed', [
+                'invoice_id' => $invoiceId,
+                'cisInvcNo' => $invoiceRef,
+                'error' => $e->getMessage(),
+            ]);
+            $this->error("  Failed to push {$invoiceRef}: {$e->getMessage()}");
+            $this->markInvoiceFailed($invoiceId, $e->getMessage());
+            // Push failures are more likely systemic (auth, network, DBInvoices down)
+            // than data-specific, so stop the whole run rather than burning through
+            // the rest of the batch against a broken connection.
+            break;
+        }
+
+        Log::info('zra:sync-invoices: pushed invoice to DBInvoices', [
+            'invoice_id' => $invoiceId,
+            'cisInvcNo' => $invoiceRef,
+            'dbinvoices_id' => $response['data']['id'] ?? null,
+        ]);
+
+        $updateResult = $this->markInvoiceSynced($response);
+
+        // Treat @Remark = 'Success' as authoritative — it's what actually came back
+        // clean here. @Status vocabulary from this SP isn't fully confirmed yet
+        // (seen: 'Completed' on ZMR2600005, 'Subitted' — likely a typo for
+        // 'Submitted' — on ZMR2600003), so it's kept only as a secondary signal.
+        $statusNormalized = strtolower(trim((string) $updateResult['status']));
+        $remarkNormalized = strtolower(trim((string) $updateResult['remark']));
+
+        $looksSuccessful = $remarkNormalized === 'success'
+            || in_array($statusNormalized, ['completed', 'submitted', 'subitted', 'success', 'sucess', 'succes'], true);
+
+        if (! $looksSuccessful) {
+            $failed++;
+            Log::error('ZRA invoice sync: sp_ZRA_ARIntegration_Response failed', [
+                'invoice_id' => $invoiceId,
+                'cisInvcNo' => $invoiceRef,
+                'status' => $updateResult['status'],
+                'remark' => $updateResult['remark'],
+            ]);
+            $this->error("  Response SP failed for {$invoiceRef}: {$updateResult['remark']}");
+            $this->markInvoiceFailed($invoiceId, $updateResult['remark']);
+            continue;
+        }
+
+        $synced++;
+        $this->info("  Synced {$invoiceRef} -> DBInvoices id={$response['data']['id']}");
+        Log::info('zra:sync-invoices: marked invoice synced', [
+            'invoice_id' => $invoiceId,
+            'cisInvcNo' => $invoiceRef,
+            'dbinvoices_id' => $response['data']['id'] ?? null,
+        ]);
+    }
+
+    $this->info("Done. Synced={$synced} Failed={$failed}");
+    Log::info('zra:sync-invoices finished', ['synced' => $synced, 'failed' => $failed]);
+
+    return $failed > 0 ? self::FAILURE : self::SUCCESS;
+}
 
     /**
      * Fetches a batch of invoice IDs (as strings) with DocStatus = 'Pending ZRA Int.'

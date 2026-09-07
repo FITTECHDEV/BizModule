@@ -93,34 +93,15 @@ class Kernel extends ConsoleKernel
 
 
 
-        // // ->emailOutputOnFailure('admin@yourcompany.com'); // Optional: add your email
+        // ->emailOutputOnFailure('admin@yourcompany.com'); // Optional: add your email
 
-        $schedule->command('z_report_json_ar')
-            ->dailyAt('11:00')
-            ->timezone('Africa/Nairobi')
-            ->withoutOverlapping()
-            ->onSuccess(function () {
-                Log::info('AR ZReport scheduled task completed successfully at ' . now());
-            })
-            ->onFailure(function () {
-                Log::error('AR ZReport scheduled task failed at ' . now());
-            });
 
         // $schedule->command('jimi:process-pending')->everyFiveMinutes();
 
-        $schedule->command('z_report_json_tz')
-            ->dailyAt('11:00')
-            ->timezone('Africa/Nairobi')
-            ->withoutOverlapping()
-            ->onSuccess(function () {
-                Log::info('TZ ZReport scheduled task completed successfully at ' . now());
-            })
-            ->onFailure(function () {
-                Log::error('TZ ZReport scheduled task failed at ' . now());
-            });
+
 
         // $schedule->command('scheduler:test')->everyMinute();
-
+        $schedule->command('zra:sync-invoices')->everyFiveMinutes();
 
         // Send shipment status reports to clients daily at 17:00 EAT
         $schedule->command('shipments:send-reports')

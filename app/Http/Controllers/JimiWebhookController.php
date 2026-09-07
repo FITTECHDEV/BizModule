@@ -15,10 +15,10 @@ class JimiWebhookController extends Controller
             $msgType = $request->input('msgType');
             $data = json_decode($request->input('data'), true);
 
-            Log::channel('jimi_notifications')->info('JIMI Notification Received', [
-                'msgType' => $msgType,
-                'data' => $data
-            ]);
+            // Log::channel('jimi_notifications')->info('JIMI Notification Received', [
+            //     'msgType' => $msgType,
+            //     'data' => $data
+            // ]);
 
             if ($msgType === 'jimi.push.device.alarm') {
                 $this->handleAlarmNotification($data);

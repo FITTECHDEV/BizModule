@@ -1075,11 +1075,11 @@ class QuotationController extends Controller
             $stmt = $pdo->prepare('SET NOCOUNT ON; EXEC dbo.sp_Quote_QuotationList ?');
             $stmt->execute([$inputJson]);
 
-            Log::info('callQuotationListSP - executed', [
-                'status' => $status,
-                'office_code' => $officeCode ?: 'ALL',
-                'input_json' => $inputJson,
-            ]);
+            // Log::info('callQuotationListSP - executed', [
+            //     'status' => $status,
+            //     'office_code' => $officeCode ?: 'ALL',
+            //     'input_json' => $inputJson,
+            // ]);
 
             $rows = [];
             do {
@@ -8313,8 +8313,16 @@ class QuotationController extends Controller
                 'PlaceOfDelivery',
             ]);
 
-        if (!$row || empty($row->BillToPartyCode)) {
-            // Row exists but booking info was never saved — treat as fresh
+        $hasAnyBookingData =
+            $row &&
+            (!empty($row->BillToPartyCode) ||
+                !empty($row->ForwarderCode) ||
+                !empty($row->PlaceOfReceiptCode) ||
+                !empty($row->PlaceOfDeliveryCode) ||
+                !empty($row->ServiceTemplate));
+
+        if (!$hasAnyBookingData) {
+            // Nothing saved yet on any booking field — treat as fresh
             return response()->json(['success' => false, 'data' => null]);
         }
 
@@ -8564,6 +8572,7 @@ class QuotationController extends Controller
             'pod_code' => 'nullable|string',
             'place_of_receipt_code' => 'nullable|string',
             'place_of_delivery_code' => 'nullable|string',
+            'forwarder_code' => 'nullable|string',
         ]);
 
         $submittedBy = auth()->user()->displayName ?? (auth()->user()->Email ?? 'system');
@@ -8584,6 +8593,7 @@ class QuotationController extends Controller
             'ShipmentModeCode' => $request->shipment_mode,
             'TransportModeCode' => $request->transport_mode,
             'ServiceClassCode' => $request->service_class ?? '',
+            'ForwarderCode' => $request->forwarder_code ?? '',
         ]);
 
         if (strlen($input) > 2000) {

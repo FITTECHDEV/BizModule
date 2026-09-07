@@ -1591,21 +1591,21 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
         App\Http\Controllers\QuotationController::class,
         'getRequestOfficeHistory',
     ])->name('quotation.request-office-history');
-
-    Route::get('/quotation/website-requests', [App\Http\Controllers\WebsiteQuotationController::class, 'index'])->name(
-        'quotation.website-requests',
-    );
-
-    // WEBSITE QUOTATION REQUESTS
-    // ============================================
-    Route::get('/quotation/website-requests', [App\Http\Controllers\WebsiteQuotationController::class, 'index'])->name(
-        'quotation.website-requests',
-    );
-
-    Route::get('/quotation/website-requests/portal', [
-        App\Http\Controllers\WebsiteQuotationController::class,
-        'portal',
-    ])->name('quotation.website-requests.portal');
+// 
+//     Route::get('/quotation/website-requests', [App\Http\Controllers\WebsiteQuotationController::class, 'index'])->name(
+//         'quotation.website-requests',
+//     );
+// 
+//     // WEBSITE QUOTATION REQUESTS
+//     // ============================================
+//     Route::get('/quotation/website-requests', [App\Http\Controllers\WebsiteQuotationController::class, 'index'])->name(
+//         'quotation.website-requests',
+//     );
+// 
+//     Route::get('/quotation/website-requests/portal', [
+//         App\Http\Controllers\WebsiteQuotationController::class,
+//         'portal',
+//     ])->name('quotation.website-requests.portal');
 
     Route::get('/quotation/sales-intelligence', [
         App\Http\Controllers\QuotationController::class,
@@ -2058,3 +2058,50 @@ Route::post('/zra/update-invoice', [App\Http\Controllers\ZraController::class, '
 Route::get('/zra/re-trigger/{docNo}', [App\Http\Controllers\ZraController::class, 'reTrigger'])->middleware('auth');
 Route::get('/datatables/zra', [App\Http\Controllers\ZraController::class, 'datatable'])->middleware('auth');
 
+
+Route::get('/debug/find-company/{name}', function (string $name) {
+    $pdo = DB::connection('pgsql')->getPdo();
+ 
+    // Find columns likely to hold a company/partner name
+    $cols = $pdo->query(
+        "SELECT table_name, column_name
+         FROM information_schema.columns
+         WHERE table_schema = 'public'
+           AND (column_name ILIKE '%company%' OR column_name ILIKE '%partner%name%')
+         ORDER BY table_name"
+    )->fetchAll(PDO::FETCH_ASSOC);
+ 
+    $needle = '%' . $name . '%';
+    $hits = [];
+ 
+    foreach ($cols as $c) {
+        $table = $c['table_name'];
+        $column = $c['column_name'];
+ 
+        try {
+            $stmt = $pdo->prepare(
+                "SELECT * FROM \"$table\" WHERE \"$column\" ILIKE ? LIMIT 5"
+            );
+            $stmt->execute([$needle]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+ 
+            if (count($rows) > 0) {
+                $hits[] = ['table' => $table, 'column' => $column, 'rows' => $rows];
+            }
+        } catch (\Exception $e) {
+            continue;
+        }
+    }
+ 
+    return response()->json([
+        'success' => true,
+        'message' => count($hits) > 0
+            ? "Found matches in " . count($hits) . " table(s)"
+            : "No matches for '$name' in any company/partner name column",
+        'data' => [
+            'search_term' => $name,
+            'columns_checked' => $cols,
+            'hits' => $hits,
+        ],
+    ]);
+});

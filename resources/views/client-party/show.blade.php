@@ -1467,8 +1467,8 @@
                 }
 
                 /* ============================================
-                                                                                                                                               TOOLTIP ENHANCEMENTS
-                                                                                                                                            ============================================ */
+                TOOLTIP ENHANCEMENTS
+                 ============================================ */
                 .tooltip-inner {
                     background: linear-gradient(135deg, var(--dark-color) 0%, #495057 100%);
                     color: white;
@@ -2104,6 +2104,8 @@
 
                     // Disable file upload ONLY
                     $('input[name="attachmentNames[]"]').prop('disabled', true);
+
+
 
                     // Styling for readonly inputs
                     $('input[readonly], textarea[readonly]').css({
@@ -3084,6 +3086,70 @@
                     };
 
                     console.log('Legal Entity Type handler (Hide/Disable version) initialized for show blade');
+                    // ============================================
+// FINAL FORCE-ENABLE FOR FILE UPLOAD (runs last)
+// // ============================================
+// setTimeout(function () {
+//     const statusForUpload = '{{ $clientParty->Status }}';
+//     const allowUploadStatuses = [
+//         'PendingCountryLevelApproval',
+//         'PendingGroupLevelApproval',
+//         'PendingITVerification'
+//     ];
+
+//     if (allowUploadStatuses.includes(statusForUpload)) {
+//         console.log('Force-enabling file upload for status:', statusForUpload);
+
+//         // Enable Add / Delete buttons
+//         $('.addAttachment, #addFile, .deleteFile')
+//             .removeAttr('disabled')
+//             .prop('disabled', false)
+//             .removeClass('disabled')
+//             .css({
+//                 opacity: '1',
+//                 cursor: 'pointer',
+//                 pointerEvents: 'auto',
+//                 filter: 'none'
+//             });
+
+//         // Enable file inputs
+//         $('input[name="attachmentNames[]"]')
+//             .removeAttr('disabled')
+//             .prop('disabled', false)
+//             .css({
+//                 opacity: '1',
+//                 pointerEvents: 'auto',
+//                 backgroundColor: '',
+//                 color: '',
+//                 cursor: ''
+//             });
+
+//         // Enable Description fields
+//         $('input[name="attachmentDescription[]"]')
+//             .removeAttr('disabled')
+//             .removeAttr('readonly')
+//             .prop('disabled', false)
+//             .prop('readonly', false)
+//             .removeClass('disabled')
+//             .css({
+//                 opacity: '1',
+//                 pointerEvents: 'auto',
+//                 backgroundColor: '',
+//                 color: '',
+//                 cursor: 'text'
+//             });
+
+//         // Make sure the container is visible
+//         $('.file-upload-container')
+//             .show()
+//             .css({
+//                 display: 'block',
+//                 visibility: 'visible',
+//                 opacity: '1',
+//                 pointerEvents: 'auto'
+//             });
+//     }
+// }, 300);
                 });
             </script>
             <script src="{{ asset('js/client-party/show-create-client-party.js') }}"></script>
