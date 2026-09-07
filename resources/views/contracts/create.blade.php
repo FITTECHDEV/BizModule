@@ -339,6 +339,49 @@
             font-size: .82rem;
         }
 
+        .ctr-charge-group {
+            margin-bottom: 8px;
+        }
+
+        .cc-group-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 10px;
+            background: #f4f4fb;
+            cursor: pointer;
+            font-size: .78rem;
+            font-weight: 700;
+            color: #4B49AC;
+            text-transform: uppercase;
+            letter-spacing: .02em;
+            border: 1px solid #e2e2ec;
+            border-radius: 4px;
+        }
+
+        .cc-group-header .cc-caret {
+            transition: transform .15s ease;
+        }
+
+        .cc-group-header.collapsed .cc-caret {
+            transform: rotate(-90deg);
+        }
+
+        .cc-group-header .cc-group-total {
+            margin-left: auto;
+            font-weight: 500;
+            text-transform: none;
+            color: #6c757d;
+        }
+
+        .cc-group-body {
+            padding: 8px 4px 4px;
+        }
+
+        .cc-group-body.collapsed {
+            display: none;
+        }
+
         .ctr-service-card {
             border: 1px solid #e2e2ec;
             border-radius: 4px;
@@ -723,7 +766,8 @@
                 }
                 list.forEach(function(c) {
                     var contractId = c.id || c.contractId || c.Id || '';
-                    $tbody.append('<tr><td>' + c.contractNo + '</td><td>' + c.contractName +
+                    $tbody.append('<tr data-contract-id="' + contractId + '"><td>' + c.contractNo +
+                        '</td><td>' + c.contractName +
                         '</td><td>' +
                         c.effectiveFrom + '</td><td>' + c.effectiveTo + '</td><td>' + c.status +
                         '</td><td>' +
@@ -731,6 +775,8 @@
                         contractId + '">View</button>' +
                         '<button type="button" class="btn btn-xs btn-outline-secondary ctr-edit-contract" data-id="' +
                         contractId + '">Edit</button>' +
+                        '<button type="button" class="btn btn-xs btn-outline-danger ctr-delete-contract ml-1" data-id="' +
+                        contractId + '">Delete</button>' +
                         '</td></tr>');
                 });
             }
@@ -1246,17 +1292,31 @@
                         (svc.pol ? (' | POL: ' + svc.pol) : '') +
                         (svc.pod ? (' | POD: ' + svc.pod) : '') +
                         '</div>' +
-                        '<table class="ctr-charges-table"><thead><tr>' +
-                        '<th>Nature</th><th>Code</th><th>Description</th><th>Category</th><th>Rate Type</th><th>Rate</th><th>Action</th>' +
-                        '</tr></thead><tbody id="charges-' + svc.id + '"></tbody></table>' +
-                        '<div class="ctr-empty-msg" id="charges-empty-' + svc.id +
-                        '" style="display:none;">No charges added yet.</div>' +
-                        '<button type="button" class="btn btn-sm btn-outline-primary ctr-add-charge-btn" data-svc="' +
+                        chargeGroupHtml(svc.id, 'rev', 'Revenue') +
+                        chargeGroupHtml(svc.id, 'cost', 'Cost') +
+                        '<button type="button" class="btn btn-sm btn-outline-primary ctr-add-charge-btn mt-2" data-svc="' +
                         svc.id + '">+ Add Charge</button>' +
                         '</div>';
                     list.appendChild(card);
                     renderCharges(svc);
                 });
+            }
+
+            function chargeGroupHtml(svcId, key, label) {
+                return '<div class="ctr-charge-group">' +
+                    '<div class="cc-group-header collapsed" data-target="charges-' + key + '-' + svcId + '">' +
+                    '<span class="cc-caret">&#9660;</span>' +
+                    '<span>' + label + ' Charges</span>' +
+                    '<span class="cc-group-total" id="charges-' + key + '-count-' + svcId + '">0</span>' +
+                    '</div>' +
+                    '<div class="cc-group-body collapsed" id="charges-' + key + '-' + svcId + '">' +
+                    '<table class="ctr-charges-table"><thead><tr>' +
+                    '<th>Code</th><th>Description</th><th>Category</th><th>Rate Type</th><th>Rate</th><th>Action</th>' +
+                    '</tr></thead><tbody id="charges-' + key + '-body-' + svcId + '"></tbody></table>' +
+                    '<div class="ctr-empty-msg" id="charges-' + key + '-empty-' + svcId +
+                    '" style="display:none;">No ' + label.toLowerCase() + ' charges yet.</div>' +
+                    '</div>' +
+                    '</div>';
             }
 
             function findService(svcId) {
@@ -1266,34 +1326,48 @@
             }
 
             function renderCharges(svc) {
-                var tbody = document.getElementById('charges-' + svc.id);
-                var empty = document.getElementById('charges-empty-' + svc.id);
-                if (!tbody) return;
-                tbody.innerHTML = '';
-                empty.style.display = svc.charges.length ? 'none' : 'block';
+                var groups = {
+                    rev: svc.charges.filter(function(c) {
+                        return (c.chargeNature || 'Revenue') !== 'Cost';
+                    }),
+                    cost: svc.charges.filter(function(c) {
+                        return c.chargeNature === 'Cost';
+                    })
+                };
 
-                svc.charges.forEach(function(c) {
-                    var rateDisplay = c.rateType === 'Single' ? (c.rate + ' ' + c.chargeCurr) :
-                        c.rateType === 'Formula' ? (c.formula || '—') :
-                        ((c.rateSlab && c.rateSlab.Slabs) ? c.rateSlab.Slabs.length : 0) + ' slab(s)';
+                ['rev', 'cost'].forEach(function(key) {
+                    var tbody = document.getElementById('charges-' + key + '-body-' + svc.id);
+                    var empty = document.getElementById('charges-' + key + '-empty-' + svc.id);
+                    var countEl = document.getElementById('charges-' + key + '-count-' + svc.id);
+                    if (!tbody) return;
 
-                    var tr = document.createElement('tr');
-                    tr.innerHTML =
-                        '<td><span class="ctr-badge-' + c.chargeNature.toLowerCase() + '">' + c.chargeNature +
-                        '</span></td>' +
-                        '<td>' + c.chargeCode + '</td>' +
-                        '<td>' + c.chargeDescription + '</td>' +
-                        '<td>' + c.chargeCategory + '</td>' +
-                        '<td>' + c.rateType + '</td>' +
-                        '<td>' + rateDisplay + '</td>' +
-                        '<td class="text-nowrap">' +
-                        '<i class="fas fa-pen ctr-edit-charge mr-2" data-svc="' + svc.id + '" data-charge="' + c
-                        .id +
-                        '" style="cursor:pointer;color:#4B49AC;" title="Edit"></i>' +
-                        '<span class="ctr-slab-row-remove ctr-remove-charge" data-svc="' + svc.id +
-                        '" data-charge="' + c.id +
-                        '" title="Delete">&times;</span></td>';
-                    tbody.appendChild(tr);
+                    var list = groups[key];
+                    tbody.innerHTML = '';
+                    empty.style.display = list.length ? 'none' : 'block';
+                    if (countEl) countEl.textContent = list.length;
+
+                    list.forEach(function(c) {
+                        var rateDisplay = c.rateType === 'Single' ? (c.rate + ' ' + c.chargeCurr) :
+                            c.rateType === 'Formula' ? (c.formula || '—') :
+                            ((c.rateSlab && c.rateSlab.Slabs) ? c.rateSlab.Slabs.length : 0) +
+                            ' slab(s)';
+
+                        var tr = document.createElement('tr');
+                        tr.innerHTML =
+                            '<td>' + c.chargeCode + '</td>' +
+                            '<td>' + c.chargeDescription + '</td>' +
+                            '<td>' + c.chargeCategory + '</td>' +
+                            '<td>' + c.rateType + '</td>' +
+                            '<td>' + rateDisplay + '</td>' +
+                            '<td class="text-nowrap">' +
+                            '<i class="fas fa-pen ctr-edit-charge mr-2" data-svc="' + svc.id +
+                            '" data-charge="' + c.id +
+                            '" style="cursor:pointer;color:#4B49AC;" title="Edit"></i>' +
+                            '<span class="ctr-slab-row-remove ctr-remove-charge" data-svc="' + svc.id +
+                            '" data-charge="' + c.id +
+                            '" title="Delete">&times;</span></td>';
+                        tbody.appendChild(tr);
+                    });
                 });
             }
 
@@ -2190,6 +2264,14 @@
                     return;
                 }
 
+                var groupHeader = e.target.closest('.cc-group-header');
+                if (groupHeader) {
+                    var groupBody = document.getElementById(groupHeader.getAttribute('data-target'));
+                    groupHeader.classList.toggle('collapsed');
+                    if (groupBody) groupBody.classList.toggle('collapsed');
+                    return;
+                }
+
                 var removeBtn = e.target.closest('.ctr-remove-svc');
                 if (removeBtn) {
                     var svcId = removeBtn.getAttribute('data-svc');
@@ -2257,6 +2339,41 @@
                 var contractId = $(this).data('id');
                 if (!contractId) return;
                 window.location.href = '/contracts/' + encodeURIComponent(contractId) + '/edit';
+            });
+
+            // ── Delete Contract (soft) ────────────────────────────────
+            $(document).on('click', '.ctr-delete-contract', function() {
+                var contractId = $(this).data('id');
+                if (!contractId) return;
+                if (!confirm('Delete this contract and all its services/charges? This cannot be undone.'))
+                    return;
+
+                var btn = this;
+                btn.disabled = true;
+
+                $.ajax({
+                    url: '/contracts/' + encodeURIComponent(contractId),
+                    type: 'DELETE',
+                    data: {
+                        _token: document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    dataType: 'json'
+                }).done(function(res) {
+                    if (!res.success) {
+                        alert('Failed to delete contract: ' + (res.message || 'Unknown error'));
+                        btn.disabled = false;
+                        return;
+                    }
+                    // remove from client state and re-render
+                    state.allContracts = state.allContracts.filter(function(x) {
+                        return (x.id || x.contractId || x.Id || '') !== contractId;
+                    });
+                    applyStatusFilterAndRender();
+                }).fail(function(xhr) {
+                    var msg = (xhr.responseJSON && xhr.responseJSON.message) || 'Delete failed.';
+                    alert('Failed to delete contract: ' + msg);
+                    btn.disabled = false;
+                });
             });
 
             $(document).on('click', '.ctr-stat-card', function() {

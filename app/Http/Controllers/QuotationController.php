@@ -7552,10 +7552,13 @@ class QuotationController extends Controller
             }
 
             $filePath = $document->FilePath;
+            $fileName = $document->Name ?: "quote_{$quotation->bookingno}_v{$version}.pdf";
 
-            // ── Check if this is an Azure path (starts with 'Quotation/') ──
+            // Determine disposition: inline for preview, attachment otherwise
+            $disposition = request()->has('preview') ? 'inline' : 'attachment';
+
+            // ── Azure storage path ──
             if (str_starts_with($filePath, 'Quotation/')) {
-                // Serve from Azure
                 if (!\Storage::disk('azure')->exists($filePath)) {
                     Log::error('downloadPdf - Azure blob not found', [
                         'id' => $id,
@@ -7570,15 +7573,16 @@ class QuotationController extends Controller
                     'booking_no' => $quotation->bookingno,
                     'version' => $version,
                     'blob_path' => $filePath,
+                    'disposition' => $disposition,
                 ]);
 
                 $contents = \Storage::disk('azure')->get($filePath);
                 return response($contents, 200)
                     ->header('Content-Type', 'application/pdf')
-                    ->header('Content-Disposition', 'attachment; filename="' . $document->Name . '"');
+                    ->header('Content-Disposition', $disposition . '; filename="' . $fileName . '"');
             }
 
-            // ── Legacy local disk path ──
+            // ── Local disk path ──
             $relativePath = $this->normalizeFilePath($filePath);
 
             if (!\Storage::disk('public')->exists($relativePath)) {
@@ -7595,10 +7599,15 @@ class QuotationController extends Controller
                 'id' => $id,
                 'booking_no' => $quotation->bookingno,
                 'version' => $version,
-                'file' => $document->Name,
+                'file' => $fileName,
+                'disposition' => $disposition,
             ]);
 
-            return \Storage::disk('public')->download($relativePath, $document->Name);
+            // Read file contents to allow custom disposition header
+            $contents = \Storage::disk('public')->get($relativePath);
+            return response($contents, 200)
+                ->header('Content-Type', 'application/pdf')
+                ->header('Content-Disposition', $disposition . '; filename="' . $fileName . '"');
         } catch (\Exception $e) {
             Log::error('downloadPdf - Failed', [
                 'id' => $id,
@@ -8304,8 +8313,16 @@ class QuotationController extends Controller
                 'PlaceOfDelivery',
             ]);
 
-        if (!$row || empty($row->BillToPartyCode)) {
-            // Row exists but booking info was never saved — treat as fresh
+        $hasAnyBookingData =
+            $row &&
+            (!empty($row->BillToPartyCode) ||
+                !empty($row->ForwarderCode) ||
+                !empty($row->PlaceOfReceiptCode) ||
+                !empty($row->PlaceOfDeliveryCode) ||
+                !empty($row->ServiceTemplate));
+
+        if (!$hasAnyBookingData) {
+            // Nothing saved yet on any booking field — treat as fresh
             return response()->json(['success' => false, 'data' => null]);
         }
 
@@ -8555,6 +8572,7 @@ class QuotationController extends Controller
             'pod_code' => 'nullable|string',
             'place_of_receipt_code' => 'nullable|string',
             'place_of_delivery_code' => 'nullable|string',
+            'forwarder_code' => 'nullable|string',
         ]);
 
         $submittedBy = auth()->user()->displayName ?? (auth()->user()->Email ?? 'system');
@@ -8575,6 +8593,7 @@ class QuotationController extends Controller
             'ShipmentModeCode' => $request->shipment_mode,
             'TransportModeCode' => $request->transport_mode,
             'ServiceClassCode' => $request->service_class ?? '',
+            'ForwarderCode' => $request->forwarder_code ?? '',
         ]);
 
         if (strlen($input) > 2000) {

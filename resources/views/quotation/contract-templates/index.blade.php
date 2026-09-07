@@ -581,139 +581,6 @@
             var contractSelect = document.getElementById('ctContractSelect');
             var contractsById = {};
 
-            // TEMP — for testing Save flow before charges endpoint exists.
-            // Remove once contract charges come from a real API.
-            var MOCK_CONTRACTS = [{
-                    id: 'mock-1',
-                    contractNo: 'MOCK-001',
-                    contractName: 'Test Contract — Air Export KE to UK',
-                    effectiveFrom: '2026-01-01',
-                    effectiveTo: '2026-12-31',
-                    mockCharges: {
-                        baseCurrency: 'USD',
-                        shipment: {
-                            weight: 500,
-                            volume: 2.5,
-                            container: 1,
-                            packageCount: 10
-                        },
-                        revenue: [{
-                                group: 'Freight / Carrier Related Charges',
-                                desc: 'Air Freight',
-                                basedOn: 'KG',
-                                cost: 2.5,
-                                markup: 0.5,
-                                markupType: 'fixed',
-                                selected: true
-                            },
-                            {
-                                group: 'Documentation Charges',
-                                desc: 'AWB Fee',
-                                basedOn: 'Shipment',
-                                cost: 25,
-                                markup: 10,
-                                markupType: 'percentage',
-                                selected: true
-                            }
-                        ],
-                        cost: [{
-                                group: 'Freight / Carrier Related Charges',
-                                desc: 'Air Freight',
-                                basedOn: 'KG',
-                                cost: 2.5,
-                                markup: 0,
-                                markupType: 'fixed',
-                                selected: true
-                            },
-                            {
-                                group: 'Documentation Charges',
-                                desc: 'AWB Fee',
-                                basedOn: 'Shipment',
-                                cost: 25,
-                                markup: 0,
-                                markupType: 'fixed',
-                                selected: true
-                            }
-                        ]
-                    }
-                },
-                {
-                    id: 'mock-2',
-                    contractNo: 'MOCK-002',
-                    contractName: 'Test Contract — Sea Import CN to KE',
-                    effectiveFrom: '2026-01-01',
-                    effectiveTo: '2026-12-31',
-                    mockCharges: {
-                        baseCurrency: 'USD',
-                        shipment: {
-                            weight: 12000,
-                            volume: 30,
-                            container: 1,
-                            packageCount: 200
-                        },
-                        revenue: [{
-                                group: 'General / Port Charges',
-                                desc: 'Terminal Handling',
-                                basedOn: 'Container',
-                                cost: 150,
-                                markup: 20,
-                                markupType: 'fixed',
-                                selected: true
-                            },
-                            {
-                                group: 'Customs Charges',
-                                desc: 'Customs Clearance',
-                                basedOn: 'Shipment',
-                                cost: 80,
-                                markup: 15,
-                                markupType: 'percentage',
-                                selected: true
-                            }
-                        ],
-                        cost: [{
-                                group: 'General / Port Charges',
-                                desc: 'Terminal Handling',
-                                basedOn: 'Container',
-                                cost: 150,
-                                markup: 0,
-                                markupType: 'fixed',
-                                selected: true
-                            },
-                            {
-                                group: 'Customs Charges',
-                                desc: 'Customs Clearance',
-                                basedOn: 'Shipment',
-                                cost: 80,
-                                markup: 0,
-                                markupType: 'fixed',
-                                selected: true
-                            }
-                        ]
-                    }
-                }
-            ];
-
-            // fetch('{{ route('quotation.contract-template.list') }}')
-            //     .then(function(r) {
-            //         return r.json();
-            //     })
-            //     .then(function(res) {
-            //         if (!res.success || !res.data) {
-            //             console.error('[Contract] list load failed:', res.message);
-            //             return;
-            //         }
-            //         res.data.forEach(function(c) {
-            //             contractsById[c.id] = c;
-            //             var opt = document.createElement('option');
-            //             opt.value = c.id;
-            //             opt.textContent = c.contractName + ' (' + c.contractNo + ')';
-            //             contractSelect.appendChild(opt);
-            //         });
-            //     })
-            //     .catch(function(err) {
-            //         console.error('[Contract] list fetch failed:', err);
-            //     });
-
             function appendContractOption(c) {
                 contractsById[c.id] = c;
                 var opt = document.createElement('option');
@@ -721,9 +588,6 @@
                 opt.textContent = c.contractName + ' (' + c.contractNo + ')';
                 contractSelect.appendChild(opt);
             }
-
-            // TEMP — mock entries load immediately regardless of real fetch outcome
-            MOCK_CONTRACTS.forEach(appendContractOption);
 
             fetch('{{ route('quotation.contract-template.list') }}')
                 .then(function(r) {
@@ -805,21 +669,58 @@
                 document.getElementById('ctfValidFrom').textContent = contract.effectiveFrom;
                 document.getElementById('ctfValidTo').textContent = contract.effectiveTo;
 
-                // TEMP — mock contracts carry embedded charges for testing the Save flow.
-                // Real contracts still show info only, until a charges-details endpoint exists.
-                if (contract.mockCharges) {
-                    state.contract = {
-                        id: contract.id,
-                        contractName: contract.contractName,
-                        baseCurrency: contract.mockCharges.baseCurrency,
-                        shipment: contract.mockCharges.shipment,
-                        revenue: JSON.parse(JSON.stringify(contract.mockCharges.revenue)),
-                        cost: JSON.parse(JSON.stringify(contract.mockCharges.cost))
-                    };
-                    document.getElementById('ctChargesArea').classList.add('is-visible');
-                    renderSection('revenue');
-                    recalcTotals();
-                }
+                fetch('/contracts/' + contract.id + '/charges/display')
+                    .then(function(r) {
+                        return r.json();
+                    })
+                    .then(function(res) {
+                        if (!res.success || !res.data) {
+                            console.error('[Contract] charge display failed:', res.message);
+                            alert(res.message || 'No charges found for this contract.');
+                            return;
+                        }
+
+                        var rows = res.data;
+
+                        function toRow(r, revenueOrCost) {
+                            var rate = revenueOrCost === 'revenue' ? r.RevenueRate : r.CostRate;
+                            return {
+                                group: r.ChargeCatagory || 'Other',
+                                desc: r.ChargeDescription,
+                                basedOn: r.ChargeBasedon,
+                                cost: parseFloat(rate) || 0,
+                                markup: 0,
+                                markupType: 'fixed',
+                                selected: true
+                            };
+                        }
+
+                        state.contract = {
+                            id: contract.id,
+                            contractName: contract.contractName,
+                            baseCurrency: (shipmentContext && shipmentContext.baseCurrency) || 'USD',
+                            shipment: (state.contract && state.contract.shipment) || {
+                                weight: 0,
+                                volume: 0,
+                                container: 1,
+                                packageCount: 1
+                            },
+                            revenue: rows.map(function(r) {
+                                return toRow(r, 'revenue');
+                            }),
+                            cost: rows.map(function(r) {
+                                return toRow(r, 'cost');
+                            })
+                        };
+
+                        document.getElementById('ctChargesArea').classList.add('is-visible');
+                        renderSection('revenue');
+                        recalcTotals();
+                    })
+                    .catch(function(err) {
+                        console.error('[Contract] charge display fetch failed:', err);
+                        alert('Failed to load contract charges. Please try again.');
+                    });
             }
 
             // ------------------------------------------------------------
@@ -866,6 +767,10 @@
                         return sum + (r.selected ? computeSell(r) * qtyFor(r) : 0);
                     }, 0);
 
+                    var groupAllSelected = groupRows.length > 0 && groupRows.every(function(r) {
+                        return r.selected;
+                    });
+
                     var wrap = document.createElement('div');
                     wrap.className = 'cc-group';
                     wrap.innerHTML =
@@ -881,8 +786,9 @@
                         '<div class="cc-table-wrap">' +
                         '<table class="cc-table">' +
                         '<thead><tr>' +
-                        '<th class="cc-col-chk"><input type="checkbox" disabled></th>' +
-                        '<th>Description</th><th>Based On</th><th>Qty</th>' +
+                        '<th class="cc-col-chk"><input type="checkbox" class="cc-select-all-check" data-kind="' +
+                        kind + '" data-group="' + groupName + '"' + (groupAllSelected ? ' checked' : '') +
+                        '></th>' + '<th>Description</th><th>Based On</th><th>Qty</th>' +
                         '<th>Cost</th><th>Markup</th><th>Sell</th><th>Amount</th>' +
                         '</tr></thead>' +
                         '<tbody>' +
@@ -981,6 +887,18 @@
 
             // Row selection ticks -> STEP 15
             document.addEventListener('change', function(e) {
+                if (e.target.classList.contains('cc-select-all-check')) {
+                    var kind = e.target.getAttribute('data-kind');
+                    var groupName = e.target.getAttribute('data-group');
+                    var checked = e.target.checked;
+                    state.contract[kind].forEach(function(r) {
+                        if (r.group === groupName) r.selected = checked;
+                    });
+                    renderSection(kind);
+                    recalcTotals();
+                    return;
+                }
+
                 if (e.target.classList.contains('cc-row-check')) {
                     var kind = e.target.getAttribute('data-kind');
                     var idx = parseInt(e.target.getAttribute('data-index'), 10);
@@ -989,7 +907,6 @@
                     recalcTotals();
                 }
             });
-
             // ------------------------------------------------------------
             // Inline Cost editing: value input + Fixed/% toggle per row.
             // Updates state directly and refreshes only the affected row's

@@ -213,130 +213,166 @@
                                     <i class="fas fa-plus"></i> Add Charge
                                 </button>
                             </div>
-                            @if (isset($charges[$service->Id]) && $charges[$service->Id]->count())
-                                <div class="cc-table-wrap">
-                                    <table class="cc-table">
-                                        <thead>
-                                            <tr>
-                                                <th>Code</th>
-                                                <th>Description</th>
-                                                <th>Based On</th>
-                                                <th>UOM</th>
-                                                <th>Rate Type</th>
-                                                <th>Rate</th>
-                                                <th></th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach ($charges[$service->Id] as $charge)
-                                                @php
-                                                    $slabs = $charge->RateSlabJson
-                                                        ? json_decode($charge->RateSlabJson, true)
-                                                        : null;
-                                                    $chargeJs = [
-                                                        'id' => 'chg_' . $charge->Id,
-                                                        'chargeId' => $charge->Id,
-                                                        'chargeCode' => $charge->ChargeCode,
-                                                        'chargeCategory' => $charge->ChargeCatagory,
-                                                        'chargeDescription' => $charge->ChargeDescription,
-                                                        'chargeBasedOn' => $charge->ChargeBasedon,
-                                                        'chargeBasedOnUOM' => $charge->ChargeBasedOnUOM,
-                                                        'chargeCurr' => $charge->ChargeCurr,
-                                                        'minAmount' => $charge->MinAmount,
-                                                        'maxAmount' => $charge->MaxAmount,
-                                                        'rateType' => $charge->RateType,
-                                                        'rate' => $charge->Rate,
-                                                        'formula' => $charge->Formula,
-                                                        'rateSlab' => $slabs,
-                                                        'chargeAction' => $charge->ChargeAction ?? 'R',
-                                                        'markupRateType' => $charge->MarkupRateType ?? null,
-                                                        'markupRate' => $charge->MarkupRate ?? null,
-                                                        'markupFormula' => $charge->MarkupFormula ?? null,
-                                                        'markupRateSlab' =>
-                                                            isset($charge->MarkupRateSlab) && $charge->MarkupRateSlab
-                                                                ? json_decode($charge->MarkupRateSlab, true)
-                                                                : null,
-                                                        'isAccruable' => $charge->IsAccruable ?? '0',
-                                                        'isReimbursable' => $charge->IsReimbursable ?? '0',
-                                                    ];
-                                                @endphp
-                                                <tr>
-                                                    <td>{{ $charge->ChargeCode }}</td>
-                                                    <td>{{ $charge->ChargeDescription }}</td>
-                                                    <td>{{ $charge->ChargeBasedon }}</td>
-                                                    <td>{{ $charge->ChargeBasedOnUOM }}</td>
-                                                    <td>{{ $charge->RateType }}</td>
-                                                    <td>
-                                                        @if ($charge->RateType === 'Single')
-                                                            {{ $charge->Rate }}
-                                                        @elseif(in_array($charge->RateType, ['SlabBased', 'Slab Based', 'StepUp', 'Step Up']))
-                                                            {{ is_array($slabs) ? count($slabs) . ' slabs' : '—' }}
-                                                        @elseif($charge->RateType === 'Formula')
-                                                            {{ $charge->Formula }}
-                                                        @else—
-                                                        @endif
-                                                    </td>
-                                                    <td>
-                                                        <i class="fas fa-pen ce-edit-charge"
-                                                            style="cursor:pointer;color:#4B49AC;" title="Edit"
-                                                            data-svc="{{ $service->Id }}"
-                                                            data-charge='@json($chargeJs)'></i>
-                                                        <i class="fas fa-trash ce-delete-charge ml-2"
-                                                            style="cursor:pointer;color:#dc3545;" title="Delete"
-                                                            data-svc="{{ $service->Id }}"
-                                                            data-charge-id="{{ $charge->Id }}"></i>
-                                                    </td>
-                                                </tr>
-                                            @endforeach
-                                        </tbody>
-                                    </table>
+                            @php
+                                $serviceCharges = $charges[$service->Id] ?? collect();
+                                $chargeGroups = [
+                                    [
+                                        'key' => 'rev',
+                                        'label' => 'Revenue',
+                                        'items' => $serviceCharges->filter(
+                                            fn($c) => ($c->RevenueOrCost ?? 'Revenue') !== 'Cost',
+                                        ),
+                                    ],
+                                    [
+                                        'key' => 'cost',
+                                        'label' => 'Cost',
+                                        'items' => $serviceCharges->filter(
+                                            fn($c) => ($c->RevenueOrCost ?? 'Revenue') === 'Cost',
+                                        ),
+                                    ],
+                                ];
+                            @endphp
+
+                            @foreach ($chargeGroups as $group)
+                                <div class="cc-charge-group mb-2">
+                                    <div class="cc-group-header collapsed"
+                                        data-target="chargeBody{{ $service->Id }}{{ $group['key'] }}">
+                                        <span class="cc-caret">&#9660;</span>
+                                        <span>{{ $group['label'] }} Charges</span>
+                                        <span class="cc-group-total">{{ $group['items']->count() }}</span>
+                                    </div>
+                                    <div class="cc-group-body collapsed"
+                                        id="chargeBody{{ $service->Id }}{{ $group['key'] }}">
+                                        @if ($group['items']->count())
+                                            <div class="cc-table-wrap">
+                                                <table class="cc-table">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Code</th>
+                                                            <th>Description</th>
+                                                            <th>Based On</th>
+                                                            <th>UOM</th>
+                                                            <th>Rate Type</th>
+                                                            <th>Rate</th>
+                                                            <th></th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        @foreach ($group['items'] as $charge)
+                                                            @php
+                                                                $slabs = $charge->RateSlabJson
+                                                                    ? json_decode($charge->RateSlabJson, true)
+                                                                    : null;
+                                                                $chargeJs = [
+                                                                    'id' => 'chg_' . $charge->Id,
+                                                                    'chargeId' => $charge->Id,
+                                                                    'chargeCode' => $charge->ChargeCode,
+                                                                    'chargeCategory' => $charge->ChargeCatagory,
+                                                                    'chargeDescription' => $charge->ChargeDescription,
+                                                                    'chargeBasedOn' => $charge->ChargeBasedon,
+                                                                    'chargeBasedOnUOM' => $charge->ChargeBasedOnUOM,
+                                                                    'chargeCurr' => $charge->ChargeCurr,
+                                                                    'minAmount' => $charge->MinAmount,
+                                                                    'maxAmount' => $charge->MaxAmount,
+                                                                    'rateType' => $charge->RateType,
+                                                                    'rate' => $charge->Rate,
+                                                                    'formula' => $charge->Formula,
+                                                                    'rateSlab' => $slabs,
+                                                                    'chargeAction' => $charge->ChargeAction ?? 'R',
+                                                                    'chargeNature' => $charge->RevenueOrCost ?? null,
+                                                                    'markupRateType' => $charge->MarkupRateType ?? null,
+                                                                    'markupRate' => $charge->MarkupRate ?? null,
+                                                                    'markupFormula' => $charge->MarkupFormula ?? null,
+                                                                    'markupRateSlab' =>
+                                                                        isset($charge->MarkupRateSlab) &&
+                                                                        $charge->MarkupRateSlab
+                                                                            ? json_decode($charge->MarkupRateSlab, true)
+                                                                            : null,
+                                                                    'isAccruable' => $charge->IsAccruable ?? '0',
+                                                                    'isReimbursable' => $charge->IsReimbursable ?? '0',
+                                                                ];
+                                                            @endphp
+                                                            <tr>
+                                                                <td>{{ $charge->ChargeCode }}</td>
+                                                                <td>{{ $charge->ChargeDescription }}</td>
+                                                                <td>{{ $charge->ChargeBasedon }}</td>
+                                                                <td>{{ $charge->ChargeBasedOnUOM }}</td>
+                                                                <td>{{ $charge->RateType }}</td>
+                                                                <td>
+                                                                    @if ($charge->RateType === 'Single')
+                                                                        {{ $charge->Rate }}
+                                                                    @elseif(in_array($charge->RateType, ['SlabBased', 'Slab Based', 'StepUp', 'Step Up']))
+                                                                        {{ is_array($slabs) ? count($slabs) . ' slabs' : '—' }}
+                                                                    @elseif($charge->RateType === 'Formula')
+                                                                        {{ $charge->Formula }}
+                                                                    @else—
+                                                                    @endif
+                                                                </td>
+                                                                <td>
+                                                                    <i class="fas fa-pen ce-edit-charge"
+                                                                        style="cursor:pointer;color:#4B49AC;"
+                                                                        title="Edit" data-svc="{{ $service->Id }}"
+                                                                        data-charge='@json($chargeJs)'></i>
+                                                                    <i class="fas fa-trash ce-delete-charge ml-2"
+                                                                        style="cursor:pointer;color:#dc3545;"
+                                                                        title="Delete" data-svc="{{ $service->Id }}"
+                                                                        data-charge-id="{{ $charge->Id }}"></i>
+                                                                </td>
+                                                            </tr>
+                                                        @endforeach
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        @else
+                                            <div class="cc-empty-msg">No {{ strtolower($group['label']) }} charges for
+                                                this service.</div>
+                                        @endif
+                                    </div>
                                 </div>
-                            @else
-                                <div class="cc-empty-msg">No charges for this service.</div>
-                            @endif
-                            <div class="ctr-subform mt-2" id="chargeform-{{ $service->Id }}" style="display:none;">
-                            </div>
-                        </div>
-                    </div>
-                @endforeach
+                            @endforeach
+                <div class="ctr-subform mt-2" id="chargeform-{{ $service->Id }}" style="display:none;">
+                </div>
             </div>
-        @else
-            <div class="cc-section-block mb-3">
-                <div class="cc-section-block-header cc-header-revenue">
-                    <strong>Services</strong>
-                    <button type="button" class="btn btn-sm btn-light ml-auto ce-add-service-btn">
-                        <i class="fas fa-plus"></i> Add Service
+    </div>
+    @endforeach
+    </div>
+@else
+    <div class="cc-section-block mb-3">
+        <div class="cc-section-block-header cc-header-revenue">
+            <strong>Services</strong>
+            <button type="button" class="btn btn-sm btn-light ml-auto ce-add-service-btn">
+                <i class="fas fa-plus"></i> Add Service
+            </button>
+        </div>
+        <div class="cc-empty-msg">No services added.</div>
+    </div>
+    @endif
+    <div class="modal fade" id="addChargeModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Charge</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
-                <div class="cc-empty-msg">No services added.</div>
-            </div>
-        @endif
-        <div class="modal fade" id="addChargeModal" tabindex="-1" role="dialog" aria-hidden="true">
-            <div class="modal-dialog modal-lg" role="document">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Add Charge</h5>
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div>
-                    <div class="modal-body" id="addChargeModalBody"></div>
-                </div>
+                <div class="modal-body" id="addChargeModalBody"></div>
             </div>
         </div>
-        <div class="modal fade" id="addServiceModal" tabindex="-1" role="dialog" aria-hidden="true">
-            <div class="modal-dialog modal-lg" role="document">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Add Service</h5>
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div>
-                    <div class="modal-body" id="addServiceModalBody"></div>
+    </div>
+    <div class="modal fade" id="addServiceModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Service</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
                 </div>
+                <div class="modal-body" id="addServiceModalBody"></div>
             </div>
         </div>
+    </div>
     </div>
 @stop
 
@@ -964,6 +1000,7 @@
 
                 var body = document.getElementById(header.getAttribute('data-target'));
                 if (!body || body.dataset.locAutocompleteInit) return;
+                if (!body.querySelector('.ce-svc-id')) return; // only service groups carry this marker
 
                 var $body = $(body);
                 var svcId = $body.data('ce-svc-id');
@@ -1682,9 +1719,8 @@
                 $(wrap).find('.ctr-cf-inline-rate').html(inlineRateHtml(normalizedRateType));
                 $(wrap).find('.ctr-cf-ratearea').html(rateAreaHtml(normalizedRateType));
 
-                var markupAllowed = (normalizedRateType === 'Single');
-                $(wrap).find('input[name="ctr-cf-natureaction"][value="CostMarkup"]').prop('disabled', !markupAllowed)
-                    .closest('label').toggle(markupAllowed);
+                $(wrap).find('input[name="ctr-cf-natureaction"][value="CostMarkup"]').prop('disabled', false)
+                    .closest('label').show();
 
                 $(wrap).find('.ctr-cf-accruable').prop('checked', chargeToEdit.isAccruable == '1');
                 $(wrap).find('.ctr-cf-reimbursable').prop('checked', chargeToEdit.isReimbursable == '1');
@@ -1720,15 +1756,6 @@
                     $(wrap).find('.ctr-cf-ratearea').html(rateAreaHtml(this.value));
                     if (this.value === 'Formula') bindFormulaBuilderEvents(wrap);
 
-                    var $markupRadio = $(wrap).find('input[name="ctr-cf-natureaction"][value="CostMarkup"]');
-                    var markupAllowed = (this.value === 'Single');
-                    $markupRadio.prop('disabled', !markupAllowed);
-                    $markupRadio.closest('label').toggle(markupAllowed);
-
-                    if (!markupAllowed && $markupRadio.is(':checked')) {
-                        $(wrap).find('input[name="ctr-cf-natureaction"][value="Cost"]').prop('checked', true)
-                            .trigger('change');
-                    }
                 });
                 $(wrap).find('.ctr-cf-cancel').on('click', function() {
                     var modal = $(wrap).closest('.modal');

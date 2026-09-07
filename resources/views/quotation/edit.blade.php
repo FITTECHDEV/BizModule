@@ -1580,8 +1580,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                                            MODALS
-                                                                                                                                                                                            ============================================ -->
+                                                                                                                                                                                                        MODALS
+                                                                                                                                                                                                        ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -2621,8 +2621,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ============================================= */
 
         .modal-header {
             background-color: #fff !important;
@@ -3065,9 +3065,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -6708,34 +6708,51 @@
             // ============================================
             // DELETE CHARGES
             // ============================================
-            $(document).on('click', '.delete-revenue-charge, .delete-cost-charge', function() {
-                const chargeId = $(this).data('id');
-                if (!confirm('Are you sure you want to delete this charge?')) return;
+     $(document).on('click', '.delete-revenue-charge, .delete-cost-charge', function() {
+    const chargeId = $(this).data('id');
 
-                $.ajax({
-                    url: '{{ route('quotation.charges.bulk-delete') }}',
-                    type: 'POST',
-                    data: {
-                        _token: '{{ csrf_token() }}',
-                        quotation_id: quotationId,
-                        charge_ids: [chargeId],
-                    },
-                    success: function(response) {
-                        if (response.success) {
-                            showNotification(response.message || 'Charge deleted successfully',
-                                'success');
-                            loadCharges();
-                        } else {
-                            showNotification(response.message || 'Failed to delete charge',
-                                'error');
-                        }
-                    },
-                    error: function(xhr) {
-                        showNotification(xhr.responseJSON?.message || 'Failed to delete charge',
-                            'error');
-                    }
-                });
-            });
+    if (!chargeId) {
+        // Template-sourced charge — never persisted server-side (id is null),
+        // so there's nothing to delete via the SP. Drop it from local state only.
+        const index = $(this).data('index');
+        const tbodyId = $(this).closest('tbody').attr('id');
+        if (tbodyId === 'revenueChargesTable') {
+            revenueCharges.splice(index, 1);
+        } else if (tbodyId === 'costChargesTable') {
+            costCharges.splice(index, 1);
+        }
+        renderRevenueCharges();
+        renderCostCharges();
+        updateSummary();
+        return;
+    }
+
+    if (!confirm('Are you sure you want to delete this charge?')) return;
+
+    $.ajax({
+        url: '{{ route('quotation.charges.bulk-delete') }}',
+        type: 'POST',
+        data: {
+            _token: '{{ csrf_token() }}',
+            quotation_id: quotationId,
+            charge_ids: [chargeId],
+        },
+        success: function(response) {
+            if (response.success) {
+                showNotification(response.message || 'Charge deleted successfully',
+                    'success');
+                loadCharges();
+            } else {
+                showNotification(response.message || 'Failed to delete charge',
+                    'error');
+            }
+        },
+        error: function(xhr) {
+            showNotification(xhr.responseJSON?.message || 'Failed to delete charge',
+                'error');
+        }
+    });
+});
 
             // ============================================
             // EDIT CHARGES
@@ -6933,16 +6950,21 @@
                             <td class="text-right">${parseFloat(charge.amtInChgCurr  || 0).toFixed(2)}</td>
                             <td class="text-right">${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
                             <td class="text-center">
-                                ${charge.source === 'template' ? '<span class="badge badge-info">Template</span>' : `
-                                                                <button type="button" class="btn btn-warning btn-action edit-cost-charge"
-                                                                    data-index="${index}" data-id="${charge.id}">
-                                                                    <i class="fas fa-edit"></i>
-                                                                </button>
-                                                                <button type="button" class="btn btn-danger btn-action delete-cost-charge"
-                                                                    data-index="${index}" data-id="${charge.id}">
-                                                                    <i class="fas fa-trash"></i>
-                                                                </button>
-                                                            `}
+                            ${charge.source === 'template' ? `
+                                                                        <button type="button" class="btn btn-danger btn-action delete-cost-charge"
+                                                                            data-index="${index}" data-id="${charge.id}">
+                                                                            <i class="fas fa-trash"></i>
+                                                                        </button>
+                                                                    ` : `
+                                                                        <button type="button" class="btn btn-warning btn-action edit-cost-charge"
+                                                                            data-index="${index}" data-id="${charge.id}">
+                                                                            <i class="fas fa-edit"></i>
+                                                                        </button>
+                                                                        <button type="button" class="btn btn-danger btn-action delete-cost-charge"
+                                                                            data-index="${index}" data-id="${charge.id}">
+                                                                            <i class="fas fa-trash"></i>
+                                                                        </button>
+                                                                    `}
                             </td>
                         </tr>
                     `);
@@ -6973,9 +6995,9 @@
                         totalBaseAmount += parseFloat(charge.amtInBaseCurr || 0);
                         tbody.append(`
                             <tr>
-                             <td class="text-center bulk-delete-col" style="display:none;">
+                            <td class="text-center bulk-delete-col" style="display:none;">
                                 <input type="checkbox" class="charge-row-check"
-                                       data-type="cost" data-id="${charge.id}">
+                                data-type="cost" data-id="${charge.id}">
                             </td>
                                 <td>${charge.chargeName || charge.chargeCode || ''}</td>
                                 <td class="text-right">${parseFloat(charge.rate || 0).toFixed(2)}</td>
@@ -6985,14 +7007,21 @@
                                 <td class="text-right">${parseFloat(charge.amtInChgCurr  || 0).toFixed(2)}</td>
                                 <td class="text-right">${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
                                 <td class="text-center">
-                                    <button type="button" class="btn btn-warning btn-action edit-cost-charge"
-                                        data-index="${index}" data-id="${charge.id}">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-danger btn-action delete-cost-charge"
-                                        data-index="${index}" data-id="${charge.id}">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
+                                    ${charge.source === 'template' ? `
+                                        <button type="button" class="btn btn-danger btn-action delete-cost-charge"
+                                            data-index="${index}" data-id="${charge.id}">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    ` : `
+                                        <button type="button" class="btn btn-warning btn-action edit-cost-charge"
+                                            data-index="${index}" data-id="${charge.id}">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-danger btn-action delete-cost-charge"
+                                            data-index="${index}" data-id="${charge.id}">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    `}
                                 </td>
                             </tr>
                         `);
@@ -7898,34 +7927,98 @@
 
             // Load all dropdowns when modal opens
             $('#createBookingModal').on('show.bs.modal', function() {
+
                 loadServiceTemplates();
-                const savedForwarderCode = $('#shipmentForwarderCode').val();
-                if (savedForwarderCode) {
-                    const savedForwarderText = $('#shipmentForwarderDisplay').val();
-                    const trySelect = setInterval(function() {
-                        const $cb = $('#cb_forwarder');
-                        if ($cb.find('option').length > 1) {
-                            if (!$cb.find(`option[value="${savedForwarderCode}"]`).length) {
-                                $cb.append(
-                                    `<option value="${savedForwarderCode}">${savedForwarderText}</option>`
-                                    );
-                            }
-                            $cb.val(savedForwarderCode).prop('disabled', true);
-                            clearInterval(trySelect);
-                        }
-                    }, 100);
-                }
                 loadBillToParties();
-                loadForwarders();
-                // Small delay ensures modal DOM is visible before autocomplete binds
-                setTimeout(function() {
-                    initLocationAutocomplete('cb_place_of_receipt',
-                        'cb_place_of_receipt_code',
-                        'cb_place_of_receipt_id');
-                    initLocationAutocomplete('cb_place_of_delivery',
-                        'cb_place_of_delivery_code',
-                        'cb_place_of_delivery_id');
-                }, 150);
+
+                // Get values already saved on the Edit page
+                const savedForwarderCode = $('#shipmentForwarderCode').val();
+                const savedForwarderText = $('#shipmentForwarderDisplay').val();
+
+                const savedReceiptCode = $('#placeOfReceiptCode').val();
+                const savedReceiptText = $('#placeOfReceiptDisplay').val();
+
+                const savedDeliveryCode = $('#placeOfDeliveryCode').val();
+                const savedDeliveryText = $('#placeOfDeliveryDisplay').val();
+                const savedIncludeCountry = {{ (int) ($quotation->IncludeCountry ?? 0) }};
+
+                // Restore the last three booking fields from the saved quote state
+                $('#cb_include_country').prop('checked', !!savedIncludeCountry);
+
+                // Load Forwarder and restore existing value
+                loadForwarders(
+                    savedForwarderCode,
+                    savedForwarderText
+                );
+
+                // Restore Place of Receipt
+                if (savedReceiptCode) {
+                    $('#cb_place_of_receipt').val(
+                        savedReceiptText || savedReceiptCode
+                    );
+
+                    $('#cb_place_of_receipt_code').val(
+                        savedReceiptCode
+                    );
+                }
+
+                // Restore Place of Delivery
+                if (savedDeliveryCode) {
+                    $('#cb_place_of_delivery').val(
+                        savedDeliveryText || savedDeliveryCode
+                    );
+
+                    $('#cb_place_of_delivery_code').val(
+                        savedDeliveryCode
+                    );
+                }
+
+                $.get('{{ route('quotation.booking.existing-data') }}', {
+                        quotation_id: quotationId
+                    })
+                    .done(function(res) {
+                        if (!res.success || !res.data) return;
+
+                        const d = res.data;
+
+                        if (d.bill_to_party_code) {
+                            $('#cb_bill_to_party').val(d.bill_to_party_code);
+                        }
+
+                        if (d.forwarder_code) {
+                            $('#cb_forwarder').val(d.forwarder_code);
+                        }
+
+                        if (typeof d.include_country !== 'undefined') {
+                            $('#cb_include_country').prop('checked', !!d.include_country);
+                        }
+
+                        if (d.receipt_code) {
+                            $('#cb_place_of_receipt').val(d.receipt_text || d.receipt_code);
+                            $('#cb_place_of_receipt_code').val(d.receipt_code);
+                        }
+
+                        if (d.delivery_code) {
+                            $('#cb_place_of_delivery').val(d.delivery_text || d.delivery_code);
+                            $('#cb_place_of_delivery_code').val(d.delivery_code);
+                        }
+                    })
+                    .fail(function() {
+                        // Ignore silently; the already loaded page values remain as the backup.
+                    });
+
+                // Initialize location autocomplete
+                initLocationAutocomplete(
+                    'cb_place_of_receipt',
+                    'cb_place_of_receipt_code',
+                    'cb_place_of_receipt_id'
+                );
+
+                initLocationAutocomplete(
+                    'cb_place_of_delivery',
+                    'cb_place_of_delivery_code',
+                    'cb_place_of_delivery_id'
+                );
             });
 
             // ---- Service Templates ----
@@ -8004,9 +8097,14 @@
             }
 
             // ---- Forwarders ----
-            function loadForwarders() {
+            function loadForwarders(savedCode = '', savedText = '') {
+
                 const $select = $('#cb_forwarder');
-                $select.empty().append('<option value="">Loading...</option>').prop('disabled', true);
+
+                $select
+                    .empty()
+                    .append('<option value="">Loading...</option>')
+                    .prop('disabled', true);
 
                 $.ajax({
                     url: '{{ route('quotation.booking.forwarders') }}',
@@ -8014,32 +8112,70 @@
                     data: {
                         team_id: teamId
                     },
+
                     success: function(response) {
+
                         $select.empty().append('<option value=""></option>');
+
                         if (response.success && response.parties.length) {
+
                             response.parties.forEach(function(p) {
+
                                 $select.append(
                                     `<option value="${p.PartyCode}"
-                                     data-id="${p.PartyID}">${p.PartyName}</option>`
+                            data-id="${p.PartyID}">
+                            ${p.PartyName}
+                        </option>`
                                 );
+
                             });
+
+                            // Restore the Forwarder from the Edit page
+                            if (savedCode) {
+
+                                if (!$select.find(
+                                        `option[value="${savedCode}"]`
+                                    ).length) {
+
+                                    $select.append(
+                                        `<option value="${savedCode}">
+                                ${savedText || savedCode}
+                            </option>`
+                                    );
+                                }
+
+                                $select.val(savedCode);
+                            }
+
                         } else {
+
                             $select.append(
-                                '<option value="" disabled>No forwarders available</option>'
+                                '<option value="" disabled>' +
+                                'No forwarders available' +
+                                '</option>'
                             );
                         }
                     },
+
                     error: function() {
+
                         $select.empty().append(
-                            '<option value="" disabled>Failed to load</option>');
-                        showNotification('Failed to load forwarders', 'error');
+                            '<option value="" disabled>' +
+                            'Failed to load' +
+                            '</option>'
+                        );
+
+                        showNotification(
+                            'Failed to load forwarders',
+                            'error'
+                        );
                     },
+
                     complete: function() {
                         $select.prop('disabled', false);
                     }
                 });
             }
-
 
             // ---- Locations autocomplete ----
             function initLocationAutocomplete(inputId, codeInputId, idInputId) {

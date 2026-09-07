@@ -124,6 +124,61 @@ class ContractController extends Controller
         return view('contracts.edit', compact('contractInfo', 'services', 'charges', 'officeCode'));
     }
 
+    /**
+     * GET /contracts/{contract}/charges/display
+     * Full charge breakdown for the workbook view via sp_Contract_ChargeDisplay.
+     */
+    public function chargeDisplay(string $contract): JsonResponse
+    {
+        try {
+            $pdo = DB::connection('sqlsrv')->getPdo();
+            $stmt = $pdo->prepare(
+                'SET NOCOUNT ON; DECLARE @OutputJson NVARCHAR(MAX); ' .
+                    'EXEC dbo.sp_Contract_ChargeDisplay @ContractID = ?, @OutputJson = @OutputJson OUTPUT; ' .
+                    'SELECT @OutputJson AS OutputJson',
+            );
+            $stmt->execute([$contract]);
+
+            $outputJson = null;
+            do {
+                $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+                if (!empty($rows) && isset($rows[0]->OutputJson)) {
+                    $outputJson = $rows[0]->OutputJson;
+                    break;
+                }
+            } while ($stmt->nextRowset());
+
+            if (!$outputJson) {
+                Log::error('sp_Contract_ChargeDisplay returned no output', ['contract' => $contract]);
+                return response()->json(['success' => false, 'message' => 'No output from stored procedure'], 422);
+            }
+
+            $result = json_decode($outputJson, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                Log::error('sp_Contract_ChargeDisplay invalid JSON', ['contract' => $contract, 'raw' => $outputJson]);
+                return response()->json(['success' => false, 'message' => 'Invalid JSON from stored procedure'], 500);
+            }
+
+            if (($result['Status'] ?? '') !== 'Success') {
+                return response()->json(
+                    ['success' => false, 'message' => $result['Remark'] ?? 'No charges found'],
+                    422,
+                );
+            }
+
+            $charges = $result['Charges'] ?? [];
+
+            return response()->json([
+                'success' => true,
+                'message' => $result['Remark'] ?? 'Charges retrieved.',
+                'data' => $charges,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('sp_Contract_ChargeDisplay call failed: ' . $e->getMessage(), ['contract' => $contract]);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
     public function newDraft(): JsonResponse
     {
         $contractId = Str::uuid()->toString();
@@ -585,6 +640,153 @@ class ContractController extends Controller
         }
 
         return response()->json(['success' => true, 'message' => 'Service and its charges deleted.']);
+    }
+
+    /**
+     * Soft-delete a contract by deleting its charges & services then
+     * marking the contract as deleted via sp_Contractinfo.
+     */
+    public function destroy(string $contract): JsonResponse
+    {
+        // Delete all services (which will cascade to charges)
+        $serviceIds = DB::connection('sqlsrv')
+            ->table('Contract_ContractServiceAndFilter')
+            ->where('ContractInfoID', $contract)
+            ->where('IsDeleted', 0)
+            ->pluck('Id');
+
+        foreach ($serviceIds as $svcId) {
+            // delete charges for the service
+            $chargeIds = DB::connection('sqlsrv')
+                ->table('Contract_ContractCharges')
+                ->where('ServiceAndFilterID', $svcId)
+                ->where('ContractInfoID', $contract)
+                ->where('IsDeleted', 0)
+                ->pluck('Id');
+
+            foreach ($chargeIds as $chargeId) {
+                $chargeResult = $this->callContractSP('sp_Contractinfo_ServiceCharges', [
+                    'OperationType' => 'ServiceBasedCharges',
+                    'SubmittedDatetime' => $this->submittedDatetime(),
+                    'SubmittedBy' => auth()->user()->name ?? 'system',
+                    'Action' => 'Delete',
+                    'ContractInfoID' => $contract,
+                    'ServiceAndFilterID' => $svcId,
+                    'ServiceChargeID' => $chargeId,
+                ]);
+
+                if (!$chargeResult['success']) {
+                    Log::error('destroy - failed to delete charge', [
+                        'contract' => $contract,
+                        'service' => $svcId,
+                        'charge' => $chargeId,
+                        'message' => $chargeResult['message'] ?? null,
+                    ]);
+                    return response()->json(
+                        ['success' => false, 'message' => 'Failed to delete charge before contract delete.'],
+                        422,
+                    );
+                }
+            }
+
+            // delete the service itself
+            $serviceResult = $this->callContractSP('sp_Contractinfo_ServiceDetails', [
+                'OperationType' => 'ContractServiceDetails',
+                'SubmittedDatetime' => $this->submittedDatetime(),
+                'SubmittedBy' => auth()->user()->name ?? 'system',
+                'Action' => 'Delete',
+                'ContractInfoID' => $contract,
+                'ServiceAndFilterID' => $svcId,
+            ]);
+
+            if (!$serviceResult['success']) {
+                Log::error('destroy - failed to delete service', [
+                    'contract' => $contract,
+                    'service' => $svcId,
+                    'message' => $serviceResult['message'] ?? null,
+                ]);
+                return response()->json(
+                    ['success' => false, 'message' => 'Failed to delete service before contract delete.'],
+                    422,
+                );
+            }
+        }
+
+        // Finally mark the contract as deleted via the header SP
+        $headerPayload = [
+            'OperationType' => 'ContractInfo',
+            'SubmittedDatetime' => $this->submittedDatetime(),
+            'SubmittedBy' => auth()->user()->name ?? 'system',
+            'Action' => 'Delete',
+            'ContractID' => $contract,
+        ];
+
+        $result = $this->callContractSP('sp_Contractinfo', $headerPayload);
+
+        if (!$result['success']) {
+            Log::error('destroy - failed to delete contract header', [
+                'contract' => $contract,
+                'message' => $result['message'] ?? null,
+            ]);
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => 'Failed to delete contract: ' . ($result['message'] ?? 'Unknown error'),
+                ],
+                422,
+            );
+        }
+
+        // VERIFY: if the SP did not set IsDeleted for some reason, apply
+        // a fallback direct update so the list view won't show the contract
+        // after a refresh. This keeps behavior consistent while DB/SP is
+        // investigated.
+        try {
+            $headerFlag = DB::connection('sqlsrv')
+                ->table('Contract_ContractInfo')
+                ->where('Id', $contract)
+                ->value('IsDeleted');
+
+            if (!$headerFlag) {
+                $now = Carbon::now();
+                $user = auth()->user()->name ?? 'system';
+
+                DB::connection('sqlsrv')
+                    ->table('Contract_ContractInfo')
+                    ->where('Id', $contract)
+                    ->update([
+                        'IsDeleted' => 1,
+                        'LastModifiedBy' => $user,
+                        'LastModifiedOn' => $now,
+                    ]);
+
+                DB::connection('sqlsrv')
+                    ->table('Contract_ContractServiceAndFilter')
+                    ->where('ContractInfoID', $contract)
+                    ->update([
+                        'IsDeleted' => 1,
+                        'LastModifiedBy' => $user,
+                        'LastModifiedOn' => $now,
+                    ]);
+
+                DB::connection('sqlsrv')
+                    ->table('Contract_ContractCharges')
+                    ->where('ContractInfoID', $contract)
+                    ->update([
+                        'IsDeleted' => 1,
+                        'LastModifiedBy' => $user,
+                        'LastModifiedOn' => $now,
+                    ]);
+
+                Log::warning('destroy - SP did not mark rows deleted; applied fallback update', [
+                    'contract' => $contract,
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('destroy - fallback update failed: ' . $e->getMessage(), ['contract' => $contract]);
+        }
+
+        return response()->json(['success' => true, 'message' => 'Contract deleted.']);
     }
 
     private function getUserOfficeCode(): string
