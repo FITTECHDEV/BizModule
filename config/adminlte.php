@@ -231,22 +231,22 @@ return [
         // Navbar items:
         [
             'text' => 'Dashboard',
-            'url'  => 'home',
+            'url' => 'home',
             'icon' => 'fas fa-tachometer-alt',
             // 'can'  => 'admin-view'
         ],
         [
             'text' => ' Tickets',
-            'url'  => '/#',
+            'url' => '/#',
             'icon' => 'fas fa-fw fa-ticket-alt  ',
             'active' => ['tickets/*'],
             // 'can' => 'tickets-view',
             'submenu' => [
                 [
                     'text' => 'Home',
-                    'url'  => '/tickets',
+                    'url' => '/tickets',
                     'icon' => 'fas fa-fw fa-home',
-                    'can'  => 'admin-view'
+                    'can' => 'admin-view',
                 ],
                 // [
                 //     'text' => 'Raise Ticket',
@@ -257,62 +257,62 @@ return [
                 // ],
                 [
                     'text' => 'My Tickets',
-                    'route'  => 'tickets.my_tickets',
+                    'route' => 'tickets.my_tickets',
                     'icon' => 'fas fa-fw fa-ticket-alt',
-                    'can'  => 'my-ticket-list',
-                    'active' => ['tickets/my-tickets']
+                    'can' => 'my-ticket-list',
+                    'active' => ['tickets/my-tickets'],
                 ],
                 [
                     'text' => 'My Office Tickets',
-                    'route'  => 'tickets.my_office_tickets',
+                    'route' => 'tickets.my_office_tickets',
                     'icon' => 'fas fa-fw fa-building',
-                    'can'  => 'view-my-office-tickets',
-                    'active' => ['tickets/my-office-tickets']
+                    'can' => 'view-my-office-tickets',
+                    'active' => ['tickets/my-office-tickets'],
                 ],
                 [
                     'text' => 'Assigned',
-                    'route'  => 'tickets.assigned',
+                    'route' => 'tickets.assigned',
                     'icon' => 'fas fa-fw fa-ticket-alt',
                     'active' => ['tickets/assigned'],
-                    'can'  => 'view-assigned-tickets'
+                    'can' => 'view-assigned-tickets',
                 ],
                 [
                     'text' => 'Dashboards',
-                    'route'  => 'reports.index',
+                    'route' => 'reports.index',
                     'icon' => 'fas fa-fw fa-chart-bar',
                     'active' => ['reports/*'],
-                    'can'  => 'view-ticket-reports-dashboard'
+                    'can' => 'view-ticket-reports-dashboard',
                 ],
                 [
                     'text' => ' Reports',
-                    'route'  => 'archive',
+                    'route' => 'archive',
                     'icon' => 'fas fa-fw fa-file-alt',
                     'active' => ['archive/*'],
-                    'can'  => 'view-ticket-reports'
-                ]
+                    'can' => 'view-ticket-reports',
+                ],
             ],
         ],
         [
             'key' => 'client_party',
             'text' => 'Client Party Request',
-            'url'  => '/#',
+            'url' => '/#',
             'icon' => 'fas fa-fw fa-handshake ',
             'active' => ['client-party/*'],
-            'can'  => 'view-client-party',
+            'can' => 'view-client-party',
             'submenu' => [
                 [
                     'text' => ' Requests',
-                    'url'  => 'client-party?submitted_request=true',
+                    'url' => 'client-party?submitted_request=true',
                     'icon' => 'fas fa-handshake',
                     'active' => ['client-party?submitted_request=true'],
                     // 'can'  => 'create-client-party',
                 ],
                 [
                     'text' => 'Request Client Party',
-                    'url'  => 'client-party/create',
+                    'url' => 'client-party/create',
                     'icon' => 'fas fa-fw fa-hand-paper ',
                     'active' => ['client-party/create'],
-                    'can'  => 'request-client-party',
+                    'can' => 'request-client-party',
                 ],
                 // [
                 //     'text' => 'My Requests',
@@ -325,45 +325,68 @@ return [
         ],
         [
             'text' => 'TIMS',
-            'url'  => 'tims',
+            'url' => 'tims',
             'icon' => 'fa fa-fw fa-calculator',
-            'can'  => 'tims-access'
+            'can' => 'tims-access',
         ],
         [
             'text' => 'EFRIS',
-            'url'  => 'efris',
+            'url' => 'efris',
             'icon' => 'fa fa-fw fa-dollar',
-            'can'  => 'efris-access'
+            'can' => 'efris-access',
         ],
 
         [
             'text' => 'LOGIN TRACKER',
-            'url'  => 'dashboard',
+            'url' => 'dashboard',
             'icon' => 'fa fa-fw fa-user',
-            'can'  => 'efris-access'
+            'can' => 'efris-access',
         ],
 
         [
             'text' => 'AZURE AD MANAGEMENT',
-            'url'  => 'azure/dashboard',
+            'url' => 'azure/dashboard',
             'icon' => 'fab fa-fw fa-microsoft',
             'active' => ['azure/*'],
         ],
 
         [
             'text' => 'SHIPMENT EMAIL REPORTS',
-            'url'  => 'shipment-reports',
+            'url' => 'shipment-reports',
             'icon' => 'fas fa-fw fa-envelope',
             'active' => ['shipment-reports/*'],
-            'can'  => 'approve-all-entity-request'
+            'can' => 'approve-all-entity-request',
         ],
 
         [
             'text' => 'QUOTATION',
-            'url'  => 'quotation',
+            'url' => '/#',
             'icon' => 'fas fa-fw fa-file-invoice',
             'active' => ['quotation', 'quotation/*'],
-            'can'    => 'view-quotation'
+            'can' => 'view-quotation',
+            'submenu' => [
+                [
+                    'text' => 'Quotations',
+                    'url' => 'quotation',
+                    'icon' => 'fas fa-fw fa-file-invoice',
+                    'active' => ['quotation'],
+                    'can' => 'view-quotation',
+                ],
+                // [
+                //     'text' => 'Approvals',
+                //     'url' => 'quotation/approvals',
+                //     'icon' => 'fas fa-fw fa-check-double',
+                //     'active' => ['quotation/approvals'],
+                //     'can' => 'view-quotation',
+                // ],
+                [
+                    'text' => 'Contract Management',
+                    'url' => 'contracts/create',
+                    'icon' => 'fas fa-fw fa-file-signature',
+                    'active' => ['contracts', 'contracts/*'],
+                    'can' => 'view-quotation',
+                ],
+            ],
         ],
         // ↓ NEW ENTRY ↓
         // [
@@ -377,40 +400,39 @@ return [
         // ['header' => 'account_settings'],
         [
             'text' => 'SETTINGS',
-            'url'  => '/#',
+            'url' => '/#',
             'icon' => 'fas fa-fw fa-cogs ',
             'active' => ['settings/*'],
             // 'can'  => 'view-access-settings',
             'submenu' => [
                 [
                     'text' => 'change_password',
-                    'route'  => 'user.get_change_password',
+                    'route' => 'user.get_change_password',
                     'icon' => 'fas fa-fw fa-lock',
-                    'can'  => 'change-user-password',
+                    'can' => 'change-user-password',
                 ],
                 [
                     'text' => 'Roles Management',
-                    'url'  => 'roles',
+                    'url' => 'roles',
                     'icon' => 'fas fa-tasks',
-                    'active'  => ['roles/*'],
-                    'can'  => 'roles-list'
+                    'active' => ['roles/*'],
+                    'can' => 'roles-list',
                 ],
                 [
                     'text' => 'User Management',
-                    'url'  => 'users',
+                    'url' => 'users',
                     'icon' => 'fas fa-fw fa-users',
-                    'active'  => ['users/*'],
-                    'can'  => 'users-list'
+                    'active' => ['users/*'],
+                    'can' => 'users-list',
                 ],
 
                 [
                     'text' => 'Category Management',
-                    'url'  => 'categories',
+                    'url' => 'categories',
                     'icon' => 'fas fa-fw fa-th',
-                    'active'  => ['categories/*'],
-                    'can'  => 'manage-category'
+                    'active' => ['categories/*'],
+                    'can' => 'manage-category',
                 ],
-
             ],
         ],
     ],
@@ -530,7 +552,6 @@ return [
             ],
         ],
 
-
         'Select2' => [
             'active' => false,
             'files' => [
@@ -572,7 +593,8 @@ return [
                 [
                     'type' => 'css',
                     'asset' => false,
-                    'location' => '//cdnjs.cloudflare.com/ajax/libs/pace/1.0.2/themes/blue/pace-theme-center-radar.min.css',
+                    'location' =>
+                        '//cdnjs.cloudflare.com/ajax/libs/pace/1.0.2/themes/blue/pace-theme-center-radar.min.css',
                 ],
                 [
                     'type' => 'js',

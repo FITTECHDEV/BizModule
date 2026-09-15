@@ -1075,11 +1075,11 @@ class QuotationController extends Controller
             $stmt = $pdo->prepare('SET NOCOUNT ON; EXEC dbo.sp_Quote_QuotationList ?');
             $stmt->execute([$inputJson]);
 
-            // Log::info('callQuotationListSP - executed', [
-            //     'status' => $status,
-            //     'office_code' => $officeCode ?: 'ALL',
-            //     'input_json' => $inputJson,
-            // ]);
+            Log::info('callQuotationListSP - executed', [
+                'status' => $status,
+                'office_code' => $officeCode ?: 'ALL',
+                'input_json' => $inputJson,
+            ]);
 
             $rows = [];
             do {
@@ -2058,6 +2058,238 @@ class QuotationController extends Controller
         }
     }
 
+    /**
+     * Persist Workbook charges for a quotation via sp_Quote_DetailsUpdate
+     * (OperationType: WorkbookCharges, Action: Add), replacing the old
+     * session-only ContractTemplateController::store() flow. Route
+     * quotation.contract-template.store — {quotation} comes from the URL,
+     * never from the request body.
+     */
+    public function saveWorkbookCharges(Request $request, $quotation)
+    {
+        $validator = \Validator::make($request->all(), [
+            'ContractID' => 'required|string',
+            'Charges' => 'required|array|min:1',
+
+            'Charges.*.ChargeCatagory' => 'required|string',
+            'Charges.*.ChargeCode' => 'required|string',
+            'Charges.*.BasedOnCode' => 'required|string',
+            'Charges.*.ChgCurr' => 'required|string',
+
+            'Charges.*.ChargeRowID' => 'nullable|string',
+            'Charges.*.ChargeDescription' => 'nullable|string',
+            'Charges.*.PartyCode' => 'nullable|string',
+            'Charges.*.BasedOnUOM' => 'nullable|string',
+            'Charges.*.Quantity' => 'required|numeric',
+            'Charges.*.CostRate' => 'required|numeric',
+            'Charges.*.CostAmount' => 'required|numeric',
+            'Charges.*.IncreaseBy' => 'required|numeric',
+            'Charges.*.IncreaseType' => 'required|string',
+            'Charges.*.SellRate' => 'required|numeric',
+            'Charges.*.SellAmount' => 'required|numeric',
+            'Charges.*.ChargeRemark' => 'nullable|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => $validator->errors()->first(),
+                ],
+                422,
+            );
+        }
+
+        /*
+         * The quotation ID comes from the route:
+         * /quotation/{quotation}/contract-template
+         *
+         * Therefore we use $quotation instead of expecting
+         * quotation_id inside the request body.
+         */
+        $quotationRow = DB::table('Quote_QuotationInfo')
+            ->where('ID', $quotation)
+            ->first(['ID', 'bookingno']);
+
+        if (!$quotationRow) {
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => 'Quotation not found.',
+                ],
+                404,
+            );
+        }
+
+        $charges = $request->input('Charges', []);
+        $contractId = $request->input('ContractID');
+
+        /*
+         * Build the JSON expected by sp_Quote_DetailsUpdate.
+         */
+        $inputJson = json_encode([
+            'OperationType' => 'WorkbookCharges',
+            'SubmittedDatetime' => now()->format('YmdHis'),
+
+            'SubmittedBy' => Auth::check() ? Auth::user()->displayName ?? (Auth::user()->Email ?? 'system') : 'system',
+
+            'Action' => 'Add',
+
+            'QuotationNo' => $quotationRow->bookingno ?? '',
+            'QuotationInfoID' => $quotationRow->ID,
+            'ContractID' => $contractId,
+
+            'Charges' => array_map(function ($c) {
+                return [
+                    'ChargeCatagory' => $c['ChargeCatagory'] ?? '',
+                    'ChargeRowID' => $c['ChargeRowID'] ?? '',
+                    'ChargeCode' => $c['ChargeCode'] ?? '',
+                    'ChargeDescription' => $c['ChargeDescription'] ?? '',
+                    'PartyCode' => $c['PartyCode'] ?? '',
+                    'ChgCurr' => $c['ChgCurr'] ?? '',
+                    'BasedOnCode' => $c['BasedOnCode'] ?? '',
+                    'BasedOnUOM' => $c['BasedOnUOM'] ?? '',
+
+                    'Quantity' => (float) ($c['Quantity'] ?? 0),
+
+                    'CostRate' => (float) ($c['CostRate'] ?? 0),
+                    'CostAmount' => (float) ($c['CostAmount'] ?? 0),
+
+                    'IncreaseBy' => (float) ($c['IncreaseBy'] ?? 0),
+                    'IncreaseType' => $c['IncreaseType'] ?? 'Percentage',
+
+                    'SellRate' => (float) ($c['SellRate'] ?? 0),
+                    'SellAmount' => (float) ($c['SellAmount'] ?? 0),
+
+                    'ChargeRemark' => $c['ChargeRemark'] ?? '',
+                ];
+            }, $charges),
+        ]);
+
+        Log::info('Executing sp_Quote_DetailsUpdate for WorkbookCharges', [
+            'quotation_id' => $quotationRow->ID,
+            'contract_id' => $contractId,
+            'charge_count' => count($charges),
+            'input_json' => $inputJson,
+        ]);
+
+        try {
+            $pdo = DB::connection()->getPdo();
+
+            $stmt = $pdo->prepare(
+                "SET NOCOUNT ON;\n" .
+                    "DECLARE @OutputJson VARCHAR(2000);\n" .
+                    "EXEC sp_Quote_DetailsUpdate ?, @OutputJson OUTPUT;\n" .
+                    'SELECT @OutputJson AS OutputJson;',
+            );
+
+            $stmt->execute([$inputJson]);
+
+            $outputJson = null;
+
+            /*
+             * The stored procedure can return multiple result sets.
+             * Continue through them until we find OutputJson.
+             */
+            do {
+                $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+
+                if (!empty($rows) && isset($rows[0]->OutputJson)) {
+                    $outputJson = $rows[0]->OutputJson;
+                    break;
+                }
+            } while ($stmt->nextRowset());
+        } catch (\Exception $e) {
+            Log::error('sp_Quote_DetailsUpdate execution failed', [
+                'quotation_id' => $quotationRow->ID,
+                'contract_id' => $contractId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => 'Failed to save workbook charges.',
+                ],
+                500,
+            );
+        }
+
+        if (empty($outputJson)) {
+            Log::error('sp_Quote_DetailsUpdate returned no output', [
+                'quotation_id' => $quotationRow->ID,
+                'contract_id' => $contractId,
+            ]);
+
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => 'No response from stored procedure.',
+                ],
+                500,
+            );
+        }
+
+        /*
+         * Decode the stored procedure response.
+         */
+        $result = json_decode($outputJson, true);
+
+        if (!is_array($result)) {
+            Log::error('Invalid JSON returned by sp_Quote_DetailsUpdate', [
+                'quotation_id' => $quotationRow->ID,
+                'output_json' => $outputJson,
+            ]);
+
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => 'Invalid response from stored procedure.',
+                ],
+                500,
+            );
+        }
+
+        $status = $result['Status'] ?? 'Failed';
+
+        $remarks = array_column($result['Remarks'] ?? [], 'Remark');
+
+        if (empty($remarks)) {
+            $remarks = array_column($result['Remarks'] ?? [], 'Remarks');
+        }
+
+        /*
+         * Stored procedure returned a failure.
+         */
+        if (strcasecmp($status, 'success') !== 0) {
+            Log::warning('Workbook charges save failed', [
+                'quotation_id' => $quotationRow->ID,
+                'contract_id' => $contractId,
+                'status' => $status,
+                'remarks' => $remarks,
+            ]);
+
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => $remarks[0] ?? 'Failed to save workbook charges.',
+                    'errors' => $remarks,
+                ],
+                422,
+            );
+        }
+
+        Log::info('Workbook charges saved successfully', [
+            'quotation_id' => $quotationRow->ID,
+            'contract_id' => $contractId,
+            'charge_count' => count($charges),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Workbook charges saved successfully.',
+        ]);
+    }
     public function saveCharge(Request $request)
     {
         try {
@@ -2223,6 +2455,9 @@ class QuotationController extends Controller
                 'ChgCurr' => $request->input('chg_curr', 'KES'),
                 'BasedOnCode' => $request->input('based_on_code'),
                 'BasedOnUOM' => $request->input('based_on_uom', ''),
+                'ChargeCategory' => $request->input('charge_category', $request->input('category', '')),
+                'Category' => $request->input('category', $request->input('charge_category', '')),
+                'ChargeCatagory' => $request->input('charge_category', $request->input('category', '')),
                 'ChargeRemark' => $request->input('charge_remark', ''),
                 'ToBeAdded' => (int) $request->input('to_be_added', 0),
                 'IncreaseBy' => (float) $request->input('increase_by', 0),
@@ -5042,11 +5277,11 @@ class QuotationController extends Controller
                 $pdo = DB::getPdo();
                 $stmt = $pdo->prepare("
                 DECLARE @QuoteFormat VARCHAR(MAX);
-                EXEC dbo.sp_Quote_QuotationFormat ?,
+                                EXEC dbo.sp_Quote_QuotationFormat ?, ?,
                     @QuoteFormat = @QuoteFormat OUTPUT;
                 SELECT @QuoteFormat AS QuoteFormat;
             ");
-                $stmt->execute([$quotation->ID]);
+                $stmt->execute([$quotation->ID, request('QuoteType', 'Std. PDF')]);
 
                 $setIndex = 0;
                 do {
@@ -5329,19 +5564,408 @@ class QuotationController extends Controller
     }
 
     /**
-     * Execute sp_Quote_QuotationFormat and return the HTML string.
+     * Generate and register an Excel (.xlsx) quotation document.
+     * Route: POST /quotation/{id}/generate-excel
      *
-     * The SP signature:
-     *   @QuotationNo VARCHAR(25) INPUT
-     *   @QuoteFormat VARCHAR(MAX) OUTPUT
+     * Mirrors generatePdf() exactly: same SP for HTML, same document
+     * registration SP, same Azure upload/cleanup flow. Only the render
+     * step differs (PhpSpreadsheet HTML reader instead of Dompdf).
      *
-     * On internal error the SP sets @QuoteFormat = 'Failed (Reason) - <message>'
-     * instead of raising an exception, so we must detect that string explicitly.
-     *
-     * @param  string $quoteNo  The QuoteNo value (e.g. '8270'), NOT the UUID
-     * @return string|null      Complete HTML string, or null on failure
+     * ⚠ VERIFY BEFORE SHIPPING: sp_Quote_QuotationDocumentAdd is called
+     * with only (QuotationID, Username, Filename) — no DocumentType param.
+     * If the SP hardcodes DocumentType = 'QuotationPDF' internally
+     * regardless of file extension, this will mislabel Excel files in
+     * Quote_Quotation_Document and break the version-count / download
+     * queries below (which filter on DocumentType = 'QuotationPDF').
+     * Check the SP body — if it infers type from filename, no change
+     * needed; if hardcoded, the SP needs a DocumentType param added
+     * (or a QuotationExcel variant) before this ships.
      */
-    private function getQuotationHtml(string $quotationId): ?string
+    // public function generateExcel($id)
+    // {
+    //     try {
+    //         ini_set('memory_limit', '512M');
+    //         ini_set('max_execution_time', '300');
+
+    //         Log::info('Excel Generation - Starting', ['quotation_id' => $id]);
+
+    //         $quotation = \App\Models\QuotationInfo::where('ID', $id)->first();
+
+    //         if (!$quotation) {
+    //             Log::error('Excel Generation - Quotation not found', ['id' => $id]);
+    //             return response()->json(['success' => false, 'message' => 'Quotation not found'], 404);
+    //         }
+
+    //         $submittedBy = substr(auth()->user()->displayName ?? (auth()->user()->Email ?? 'system'), 0, 50);
+    //         if (empty($quotation->ID)) {
+    //             Log::error('Excel Generation - QuotationID is empty', ['id' => $id]);
+    //             return response()->json(
+    //                 ['success' => false, 'message' => 'Quotation ID is not set. Cannot generate Excel.'],
+    //                 422,
+    //             );
+    //         }
+
+    //         // Force-trim OfficeCode — SP reads it directly via Left(QI.OfficeCode,2)
+    //         DB::table('Quote_QuotationInfo')
+    //             ->where('ID', $id)
+    //             ->update(['OfficeCode' => DB::raw('RTRIM(OfficeCode)')]);
+
+    //         // ── Reuse the same HTML source as the PDF path ─────────────────────────
+    //         $html = $this->getQuotationHtml($quotation->ID, request('QuoteType', 'Cost & Sell EXCEL'));
+
+    //         if (empty($html) || trim($html) === '') {
+    //             return response()->json(
+    //                 [
+    //                     'success' => false,
+    //                     'message' =>
+    //                         'No quotation HTML returned from SP. Ensure a Terms & Conditions template is applied before generating.',
+    //                 ],
+    //                 422,
+    //             );
+    //         }
+
+    //         Log::info('Excel Generation - HTML retrieved from SP', [
+    //             'quotation_id' => $quotation->ID,
+    //             'html_length' => strlen($html),
+    //             'tc_template' => $quotation->QuotationTCTemplate ?? 'N/A',
+    //         ]);
+
+    //         $html = str_replace('public/img/logo.png', public_path('img/logo.png'), $html);
+
+    //         // Remove HTML comments first — the SP leaves authoring notes containing
+    //         // a full duplicate <!DOCTYPE html>...</html> sample inside <!-- -->,
+    //         // which breaks naive regex/DOM parsing of the outer document.
+    //         $html = preg_replace('/<!--(?!\[).*?-->/s', '', $html);
+
+    //         // The T&C template content is a full standalone document nested inside
+    //         // the outer document's body. Parse the whole thing with libxml in
+    //         // permissive HTML mode, then re-serialize just the outer <html> node —
+    //         // libxml collapses any nested/duplicate <html>/<body> structure into
+    //         // one coherent DOM instead of us guessing tag boundaries via regex.
+    //         libxml_use_internal_errors(true);
+    //         $dom = new \DOMDocument();
+    //         $loaded = $dom->loadHTML(
+    //             '<?xml encoding="UTF-8">' . $html,
+    //             LIBXML_NOERROR | LIBXML_NOWARNING | LIBXML_NOBLANKS,
+    //         );
+    //         libxml_clear_errors();
+
+    //         if ($loaded) {
+    //             $htmlNode = $dom->getElementsByTagName('html')->item(0);
+    //             if ($htmlNode) {
+    //                 $html = $dom->saveHTML($htmlNode);
+    //             }
+    //         }
+
+    //         Log::info('Excel Gen - dom clean result', [
+    //             'loaded' => $loaded,
+    //             'final_len' => strlen($html),
+    //         ]);
+
+    //         // Must run LAST, on the final single-document HTML — see method docblock.
+    //         $html = $this->normalizeHtmlForSpreadsheet($html);
+
+    //         // ── Convert HTML → Spreadsheet ──────────────────────────────────────────
+    //         // PhpSpreadsheet's HTML reader only imports table-based markup (rows/
+    //         // cells); div/CSS layout is ignored. If the SP output relies on
+    //         // non-table layout for visual structure, the result will look flatter
+    //         // than the PDF — verify against real output before relying on this.
+    //         try {
+    //             $reader = new \PhpOffice\PhpSpreadsheet\Reader\Html();
+    //             $spreadsheet = $reader->loadFromString($html);
+
+    //             foreach ($spreadsheet->getActiveSheet()->getDrawingCollection() as $drawing) {
+    //                 $drawing->setHeight(42);
+    //                 $drawing->setResizeProportional(true);
+    //             }
+
+    //             // Source HTML has no explicit column widths, so the writer defaults
+    //             // to a narrow column and wraps long cell text character-by-character.
+    //             $sheet = $spreadsheet->getActiveSheet();
+    //             foreach ($sheet->getColumnDimensions() as $colDim) {
+    //                 $colDim->setAutoSize(true);
+    //             }
+    //             $sheet->calculateColumnWidths();
+    //         } catch (\Exception $e) {
+    //             Log::error('Excel Generation - HTML to Spreadsheet conversion failed', [
+    //                 'quotation_id' => $quotation->ID,
+    //                 'error' => $e->getMessage(),
+    //             ]);
+    //             return response()->json(
+    //                 ['success' => false, 'message' => 'Excel conversion failed: ' . $e->getMessage()],
+    //                 500,
+    //             );
+    //         }
+
+    //         // ── Determine file naming — same convention as PDF ──────────────────────
+    //         $folder = 'quotations/' . $quotation->bookingno;
+
+    //         try {
+    //             \Storage::disk('public')->makeDirectory($folder);
+    //         } catch (\Exception $e) {
+    //             Log::warning('Excel Generation - Could not ensure directory exists', [
+    //                 'folder' => $folder,
+    //                 'error' => $e->getMessage(),
+    //             ]);
+    //         }
+
+    //         $fileName = 'quote_' . now()->format('Ymd_His') . '.xlsx';
+    //         $storagePath = $folder . '/' . $fileName;
+    //         $fullPath = \Storage::disk('public')->path($storagePath);
+
+    //         // ── Write Excel to local disk ────────────────────────────────────────────
+    //         $azureWarning = null;
+
+    //         try {
+    //             $dir = dirname($fullPath);
+    //             if (!file_exists($dir)) {
+    //                 mkdir($dir, 0755, true);
+    //                 Log::info('Excel Generation - Created directory', ['dir' => $dir]);
+    //             }
+
+    //             $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+    //             $writer->save($fullPath);
+
+    //             if (!file_exists($fullPath)) {
+    //                 throw new \Exception('File was not found on disk after write: ' . $fullPath);
+    //             }
+
+    //             Log::info('Excel Generation - File written to disk', [
+    //                 'path' => $fullPath,
+    //                 'size' => filesize($fullPath),
+    //             ]);
+    //         } catch (\Exception $e) {
+    //             Log::error('Excel Generation - File write failed', [
+    //                 'path' => $fullPath,
+    //                 'error' => $e->getMessage(),
+    //                 'file' => $e->getFile(),
+    //                 'line' => $e->getLine(),
+    //             ]);
+    //             return response()->json(
+    //                 ['success' => false, 'message' => 'Failed to save Excel to disk: ' . $e->getMessage()],
+    //                 500,
+    //             );
+    //         }
+
+    //         // ── Step 1: Register document via SP ────────────────────────────────────
+    //         // Same SP call shape as generatePdf(). See method docblock — DocumentType
+    //         // handling inside this SP must be verified for non-PDF files.
+    //         try {
+    //             $pdoSp = DB::connection()->getPdo();
+    //             $stmtSp = $pdoSp->prepare("
+    //             SET NOCOUNT ON;
+    //             DECLARE @Status VARCHAR(25), @Remark VARCHAR(200);
+    //             EXEC dbo.sp_Quote_QuotationDocumentAdd ?, ?, ?,
+    //                 @Status = @Status OUTPUT,
+    //                 @Remark = @Remark OUTPUT;
+    //             SELECT @Status AS Status, @Remark AS Remark;
+    //         ");
+    //             $stmtSp->execute([$quotation->ID, $submittedBy, $fileName]);
+
+    //             $spResult = null;
+    //             do {
+    //                 try {
+    //                     $spRows = $stmtSp->fetchAll(\PDO::FETCH_OBJ);
+    //                     if (!empty($spRows) && isset($spRows[0]->Status)) {
+    //                         $spResult = $spRows[0];
+    //                         break;
+    //                     }
+    //                 } catch (\PDOException $e) {
+    //                     continue;
+    //                 }
+    //             } while ($stmtSp->nextRowset());
+
+    //             if (!$spResult) {
+    //                 @unlink($fullPath);
+    //                 Log::error('Excel Generation - SP returned no output, local file removed', [
+    //                     'quotation_id' => $quotation->ID,
+    //                     'file' => $fileName,
+    //                 ]);
+    //                 return response()->json(
+    //                     ['success' => false, 'message' => 'Document registration SP returned no output.'],
+    //                     500,
+    //                 );
+    //             }
+
+    //             if (strtolower(trim($spResult->Status)) !== 'success') {
+    //                 @unlink($fullPath);
+    //                 Log::error('Excel Generation - SP registration failed, local file removed', [
+    //                     'quotation_id' => $quotation->ID,
+    //                     'sp_status' => $spResult->Status,
+    //                     'sp_remark' => $spResult->Remark,
+    //                 ]);
+    //                 return response()->json(
+    //                     ['success' => false, 'message' => 'Document registration failed: ' . $spResult->Remark],
+    //                     500,
+    //                 );
+    //             }
+
+    //             Log::info('Excel Generation - SP registration succeeded', [
+    //                 'quotation_id' => $quotation->ID,
+    //                 'sp_remark' => $spResult->Remark,
+    //                 'file' => $fileName,
+    //             ]);
+    //         } catch (\Exception $spEx) {
+    //             @unlink($fullPath);
+    //             Log::error('Excel Generation - SP call failed, local file removed', [
+    //                 'quotation_id' => $quotation->ID,
+    //                 'error' => $spEx->getMessage(),
+    //             ]);
+    //             return response()->json(
+    //                 ['success' => false, 'message' => 'Document registration failed: ' . $spEx->getMessage()],
+    //                 500,
+    //             );
+    //         }
+
+    //         // ── Step 2: Upload to Azure ──────────────────────────────────────────────
+    //         $officeShortCode = DB::table('Cust_Office')
+    //             ->where('TeamCode', $quotation->teamid)
+    //             ->where('IsActive', 1)
+    //             ->where('IsDeleted', 0)
+    //             ->value('Code');
+
+    //         $officeShortCode = $officeShortCode
+    //             ? strtoupper(trim($officeShortCode))
+    //             : strtoupper(substr($quotation->OfficeCode ?? 'XX', 0, 2));
+
+    //         $blobPath = 'Quotation/' . $officeShortCode . '/' . $fileName;
+
+    //         try {
+    //             \Storage::disk('azure')->put($blobPath, file_get_contents($fullPath));
+
+    //             Log::info('Excel Generation - Uploaded to Azure', [
+    //                 'quotation_id' => $quotation->ID,
+    //                 'blob_path' => $blobPath,
+    //             ]);
+    //         } catch (\Exception $azureEx) {
+    //             Log::error('Excel Generation - Azure upload failed (non-fatal)', [
+    //                 'quotation_id' => $quotation->ID,
+    //                 'blob_path' => $blobPath,
+    //                 'error' => $azureEx->getMessage(),
+    //             ]);
+    //             $azureWarning = 'Excel registered but Azure upload failed: ' . $azureEx->getMessage();
+    //         }
+
+    //         // ── Step 3: Cleanup local temp file ──────────────────────────────────────
+    //         @unlink($fullPath);
+    //         Log::info('Excel Generation - Local temp file removed', ['path' => $fullPath]);
+
+    //         // NOTE: filtered on DocumentType = 'QuotationPDF' to match generatePdf()'s
+    //         // existing convention. If the SP stores a different DocumentType for
+    //         // .xlsx files, this count (and the download route) need updating to match.
+    //         $versionNumber = DB::table('Quote_Quotation_Document')
+    //             ->where('QuotationInfoID', $quotation->ID)
+    //             ->where('DocumentType', 'QuotationPDF')
+    //             ->where('IsDeleted', 0)
+    //             ->count();
+
+    //         return response()->json([
+    //             'success' => true,
+    //             'version' => $versionNumber,
+    //             'label' => 'Version ' . $versionNumber,
+    //             'url' => route('quotation.download-pdf', [$id, $versionNumber]),
+    //             'warning' => $azureWarning,
+    //         ]);
+    //     } catch (\Exception $e) {
+    //         Log::error('Excel Generation - Unexpected top-level exception', [
+    //             'id' => $id,
+    //             'error' => $e->getMessage(),
+    //             'file' => $e->getFile(),
+    //             'line' => $e->getLine(),
+    //             'trace' => $e->getTraceAsString(),
+    //         ]);
+    //         return response()->json(
+    //             ['success' => false, 'message' => 'Excel generation failed unexpectedly: ' . $e->getMessage()],
+    //             500,
+    //         );
+    //     }
+    // }
+
+    /**
+     * Normalize PDF-shaped quotation HTML for PhpSpreadsheet's HTML reader.
+     *
+     * Call this LAST, after comment-stripping and <html> dedup, on the final
+     * single-document HTML — not on raw SP output.
+     *
+     * Why: PhpSpreadsheet's Html reader only imports <table> markup — <div>
+     * sections (SP's General/Cargo Info blocks) get silently dropped, and
+     * adjacent inline tags with no whitespace between them (e.g.
+     * "</strong>undertakes") get concatenated once tags are stripped.
+     */
+    private function normalizeHtmlForSpreadsheet(string $html): string
+    {
+        libxml_use_internal_errors(true);
+        $dom = new \DOMDocument();
+        $dom->loadHTML('<?xml encoding="utf-8" ?>' . $html, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+        libxml_clear_errors();
+
+        $body = $dom->getElementsByTagName('body')->item(0);
+        if (!$body) {
+            return $html;
+        }
+
+        // Strip <style>/<script> — they carry no visible content, but if left in
+        // place they'd get caught by the wrapping pass below and their raw text
+        // would be imported as a literal cell value (PhpSpreadsheet doesn't skip
+        // these tags the way a browser does).
+        foreach (['style', 'script'] as $tagName) {
+            foreach (iterator_to_array($body->getElementsByTagName($tagName)) as $node) {
+                $node->parentNode->removeChild($node);
+            }
+        }
+
+        // Wrap runs of non-table elements (the SP's <div> sections) into
+        // synthetic tables so they aren't dropped on import. Existing <table>
+        // elements are left in place — never nested inside a wrapper.
+        $children = iterator_to_array($body->childNodes);
+        $pendingTbody = null;
+
+        foreach ($children as $node) {
+            if ($node->nodeType !== XML_ELEMENT_NODE) {
+                continue;
+            }
+
+            if (strtolower($node->nodeName) === 'table') {
+                $pendingTbody = null;
+                continue;
+            }
+
+            if ($pendingTbody === null) {
+                $wrapper = $dom->createElement('table');
+                $pendingTbody = $dom->createElement('tbody');
+                $wrapper->appendChild($pendingTbody);
+                $body->insertBefore($wrapper, $node);
+            }
+
+            $tr = $dom->createElement('tr');
+            $td = $dom->createElement('td');
+            $td->appendChild($node);
+            $tr->appendChild($td);
+            $pendingTbody->appendChild($tr);
+        }
+
+        $html = $dom->saveHTML();
+
+        // Force a non-breaking space after every closing tag that's immediately
+        // followed by a word char or another opening tag (not a closing tag —
+        // no separator needed there). A regular space gets silently trimmed by
+        // PhpSpreadsheet's Html reader when it concatenates inline runs inside a
+        // cell; &nbsp; survives that trimming, so this is the only reliable way
+        // to guarantee "Quotation For" + booking no, and "Date" + value, don't
+        // run together — regardless of whether the source HTML already had a
+        // space there or not.
+        return preg_replace('/(<\/[a-zA-Z]+>)\s*(?=\w|<[a-zA-Z])/', '$1&nbsp;', $html);
+    }
+
+    //  *   @QuoteFormat VARCHAR(MAX) OUTPUT
+    //  *
+    //  * On internal error the SP sets @QuoteFormat = 'Failed (Reason) - <message>'
+    //  * instead of raising an exception, so we must detect that string explicitly.
+    //  *
+    //  * @param  string $quoteNo  The QuoteNo value (e.g. '8270'), NOT the UUID
+    //  * @return string|null      Complete HTML string, or null on failure
+    //  */
+    private function getQuotationHtml(string $quotationId, string $quoteType = 'Std. PDF'): ?string
     {
         if (empty(trim($quotationId))) {
             Log::error('getQuotationHtml - quotationId is empty');
@@ -5354,14 +5978,14 @@ class QuotationController extends Controller
             // IMPORTANT: DECLARE uses VARCHAR(MAX) to match the SP OUTPUT param type.
             // Using VARCHAR(N) here would silently truncate large HTML documents.
             $sql = "
-            DECLARE @QuoteFormat VARCHAR(MAX);
-            EXEC dbo.sp_Quote_QuotationFormat ?,
-                @QuoteFormat = @QuoteFormat OUTPUT;
-            SELECT @QuoteFormat AS QuoteFormat;
-        ";
+        DECLARE @QuoteFormat VARCHAR(MAX);
+        EXEC dbo.sp_Quote_QuotationFormat ?, ?,
+            @QuoteFormat = @QuoteFormat OUTPUT;
+        SELECT @QuoteFormat AS QuoteFormat;
+    ";
 
             $stmt = $pdo->prepare($sql);
-            $stmt->execute([trim($quotationId)]);
+            $stmt->execute([trim($quotationId), $quoteType]);
 
             // Walk result sets — the SP creates/drops a temp table (#VATDetails)
             // which can produce intermediate empty result sets before the SELECT.
@@ -7120,20 +7744,20 @@ class QuotationController extends Controller
      * Calls sp_PartyList with PartyType = 'Agent / Forwarder'
      * Returns: [{ PartyID, PartyCode, PartyName }]
      */
-
     public function getForwarders(Request $request)
     {
         $teamId = $request->query('team_id');
+        $officeIdParam = $request->query('office_id');
         $filter = $request->query('filter', '');
 
-        if (!$teamId) {
-            return response()->json(['success' => false, 'message' => 'team_id is required'], 422);
+        if (!$teamId && !$officeIdParam) {
+            return response()->json(['success' => false, 'message' => 'team_id or office_id is required'], 422);
         }
 
-        $officeId = $this->resolveOfficeId($teamId);
+        $officeId = $officeIdParam ?: $this->resolveOfficeId($teamId);
 
         if (!$officeId) {
-            return response()->json(['success' => false, 'message' => 'Office not found for team_id: ' . $teamId], 404);
+            return response()->json(['success' => false, 'message' => 'Office not found'], 404);
         }
 
         try {
@@ -7141,7 +7765,7 @@ class QuotationController extends Controller
 
             return response()->json([
                 'success' => true,
-                'parties' => $results, // each row has PartyID, PartyCode, PartyName
+                'parties' => $results,
             ]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
@@ -7554,6 +8178,15 @@ class QuotationController extends Controller
             $filePath = $document->FilePath;
             $fileName = $document->Name ?: "quote_{$quotation->bookingno}_v{$version}.pdf";
 
+            // Derive Content-Type from the actual file extension — this route serves
+            // both PDF and Excel versions (Excel reuses DocumentType = 'QuotationPDF'),
+            // so hardcoding application/pdf mislabels .xlsx responses.
+            $extension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+            $contentType =
+                $extension === 'xlsx'
+                    ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                    : 'application/pdf';
+
             // Determine disposition: inline for preview, attachment otherwise
             $disposition = request()->has('preview') ? 'inline' : 'attachment';
 
@@ -7578,7 +8211,7 @@ class QuotationController extends Controller
 
                 $contents = \Storage::disk('azure')->get($filePath);
                 return response($contents, 200)
-                    ->header('Content-Type', 'application/pdf')
+                    ->header('Content-Type', $contentType)
                     ->header('Content-Disposition', $disposition . '; filename="' . $fileName . '"');
             }
 
@@ -7606,7 +8239,7 @@ class QuotationController extends Controller
             // Read file contents to allow custom disposition header
             $contents = \Storage::disk('public')->get($relativePath);
             return response($contents, 200)
-                ->header('Content-Type', 'application/pdf')
+                ->header('Content-Type', $contentType)
                 ->header('Content-Disposition', $disposition . '; filename="' . $fileName . '"');
         } catch (\Exception $e) {
             Log::error('downloadPdf - Failed', [

@@ -71,7 +71,8 @@
                                 <input type="text" class="form-control form-control-sm" id="salesPersonDisplay"
                                     value="{{ $quotation->username ?? '' }}" readonly
                                     placeholder="Search by name or code...">
-                                <input type="hidden" id="salesPersonCode" value="{{ $quotation->SalesPersonCode ?? '' }}">
+                                <input type="hidden" id="salesPersonCode"
+                                    value="{{ $quotation->SalesPersonCode ?? '' }}">
                                 <ul id="salesPersonSuggestions" class="list-group"
                                     style="
                                     display:none; position:absolute; z-index:9999;
@@ -211,16 +212,68 @@
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h3 class="card-title mb-0">Quotation Document</h3>
                         <div class="d-flex align-items-center ml-auto">
-                            <button type="button" class="btn btn-email-quote btn-sm mr-2" id="generateQuoteBtn">
-
-                                <i class="fas fa-file-alt mr-1"></i> Generate Quote
-                            </button>
+                            <div class="btn-group mr-2" id="generateQuoteGroup">
+                                <button type="button" class="btn btn-email-quote btn-sm" id="generateQuoteBtn">
+                                    <i class="fas fa-file-alt mr-1"></i> Generate Quote
+                                </button>
+                                <button type="button"
+                                    class="btn btn-email-quote btn-sm dropdown-toggle dropdown-toggle-split"
+                                    id="generateQuoteCaret" data-toggle="dropdown" aria-haspopup="true"
+                                    aria-expanded="false">
+                                    <span class="sr-only">Toggle Dropdown</span>
+                                </button>
+                                <div class="dropdown-menu dropdown-menu-right" aria-labelledby="generateQuoteCaret">
+                                    <a class="dropdown-item" href="#" id="generateQuoteStandardOpt">
+                                        <i class="fas fa-file-alt mr-2"></i> Standard Template
+                                    </a>
+                                    <a class="dropdown-item" href="#" id="generateQuoteExcelOpt">
+                                        <i class="fas fa-file-excel mr-2"></i> Excel
+                                    </a>
+                                    <a class="dropdown-item" href="#" id="generateQuoteAllInOneOpt">
+                                        <i class="fas fa-layer-group mr-2"></i> All-in-One Template
+                                    </a>
+                                </div>
+                            </div>
                             <button type="button" class="btn btn-tool" data-card-widget="collapse">
                                 <i class="fas fa-chevron-up"></i>
                             </button>
                         </div>
                     </div>
                     <div class="card-body">
+
+                        {{-- All-in-One remark modal — collects the required remark, then generates directly --}}
+                        <div class="modal fade" id="allInOneRemarkModal" tabindex="-1" role="dialog"
+                            aria-labelledby="allInOneRemarkModalLabel" aria-hidden="true">
+                            <div class="modal-dialog" role="document">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="allInOneRemarkModalLabel">All-in-One Quote —
+                                            Remark</h5>
+                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="form-group mb-0">
+                                            <label for="allInOneRemarkInput">Remark <span
+                                                    class="text-danger">*</span></label>
+                                            <textarea class="form-control" id="allInOneRemarkInput" rows="4"
+                                                placeholder="e.g. Door to Door charges from ... for 20ft and 40ft ..."></textarea>
+                                            <small class="text-danger" id="allInOneRemarkError"
+                                                style="display:none;">Remark is required.</small>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary btn-sm"
+                                            data-dismiss="modal">Cancel</button>
+                                        <button type="button" class="btn btn-email-quote btn-sm"
+                                            id="allInOneRemarkGenerateBtn">
+                                            <i class="fas fa-file-alt mr-1"></i> Generate
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
                         {{-- Versions list — populated dynamically by JS --}}
                         <div id="quotationVersionsList">
@@ -424,8 +477,61 @@
                     </div>
                 </div>
 
+                {{-- ── APPROVAL CARD ───────────────────────────────────────────────────── --}}
+                <div class="card card-primary" id="approvalCard">
+                    <div class="card-header d-flex justify-content-between align-items-center py-2">
+                        <h3 class="card-title mb-0">
+                            <i class="fas fa-check-double mr-2"></i>Approval
+                        </h3>
+                        <div class="d-flex align-items-center ml-auto">
+                            <button type="button" class="btn btn-email-quote btn-sm mr-2" id="sendForApprovalBtn">
+                                <i class="fas fa-paper-plane mr-1"></i> Send for Approval
+                            </button>
+                            <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                <i class="fas fa-chevron-up"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+
+                        <div id="approvalEmptyState" class="text-center text-muted py-2">
+                            <i class="fas fa-info-circle mr-1"></i> Not yet sent for approval.
+                        </div>
+
+                        <div id="approvalLoading" class="text-center py-2" style="display:none;">
+                            <i class="fas fa-spinner fa-spin text-primary"></i>
+                        </div>
+
+                        <div id="approvalUnavailable" class="alert alert-secondary py-2 px-3 mb-0"
+                            style="display:none; font-size:0.85rem;">
+                            <i class="fas fa-tools mr-1"></i> <span id="approvalUnavailableMsg"></span>
+                        </div>
+
+                        <div id="approvalContent" style="display:none;">
+
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span id="approvalStatusBadge" class="badge badge-secondary px-2 py-1"
+                                    style="font-size:0.8rem;">—</span>
+                                <span class="text-muted" style="font-size:0.8rem;" id="approvalProgressLabel">0 of 0
+                                    Approved</span>
+                            </div>
+
+                            <div class="progress mb-3" style="height: 8px;">
+                                <div id="approvalProgressBar" class="progress-bar bg-success" role="progressbar"
+                                    style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+
+                            <table class="table table-sm table-borderless mb-0" id="approvalApproverTable">
+                                <tbody></tbody>
+                            </table>
+
+                        </div>
+
+                    </div>
+                </div>
+
                 {{-- ── AUDIT INFORMATION ───────────────────────────────────────────────────── --}}
-                {{-- <div class="card card-primary" id="auditInformationCard">
+                <div class="card card-primary" id="auditInformationCard">
                     <div class="card-header d-flex justify-content-between align-items-center py-2">
                         <h3 class="card-title mb-0">
                             <i class="fas fa-history mr-2"></i>Audit Information
@@ -483,7 +589,7 @@
                             </div>
                         </div>
                     </div>
-                </div> --}}
+                </div>
 
                 <!-- Integration Details -->
                 <div class="card card-primary">
@@ -708,6 +814,178 @@
                             </div>
                         </div>
 
+                        {{-- ── Quote Includes ── --}}
+                        <div class="row mt-3 pt-2" style="border-top: 1px solid #dee2e6;">
+                            <div class="col-12">
+                                <p class="text-uppercase font-weight-bold mb-2"
+                                    style="font-size: 0.75rem; letter-spacing: 0.08em; color: #003580;">
+                                    Quote Includes
+                                </p>
+                                <div class="d-flex flex-wrap" style="gap: 8px;">
+                                    <label
+                                        class="quote-includes-option d-flex align-items-center border rounded px-3 py-2 mb-0"
+                                        style="cursor:pointer; font-size:0.875rem; gap:8px; background:#fff;">
+                                        <input type="checkbox" id="quoteIncludesInsurance"
+                                            name="quote_includes_insurance">
+                                        Insurance
+                                    </label>
+                                    <label
+                                        class="quote-includes-option d-flex align-items-center border rounded px-3 py-2 mb-0"
+                                        style="cursor:pointer; font-size:0.875rem; gap:8px; background:#fff;">
+                                        <input type="checkbox" id="quoteIncludesLastMile"
+                                            name="quote_includes_last_mile">
+                                        Last Mile
+                                    </label>
+                                    <label
+                                        class="quote-includes-option d-flex align-items-center border rounded px-3 py-2 mb-0"
+                                        id="customDutyLabel"
+                                        style="cursor:pointer; font-size:0.875rem; gap:8px; background:#fff;">
+                                        <input type="checkbox" id="quoteIncludesCustomDuty"
+                                            name="quote_includes_custom_duty">
+                                        Custom Duty
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- ── Product Details (visible only when Custom Duty is checked) ── --}}
+                        <div class="row mt-3" id="productDetailsSection" style="display:none;">
+                            <div class="col-12">
+                                <p class="text-uppercase font-weight-bold mb-2"
+                                    style="font-size: 0.75rem; letter-spacing: 0.08em; color: #003580;">
+                                    Product Details
+                                </p>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-bordered mb-1" id="productDetailsTable">
+                                        <thead class="thead-light">
+                                            <tr>
+                                                <th style="min-width:160px; font-size:0.75rem;">Description</th>
+                                                <th style="width:100px; font-size:0.75rem;">Weight</th>
+                                                <th style="width:100px; font-size:0.75rem;">L×B×H <small
+                                                        class="text-muted">(m³)</small></th>
+                                                <th style="width:80px; font-size:0.75rem;">QTY</th>
+                                                <th style="width:120px; font-size:0.75rem;">Price</th>
+                                                <th style="width:36px;"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="productDetailsBody">
+                                            <tr class="product-details-row">
+                                                <td>
+                                                    <input type="text" class="form-control form-control-sm"
+                                                        name="product_description[]" placeholder="Description">
+                                                </td>
+                                                <td>
+                                                    <div class="input-group input-group-sm">
+                                                        <input type="number" class="form-control form-control-sm"
+                                                            name="product_weight[]" step="0.01" min="0">
+                                                        <div class="input-group-append">
+                                                            <span class="input-group-text"
+                                                                style="font-size:0.75rem;">kg</span>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="input-group input-group-sm">
+                                                        <input type="number" class="form-control form-control-sm"
+                                                            name="product_dimensions[]" step="0.01" min="0">
+                                                        <div class="input-group-append">
+                                                            <span class="input-group-text"
+                                                                style="font-size:0.75rem;">m³</span>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <input type="number" class="form-control form-control-sm"
+                                                        name="product_qty[]" placeholder="Qty" min="1"
+                                                        step="1">
+                                                </td>
+                                                <td>
+                                                    <div class="input-group input-group-sm">
+                                                        <div class="input-group-prepend">
+                                                            <span class="input-group-text"
+                                                                style="font-size:0.75rem;">USD</span>
+                                                        </div>
+                                                        <input type="number" class="form-control form-control-sm"
+                                                            name="product_price[]" step="0.01" min="0">
+                                                    </div>
+                                                </td>
+                                                <td class="text-center align-middle">
+                                                    <button type="button"
+                                                        class="btn btn-sm btn-outline-danger remove-product-row-btn"
+                                                        style="padding:1px 6px; line-height:1.4;"
+                                                        title="Remove row">&times;</button>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <button type="button" class="btn btn-outline-primary btn-sm" id="addProductRowBtn"
+                                    style="font-size:0.8rem;">
+                                    + Add Row
+                                </button>
+                            </div>
+                        </div>
+
+                        {{-- ── Quote Includes JS (UI only — no API calls) ── --}}
+                        <script>
+                            document.addEventListener('DOMContentLoaded', function() {
+                                const customDutyCheckbox = document.getElementById('quoteIncludesCustomDuty');
+                                const productDetailsSection = document.getElementById('productDetailsSection');
+                                const addProductRowBtn = document.getElementById('addProductRowBtn');
+                                const productDetailsBody = document.getElementById('productDetailsBody');
+
+                                if (!customDutyCheckbox || !productDetailsSection) return;
+
+                                // Highlight checked label to match the screenshot style
+                                document.querySelectorAll('.quote-includes-option input[type="checkbox"]')
+                                    .forEach(function(cb) {
+                                        cb.addEventListener('change', function() {
+                                            const label = this.closest('label');
+                                            if (!label) return;
+                                            if (this.checked) {
+                                                label.style.background = '#003580';
+                                                label.style.color = '#fff';
+                                                label.style.borderColor = '#003580';
+                                            } else {
+                                                label.style.background = '#fff';
+                                                label.style.color = '';
+                                                label.style.borderColor = '';
+                                            }
+                                        });
+                                    });
+
+                                // Show / hide Product Details when Custom Duty is toggled
+                                customDutyCheckbox.addEventListener('change', function() {
+                                    productDetailsSection.style.display = this.checked ? 'block' : 'none';
+                                });
+
+                                // Add a new blank product row
+                                addProductRowBtn.addEventListener('click', function() {
+                                    const firstRow = productDetailsBody.querySelector('.product-details-row');
+                                    if (!firstRow) return;
+                                    const newRow = firstRow.cloneNode(true);
+                                    newRow.querySelectorAll('input').forEach(function(input) {
+                                        input.value = '';
+                                    });
+                                    productDetailsBody.appendChild(newRow);
+                                });
+
+                                // Remove a product row via event delegation
+                                productDetailsBody.addEventListener('click', function(e) {
+                                    if (!e.target.classList.contains('remove-product-row-btn')) return;
+                                    const rows = productDetailsBody.querySelectorAll('.product-details-row');
+                                    if (rows.length > 1) {
+                                        e.target.closest('tr').remove();
+                                    } else {
+                                        // Keep at least one row — just clear the inputs
+                                        rows[0].querySelectorAll('input').forEach(function(input) {
+                                            input.value = '';
+                                        });
+                                    }
+                                });
+                            });
+                        </script>
+
                         {{-- ── Edit / Save / Cancel ── --}}
                         <div class="row mt-3 pt-2" style="border-top: 1px solid #dee2e6;">
                             <div class="col-md-12 text-right">
@@ -728,6 +1006,7 @@
                         </div>
                     </div>
                 </div>
+
 
                 <!-- Shipment Details -->
                 <div class="card card-primary" id="shipmentDetailsCard">
@@ -1028,8 +1307,8 @@
                                 <div class="form-group row">
                                     <label class="col-sm-5 col-form-label">Expected Revenue</label>
                                     <div class="col-sm-7">
-                                        <input type="text" class="form-control form-control-sm" id="expectedRevenue"
-                                            value="0.00" readonly>
+                                        <input type="text" class="form-control form-control-sm"
+                                            id="expectedRevenue" value="0.00" readonly>
                                     </div>
                                 </div>
                                 <div class="form-group row">
@@ -1077,6 +1356,10 @@
                                 <button type="button" class="btn btn-danger ml-2" id="openBulkDeleteBtn">
                                     <i class="fas fa-trash"></i> Delete Charges
                                 </button>
+                                <button type="button" class="btn btn-info ml-2" id="openContractTemplateBtn"
+                                    data-toggle="modal" data-target="#contractTemplateModal">
+                                    <i class="fas fa-file-contract"></i> Workbook
+                                </button>
                                 <button type="button" class="btn btn-success ml-2 d-none" id="confirmBulkDeleteBtn">
                                     <i class="fas fa-check"></i> Confirm Delete
                                 </button>
@@ -1116,8 +1399,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                                MODALS
-                                                                                                                                                                                ============================================ -->
+                                                                                                                                                                                                                        MODALS
+                                                                                                                                                                                                                        ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1180,6 +1463,13 @@
                                             <span class="text-danger">*</span> Based On</label>
                                         <select class="form-select form-control" id="revenue_based_on"
                                             name="revenue_based_on" required>
+                                            <option value="">Select</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="revenue_charge_category" class="form-label">Charge Category</label>
+                                        <select class="form-select form-control" id="revenue_charge_category"
+                                            name="revenue_charge_category">
                                             <option value="">Select</option>
                                         </select>
                                     </div>
@@ -1354,6 +1644,13 @@
                                             <span class="text-danger">*</span> Based On</label>
                                         <select class="form-select form-control" id="cost_based_on"
                                             name="cost_based_on" required>
+                                            <option value="">Select</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="cost_charge_category" class="form-label">Charge Category</label>
+                                        <select class="form-select form-control" id="cost_charge_category"
+                                            name="cost_charge_category">
                                             <option value="">Select</option>
                                         </select>
                                     </div>
@@ -1763,6 +2060,20 @@
             </div>
         </div>
 
+        <div class="modal fade" id="contractTemplateModal" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog modal-xl" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Workbook</h5>
+                        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                    </div>
+                    <div class="modal-body" id="contractTemplateModalBody">
+                        <div class="text-center py-4"><i class="fas fa-spinner fa-spin"></i> Loading...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="modal fade" id="copyChargesModal" tabindex="-1" role="dialog" aria-hidden="true">
             <div class="modal-dialog modal-xl cc-modal-dialog" role="document">
                 <div class="modal-content cc-modal-content">
@@ -1788,17 +2099,17 @@
                                         id="ccServiceType">{{ $quotation->ServiceVertical ?? '' }}</span>
                                 </div>
                                 {{-- Source toggle --}}
-                                <div class="cc-info-row">
-                                    <span class="cc-lbl">Quotation Source</span>
-                                    <div class="d-flex" style="gap:16px;">
+                                <div class="cc-info-row" style="min-height:auto; flex-direction:column; align-items:flex-start; gap:4px; padding:4px 0;">
+                                    <span class="cc-lbl" style="min-width:auto;">Quotation Source</span>
+                                    <div class="d-flex flex-wrap" style="gap:6px 20px;">
                                         <label class="d-flex align-items-center mb-0"
-                                            style="gap:6px; font-size:0.85rem; cursor:pointer;">
+                                            style="gap:6px; font-size:0.85rem; cursor:pointer; white-space:nowrap;">
                                             <input type="radio" name="ccSourceType" id="ccSourceJob"
                                                 value="job" checked>
                                             Existing Job
                                         </label>
                                         <label class="d-flex align-items-center mb-0"
-                                            style="gap:6px; font-size:0.85rem; cursor:pointer;">
+                                            style="gap:6px; font-size:0.85rem; cursor:pointer; white-space:nowrap;">
                                             <input type="radio" name="ccSourceType" id="ccSourceTemplate"
                                                 value="template">
                                             Standard Template
@@ -2059,6 +2370,7 @@
                             <span class="cc-lbl" style="white-space:nowrap;">Search</span>
                             <select class="cc-select" id="ccSearchField" style="width:160px;">
                                 <option value="">Select</option>
+                                <option value="jobno">Job No</option>
                                 <option value="customer">Customer</option>
                                 <option value="origin">Origin Country</option>
                                 <option value="destination">Destination Country</option>
@@ -2137,14 +2449,27 @@
     </form>
 @stop
 
+
 @section('css')
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        MODAL STYLING — matched to FitExpress UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ============================================= */
 
+        /* Remove number input spin arrows (Chrome/Safari/Edge + Firefox) */
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        
+        input[type="number"] {
+            -moz-appearance: textfield;
+            appearance: textfield;
+        }
+        
         .modal-header {
             background-color: #fff !important;
             color: #000 !important;
@@ -2536,6 +2861,28 @@
             border-color: #ffffff;
         }
 
+        /* Generate Quote dropdown — must not inherit the white button text color */
+        #generateQuoteGroup .dropdown-menu {
+            padding: 4px 0;
+        }
+
+        #generateQuoteGroup .dropdown-item {
+            color: #222 !important;
+            background-color: #fff;
+            font-size: 0.85rem;
+        }
+
+        #generateQuoteGroup .dropdown-item:hover,
+        #generateQuoteGroup .dropdown-item:focus {
+            background-color: #f0f0fb !important;
+            color: #4B49AC !important;
+        }
+
+        #generateQuoteGroup .dropdown-item.disabled {
+            color: #999 !important;
+            background-color: #fff;
+        }
+
         .card-primary .card-title {
             font-size: 1rem;
             font-weight: 500;
@@ -2586,9 +2933,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -2742,6 +3089,9 @@
             box-shadow: 2px 4px 12px rgba(0, 0, 0, .25);
             font-size: 0.875rem;
             color: #222;
+            max-height: calc(100vh - 60px);
+            display: flex;
+            flex-direction: column;
         }
 
         /* ── Header ──────────────────────────────────────────────────── */
@@ -2804,6 +3154,9 @@
         .cc-modal-body {
             padding: 16px 20px;
             background: #fff;
+            overflow-y: auto;
+            flex: 1 1 auto;
+            min-height: 0;
         }
 
 
@@ -2960,6 +3313,8 @@
         /* ── Table ───────────────────────────────────────────────────── */
         .cc-table-wrap {
             overflow-x: auto;
+            overflow-y: auto;
+            max-height: 320px;
             border: 1px solid #b8d4ea;
         }
 
@@ -3345,12 +3700,6 @@
         }
 
 
-        .cc-table-wrap {
-            overflow-x: auto;
-            max-height: 320px;
-            overflow-y: auto;
-        }
-
         .cc-sortable:hover {
             background: #dde8f0;
         }
@@ -3512,9 +3861,7 @@
 
             console.log('Booking Quotation Edit - Page Loaded');
 
-            // ═══════════════════════════════════════════════════════════
             // SALES INTELLIGENCE
-            // ═══════════════════════════════════════════════════════════
             (function() {
 
                 // Values already available on the page from PHP/JS
@@ -4017,9 +4364,7 @@
                 setTimeout(loadSalesIntelligence, 1200);
 
             })();
-            // ═══════════════════════════════════════════════════════════
             // END SALES INTELLIGENCE
-            // ═══════════════════════════════════════════════════════════
 
             // ============================================================
             // COPIED FLAG — highlight mandatory empty fields after duplication
@@ -4085,8 +4430,10 @@
 
             function setGenerateBtn() {
                 const $btn = $('#generateQuoteBtn');
+                const $caret = $('#generateQuoteCaret');
                 const shouldDisable = termsState.generating || !termsState.applied;
                 $btn.prop('disabled', shouldDisable);
+                $caret.prop('disabled', shouldDisable);
                 if (termsState.generating) {
                     $btn.attr('title', 'Generating…');
                 } else if (!termsState.applied) {
@@ -4388,7 +4735,6 @@
                     $('#shipmentForwarderSelect').removeClass('d-none').prop('disabled', false);
                 });
 
-
                 $('#polSearch').val($('#polDisplay').val());
                 $('#podSearch').val($('#podDisplay').val());
                 $('#placeOfReceiptSearch').val($('#placeOfReceiptDisplay').val());
@@ -4528,7 +4874,6 @@
                 $('#shipmentForwarderSelect').val(originalShipmentForwarderCode).addClass('d-none').prop(
                     'disabled', true);
                 $('#shipmentForwarderDisplay').removeClass('d-none');
-
                 $('#shipmentModeSelect').val(originalShipmentMode);
                 $('#transportModeSelect').val(originalTransportMode);
                 $('#incoTermSelect').val(originalIncoTerm);
@@ -4899,7 +5244,7 @@
                     data: {
                         booking_no: bookingNo,
                         office_code: officeCode,
-                        quotation_id: quotationId,
+                        quotation_id: quotationId
                     },
                     beforeSend: function() {
                         $('#revenueChargesTable, #costChargesTable').html(
@@ -4925,6 +5270,82 @@
                     }
                 });
             }
+
+            // Make loadCharges accessible from other scripts (like the contract template modal)
+            window.loadCharges = loadCharges;
+
+            function loadContractTemplateList() {
+                if (window.contractTemplateListRequest) {
+                    return window.contractTemplateListRequest;
+                }
+
+                window.contractTemplateListRequest = fetch(
+                        '{{ route('quotation.contract-template.list', $quotation->ID) }}')
+                    .then(function(r) {
+                        return r.json();
+                    })
+                    .then(function(res) {
+                        if (!res.success || !res.data) {
+                            console.error('[ContractTemplate] list fetch failed:', res.message ||
+                                'Unknown error');
+                            return [];
+                        }
+
+                        window.contractTemplateList = res.data;
+                        return res.data;
+                    })
+                    .catch(function(err) {
+                        console.error('[ContractTemplate] list fetch failed:', err);
+                        return [];
+                    });
+
+                return window.contractTemplateListRequest;
+            }
+
+            window.loadContractTemplateList = loadContractTemplateList;
+            loadContractTemplateList();
+
+            // function loadContractTemplateCharges() {
+            //     $.ajax({
+            //         url: '{{ route('quotation.contract-template.charges', $quotation->ID) }}',
+            //         type: 'GET',
+            //         success: function(response) {
+            //             if (response.success && response.data) {
+            //                 (response.data.revenue_charges || []).forEach(function(item) {
+            //                     revenueCharges.push({
+            //                         id: null,
+            //                         chargeName: item.desc,
+            //                         rate: item.rate,
+            //                         quantity: 1,
+            //                         basedOnAndUOM: item.basedOn,
+            //                         chgCurr: item.currency,
+            //                         amtInChgCurr: item.sell,
+            //                         amtInBaseCurr: item.sell,
+            //                         source: 'template'
+            //                     });
+            //                 });
+            //                 (response.data.cost_charges || []).forEach(function(item) {
+            //                     costCharges.push({
+            //                         id: null,
+            //                         chargeName: item.desc,
+            //                         rate: item.rate,
+            //                         quantity: 1,
+            //                         basedOnAndUOM: item.basedOn,
+            //                         chgCurr: item.currency,
+            //                         amtInChgCurr: item.sell,
+            //                         amtInBaseCurr: item.sell,
+            //                         source: 'template'
+            //                     });
+            //                 });
+            //             }
+            //         },
+            //         complete: function() {
+            //             renderRevenueCharges();
+            //             renderCostCharges();
+            //             updateSummary();
+            //         }
+            //     });
+            // }
 
 
             // ── REQUEST OFFICE HISTORY ────────────────────────────────────────────────
@@ -5023,8 +5444,10 @@
                     $('#revenueTypeRevenue').prop('checked', true);
                     toggleRevenueFormFields('revenue');
                     loadBasedOnList('revenue');
+                    loadChargeCategoryOptions('revenue');
                     populateCurrencyDropdown('revenue');
                 } else {
+                    loadChargeCategoryOptions('revenue');
                     populateCurrencyDropdown('revenue');
                 }
                 setTimeout(function() {
@@ -5041,8 +5464,10 @@
                     toggleCostFormFields('cost');
                     $('#costIsReimbursedContainer').show();
                     loadBasedOnList('cost');
+                    loadChargeCategoryOptions('cost');
                     populateCurrencyDropdown('cost');
                 } else {
+                    loadChargeCategoryOptions('cost');
                     populateCurrencyDropdown('cost');
                 }
                 setTimeout(function() {
@@ -5253,6 +5678,42 @@
                         showNotification('Failed to load Based On list', 'error');
                         $basedOnSelect.empty().append('<option value="">Failed to load</option>').prop(
                             'disabled', false);
+                    }
+                });
+            }
+
+            function loadChargeCategoryOptions(type) {
+                const prefix = type === 'revenue' ? 'revenue' : 'cost';
+                const $categorySelect = $(`select[name="${prefix}_charge_category"]`);
+
+                if (!$categorySelect.length) return;
+
+                $.ajax({
+                    url: '/contracts/masters/charge-categories',
+                    type: 'GET',
+                    dataType: 'json',
+                    beforeSend: function() {
+                        $categorySelect.prop('disabled', true).empty().append(
+                            '<option value="">Loading...</option>');
+                    },
+                    success: function(response) {
+                        const items = response && Array.isArray(response.data) ? response.data : [];
+                        $categorySelect.empty().append('<option value="">Select</option>');
+
+                        items.forEach(function(item) {
+                            const code = item.Code ?? item.code ?? item.Name ?? item.name ?? '';
+                            const name = item.Name ?? item.name ?? item.Code ?? item.code ??
+                                code;
+                            if (!code) return;
+                            $categorySelect.append(
+                                `<option value="${code}">${name}</option>`
+                            );
+                        });
+
+                        $categorySelect.prop('disabled', false);
+                    },
+                    error: function() {
+                        $categorySelect.empty().append('<option value="">Unavailable</option>');
                     }
                 });
             }
@@ -6194,6 +6655,23 @@
             // ============================================
             $(document).on('click', '.delete-revenue-charge, .delete-cost-charge', function() {
                 const chargeId = $(this).data('id');
+
+                if (!chargeId) {
+                    // Template-sourced charge — never persisted server-side (id is null),
+                    // so there's nothing to delete via the SP. Drop it from local state only.
+                    const index = $(this).data('index');
+                    const tbodyId = $(this).closest('tbody').attr('id');
+                    if (tbodyId === 'revenueChargesTable') {
+                        revenueCharges.splice(index, 1);
+                    } else if (tbodyId === 'costChargesTable') {
+                        costCharges.splice(index, 1);
+                    }
+                    renderRevenueCharges();
+                    renderCostCharges();
+                    updateSummary();
+                    return;
+                }
+
                 if (!confirm('Are you sure you want to delete this charge?')) return;
 
                 $.ajax({
@@ -6405,7 +6883,7 @@
                         totalBaseAmount += parseFloat(charge.amtInBaseCurr || 0);
                         tbody.append(`
                         <tr>
-                           <td class="text-center bulk-delete-col" style="display:none;">
+                            <td class="text-center bulk-delete-col" style="display:none;">
                                 <input type="checkbox" class="charge-row-check"
                                     data-type="revenue" data-id="${charge.id}">
                             </td>
@@ -6417,14 +6895,21 @@
                             <td class="text-right">${parseFloat(charge.amtInChgCurr  || 0).toFixed(2)}</td>
                             <td class="text-right">${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
                             <td class="text-center">
-                                <button type="button" class="btn btn-warning btn-action edit-revenue-charge"
-                                    data-index="${index}" data-id="${charge.id}">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                                <button type="button" class="btn btn-danger btn-action delete-revenue-charge"
-                                    data-index="${index}" data-id="${charge.id}">
-                                    <i class="fas fa-trash"></i>
-                                </button>
+                            ${charge.source === 'template' ? `
+                                                                                        <button type="button" class="btn btn-danger btn-action delete-cost-charge"
+                                                                                            data-index="${index}" data-id="${charge.id}">
+                                                                                            <i class="fas fa-trash"></i>
+                                                                                        </button>
+                                                                                    ` : `
+                                                                                        <button type="button" class="btn btn-warning btn-action edit-cost-charge"
+                                                                                            data-index="${index}" data-id="${charge.id}">
+                                                                                            <i class="fas fa-edit"></i>
+                                                                                        </button>
+                                                                                        <button type="button" class="btn btn-danger btn-action delete-cost-charge"
+                                                                                            data-index="${index}" data-id="${charge.id}">
+                                                                                            <i class="fas fa-trash"></i>
+                                                                                        </button>
+                                                                                    `}
                             </td>
                         </tr>
                     `);
@@ -6455,9 +6940,9 @@
                         totalBaseAmount += parseFloat(charge.amtInBaseCurr || 0);
                         tbody.append(`
                             <tr>
-                             <td class="text-center bulk-delete-col" style="display:none;">
+                            <td class="text-center bulk-delete-col" style="display:none;">
                                 <input type="checkbox" class="charge-row-check"
-                                       data-type="cost" data-id="${charge.id}">
+                                data-type="cost" data-id="${charge.id}">
                             </td>
                                 <td>${charge.chargeName || charge.chargeCode || ''}</td>
                                 <td class="text-right">${parseFloat(charge.rate || 0).toFixed(2)}</td>
@@ -6467,14 +6952,21 @@
                                 <td class="text-right">${parseFloat(charge.amtInChgCurr  || 0).toFixed(2)}</td>
                                 <td class="text-right">${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
                                 <td class="text-center">
-                                    <button type="button" class="btn btn-warning btn-action edit-cost-charge"
-                                        data-index="${index}" data-id="${charge.id}">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-danger btn-action delete-cost-charge"
-                                        data-index="${index}" data-id="${charge.id}">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
+                                    ${charge.source === 'template' ? `
+                                                        <button type="button" class="btn btn-danger btn-action delete-cost-charge"
+                                                            data-index="${index}" data-id="${charge.id}">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                    ` : `
+                                                        <button type="button" class="btn btn-warning btn-action edit-cost-charge"
+                                                            data-index="${index}" data-id="${charge.id}">
+                                                            <i class="fas fa-edit"></i>
+                                                        </button>
+                                                        <button type="button" class="btn btn-danger btn-action delete-cost-charge"
+                                                            data-index="${index}" data-id="${charge.id}">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                    `}
                                 </td>
                             </tr>
                         `);
@@ -6662,6 +7154,7 @@
             // QUOTATION VERSIONS — LOAD & RENDER
             // ============================================
             const GENERATE_PDF_URL = '{{ route('quotation.generate-pdf', $quotation->ID) }}';
+            const GENERATE_EXCEL_URL = '{{ route('quotation.generate-excel', $quotation->ID) }}';
             const VERSIONS_URL = '{{ route('quotation.versions', $quotation->ID) }}';
 
             function renderVersions(versions) {
@@ -6693,29 +7186,29 @@
                         `/quotation/${quotationId}/download-pdf/${versionNo}`;
 
                     html += `
-                    <div class="form-group row align-items-center mb-2">
-                        <label class="col-sm-4 col-form-label fw-bold">${versionLabel}</label>
-                        <div class="col-sm-8 d-flex align-items-center">
-                            <button type="button"
-                                class="btn btn-sm btn-outline-primary btn-view-pdf mr-1"
-                                data-url="${downloadUrl}?preview=1"
-                                data-version="${versionNo}">
-                                <i class="fas fa-eye mr-1"></i> View
-                            </button>
-                            <button type="button"
-                                class="btn btn-sm btn-outline-primary btn-download-pdf"
-                                data-url="${downloadUrl}"
-                                data-version="${versionNo}">
-                                <i class="fas fa-download mr-1"></i> Download
-                            </button>
-                            <span class="ml-2 text-success"
-                                id="download-success-${versionNo}"
-                                style="display:none; font-size:0.8rem;">
-                                <i class="fas fa-check-circle mr-1"></i> Downloaded
-                            </span>
-                        </div>
-                    </div>
-                    `;
+<div class="form-group row align-items-center mb-2">
+    <label class="col-sm-4 col-form-label fw-bold">${versionLabel}</label>
+    <div class="col-sm-8 d-flex align-items-center">
+        <button type="button"
+            class="btn btn-sm btn-outline-primary btn-view-pdf mr-1"
+            data-url="${downloadUrl}?preview=1"
+            data-version="${versionNo}">
+            <i class="fas fa-eye mr-1"></i> View
+        </button>
+        <button type="button"
+            class="btn btn-sm btn-outline-primary btn-download-pdf"
+            data-url="${downloadUrl}"
+            data-version="${versionNo}">
+            <i class="fas fa-download mr-1"></i> Download
+        </button>
+        <span class="ml-2 text-success"
+            id="download-success-${versionNo}"
+            style="display:none; font-size:0.8rem;">
+            <i class="fas fa-check-circle mr-1"></i> Downloaded
+        </span>
+    </div>
+</div>
+`;
                 });
 
                 if (html) {
@@ -6756,25 +7249,26 @@
             }
 
             // ============================================
-            // GENERATE QUOTE BUTTON
+            // GENERATE QUOTE — shared runner for Standard Template / Excel
             // ============================================
-            $('#generateQuoteBtn').on('click', function() {
+            function runGenerateQuote(url, successFileLabel, restoreIconHtml, extraData) {
                 if (termsState.generating || !termsState.applied) return;
 
-                const $btn = $(this);
+                const $btn = $('#generateQuoteBtn');
                 termsState.generating = true;
                 setGenerateBtn();
                 $btn.html('<i class="fas fa-spinner fa-spin mr-1"></i> Generating...');
 
                 $.ajax({
-                    url: GENERATE_PDF_URL,
+                    url: url,
                     type: 'POST',
-                    data: {
+                    data: Object.assign({
                         _token: '{{ csrf_token() }}'
-                    },
+                    }, extraData || {}),
                     success: function(response) {
                         if (response.success) {
-                            showNotification('Quote generated — ' + response.label, 'success');
+                            showNotification(successFileLabel + ' generated — ' + response.label,
+                                'success');
                             if (response.warning) {
                                 showNotification(response.warning, 'warning');
                             }
@@ -6784,8 +7278,9 @@
                             termsState.generating = false;
                             setGenerateBtn();
                         } else {
-                            showNotification(response.message || 'Failed to generate quote.',
-                                'error');
+                            showNotification(
+                                response.message || ('Failed to generate ' + successFileLabel +
+                                    '.'), 'error');
                             // On failure, restore applied state so user can retry without reselecting
                             termsState.generating = false;
                             setGenerateBtn();
@@ -6794,16 +7289,73 @@
                     error: function(xhr) {
                         showNotification(
                             xhr.responseJSON?.message ||
-                            'An error occurred while generating the quote.',
+                            ('An error occurred while generating ' + successFileLabel + '.'),
                             'error'
                         );
                         termsState.generating = false;
                         setGenerateBtn();
                     },
                     complete: function() {
-                        $btn.html('<i class="fas fa-file-alt mr-1"></i> Generate Quote');
+                        $btn.html(restoreIconHtml);
                     }
                 });
+            }
+
+            // Main button = Standard Template (unchanged default behavior)
+            $('#generateQuoteBtn').on('click', function() {
+                runGenerateQuote(GENERATE_PDF_URL, 'Quote',
+                    '<i class="fas fa-file-alt mr-1"></i> Generate Quote', {
+                        QuoteType: 'Std. PDF'
+                    });
+            });
+
+            // Dropdown option — Standard Template (explicit choice, same as main button)
+            $('#generateQuoteStandardOpt').on('click', function(e) {
+                e.preventDefault();
+                runGenerateQuote(GENERATE_PDF_URL, 'Quote',
+                    '<i class="fas fa-file-alt mr-1"></i> Generate Quote', {
+                        QuoteType: 'Std. PDF'
+                    });
+            });
+
+            // Dropdown option — Excel
+            $('#generateQuoteExcelOpt').on('click', function(e) {
+                e.preventDefault();
+                runGenerateQuote(GENERATE_EXCEL_URL, 'Excel quote',
+                    '<i class="fas fa-file-alt mr-1"></i> Generate Quote', {
+                        QuoteType: 'Cost & Sell EXCEL'
+                    });
+            });
+
+            // Dropdown option — All-in-One Template (opens remark modal, no separate screen)
+            $('#generateQuoteAllInOneOpt').on('click', function(e) {
+                e.preventDefault();
+                if (termsState.generating || !termsState.applied) return;
+                $('#allInOneRemarkError').hide();
+                $('#allInOneRemarkInput').val('');
+                $('#allInOneRemarkModal').modal('show');
+            });
+
+            // X / Cancel — matches the manual-dismiss pattern used by every other modal in this file
+            $('#allInOneRemarkModal .close, #allInOneRemarkModal button[data-dismiss="modal"]').on('click',
+                function(e) {
+                    e.preventDefault();
+                    $('#allInOneRemarkModal').modal('hide');
+                });
+
+            // Modal — validate remark, then generate directly (no redirect)
+            $('#allInOneRemarkGenerateBtn').on('click', function() {
+                const remark = $('#allInOneRemarkInput').val().trim();
+                if (!remark) {
+                    $('#allInOneRemarkError').show();
+                    return;
+                }
+                $('#allInOneRemarkModal').modal('hide');
+                runGenerateQuote(GENERATE_PDF_URL, 'Quote',
+                    '<i class="fas fa-file-alt mr-1"></i> Generate Quote', {
+                        QuoteType: 'All in One PDF',
+                        AllInOneRemark: remark
+                    });
             });
 
             // Load versions on page init
@@ -6957,6 +7509,7 @@
                 $('#emailBody').val(emailTemplateMap[name] || '');
                 if (!$('#emailSubject').val().trim()) $('#emailSubject').val(name);
             });
+
 
             // ============================================
             // EMAIL QUOTE — SEND
@@ -7377,7 +7930,7 @@
                 });
             });
 
-  // Load all dropdowns when modal opens
+            // Load all dropdowns when modal opens
             $('#createBookingModal').on('show.bs.modal', function() {
 
                 loadServiceTemplates();
@@ -7473,7 +8026,6 @@
                 );
             });
 
-
             // ---- Service Templates ----
             function loadServiceTemplates() {
                 const $select = $('#cb_service_template');
@@ -7549,7 +8101,7 @@
                 });
             }
 
-  // ---- Forwarders ----
+            // ---- Forwarders ----
             function loadForwarders(savedCode = '', savedText = '') {
 
                 const $select = $('#cb_forwarder');
@@ -9899,6 +10451,8 @@
             }
 
 
+            window.showNotification = showNotification;
+
             function showNotification(message, type) {
                 const alertClass = type === 'success' ? 'alert-success' :
                     type === 'error' ? 'alert-danger' :
@@ -10048,6 +10602,7 @@
         <div class="cc-filter-row">
             <select class="cc-select cc-extra-field" style="width:160px;">
                 <option value="">Select</option>
+                <option value="jobno">Job No</option>
                 <option value="customer">Customer</option>
                 <option value="origin">Origin Country</option>
                 <option value="destination">Destination Country</option>
@@ -10097,6 +10652,7 @@
                 }
 
                 const fieldMap = {
+                    jobno: 'quote_no',
                     customer: 'customer',
                     origin: 'origin',
                     destination: 'destination',
@@ -10141,6 +10697,7 @@
                         // ── Client-side filtering for extra filters ───────────
                         // Maps filter field → which result property to match against
                         const resultFieldMap = {
+                            jobno: r => (r.QuoteNo || '').toLowerCase(),
                             customer: r => (r.CompanyName || '').toLowerCase(),
                             origin: r => (r.Origin || '').toLowerCase(),
                             destination: r => (r.Destination || '').toLowerCase(),
@@ -10768,5 +11325,90 @@
                 syncCcModalExpansion();
             });
         }); // end document.ready
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            fetch('{{ route('quotation.contract-template.charges', $quotation->ID) }}')
+                .then(function(r) {
+                    return r.json();
+                })
+                .then(function(res) {
+                    if (!res.success || !res.data) return;
+                    document.getElementById('revenueTotalHeaderAmount').textContent = res.data.revenue_total
+                        .toFixed(2);
+                    document.getElementById('costTotalHeaderAmount').textContent = res.data.cost_total.toFixed(
+                        2);
+                    document.getElementById('quotedRevenue').value = res.data.revenue_total.toFixed(2);
+                    document.getElementById('quotedMargin').value = res.data.margin.toFixed(2);
+                })
+                .catch(function(err) {
+                    console.error('[ContractTemplate] charges fetch failed:', err);
+                });
+        });
+    </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var modal = document.getElementById('contractTemplateModal');
+            var body = document.getElementById('contractTemplateModalBody');
+            var stylesInjected = false;
+            // Workbook's script binds several document-level listeners (click/change/input).
+            // Re-fetching+re-executing it on every open stacks duplicate listeners, causing
+            // handlers to fire twice on the 2nd+ open. Load and init it once per page view;
+            // later opens just reuse what's already in the DOM.
+            var contentLoaded = false;
+
+            $(modal).on('show.bs.modal', function() {
+                if (contentLoaded) return;
+
+                body.innerHTML =
+                    '<div class="text-center py-4"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+
+                var url = '{{ route('quotation.contract-template.edit', request()->route('id')) }}' +
+                    '?quote_no={{ urlencode($quotation->QuoteNo ?? '') }}' +
+                    '&service={{ urlencode($quotation->ServiceVertical ?? '') }}' +
+                    '&origin={{ urlencode($quotation->origincountry ?? '') }}' +
+                    '&destination={{ urlencode($quotation->destinationcountry ?? '') }}';
+
+                fetch(url)
+                    .then(function(r) {
+                        return r.text();
+                    })
+                    .then(function(html) {
+                        var doc = new DOMParser().parseFromString(html, 'text/html');
+                        var content = doc.getElementById('contractTemplateContent');
+
+                        if (!content) {
+                            body.innerHTML =
+                                '<div class="alert alert-warning">Content not found.</div>';
+                            return;
+                        }
+
+                        if (!stylesInjected) {
+                            doc.querySelectorAll('style').forEach(function(styleTag) {
+                                document.head.appendChild(styleTag.cloneNode(true));
+                            });
+                            stylesInjected = true;
+                        }
+
+                        body.innerHTML = '<div class="card"><div class="card-body"></div></div>';
+                        body.querySelector('.card-body').appendChild(content);
+
+                        content.querySelectorAll('script').forEach(function(oldScript) {
+                            var newScript = document.createElement('script');
+                            newScript.textContent = oldScript.textContent;
+                            document.body.appendChild(newScript);
+                        });
+
+                        contentLoaded = true;
+                    })
+                    .catch(function(err) {
+                        console.error('[Workbook] load failed:', err);
+                        body.innerHTML =
+                            '<div class="alert alert-danger">Failed to load. Please try again.</div>';
+                        // contentLoaded stays false so the next open retries the fetch
+                    });
+            });
+        });
     </script>
 @stop
