@@ -338,6 +338,11 @@ class ContractController extends Controller
                 ->groupBy('ServiceAndFilterID');
         }
 
+        // Attach charges to each service so the blade's `$service->Charges` works.
+        $services->each(function ($svc) use ($charges) {
+            $svc->Charges = $charges[$svc->Id] ?? collect();
+        });
+
         $officeCode = $this->getUserOfficeCode();
 
         $officeId = DB::connection('sqlsrv')
@@ -350,30 +355,83 @@ class ContractController extends Controller
         return view('contracts.edit', compact('contractInfo', 'services', 'charges', 'officeCode', 'officeId'));
     }
 
-    /**
-     * GET /contracts/{contract}/charges/display
-     * Full charge breakdown for the workbook view via sp_Contract_ChargeDisplay.
-     */
+    // Add above chargeDisplay():
+    private function isMarkupLocked(array $c): bool
+    {
+        return in_array(
+            $this->classifyCharge($c),
+            ['revenue_accrual', 'cost_reimbursement', 'revenue_only', 'cost_only'],
+            true,
+        );
+    }
+
+    // Add above chargeDisplay():
+    private function classifyCharge(array $c): string
+    {
+        $cost = $c['CostRate'] ?? null;
+        $sell = $c['SellRate'] ?? null;
+
+        $hasCost = $cost !== null && $cost !== '';
+        $hasSell = $sell !== null && $sell !== '';
+
+        $isAccruable = !empty($c['IsAccruable']);
+        $isReimbursable = !empty($c['IsReimbursable']);
+
+        if ($hasCost && $hasSell) {
+            return 'both';
+        }
+
+        if ($hasSell && $isAccruable) {
+            return 'revenue_accrual';
+        }
+
+        if ($hasCost && $isReimbursable) {
+            return 'cost_reimbursement';
+        }
+
+        if ($hasSell) {
+            return 'revenue_only';
+        }
+
+        if ($hasCost) {
+            return 'cost_only';
+        }
+
+        return 'cost_only';
+    }
+    //  * GET /contracts/{contract}/charges/display
+    //  * Full charge breakdown for the workbook view via sp_Contract_ChargeDisplay.
+    //  */
     public function chargeDisplay(Request $request, string $contract): JsonResponse
     {
         $quotationId = $request->query('quotation_id');
 
         if (!$quotationId) {
-            return response()->json(['success' => false, 'message' => 'quotation_id is required'], 422);
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => 'quotation_id is required',
+                ],
+                422,
+            );
         }
 
         try {
             $pdo = DB::connection('sqlsrv')->getPdo();
+
             $stmt = $pdo->prepare(
                 'SET NOCOUNT ON; DECLARE @OutputJson NVARCHAR(MAX); ' .
                     'EXEC dbo.sp_Quote_Contract_ChargeDisplay @ContractID = ?, @QuotationID = ?, @OutputJson = @OutputJson OUTPUT; ' .
                     'SELECT @OutputJson AS OutputJson',
             );
+
             $stmt->execute([$contract, $quotationId]);
 
             $outputJson = null;
+
             do {
                 $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+
                 if (!empty($rows) && isset($rows[0]->OutputJson)) {
                     $outputJson = $rows[0]->OutputJson;
                     break;
@@ -385,7 +443,14 @@ class ContractController extends Controller
                     'contract' => $contract,
                     'quotation' => $quotationId,
                 ]);
-                return response()->json(['success' => false, 'message' => 'No output from stored procedure'], 422);
+
+                return response()->json(
+                    [
+                        'success' => false,
+                        'message' => 'No output from stored procedure',
+                    ],
+                    422,
+                );
             }
 
             $result = json_decode($outputJson, true);
@@ -395,18 +460,29 @@ class ContractController extends Controller
                     'contract' => $contract,
                     'raw' => $outputJson,
                 ]);
-                return response()->json(['success' => false, 'message' => 'Invalid JSON from stored procedure'], 500);
+
+                return response()->json(
+                    [
+                        'success' => false,
+                        'message' => 'Invalid JSON from stored procedure',
+                    ],
+                    500,
+                );
             }
 
             if (($result['Status'] ?? '') !== 'Success') {
                 return response()->json(
-                    ['success' => false, 'message' => $result['Remark'] ?? 'No charges found'],
+                    [
+                        'success' => false,
+                        'message' => $result['Remark'] ?? 'No charges found',
+                    ],
                     422,
                 );
             }
 
-            // Map SP's shape onto what the frontend's toRow() already expects,
-            // plus Quantity — the new field this endpoint didn't provide before.
+            // Map SP's shape onto what the frontend's toRow() expects.
+            // Preserve NULL values from the SP so initialization does not
+            // manufacture zero values that were not actually supplied.
             $charges = collect($result['Charges'] ?? [])
                 ->map(function ($c) {
                     return [
@@ -415,11 +491,34 @@ class ContractController extends Controller
                         'ChargeDescription' => $c['ChargeDescription'] ?? '',
                         'ChargeBasedon' => $c['ChargeBasedon'] ?? '',
                         'ChargeBasedOnUOM' => $c['ChargeBasedOnUOM'] ?? '',
-                        'RevenueRate' => $c['SellRate'] ?? 0,
+
+                        // IDs
+                        'ChargeRowID' => $c['ChargeRowID'] ?? null,
+                        'CostChargeRowID' => $c['CostChargeRowID'] ?? null,
+                        'RevenueChargeRowID' => $c['RevenueChargeRowID'] ?? null,
+
+                        // Revenue
+                        'RevenueRate' => $c['SellRate'] ?? null,
+                        'RevenueAmount' => $c['SellAmount'] ?? null,
                         'RevenueCurr' => $c['Currency'] ?? '',
-                        'CostRate' => $c['CostRate'] ?? 0,
+
+                        // Cost
+                        'CostRate' => $c['CostRate'] ?? null,
+                        'CostAmount' => $c['CostAmount'] ?? null,
                         'CostCurr' => $c['Currency'] ?? '',
-                        'Quantity' => $c['Quantity'] ?? 0,
+
+                        // Quantity
+                        'Quantity' => $c['Quantity'] ?? null,
+
+                        // Markup
+                        'IncreaseBy' => $c['IncrementBy'] ?? null,
+                        'IncreaseType' => $c['IncrementType'] ?? null,
+
+                        // Rate type
+                        'RateType' => $c['RateType'] ?? null,
+
+                        // Charge scenario
+                        'ChargeType' => $this->classifyCharge($c),
                     ];
                 })
                 ->all();
@@ -437,7 +536,14 @@ class ContractController extends Controller
                 'contract' => $contract,
                 'quotation' => $quotationId,
             ]);
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                ],
+                500,
+            );
         }
     }
 
@@ -575,6 +681,61 @@ class ContractController extends Controller
         return $stats;
     }
 
+    public function duplicateService(Request $request, string $contract, string $serviceFilterId): JsonResponse
+    {
+        $source = DB::connection('sqlsrv')
+            ->table('Contract_ContractServiceAndFilter')
+            ->where('Id', $serviceFilterId)
+            ->where('ContractInfoID', $contract)
+            ->where('IsDeleted', 0)
+            ->first();
+
+        if (!$source) {
+            return response()->json(['success' => false, 'message' => 'Source service not found.'], 404);
+        }
+
+        $payload = [
+            'OperationType' => 'ContractServiceDetails',
+            'Action' => 'Copy',
+            'SubmittedBy' => auth()->user()->name ?? 'system',
+            'SubmittedDatetime' => $this->submittedDatetime(),
+            'ContractInfoID' => $contract,
+            'ServiceAndFilterID' => null,
+            'CopyServiceID' => $serviceFilterId, // ← per updated SP spec
+            'Service' => $source->Service ?? '',
+            'Process' => $source->Process ?? '',
+            'IncoTerm' => $source->IncoTerm ?? '',
+            'COO' => $source->COO ?? '',
+            'COD' => $source->COD ?? '',
+            'POR' => $source->POR ?? '',
+            'POE' => $source->POE ?? '',
+            'POL' => $source->POL ?? '',
+            'POD' => $source->POD ?? '',
+            'ServiceClass' => $source->ServiceClass ?? '',
+            'ShipmentMode' => $source->ShipmentMode ?? '',
+            'ShipmentType' => $source->ShipmentType ?? '',
+            'MovementType' => $source->MovementType ?? '',
+        ];
+
+        $result = $this->callContractSP('sp_Contractinfo_ServiceDetails', $payload);
+
+        if (!$result['success']) {
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => 'Failed to copy service: ' . ($result['message'] ?? 'Unknown error'),
+                ],
+                422,
+            );
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Service copied.',
+            'data' => ['service_filter_id' => $result['service_filter_id']],
+        ]);
+    }
+
     public function store(StoreContractRequest $request, string $contract): JsonResponse
     {
         $validated = $request->validated();
@@ -633,7 +794,6 @@ class ContractController extends Controller
         $contractInfoId = $draft['contract_id'] ?? null;
 
         if (empty($contractInfoId)) {
-            // No session draft (Edit flow) — treat $contract as the real ContractInfoID.
             $exists = DB::connection('sqlsrv')
                 ->table('Contract_ContractInfo')
                 ->where('Id', $contract)
@@ -650,13 +810,21 @@ class ContractController extends Controller
         }
 
         $service = $request->all();
+        $isCopy = ($service['action'] ?? null) === 'copy';
+
+        if ($isCopy && empty($service['sourceServiceId'])) {
+            return response()->json(
+                ['success' => false, 'message' => 'sourceServiceId is required to copy a service.'],
+                422,
+            );
+        }
 
         $servicePayload = [
             'OperationType' => 'ContractServiceDetails',
-            'Action' => 'Add',
+            'Action' => $isCopy ? 'Copy' : 'Add',
             'SubmittedBy' => auth()->user()->name ?? 'system',
             'SubmittedDatetime' => $this->submittedDatetime(),
-            'ContractInfoID' => $contractInfoId, // ← was $draft['contract_id']
+            'ContractInfoID' => $contractInfoId,
             'ServiceAndFilterID' => null,
             'Service' => $service['service'] ?? '',
             'Process' => $service['process'] ?? '',
@@ -673,6 +841,10 @@ class ContractController extends Controller
             'MovementType' => $service['movementType'] ?? '',
         ];
 
+        if ($isCopy) {
+            $servicePayload['SourceServiceAndFilterID'] = $service['sourceServiceId'];
+        }
+
         $result = $this->callContractSP('sp_Contractinfo_ServiceDetails', $servicePayload);
 
         if (!$result['success']) {
@@ -684,82 +856,885 @@ class ContractController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Service saved.',
+            'message' => $isCopy ? 'Service copied.' : 'Service saved.',
             'data' => ['service_filter_id' => $result['service_filter_id']],
         ]);
     }
 
-    public function storeCharge(Request $request, string $contract, string $serviceFilterId): JsonResponse
+    public function generateExcel($id)
     {
-        $draft = Session::get($this->sessionKey($contract));
-        $contractInfoId = $draft['contract_id'] ?? null;
+        $tempFile = null;
 
-        if (empty($contractInfoId)) {
-            // No session draft (Edit flow) — treat $contract as the real ContractInfoID.
-            $exists = DB::connection('sqlsrv')
-                ->table('Contract_ContractInfo')
-                ->where('Id', $contract)
-                ->where('IsDeleted', 0)
-                ->exists();
+        try {
+            ini_set('memory_limit', '512M');
+            ini_set('max_execution_time', '300');
 
-            if (!$exists) {
+            Log::info('Excel Generation - Starting', [
+                'quotation_id' => $id,
+            ]);
+
+            $quotation = \App\Models\QuotationInfo::where('ID', $id)->first();
+
+            if (!$quotation) {
+                Log::error('Excel Generation - Quotation not found', [
+                    'id' => $id,
+                ]);
+
                 return response()->json(
-                    ['success' => false, 'message' => 'Save Contract Info before adding charges.'],
-                    422,
+                    [
+                        'success' => false,
+                        'message' => 'Quotation not found',
+                    ],
+                    404,
                 );
             }
-            $contractInfoId = $contract;
-        }
 
-        $charge = $request->all();
+            $submittedBy = substr(auth()->user()->displayName ?? (auth()->user()->Email ?? 'system'), 0, 50);
 
-        $chargePayload = [
-            'OperationType' => 'ServiceBasedCharges',
-            'SubmittedDatetime' => $this->submittedDatetime(),
-            'SubmittedBy' => auth()->user()->name ?? 'system',
-            'Action' => 'Add',
-            'ContractInfoID' => $contractInfoId,
-            'ServiceAndFilterID' => $serviceFilterId,
-            'ServiceChargeID' => null,
-            'ChargeCode' => $charge['chargeCode'] ?? '',
-            'ChargeBasedon' => $charge['chargeBasedOn'] ?? '',
-            'ChargeBasedOnUOM' => $charge['chargeBasedOnUOM'] ?? '',
-            'ChargeCurr' => $charge['chargeCurr'] ?? '',
-            'MinAmount' => $this->toFloat($charge['minAmount'] ?? null),
-            'MaxAmount' => $this->toFloat($charge['maxAmount'] ?? null),
-            'Quantity' => $this->toFloat($charge['quantity'] ?? null),
-            'RateType' => $charge['rateType'] ?? '',
-            'Rate' => $this->toFloat($charge['rate'] ?? null),
-            'Formula' => $charge['formula'] ?? '',
-            'RateSlabJson' => !empty($charge['rateSlab']) ? json_encode($charge['rateSlab']) : '',
-            'Comments' => '',
-            'MarkupRate' => $this->toFloat($charge['markupRate'] ?? null),
-            'MarkFormula' => $charge['markupFormula'] ?? '',
-            'MarkRateSlabJson' => !empty($charge['markupRateSlab']) ? json_encode($charge['markupRateSlab']) : '',
-            'RevenueOrCost' => ($charge['chargeNature'] ?? '') === 'Cost' ? 'Cost' : 'Revenue',
-            'ChargeAction' => $charge['chargeAction'] ?? 'A',
-            'Category' => $charge['chargeCategory'] ?? '',
-            'ToBeAdded' => $charge['toBeAdded'] ?? 0,
-            'IsAccruable' => $charge['isAccruable'] ?? '0',
-            'IsReimbursable' => $charge['isReimbursable'] ?? '0',
-            'MarkupRateType' => $charge['markupRateType'] ?? '',
-            'MarkupCurr' => $charge['chargeCurr'] ?? '',
-        ];
+            /*
+             * Generate quotation HTML.
+             *
+             * getQuotationHtml() now:
+             * - returns the generated HTML when successful
+             * - returns null when no HTML is available
+             * - throws RuntimeException when the SP itself reports a failure
+             */
+            $html = $this->getQuotationHtml($id, request('QuoteType', 'Cost & Sell EXCEL'));
 
-        $result = $this->callContractSP('sp_Contractinfo_ServiceCharges', $chargePayload);
+            if (empty($html)) {
+                Log::error('Excel Generation - Empty quotation HTML', [
+                    'quotation_id' => $id,
+                    'quote_type' => request('QuoteType', 'Cost & Sell EXCEL'),
+                ]);
 
-        if (!$result['success']) {
+                throw new \RuntimeException('Unable to generate quotation HTML.');
+            }
+
+            /*
+             * Remove HTML comments before DOM parsing.
+             */
+            $html = preg_replace('/<!--.*?-->/s', '', $html);
+
+            /*
+             * Remove XML declarations returned by the SP.
+             */
+            $html = preg_replace('/<\?xml[^>]*\?>/i', '', $html);
+
+            /*
+             * Normalize the HTML using DOMDocument.
+             */
+            libxml_use_internal_errors(true);
+
+            $dom = new \DOMDocument();
+
+            $dom->loadHTML('<?xml encoding="UTF-8">' . $html, \LIBXML_HTML_NOIMPLIED | \LIBXML_HTML_NODEFDTD);
+
+            $html = $dom->saveHTML();
+
+            Log::info('CANARY: HTML after initial DOMDocument', [
+                'html' => $html,
+            ]);
+
+            libxml_clear_errors();
+
+            /*
+             * Normalize the HTML for PhpSpreadsheet.
+             */
+            Log::info('CANARY: BEFORE normalizeHtmlForSpreadsheet', [
+                'quotation_id' => $id,
+                'html_length' => strlen($html),
+            ]);
+
+            $html = $this->normalizeHtmlForSpreadsheet($html);
+
+            Log::info('CANARY: AFTER normalizeHtmlForSpreadsheet', [
+                'quotation_id' => $id,
+                'html_length' => strlen($html),
+            ]);
+
+            /*
+             * Normalize image paths so PhpSpreadsheet can load the logo.
+             */
+            $html = $this->normalizeImagePathsForSpreadsheet($html);
+
+            /*
+             * TEMP DEBUG FILE
+             *
+             * Remove this after the Excel layout has been confirmed.
+             */
+            file_put_contents(storage_path('app/debug_quote_excel.html'), $html);
+
+            /*
+             * Read the normalized HTML into PhpSpreadsheet.
+             */
+            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Html();
+            $spreadsheet = $reader->loadFromString($html);
+            $sheet = $spreadsheet->getActiveSheet();
+
+            /*
+             * TEMP DEBUG: Check Terms & Conditions storage table rows.
+             */
+            for ($rowIdx = 1; $rowIdx <= $sheet->getHighestDataRow(); $rowIdx++) {
+                $value = trim((string) $sheet->getCell("A{$rowIdx}")->getValue());
+
+                if (stripos($value, '16th – 24th Day') !== false || stripos($value, 'Over 24 Days') !== false) {
+                    Log::info('Storage table row check', [
+                        'row' => $rowIdx,
+                        'value' => $value,
+                        'height' => $sheet->getRowDimension($rowIdx)->getRowHeight(),
+                    ]);
+
+                    for ($r = max(1, $rowIdx - 1); $r <= min($sheet->getHighestDataRow(), $rowIdx + 2); $r++) {
+                        Log::info('Storage nearby row', [
+                            'row' => $r,
+                            'A' => $sheet->getCell("A{$r}")->getValue(),
+                            'B' => $sheet->getCell("B{$r}")->getValue(),
+                            'C' => $sheet->getCell("C{$r}")->getValue(),
+                            'height' => $sheet->getRowDimension($r)->getRowHeight(),
+                        ]);
+                    }
+                }
+            }
+
+            Log::info('Excel A2 customer cell', [
+                'value' => $sheet->getCell('A2')->getValue(),
+            ]);
+
+            /*
+             * PhpSpreadsheet's HTML reader is importing two blank rows before
+             * the normalized quotation header.
+             *
+             * The imported structure is:
+             *   Row 1-2 = blank
+             *   Row 3   = quotation header row 1
+             *   Row 4   = quotation header row 2
+             *
+             * Remove the two blank rows so the quotation header starts at Row 1.
+             */
+            $sheet->removeRow(1, 2);
+
+            // Add a full blank row between the quotation header and GENERAL INFORMATION.
+            $sheet->insertNewRowBefore(3, 1);
+
+            Log::info('Excel T&C search', [
+                'highest_row' => $sheet->getHighestDataRow(),
+            ]);
+
+            for ($rowIdx = 1; $rowIdx <= $sheet->getHighestDataRow(); $rowIdx++) {
+                $value = trim((string) $sheet->getCell("A{$rowIdx}")->getValue());
+
+                if (
+                    stripos($value, 'Terms') !== false ||
+                    stripos($value, 'Condition') !== false ||
+                    stripos($value, 'All local charges') !== false ||
+                    stripos($value, 'Port Storage') !== false
+                ) {
+                    Log::info('Excel T&C match', [
+                        'row' => $rowIdx,
+                        'value' => $value,
+                    ]);
+                }
+            }
+
+            Log::info('CANARY: Excel header cells after removing blank rows', [
+                'A1' => $sheet->getCell('A1')->getValue(),
+                'B1' => $sheet->getCell('B1')->getValue(),
+                'C1' => $sheet->getCell('C1')->getValue(),
+                'D1' => $sheet->getCell('D1')->getValue(),
+                'E1' => $sheet->getCell('E1')->getValue(),
+                'F1' => $sheet->getCell('F1')->getValue(),
+                'G1' => $sheet->getCell('G1')->getValue(),
+                'H1' => $sheet->getCell('H1')->getValue(),
+
+                'A2' => $sheet->getCell('A2')->getValue(),
+                'C2' => $sheet->getCell('C2')->getValue(),
+                'E2' => $sheet->getCell('E2')->getValue(),
+                'G2' => $sheet->getCell('G2')->getValue(),
+
+                'merged_cells' => $sheet->getMergeCells(),
+            ]);
+
+            // Fix quotation header layout after HTML import.
+            // The HTML reader does not reliably preserve the nested header table layout,
+            // so explicitly control the header cells in Excel.
+
+            $sheet->mergeCells('A1:B1');
+            $sheet->mergeCells('C1:D1');
+            $sheet->mergeCells('E1:H1');
+
+            $sheet->mergeCells('A2:D2');
+            $sheet
+                ->getStyle('A2:D2')
+                ->getAlignment()
+                ->setWrapText(true)
+                ->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_TOP);
+            $sheet->mergeCells('E2:F2');
+            $sheet->mergeCells('G2:H2');
+
+            $sheet->getStyle('A2:D2')->getAlignment()->setWrapText(true);
+
+            $sheet->getColumnDimension('A')->setWidth(10);
+            $sheet->getColumnDimension('B')->setWidth(10);
+            $sheet->getColumnDimension('C')->setWidth(24);
+            $sheet->getColumnDimension('D')->setWidth(24);
+
+            $sheet->getColumnDimension('E')->setWidth(12);
+            $sheet->getColumnDimension('F')->setWidth(12);
+            $sheet->getColumnDimension('G')->setWidth(12);
+            $sheet->getColumnDimension('H')->setWidth(12);
+
+            $sheet->getRowDimension(1)->setRowHeight(82);
+            $sheet->getRowDimension(2)->setRowHeight(100);
+            /*
+             * ============================================================
+             * GENERAL EXCEL FORMATTING
+             * ============================================================
+             */
+            $sheet->setShowGridlines(false);
+
+            /*
+             * ============================================================
+             * COLUMN WIDTHS
+             * ============================================================
+             *
+             * A:B = Logo
+             * C:D = Company information
+             * E:H = Quotation information
+             */
+            $columnWidths = [
+                'A' => 10,
+                'B' => 10,
+                'C' => 22,
+                'D' => 22,
+                'E' => 12,
+                'F' => 12,
+                'G' => 12,
+                'H' => 12,
+            ];
+
+            foreach ($columnWidths as $column => $width) {
+                $sheet->getColumnDimension($column)->setWidth($width);
+            }
+
+            /*
+             * ============================================================
+             * HEADER STRUCTURE
+             * ============================================================
+             *
+             * Row 1:
+             * A:B = Logo
+             * C:D = Company information
+             * E:H = Quotation information
+             *
+             * Row 2:
+             * A:D = Customer
+             * E:F = Date
+             * G:H = Currency
+             *
+             * The HTML normalization already creates this structure.
+             * These merges make the Excel layout explicit.
+             */
+
+            /*
+             * ============================================================
+             * HEADER ROW HEIGHTS
+             * ============================================================
+             */
+            $sheet->getRowDimension(1)->setRowHeight(80);
+            $sheet->getRowDimension(2)->setRowHeight(78);
+            $sheet->getRowDimension(3)->setRowHeight(20);
+            $sheet->getRowDimension(4)->setRowHeight(18);
+
+            /*
+             * ============================================================
+             * LOGO
+             * ============================================================
+             *
+             * The quotation HTML currently contains one logo drawing.
+             * Keep it anchored inside A1:B1.
+             */
+            foreach ($sheet->getDrawingCollection() as $drawing) {
+                $drawing->setCoordinates('A1');
+                $drawing->setOffsetX(5);
+                $drawing->setOffsetY(5);
+                $drawing->setHeight(48);
+            }
+
+            /*
+             * ============================================================
+             * HEADER ALIGNMENT
+             * ============================================================
+             */
+
+            /*
+             * Company / logo area.
+             */
+            $sheet->getStyle('A1:D1')->applyFromArray([
+                'alignment' => [
+                    'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT,
+                    'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+                    'wrapText' => true,
+                ],
+            ]);
+
+            /*
+             * Quotation number/title.
+             */
+            $sheet->getStyle('E1:H1')->applyFromArray([
+                'alignment' => [
+                    'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT,
+                    'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+                    'wrapText' => true,
+                ],
+            ]);
+
+            /*
+             * Customer.
+             */
+            $sheet->getStyle('A2:D2')->applyFromArray([
+                'alignment' => [
+                    'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT,
+                    'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_TOP,
+                    'wrapText' => true,
+                ],
+            ]);
+
+            /*
+             * Date.
+             */
+            $sheet->getStyle('E2:F2')->applyFromArray([
+                'alignment' => [
+                    'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                    'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_TOP,
+                    'wrapText' => true,
+                ],
+            ]);
+
+            /*
+             * Currency.
+             */
+            $sheet->getStyle('G2:H2')->applyFromArray([
+                'alignment' => [
+                    'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT,
+                    'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_TOP,
+                    'wrapText' => true,
+                ],
+            ]);
+
+            /*
+             * Header font.
+             */
+            $sheet->getStyle('A1:H2')->applyFromArray([
+                'font' => [
+                    'name' => 'Arial',
+                ],
+            ]);
+
+            /*
+             * ============================================================
+             * CONTENT-BASED STYLING FOR CHARGE TABLES
+             * ============================================================
+             */
+            $navyFill = '1F3864';
+            $headerFill = 'DCE6F1';
+            $categoryFill = 'D9D9F0';
+            $totalFill = 'E2EFDA';
+            $borderColor = '9DB4CE';
+
+            $reportTitleTexts = ['Equipment Based Charges', 'Non Equipment Based Charges'];
+
+            $highestRow = $sheet->getHighestDataRow();
+            $highestColumn = $sheet->getHighestDataColumn();
+
+            $highestColIdx = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($highestColumn);
+
+            $insideChargeSection = false;
+
+            for ($rowIdx = 4; $rowIdx <= $highestRow; $rowIdx++) {
+                $rowValues = [];
+
+                for ($c = 1; $c <= $highestColIdx; $c++) {
+                    $rowValues[] = trim((string) $sheet->getCellByColumnAndRow($c, $rowIdx)->getValue());
+                }
+
+                $firstCellValue = $rowValues[0] ?? '';
+
+                $rowRange = "A{$rowIdx}:{$highestColumn}{$rowIdx}";
+
+                /*
+                 * Report title: enters a charge section.
+                 */
+                if (in_array($firstCellValue, $reportTitleTexts, true)) {
+                    $insideChargeSection = true;
+
+                    $sheet->getStyle($rowRange)->applyFromArray([
+                        'font' => [
+                            'bold' => true,
+                            'color' => [
+                                'rgb' => 'FFFFFF',
+                            ],
+                            'size' => 11,
+                        ],
+                        'fill' => [
+                            'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                            'startColor' => [
+                                'rgb' => $navyFill,
+                            ],
+                        ],
+                        'alignment' => [
+                            'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT,
+                            'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+                        ],
+                    ]);
+
+                    $sheet->getRowDimension($rowIdx)->setRowHeight(20);
+
+                    continue;
+                }
+
+                /*
+                 * Outside charge sections:
+                 *
+                 * Leave General Information, Cargo Information,
+                 * spacer rows, Terms & Conditions, etc. untouched.
+                 */
+                if (!$insideChargeSection) {
+                    continue;
+                }
+
+                $hasRate = in_array('Rate', $rowValues, true);
+
+                $hasAmount = in_array('Amount', $rowValues, true);
+
+                /*
+                 * Header rows.
+                 */
+                if ($hasRate || $hasAmount || $firstCellValue === 'Description') {
+                    $sheet->getStyle($rowRange)->applyFromArray([
+                        'font' => [
+                            'bold' => true,
+                            'size' => 9.5,
+                        ],
+                        'fill' => [
+                            'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                            'startColor' => [
+                                'rgb' => $headerFill,
+                            ],
+                        ],
+                        'alignment' => [
+                            'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                            'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+                            'wrapText' => true,
+                        ],
+                        'borders' => [
+                            'allBorders' => [
+                                'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                                'color' => [
+                                    'rgb' => $borderColor,
+                                ],
+                            ],
+                        ],
+                    ]);
+
+                    continue;
+                }
+
+                /*
+                 * Total row.
+                 */
+                if (stripos($firstCellValue, 'total') === 0) {
+                    $sheet->getStyle($rowRange)->applyFromArray([
+                        'font' => [
+                            'bold' => true,
+                        ],
+                        'fill' => [
+                            'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                            'startColor' => [
+                                'rgb' => $totalFill,
+                            ],
+                        ],
+                        'borders' => [
+                            'top' => [
+                                'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                            ],
+                        ],
+                    ]);
+
+                    $insideChargeSection = false;
+
+                    continue;
+                }
+
+                /*
+                 * Category row:
+                 *
+                 * single label, no Quantity value in column C.
+                 */
+                $quantityValue = $rowValues[2] ?? '';
+
+                if ($firstCellValue !== '' && $quantityValue === '') {
+                    $sheet->getStyle($rowRange)->applyFromArray([
+                        'font' => [
+                            'bold' => true,
+                            'size' => 9.5,
+                        ],
+                        'fill' => [
+                            'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                            'startColor' => [
+                                'rgb' => $categoryFill,
+                            ],
+                        ],
+                    ]);
+
+                    continue;
+                }
+
+                /*
+                 * Charge data row:
+                 *
+                 * has a Quantity value in column C.
+                 */
+                if ($quantityValue !== '') {
+                    $sheet->getStyle("C{$rowIdx}:{$highestColumn}{$rowIdx}")->applyFromArray([
+                        'alignment' => [
+                            'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT,
+                        ],
+                        'borders' => [
+                            'bottom' => [
+                                'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                                'color' => [
+                                    'rgb' => 'DDDDDD',
+                                ],
+                            ],
+                        ],
+                    ]);
+                }
+            }
+
+            /*
+             * ============================================================
+             * UNIFY SECTION BARS
+             * ============================================================
+             */
+            $blackBarTexts = ['GENERAL INFORMATION', 'CARGO INFROMATION', 'TERMS AND CONDITION'];
+
+            for ($rowIdx = 4; $rowIdx <= $highestRow; $rowIdx++) {
+                $cellValue = trim((string) $sheet->getCellByColumnAndRow(1, $rowIdx)->getValue());
+
+                $rowRange = "A{$rowIdx}:{$highestColumn}{$rowIdx}";
+
+                if (in_array($cellValue, $blackBarTexts, true) || stripos($cellValue, 'Sea import') === 0) {
+                    $sheet->getStyle($rowRange)->applyFromArray([
+                        'font' => [
+                            'bold' => true,
+                            'color' => [
+                                'rgb' => 'FFFFFF',
+                            ],
+                            'size' => 10.5,
+                        ],
+                        'fill' => [
+                            'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                            'startColor' => [
+                                'rgb' => $navyFill,
+                            ],
+                        ],
+                        'alignment' => [
+                            'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT,
+                            'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+                        ],
+                    ]);
+
+                    $sheet->getRowDimension($rowIdx)->setRowHeight(18);
+                }
+            }
+
+            /*
+             * ============================================================
+             * CREATE UNIQUE XLSX FILENAME
+             * ============================================================
+             */
+            $fileName = 'Quotation_' . now()->format('Ymd_His') . '_' . substr((string) $id, 0, 8) . '.xlsx';
+
+            /*
+             * ============================================================
+             * CREATE TEMPORARY FILE
+             * ============================================================
+             */
+            $tempFile = tempnam(sys_get_temp_dir(), 'quotation_excel_');
+
+            if ($tempFile === false) {
+                throw new \Exception('Unable to create temporary Excel file.');
+            }
+
+            /*
+             * ============================================================
+             * WRITE XLSX FILE
+             * ============================================================
+             */
+            $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+
+            $writer->save($tempFile);
+
+            if (!file_exists($tempFile)) {
+                throw new \Exception('Excel file was not found after generation.');
+            }
+
+            Log::info('Excel Generation - XLSX created successfully', [
+                'quotation_id' => $id,
+                'file' => $tempFile,
+                'size' => filesize($tempFile),
+                'filename' => $fileName,
+            ]);
+
+            /*
+             * ============================================================
+             * REGISTER DOCUMENT THROUGH EXISTING SP
+             * ============================================================
+             *
+             * The existing SP inserts:
+             * DocumentType = 'QuotationPDF'
+             */
+            try {
+                $pdoSp = DB::connection()->getPdo();
+
+                $stmtSp = $pdoSp->prepare("
+                SET NOCOUNT ON;
+
+                DECLARE @Status VARCHAR(25),
+                        @Remark VARCHAR(200);
+
+                EXEC dbo.sp_Quote_QuotationDocumentAdd
+                    ?,
+                    ?,
+                    ?,
+                    @Status = @Status OUTPUT,
+                    @Remark = @Remark OUTPUT;
+
+                SELECT
+                    @Status AS Status,
+                    @Remark AS Remark;
+            ");
+
+                $stmtSp->execute([$quotation->ID, $submittedBy, $fileName]);
+
+                $spResult = null;
+
+                do {
+                    try {
+                        $spRows = $stmtSp->fetchAll(\PDO::FETCH_OBJ);
+
+                        if (!empty($spRows) && isset($spRows[0]->Status)) {
+                            $spResult = $spRows[0];
+                            break;
+                        }
+                    } catch (\PDOException $e) {
+                        continue;
+                    }
+                } while ($stmtSp->nextRowset());
+
+                if (!$spResult) {
+                    @unlink($tempFile);
+                    $tempFile = null;
+
+                    Log::error('Excel Generation - SP returned no output', [
+                        'quotation_id' => $id,
+                        'file' => $fileName,
+                    ]);
+
+                    return response()->json(
+                        [
+                            'success' => false,
+                            'message' => 'Document registration SP returned no output.',
+                        ],
+                        500,
+                    );
+                }
+
+                if (strtolower(trim($spResult->Status)) !== 'success') {
+                    @unlink($tempFile);
+                    $tempFile = null;
+
+                    Log::error('Excel Generation - SP registration failed', [
+                        'quotation_id' => $id,
+                        'sp_status' => $spResult->Status,
+                        'sp_remark' => $spResult->Remark,
+                    ]);
+
+                    return response()->json(
+                        [
+                            'success' => false,
+                            'message' => 'Document registration failed: ' . $spResult->Remark,
+                        ],
+                        500,
+                    );
+                }
+
+                Log::info('Excel Generation - SP registration succeeded', [
+                    'quotation_id' => $id,
+                    'sp_remark' => $spResult->Remark,
+                    'file' => $fileName,
+                ]);
+            } catch (\Exception $spEx) {
+                @unlink($tempFile);
+                $tempFile = null;
+
+                Log::error('Excel Generation - SP call failed', [
+                    'quotation_id' => $id,
+                    'error' => $spEx->getMessage(),
+                    'file' => $spEx->getFile(),
+                    'line' => $spEx->getLine(),
+                ]);
+
+                return response()->json(
+                    [
+                        'success' => false,
+                        'message' => 'Document registration failed: ' . $spEx->getMessage(),
+                    ],
+                    500,
+                );
+            }
+
+            /*
+             * ============================================================
+             * DETERMINE OFFICE CODE
+             * ============================================================
+             *
+             * Same source used by:
+             * sp_Quote_QuotationDocumentAdd
+             *
+             * Left(QI.OfficeCode, 2)
+             */
+            $officeShortCode = strtoupper(substr(trim($quotation->OfficeCode ?? ''), 0, 2));
+
+            if ($officeShortCode === '') {
+                @unlink($tempFile);
+                $tempFile = null;
+
+                throw new \Exception('Unable to determine quotation office code.');
+            }
+
+            /*
+             * ============================================================
+             * AZURE BLOB PATH
+             * ============================================================
+             */
+            $blobPath = 'Quotation/' . $officeShortCode . '/' . $fileName;
+
+            $azureWarning = null;
+
+            /*
+             * ============================================================
+             * UPLOAD XLSX TO AZURE
+             * ============================================================
+             */
+            try {
+                \Storage::disk('azure')->put($blobPath, file_get_contents($tempFile));
+
+                Log::info('Excel Generation - Uploaded to Azure', [
+                    'quotation_id' => $id,
+                    'blob_path' => $blobPath,
+                ]);
+            } catch (\Exception $azureEx) {
+                /*
+                 * The document is already registered in the database,
+                 * so Azure failure is non-fatal.
+                 */
+                Log::error('Excel Generation - Azure upload failed (non-fatal)', [
+                    'quotation_id' => $id,
+                    'blob_path' => $blobPath,
+                    'error' => $azureEx->getMessage(),
+                ]);
+
+                $azureWarning = 'Excel registered but Azure upload failed: ' . $azureEx->getMessage();
+            }
+
+            /*
+             * ============================================================
+             * REMOVE LOCAL TEMPORARY XLSX
+             * ============================================================
+             */
+            @unlink($tempFile);
+
+            $tempFile = null;
+
+            Log::info('Excel Generation - Local temp file removed');
+
+            /*
+             * ============================================================
+             * DETERMINE VERSION NUMBER
+             * ============================================================
+             *
+             * Excel currently uses the same DocumentType as PDF:
+             * 'QuotationPDF'
+             */
+            $versionNumber = DB::table('Quote_Quotation_Document')
+                ->where('QuotationInfoID', $quotation->ID)
+                ->where('DocumentType', 'QuotationPDF')
+                ->where('IsDeleted', 0)
+                ->count();
+
+            /*
+             * ============================================================
+             * RETURN JSON EXPECTED BY FRONTEND
+             * ============================================================
+             */
+            return response()->json([
+                'success' => true,
+                'version' => $versionNumber,
+                'label' => 'Version ' . $versionNumber,
+                'url' => route('quotation.download-pdf', [$id, $versionNumber]),
+                'warning' => $azureWarning,
+            ]);
+        } catch (\RuntimeException $e) {
+            /*
+             * RuntimeException is used by getQuotationHtml()
+             * when the quotation-format SP itself reports a failure.
+             */
+            if ($tempFile && file_exists($tempFile)) {
+                @unlink($tempFile);
+                $tempFile = null;
+            }
+
+            Log::error('Excel Generation - Quotation HTML/SP failure', [
+                'id' => $id,
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
             return response()->json(
-                ['success' => false, 'message' => 'Failed to save charge: ' . ($result['message'] ?? 'Unknown error')],
-                422,
+                [
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                ],
+                500,
+            );
+        } catch (\Throwable $e) {
+            /*
+             * Always clean up a temporary file if anything unexpected
+             * happens after it has been created.
+             */
+            if ($tempFile && file_exists($tempFile)) {
+                @unlink($tempFile);
+                $tempFile = null;
+            }
+
+            Log::error('Excel Generation - Unexpected top-level exception', [
+                'id' => $id,
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => 'Excel generation failed unexpectedly: ' . $e->getMessage(),
+                ],
+                500,
             );
         }
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Charge saved.',
-            'data' => ['charge_id' => $result['charge_id']],
-        ]);
     }
 
     public function updateCharge(
@@ -791,17 +1766,17 @@ class ContractController extends Controller
             'RateType' => $charge['rateType'] ?? '',
             'Rate' => $this->toFloat($charge['rate'] ?? null),
             'Formula' => $charge['formula'] ?? '',
-            'RateSlabJson' => !empty($charge['rateSlab']) ? json_encode($charge['rateSlab']) : '',
+            'RateSlabJson' => !empty($charge['rateSlab']) ? json_encode($charge['rateSlab']) : null,
             'Comments' => '',
             'MarkupRate' => $this->toFloat($charge['markupRate'] ?? null),
             'MarkFormula' => $charge['markupFormula'] ?? '',
-            'MarkRateSlabJson' => !empty($charge['markupRateSlab']) ? json_encode($charge['markupRateSlab']) : '',
+            'MarkRateSlabJson' => !empty($charge['markupRateSlab']) ? json_encode($charge['markupRateSlab']) : null,
             // IsRevenue/Category not yet read by sp_Contractinfo_ServiceCharges
             // (commented out server-side, missing from OPENJSON WITH clause and
             // INSERT/UPDATE column lists) — sent ahead of time using the SP's
             // documented contract so no PHP change is needed once the DBA
             // enables them.
-            'RevenueOrCost' => ($charge['chargeNature'] ?? '') === 'Cost' ? 'Cost' : 'Revenue',
+            'RevenueOrCost' => str_starts_with($charge['chargeNature'] ?? 'Revenue', 'Cost') ? 'Cost' : 'Revenue',
             'ChargeAction' => $charge['chargeAction'] ?? 'A',
             'Category' => $charge['chargeCategory'] ?? '',
             'ToBeAdded' => $charge['toBeAdded'] ?? 0,
@@ -811,7 +1786,7 @@ class ContractController extends Controller
             'MarkupCurr' => $charge['chargeCurr'] ?? '',
         ];
 
-        $result = $this->callContractSP('sp_Contractinfo_ServiceCharges', $chargePayload);
+        $result = $this->callContractSP('sp_Contract_Main', $chargePayload);
 
         if (!$result['success']) {
             return response()->json(
@@ -838,7 +1813,7 @@ class ContractController extends Controller
             'ServiceChargeID' => $chargeId,
         ];
 
-        $result = $this->callContractSP('sp_Contractinfo_ServiceCharges', $chargePayload);
+        $result = $this->callContractSP('sp_Contract_Main', $chargePayload);
 
         if (!$result['success']) {
             return response()->json(
@@ -1102,14 +2077,28 @@ class ContractController extends Controller
         return $value === null || $value === '' ? 0.0 : (float) $value;
     }
 
+    /**
+     * Output parameter name declared by each contract stored procedure.
+     * sp_Contract_Main is the dispatcher and names its output @OverAllOutputJson;
+     * the procedures it delegates to use @OutputJson. SQL Server binds named
+     * parameters by name, so the wrong name is rejected as "not supplied".
+     */
+    private const SP_OUTPUT_PARAMS = [
+        'sp_Contract_Main' => 'OverAllOutputJson',
+    ];
+
+    private const SP_DEFAULT_OUTPUT_PARAM = 'OutputJson';
+
     private function callContractSP(string $spName, array $payload): array
     {
         $inputJson = json_encode($payload);
         Log::info("SP {$spName} input", ['input' => $inputJson]);
         try {
+            $outputParam = self::SP_OUTPUT_PARAMS[$spName] ?? self::SP_DEFAULT_OUTPUT_PARAM;
+
             $pdo = DB::connection('sqlsrv')->getPdo();
             $stmt = $pdo->prepare(
-                "SET NOCOUNT ON; DECLARE @OutputJson NVARCHAR(MAX); EXEC dbo.{$spName} ?, @OutputJson = @OutputJson OUTPUT; SELECT @OutputJson AS OutputJson",
+                "SET NOCOUNT ON; DECLARE @Output NVARCHAR(MAX); EXEC dbo.{$spName} ?, @{$outputParam} = @Output OUTPUT; SELECT @Output AS OutputJson",
             );
             $stmt->execute([$inputJson]);
 
@@ -1147,7 +2136,87 @@ class ContractController extends Controller
             return ['success' => false, 'message' => $e->getMessage()];
         }
     }
+    /**
+     * Calls sp_Quote_DetailsUpdate with a single-charge payload shaped for
+     * sp_Quote_WorkbookCharges_Add / sp_Quote_WorkbookCharges_Edit.
+     *
+     * The SP's @InputJson parameter is VARCHAR(2000) — the payload must fit
+     * within 2000 characters, or SQL Server will silently truncate and the
+     * SP's JSON_VALUE calls will return NULL. The caller is responsible for
+     * keeping the payload lean (no blobs, no verbose comments).
+     */
+    private function callQuoteDetailsUpdate(array $payload): array
+    {
+        $inputJson = json_encode($payload);
 
+        if (strlen($inputJson) > 2000) {
+            Log::error('callQuoteDetailsUpdate - payload exceeds 2000 chars', [
+                'operation_type' => $payload['OperationType'] ?? null,
+                'action' => $payload['Action'] ?? null,
+                'length' => strlen($inputJson),
+            ]);
+            return ['success' => false, 'message' => 'Charge payload too large.'];
+        }
+
+        try {
+            $pdo = DB::connection('sqlsrv')->getPdo();
+            $stmt = $pdo->prepare(
+                'SET NOCOUNT ON; DECLARE @OutputJson VARCHAR(2000); ' .
+                    'EXEC dbo.sp_Quote_DetailsUpdate ?, @OutputJson = @OutputJson OUTPUT; ' .
+                    'SELECT @OutputJson AS OutputJson',
+            );
+            $stmt->execute([$inputJson]);
+
+            $outputJson = null;
+            do {
+                $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+                if (!empty($rows) && isset($rows[0]->OutputJson)) {
+                    $outputJson = $rows[0]->OutputJson;
+                    break;
+                }
+            } while ($stmt->nextRowSet());
+
+            if (!$outputJson) {
+                Log::error('callQuoteDetailsUpdate - no output', ['input' => $inputJson]);
+                return ['success' => false, 'message' => 'No output from stored procedure'];
+            }
+
+            $result = json_decode($outputJson, true);
+
+            if (!is_array($result)) {
+                Log::error('callQuoteDetailsUpdate - invalid JSON', ['output' => $outputJson]);
+                return ['success' => false, 'message' => 'Invalid response from stored procedure'];
+            }
+
+            $status = $result['Status'] ?? 'Failed';
+
+            $remarks = array_column($result['Remarks'] ?? [], 'Remarks');
+            if (empty($remarks)) {
+                $remarks = array_column($result['Remarks'] ?? [], 'Remark');
+            }
+
+            if (strcasecmp($status, 'success') !== 0) {
+                Log::warning('callQuoteDetailsUpdate - SP returned failure', [
+                    'status' => $status,
+                    'remarks' => $remarks,
+                    'input' => $inputJson,
+                ]);
+
+                return [
+                    'success' => false,
+                    'message' => $remarks[0] ?? 'Charge save failed (no detail from SP).',
+                ];
+            }
+
+            return [
+                'success' => true,
+                'charge_id' => $result['ChargeID'] ?? ($result['ServiceChargeID'] ?? null),
+            ];
+        } catch (\Exception $e) {
+            Log::error('callQuoteDetailsUpdate failed: ' . $e->getMessage(), ['input' => $inputJson]);
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
+    }
     /**
      * Helper to call sp_Contract_Main with a given payload and parse output.
      * Returns ['status' => 'Success'|'Failed', 'remark' => string, 'contractId' => ..., 'contractNo' => ..., 'serviceFilterId' => ...]
@@ -1159,7 +2228,7 @@ class ContractController extends Controller
         try {
             $pdo = DB::connection('sqlsrv')->getPdo();
             $stmt = $pdo->prepare(
-                'SET NOCOUNT ON; DECLARE @Output NVARCHAR(MAX); EXEC dbo.sp_Contract_Main ?, @OutputJson = @Output OUTPUT; SELECT @Output AS OutputJson',
+                'SET NOCOUNT ON; DECLARE @Output NVARCHAR(MAX); EXEC dbo.sp_Contract_Main ?, @OverAllOutputJson = @Output OUTPUT; SELECT @Output AS OutputJson',
             );
             $stmt->execute([$inputJson]);
 
@@ -1708,10 +2777,6 @@ class ContractController extends Controller
 
     /**
      * GET /contract/masters/processes
-     * Query Sys_ServiceProcess table (found in the list)
-     */
-    /**
-     * GET /contract/masters/processes
      * Query distinct active processes from Sys_ServiceProcess
      */
     public function getProcesses(Request $request): JsonResponse
@@ -2049,6 +3114,326 @@ class ContractController extends Controller
         }
 
         return response()->json(['success' => true, 'message' => 'Service updated.']);
+    }
+
+    public function duplicateContract(Request $request, string $contract): JsonResponse
+    {
+        // Load the source header — needed only to build a unique display name
+        // (the SP enforces ContractName uniqueness and will reject a duplicate).
+        $source = DB::connection('sqlsrv')
+            ->table('Contract_ContractInfo')
+            ->where('Id', $contract)
+            ->where('IsDeleted', 0)
+            ->first();
+
+        if (!$source) {
+            return response()->json(['success' => false, 'message' => 'Source contract not found.'], 404);
+        }
+
+        // Generate a unique name: "Original Name (Copy)", "(Copy 2)", "(Copy 3)"...
+        $baseName = $source->ContractName ?? 'Contract';
+        $newName = $baseName . ' (Copy)';
+        $suffix = 2;
+
+        while (DB::connection('sqlsrv')->table('Contract_ContractInfo')->where('ContractName', $newName)->exists()) {
+            $newName = $baseName . ' (Copy ' . $suffix . ')';
+            $suffix++;
+            if ($suffix > 20) {
+                return response()->json(
+                    [
+                        'success' => false,
+                        'message' => 'Could not generate a unique contract name after 20 attempts.',
+                    ],
+                    422,
+                );
+            }
+        }
+
+        $payload = [
+            'OperationType' => 'ContractInfo',
+            'SubmittedDatetime' => $this->submittedDatetime(),
+            'SubmittedBy' => auth()->user()->name ?? 'system',
+            'Action' => 'Copy',
+            'ContractID' => null, // must be blank for Copy
+            'CopyContractID' => $contract, // ← tells the SP what to deep-copy
+            'ContractDate' => now()->format('Ymd'),
+            'ContactType' => $source->ContractType ?? '',
+            'OfficeCode' => $source->OfficeCode ?? $this->getUserOfficeCode(),
+            'ClientCode' => $source->ClientCode ?? '',
+            'EffectiveFrom' => Carbon::parse($source->EffectiveFrom)->format('Ymd'),
+            'EffectiveTo' => Carbon::parse($source->EffectiveTo)->format('Ymd'),
+            'ContractName' => $newName,
+            'Remark' => $source->Remark ?? '',
+        ];
+
+        $result = $this->callContractSP('sp_Contractinfo', $payload);
+
+        if (!$result['success'] || empty($result['contract_id'])) {
+            Log::error('duplicateContract failed', [
+                'source' => $contract,
+                'message' => $result['message'] ?? null,
+            ]);
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => 'Failed to copy contract: ' . ($result['message'] ?? 'Unknown error'),
+                ],
+                422,
+            );
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Contract copied successfully.',
+            'data' => [
+                'newContractId' => $result['contract_id'],
+                'newContractNo' => $result['contract_no'],
+            ],
+        ]);
+    }
+
+    public function storeCharge(Request $request, string $contract, string $serviceFilterId): JsonResponse
+    {
+        $charge = $request->all();
+
+        $draft = Session::get($this->sessionKey($contract));
+        $contractInfoId = $draft['contract_id'] ?? $contract;
+
+        $chargePayload = [
+            // ServiceBasedCharges routes through sp_Contract_Main to
+            // sp_Contractinfo_ServiceCharges, which takes a flat single-charge
+            // payload keyed by ContractInfoID + ServiceAndFilterID. This is the
+            // same contract storeCharge had before it was pointed at the
+            // workbook SP, and the same one updateCharge/destroyCharge use.
+            'OperationType' => 'ServiceBasedCharges',
+            'SubmittedDatetime' => $this->submittedDatetime(),
+            'SubmittedBy' => auth()->user()->name ?? 'system',
+            'Action' => 'Add',
+
+            'ContractInfoID' => $contractInfoId,
+            'ServiceAndFilterID' => $serviceFilterId,
+            'ServiceChargeID' => null,
+
+            'ChargeCode' => $charge['chargeCode'] ?? '',
+            'ChargeBasedon' => $charge['chargeBasedOn'] ?? '',
+            'ChargeBasedOnUOM' => $charge['chargeBasedOnUOM'] ?? '',
+            'ChargeCurr' => $charge['chargeCurr'] ?? '',
+            'MinAmount' => $this->toFloat($charge['minAmount'] ?? null),
+            'MaxAmount' => $this->toFloat($charge['maxAmount'] ?? null),
+            'Quantity' => $this->toFloat($charge['quantity'] ?? null),
+            'RateType' => $charge['rateType'] ?? '',
+            'Rate' => $this->toFloat($charge['rate'] ?? null),
+            'Formula' => $charge['formula'] ?? '',
+            'RateSlabJson' => !empty($charge['rateSlab']) ? json_encode($charge['rateSlab']) : null,
+            'Comments' => '',
+            'MarkupRate' => $this->toFloat($charge['markupRate'] ?? null),
+            'MarkFormula' => $charge['markupFormula'] ?? '',
+            'MarkRateSlabJson' => !empty($charge['markupRateSlab']) ? json_encode($charge['markupRateSlab']) : null,
+            'RevenueOrCost' => str_starts_with($charge['chargeNature'] ?? 'Revenue', 'Cost') ? 'Cost' : 'Revenue',
+            'ChargeAction' => $charge['chargeAction'] ?? 'A',
+            'Category' => $charge['chargeCategory'] ?? '',
+            'ToBeAdded' => $charge['toBeAdded'] ?? 0,
+            'IsAccruable' => $charge['isAccruable'] ?? '0',
+            'IsReimbursable' => $charge['isReimbursable'] ?? '0',
+            'MarkupRateType' => $charge['markupRateType'] ?? '',
+            'MarkupCurr' => $charge['chargeCurr'] ?? '',
+        ];
+
+        Log::info('storeCharge → sp_Contract_Main payload', [
+            'chargeAction' => $chargePayload['ChargeAction'],
+            'revenueOrCost' => $chargePayload['RevenueOrCost'],
+            'rateType' => $chargePayload['RateType'],
+            'rate' => $chargePayload['Rate'],
+            'quantity' => $chargePayload['Quantity'],
+            'rateSlabJson' => $chargePayload['RateSlabJson'],
+            'markRateSlabJson' => $chargePayload['MarkRateSlabJson'],
+        ]);
+
+        $result = $this->callContractSP('sp_Contract_Main', $chargePayload);
+
+        if (!$result['success']) {
+            Log::warning('storeCharge → SP returned failure', [
+                'service_filter_id' => $serviceFilterId,
+                'message' => $result['message'] ?? null,
+            ]);
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => 'Failed to save charge: ' . ($result['message'] ?? 'Unknown error'),
+                ],
+                422,
+            );
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Charge saved.',
+            'data' => ['charge_id' => $result['charge_id']],
+            'nature' => $charge['chargeNature'] ?? 'Revenue',
+        ]);
+    }
+
+    public function getChargeWorkbookDisplay(
+        Request $request,
+        string $contract,
+        string $serviceFilterId,
+        string $chargeId,
+    ): JsonResponse {
+        $quotationId = $request->query('quotation_id');
+
+        if (!$quotationId) {
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => 'quotation_id is required',
+                ],
+                422,
+            );
+        }
+
+        // 1. Load the contract charge so we know its code/category
+        $contractCharge = DB::connection('sqlsrv')
+            ->table('Contract_ContractCharges')
+            ->where('Id', $chargeId)
+            ->where('ServiceAndFilterID', $serviceFilterId)
+            ->where('IsDeleted', 0)
+            ->first();
+
+        if (!$contractCharge) {
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => 'Charge not found',
+                ],
+                404,
+            );
+        }
+
+        // 2. Call the workbook SP for the quotation
+        try {
+            $pdo = DB::connection('sqlsrv')->getPdo();
+            $stmt = $pdo->prepare(
+                'SET NOCOUNT ON; DECLARE @OutputJson NVARCHAR(MAX); ' .
+                    'EXEC dbo.sp_Quote_WorkbookCharges_Display @QuoteInfoID = ?, @OutputJson = @OutputJson OUTPUT; ' .
+                    'SELECT @OutputJson AS OutputJson',
+            );
+            $stmt->execute([$quotationId]);
+
+            $outputJson = null;
+            do {
+                $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+                if (!empty($rows) && isset($rows[0]->OutputJson)) {
+                    $outputJson = $rows[0]->OutputJson;
+                    break;
+                }
+            } while ($stmt->nextRowSet());
+
+            if (!$outputJson) {
+                return response()->json(
+                    [
+                        'success' => false,
+                        'message' => 'No output from stored procedure',
+                    ],
+                    422,
+                );
+            }
+
+            $result = json_decode($outputJson, true);
+
+            if (($result['Status'] ?? '') !== 'Success') {
+                return response()->json(
+                    [
+                        'success' => false,
+                        'message' => $result['Remark'] ?? 'Workbook charges unavailable',
+                    ],
+                    422,
+                );
+            }
+
+            $workbookCharges = $result['Charges'] ?? [];
+
+            // 3. Match the contract charge to its workbook row.
+            //    Match on ChargeCode + ChargeDescription (and category if needed
+            //    to disambiguate when codes repeat).
+            $match = null;
+            foreach ($workbookCharges as $w) {
+                if (
+                    ($w['ChargeCode'] ?? '') === ($contractCharge->ChargeCode ?? '') &&
+                    trim((string) ($w['ChargeDescription'] ?? '')) ===
+                        trim((string) ($contractCharge->Description ?? ''))
+                ) {
+                    $match = $w;
+                    break;
+                }
+            }
+
+            if (!$match) {
+                return response()->json(
+                    [
+                        'success' => false,
+                        'message' => 'Charge is not present in the quotation workbook.',
+                    ],
+                    404,
+                );
+            }
+
+            // 4. Map to the shape the frontend expects
+            $isCostOnly = !empty($match['CostChargeRowID']) && empty($match['RevenueChargeRowID']);
+            $isRevenueOnly = empty($match['CostChargeRowID']) && !empty($match['RevenueChargeRowID']);
+            $hasBoth = !empty($match['CostChargeRowID']) && !empty($match['RevenueChargeRowID']);
+
+            // chargeNature: default Revenue unless it's clearly cost-only
+            $chargeNature = $isCostOnly ? 'Cost' : 'Revenue';
+            $chargeAction = !empty($match['IncreaseBy']) ? 'M' : 'R';
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'chargeId' => $chargeId,
+                    'costChargeRowId' => $match['CostChargeRowID'] ?? null,
+                    'revenueChargeRowId' => $match['RevenueChargeRowID'] ?? null,
+
+                    'chargeNature' => $chargeNature,
+                    'chargeAction' => $chargeAction,
+                    'chargeCode' => $match['ChargeCode'] ?? '',
+                    'chargeDescription' => $match['ChargeDescription'] ?? '',
+                    'chargeBasedOn' => $match['BasedOnCode'] ?? '',
+                    'chargeBasedOnUOM' => $match['BasedOnUOM'] ?? '',
+                    'chargeCategory' => $match['ChargeCatagory'] ?? '',
+                    'chargeCurr' => $match['ChgCurr'] ?? '',
+
+                    'minAmount' => null,
+                    'maxAmount' => null,
+                    'rateType' => 'Single',
+                    'rate' => $match['SellRate'] ?? ($match['CostRate'] ?? null),
+                    'rateSlab' => null,
+                    'formula' => null,
+                    'markupRate' => $match['IncreaseBy'] ?? null,
+                    'markupType' => $match['IncreaseType'] ?? null,
+
+                    'isAccruable' => '0',
+                    'isReimbursable' => '0',
+
+                    'CostAmount' => $match['CostAmount'] ?? 0,
+                    'SellAmount' => $match['SellAmount'] ?? 0,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            Log::error('getChargeWorkbookDisplay failed', [
+                'contract' => $contract,
+                'service' => $serviceFilterId,
+                'charge' => $chargeId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                ],
+                500,
+            );
+        }
     }
 
     /**

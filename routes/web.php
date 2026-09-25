@@ -1295,6 +1295,7 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
     Route::get('/shipment-reprts/stats', [ShipmentReportController::class, 'getstats'])->name('shipment-reports.stats');
 });
 
+
 // ============================================================================
 // QUOTATION INTEGRATION ROUTES
 // ============================================================================
@@ -1574,6 +1575,11 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
         'bulkDeleteCharges',
     ])->name('quotation.charges.bulk-delete');
 
+    Route::post('/quotation/charges/bulk-save', [
+        App\Http\Controllers\QuotationController::class,
+        'bulkSaveCharges',
+    ])->name('quotation.charges.bulk-save');
+
     Route::post('/quotation/copy-charges/bulk', [
         App\Http\Controllers\QuotationController::class,
         'copyChargesBulk',
@@ -1662,7 +1668,7 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
         App\Http\Controllers\ContractTemplateController::class,
         'listContracts',
     ])->name('quotation.contract-template.list');
-
+    
     Route::prefix('contracts')
         ->name('contracts.')
         ->group(function () {
@@ -1698,6 +1704,16 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
                 Route::get('service-classes', [App\Http\Controllers\ContractController::class, 'getServiceClasses']);
             });
 
+            Route::post('/{contract}/generate-quote/pdf', [
+                App\Http\Controllers\ContractController::class,
+                'generateQuotePdf',
+            ])->name('generate-quote.pdf');
+
+            Route::post('/{contract}/generate-quote/excel', [
+                App\Http\Controllers\ContractController::class,
+                'generateQuoteExcel',
+            ])->name('generate-quote.excel');
+
             // ── 3. WILDCARD ROUTES (catch-all) ──
             Route::get('/{contract}/view', [App\Http\Controllers\ContractController::class, 'showDetails'])->name(
                 'view',
@@ -1729,6 +1745,16 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
                 'destroyCharge',
             ])->name('services.charges.destroy');
             Route::post('/{contract}', [App\Http\Controllers\ContractController::class, 'store'])->name('store');
+            // ── Duplicate / Copy ──
+            Route::post('/{contract}/duplicate', [
+                App\Http\Controllers\ContractController::class,
+                'duplicateContract',
+            ])->name('duplicate');
+
+            Route::post('/{contract}/services/{serviceFilterId}/duplicate', [
+                App\Http\Controllers\ContractController::class,
+                'duplicateService',
+            ])->name('services.duplicate');
             Route::get('/{contract}', [App\Http\Controllers\ContractController::class, 'show'])->name('show');
             Route::get('/{contract}/services/{serviceFilterId}/formula-fields', [
                 App\Http\Controllers\ContractController::class,
@@ -1738,6 +1764,11 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
                 App\Http\Controllers\ContractController::class,
                 'chargeDisplay',
             ])->name('charges.display');
+
+            Route::get('/{contract}/services/{serviceFilterId}/charges/{chargeId}/workbook-display', [
+                App\Http\Controllers\ContractController::class,
+                'getChargeWorkbookDisplay',
+            ])->name('services.charges.workbook-display');
         });
 
     Route::get('/quotation/website-requests', [App\Http\Controllers\WebsiteQuotationController::class, 'index'])->name(
@@ -1802,6 +1833,7 @@ Route::post('/quotation/booking-integration-response', [
 ])->name('quotation.bookingIntegrationResponse');
 
 Route::get('/weight-note', [App\Http\Controllers\WeightNoteController::class, 'index'])->name('weight-note.index');
+
 
 // ============================================================================
 // LOGIN TRACKER SYSTEM ROUTES (User Activity Monitoring)

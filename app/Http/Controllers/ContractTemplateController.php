@@ -25,6 +25,15 @@ class ContractTemplateController extends Controller
             return response()->json(['success' => false, 'message' => 'Quotation ID is required'], 422);
         }
 
+        $service = DB::connection('sqlsrv')
+            ->table('Quote_QuotationInfo')
+            ->where('ID', $quotationId)
+            ->value('ServiceVertical');
+
+        if (empty($service)) {
+            return response()->json(['success' => false, 'message' => 'Quotation has no service selected'], 422);
+        }
+
         // Same 'List' mode as ContractController::listContracts() — sp_Contract_List
         // takes no filter params in this mode; it returns all active, in-window
         // contracts. 'Parameter' (smart-match) mode isn't usable here since it
@@ -62,7 +71,7 @@ class ContractTemplateController extends Controller
 
         $officeId = DB::connection('sqlsrv')
             ->table('Quote_QuotationInfo')
-            ->where('pri_id', $quotationId)
+            ->where('ID', $quotationId)
             ->value('OfficeID');
 
         if (!$officeId) {

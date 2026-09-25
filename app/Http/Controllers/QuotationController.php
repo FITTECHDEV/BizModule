@@ -29,6 +29,7 @@ class QuotationController extends Controller
         'RW' => 'RWF',
         'SA' => 'KES',
         'SS' => 'SSP',
+        'SO' => 'USD', 
         'TZ' => 'TZS',
         'UG' => 'UGX',
         'ZM' => 'ZMW',
@@ -1951,23 +1952,28 @@ class QuotationController extends Controller
         try {
             $supplement = DB::selectOne(
                 "
-            SELECT
-                QC.QuotationInfoID,
-                QC.IsRevenue,
-                QC.Quantity,
-                ISNULL(QC.Remarks,        '')       AS ChargeRemark,
-                ISNULL(CP.Code,           '')       AS PartyCode,
-                ISNULL(QC.ChargeType,     'manual') AS SourceType,
-                ISNULL(CB.Code,           '')       AS BasedOnCode,
-                ISNULL(EQ.Code,           '')       AS UOMCode_Equipment,
-                ISNULL(UOM.Code,          '')       AS UOMCode_UOM
-            FROM Quote_Quotation_ChargeSheet QC WITH (NOLOCK)
-            LEFT JOIN Cust_ChargecodeBasedOn          CB  WITH (NOLOCK) ON CB.Id  = QC.BasedOnId
-            LEFT JOIN [FITSCM].dbo.Cust_Party      CP  WITH (NOLOCK) ON CP.Id  = QC.PartyID
-            LEFT JOIN [FITSCM].dbo.Cust_Equipment  EQ  WITH (NOLOCK) ON EQ.Id  = QC.UOMId AND QC.UOMType = 'Equipment'
-            LEFT JOIN [FITSCM].dbo.Sys_UOM         UOM WITH (NOLOCK) ON UOM.Id = QC.UOMId AND QC.UOMType != 'Equipment'
-            WHERE QC.Id = ? AND QC.IsDeleted = 0
-        ",
+                    SELECT
+                        QC.QuotationInfoID,
+                        QC.IsRevenue,
+                        QC.Quantity,
+                        ISNULL(QC.IncrementBy,   0)         AS IncrementBy,
+                        ISNULL(QC.IncrementType, '')        AS IncrementType,
+                        ISNULL(QC.Remarks,       '')        AS ChargeRemark,
+                        ISNULL(CP.Code,          '')        AS PartyCode,
+                        ISNULL(QC.ChargeType,    'manual')  AS SourceType,
+                        ISNULL(CB.Code,          '')        AS BasedOnCode,
+                        ISNULL(EQ.Code,          '')        AS UOMCode_Equipment,
+                        ISNULL(UOM.Code,         '')        AS UOMCode_UOM,
+                        ISNULL(QC.ToBeAdded,     0)         AS ToBeAdded
+                    
+                    FROM Quote_Quotation_ChargeSheet QC WITH (NOLOCK)
+                    INNER JOIN Quote_QuotationInfo QI WITH (NOLOCK) ON QI.id = QC.QuotationInfoID
+                    LEFT JOIN Cust_ChargecodeBasedOn          CB  WITH (NOLOCK) ON CB.Id  = QC.BasedOnId
+                    LEFT JOIN [FITSCM].dbo.Cust_Party      CP  WITH (NOLOCK) ON CP.Id  = QC.PartyID
+                    LEFT JOIN [FITSCM].dbo.Cust_Equipment  EQ  WITH (NOLOCK) ON EQ.Id  = QC.UOMId AND QC.UOMType = 'Equipment'
+                    LEFT JOIN [FITSCM].dbo.Sys_UOM         UOM WITH (NOLOCK) ON UOM.Id = QC.UOMId AND QC.UOMType != 'Equipment'
+                    WHERE QC.Id = ? AND QC.IsDeleted = 0
+                ",
                 [$chargeId],
             );
 
@@ -1978,75 +1984,59 @@ class QuotationController extends Controller
             $isRevenue = (int) $supplement->IsRevenue;
             $quotationInfoId = $supplement->QuotationInfoID; // guaranteed to match SP's FK check
 
-            // Call SP — now passing the QuotationInfoID that owns this charge
+            // Fetch the whole charge list via the correct 1-parameter SP call,
+            // then locate this specific charge in PHP. The SP returns all charges
+            // for the quotation — there's no per-charge parameter.
             $pdo = DB::connection()->getPdo();
-            $stmt = $pdo->prepare('SET NOCOUNT ON; EXEC dbo.sp_Quote_Quotation_ChargeList ?, ?, ?');
-            $stmt->bindValue(1, $quotationInfoId, \PDO::PARAM_STR);
-            $stmt->bindValue(2, $isRevenue, \PDO::PARAM_INT);
-            $stmt->bindValue(3, $chargeId, \PDO::PARAM_STR);
-            $stmt->execute();
+            $spResult = $this->fetchChargesFromSP($pdo, $quotationInfoId);
+            $allCharges = $spResult['charges'];
 
-            $spRow = null;
-            do {
-                try {
-                    $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
-                    if (empty($rows)) {
-                        continue;
-                    }
-
-                    $firstVal = array_values((array) $rows[0])[0] ?? '';
-                    if (is_string($firstVal) && str_starts_with($firstVal, 'Failed')) {
-                        Log::error('getChargeDetails - SP failure (DBA action required)', [
-                            'charge_id' => $chargeId,
-                            'quotation_info_id' => $quotationInfoId,
-                            'message' => $firstVal,
-                        ]);
-                        return response()->json(
-                            [
-                                'success' => false,
-                                'message' => 'sp_Quote_Quotation_ChargeList: ' . $firstVal,
-                                'dba_action_required' => true,
-                            ],
-                            500,
-                        );
-                    }
-
-                    if (isset($rows[0]->Id)) {
-                        $spRow = $rows[0];
-                        break;
-                    }
-                } catch (\PDOException $e) {
-                    continue;
+            $chargeRow = null;
+            foreach ($allCharges as $c) {
+                if (
+                    (string) ($c['CostChargeRowID'] ?? '') === (string) $chargeId ||
+                    (string) ($c['RevenueChargeRowID'] ?? '') === (string) $chargeId
+                ) {
+                    $chargeRow = $c;
+                    break;
                 }
-            } while ($stmt->nextRowset());
+            }
 
-            if (!$spRow) {
+            if (!$chargeRow) {
                 return response()->json(['success' => false, 'message' => 'Charge not found via SP'], 404);
             }
 
+            $mapped = $this->mapChargeRow($chargeRow, $isRevenue ? 'revenue' : 'cost', [
+                (string) $chargeId => [
+                    'category' => $chargeRow['ChargeCatagory'] ?? '',
+                    'baseAmount' => (float) ($chargeRow['CostAmount'] ?? ($chargeRow['SellAmount'] ?? 0)),
+                    'exChangeRate' => 1.0,
+                ],
+            ]);
+
             return response()->json([
                 'success' => true,
-                'id' => $spRow->Id,
-                'chargeCode' => $spRow->ChargeCode ?? '',
-                'chargeName' => $spRow->ChargeDesp ?? '',
-                'rate' => (float) ($spRow->EstChargeRate ?? 0),
-                'quantity' => (float) ($supplement->Quantity ?? 0),
-                'amtInChgCurr' => (float) ($spRow->EstChargeAmount ?? 0),
-                'amtInBaseCurr' => (float) ($spRow->EstBaseAmount ?? 0),
-                'exChangeRate' => (float) ($spRow->BaseExchRate ?? 1),
-                'chgCurr' => $spRow->EstChargeCurrCode ?? 'KES',
-                'basedOnCode' => $supplement->BasedOnCode ?? '',
-                'basedOnAndUOM' => $spRow->BasedOnAndUOM ?? '',
-                'uomCode' =>
-                    (!empty($supplement->UOMCode_Equipment)
-                        ? $supplement->UOMCode_Equipment
-                        : $supplement->UOMCode_UOM) ?? '',
-                'chargeRemark' => $supplement->ChargeRemark ?? '',
-                'partyCode' => $supplement->PartyCode ?? '',
-                'revenueOrCost' => $isRevenue ? 'Revenue' : 'Cost',
-                'sourceType' => $supplement->SourceType ?? 'manual',
-                'increaseBy' => (float) ($supplement->IncreaseBy ?? 0),
-                'increaseType' => $supplement->IncreaseType ?? 'Percentage',
+                'id' => $mapped['id'],
+                'chargeCode' => $mapped['chargeCode'],
+                'chargeName' => $mapped['chargeName'],
+                'rate' => $mapped['rate'],
+                'quantity' => (float) ($supplement->Quantity ?? $mapped['quantity']),
+                'amtInChgCurr' => $mapped['amtInChgCurr'],
+                'amtInBaseCurr' => $mapped['amtInBaseCurr'],
+                'exChangeRate' => $mapped['exChangeRate'],
+                'chgCurr' => $mapped['chgCurr'],
+                'basedOnCode' => $supplement->BasedOnCode ?? $mapped['basedOnCode'],
+                'basedOnAndUOM' => $mapped['basedOnAndUOM'],
+                'uomCode' => $supplement->UOMCode_Equipment ?: ($supplement->UOMCode_UOM ?: $mapped['uomCode']),
+                'chargeRemark' => $supplement->ChargeRemark ?? $mapped['chargeRemark'],
+                'partyCode' => $supplement->PartyCode ?? $mapped['partyCode'],
+                'revenueOrCost' => $mapped['revenueOrCost'],
+                'revenueId' => $mapped['revenueId'],
+                'category' => $mapped['category'],
+                'sourceType' => $supplement->SourceType ?? $mapped['sourceType'],
+                'increaseBy' => (float) ($supplement->IncrementBy ?? $mapped['increaseBy']),
+                'increaseType' => $supplement->IncrementType ?: $mapped['increaseType'],
+                'toBeAdded' => (int) ($supplement->ToBeAdded ?? 0),
             ]);
         } catch (\Exception $e) {
             Log::error('getChargeDetails failed', [
@@ -2056,6 +2046,80 @@ class QuotationController extends Controller
             ]);
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * Call sp_Quote_Quotation_ChargeList with the correct signature.
+     * The SP returns { Status, Remark, Charges: [...] } as a single JSON blob
+     * in @OutputJson — not a tabular rowset — so we use a DECLARE … SELECT
+     * pattern (same approach as getTermsTemplates / getCommunicationDescription)
+     * to avoid PDO OUTPUT-binding length limits on NVARCHAR(MAX).
+     *
+     * Each item in Charges may have:
+     *   - both CostChargeRowID and RevenueChargeRowID  → paired Cost+Sell row
+     *   - only RevenueChargeRowID                      → Sell-only row
+     *   - only CostChargeRowID                         → Cost-only row
+     *
+     * @return array  Raw Charges array from the SP
+     * @throws \RuntimeException  When the SP reports a failure
+     */
+    private function fetchChargesFromSP(\PDO $pdo, string $quotationId): array
+    {
+        $sql = "
+        SET NOCOUNT ON;
+        DECLARE @OutputJson NVARCHAR(MAX);
+        EXEC dbo.sp_Quote_Quotation_ChargeList
+            @QuoteInfoID = ?,
+            @QuoteChargeID = ?, 
+            @OutputJson  = @OutputJson OUTPUT;
+        SELECT @OutputJson AS OutputJson;
+    ";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$quotationId, null]);
+        $outputJson = null;
+
+        do {
+            try {
+                $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+                if (!empty($rows) && isset($rows[0]->OutputJson)) {
+                    $outputJson = $rows[0]->OutputJson;
+                    break;
+                }
+            } catch (\PDOException $e) {
+                continue;
+            }
+        } while ($stmt->nextRowset());
+
+        if ($outputJson === null) {
+            throw new \RuntimeException('sp_Quote_Quotation_ChargeList: no output returned');
+        }
+
+        $result = json_decode($outputJson, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            Log::error('fetchChargesFromSP - JSON decode failed', [
+                'quotation_id' => $quotationId,
+                'raw' => $outputJson,
+            ]);
+            throw new \RuntimeException('sp_Quote_Quotation_ChargeList: invalid JSON response');
+        }
+
+        $status = $result['Status'] ?? '';
+        $remark = $result['Remark'] ?? '';
+
+        // SP returns 'No Record Found' when the quotation has no charges.
+        // That is a valid empty state, not a system failure — return [].
+        // We also stash the SP's own message so the caller can surface it.
+        if ($status === 'Failed' && $remark === 'No Record Found') {
+            return ['charges' => [], 'message' => $remark];
+        }
+
+        if ($status !== 'Success') {
+            throw new \RuntimeException('sp_Quote_Quotation_ChargeList: ' . ($remark ?: 'Unknown failure'));
+        }
+
+        return ['charges' => $result['Charges'] ?? [], 'message' => null];
     }
 
     /**
@@ -2080,13 +2144,17 @@ class QuotationController extends Controller
             'Charges.*.ChargeDescription' => 'nullable|string',
             'Charges.*.PartyCode' => 'nullable|string',
             'Charges.*.BasedOnUOM' => 'nullable|string',
-            'Charges.*.Quantity' => 'required|numeric',
-            'Charges.*.CostRate' => 'required|numeric',
-            'Charges.*.CostAmount' => 'required|numeric',
-            'Charges.*.IncreaseBy' => 'required|numeric',
-            'Charges.*.IncreaseType' => 'required|string',
-            'Charges.*.SellRate' => 'required|numeric',
-            'Charges.*.SellAmount' => 'required|numeric',
+            // Quantity / amounts can legitimately be null when the source
+            // charge has no matching container in cargo (e.g. 20GP rate row
+            // exists but only 40GP containers were quoted). Coerce to 0
+            // below so the SP receives a numeric value it can compute with.
+            'Charges.*.Quantity' => 'nullable|numeric',
+            'Charges.*.CostRate' => 'nullable|numeric',
+            'Charges.*.CostAmount' => 'nullable|numeric',
+            'Charges.*.IncreaseBy' => 'nullable|numeric',
+            'Charges.*.IncreaseType' => 'nullable|string',
+            'Charges.*.SellRate' => 'nullable|numeric',
+            'Charges.*.SellAmount' => 'nullable|numeric',
             'Charges.*.ChargeRemark' => 'nullable|string',
         ]);
 
@@ -2140,28 +2208,32 @@ class QuotationController extends Controller
             'ContractID' => $contractId,
 
             'Charges' => array_map(function ($c) {
+                $num = function ($v) {
+                    return is_numeric($v) ? (float) $v : 0.0;
+                };
+                $str = function ($v) {
+                    return is_string($v) ? $v : '';
+                };
+
                 return [
-                    'ChargeCatagory' => $c['ChargeCatagory'] ?? '',
-                    'ChargeRowID' => $c['ChargeRowID'] ?? '',
-                    'ChargeCode' => $c['ChargeCode'] ?? '',
-                    'ChargeDescription' => $c['ChargeDescription'] ?? '',
-                    'PartyCode' => $c['PartyCode'] ?? '',
-                    'ChgCurr' => $c['ChgCurr'] ?? '',
-                    'BasedOnCode' => $c['BasedOnCode'] ?? '',
-                    'BasedOnUOM' => $c['BasedOnUOM'] ?? '',
+                    'ChargeCatagory' => $str($c['ChargeCatagory'] ?? ''),
+                    'ChargeRowID' => $str($c['ChargeRowID'] ?? ''),
+                    'ChargeCode' => $str($c['ChargeCode'] ?? ''),
+                    'ChargeDescription' => $str($c['ChargeDescription'] ?? ''),
+                    'PartyCode' => $str($c['PartyCode'] ?? ''),
+                    'ChgCurr' => $str($c['ChgCurr'] ?? ''),
+                    'BasedOnCode' => $str($c['BasedOnCode'] ?? ''),
+                    'BasedOnUOM' => $str($c['BasedOnUOM'] ?? ''),
 
-                    'Quantity' => (float) ($c['Quantity'] ?? 0),
+                    'Quantity' => $num($c['Quantity'] ?? null),
+                    'CostRate' => $num($c['CostRate'] ?? null),
+                    'CostAmount' => $num($c['CostAmount'] ?? null),
+                    'IncreaseBy' => $num($c['IncreaseBy'] ?? null),
+                    'IncreaseType' => $str($c['IncreaseType'] ?? 'Percentage') ?: 'Percentage',
+                    'SellRate' => $num($c['SellRate'] ?? null),
+                    'SellAmount' => $num($c['SellAmount'] ?? null),
 
-                    'CostRate' => (float) ($c['CostRate'] ?? 0),
-                    'CostAmount' => (float) ($c['CostAmount'] ?? 0),
-
-                    'IncreaseBy' => (float) ($c['IncreaseBy'] ?? 0),
-                    'IncreaseType' => $c['IncreaseType'] ?? 'Percentage',
-
-                    'SellRate' => (float) ($c['SellRate'] ?? 0),
-                    'SellAmount' => (float) ($c['SellAmount'] ?? 0),
-
-                    'ChargeRemark' => $c['ChargeRemark'] ?? '',
+                    'ChargeRemark' => $str($c['ChargeRemark'] ?? ''),
                 ];
             }, $charges),
         ]);
@@ -2176,10 +2248,15 @@ class QuotationController extends Controller
         try {
             $pdo = DB::connection()->getPdo();
 
+            // sp_Quote_DetailsUpdate declares @InputJson VARCHAR(2000) — the
+            // workbook payload with multiple charges overflows it and gets
+            // silently truncated, which fails JSON parsing inside the SP with
+            // "Unexpected character at position 19xx". Call the child SP
+            // directly; it accepts varchar(max). Same downstream behaviour.
             $stmt = $pdo->prepare(
                 "SET NOCOUNT ON;\n" .
-                    "DECLARE @OutputJson VARCHAR(2000);\n" .
-                    "EXEC sp_Quote_DetailsUpdate ?, @OutputJson OUTPUT;\n" .
+                    "DECLARE @OutputJson VARCHAR(MAX);\n" .
+                    "EXEC sp_Quote_WorkbookCharges_Add ?, @OutputRemarkJson = @OutputJson OUTPUT;\n" .
                     'SELECT @OutputJson AS OutputJson;',
             );
 
@@ -2433,6 +2510,67 @@ class QuotationController extends Controller
                     : 'No user authenticated',
             ]);
 
+            // Amounts are server-owned: never trust a browser-supplied base amount or FX rate.
+            $chgCurr = $request->input('chg_curr') ?: 'KES';
+            $baseCurrency = self::OFFICE_BASE_CURRENCY[$officeCode] ?? null;
+
+            if (!$baseCurrency) {
+                Log::error('saveCharge - No base currency mapped for office', [
+                    'office_code' => $officeCode,
+                    'booking_no' => $bookingNo,
+                ]);
+                return response()->json(
+                    [
+                        'success' => false,
+                        'message' => "No base currency configured for office '{$officeCode}'. Please contact your administrator.",
+                    ],
+                    422,
+                );
+            }
+            $quantity = (float) $request->input('quantity', 0);
+            $rate = (float) $request->input('rate', 0);
+
+            // Amount is authoritative from the client — the modal already computed
+            // Qty × Rate and displayed it to the user. Re-deriving it here duplicates
+            // that logic and overwrites the value the user actually saw/approved.
+            $amtInChgCurr = (float) $request->input('amt_in_chg_curr', 0);
+
+            // Fallback only when the client sent nothing (e.g. legacy callers)
+            if ($amtInChgCurr === 0.0 && $quantity > 0 && $rate > 0) {
+                $amtInChgCurr = round($quantity * $rate, 2);
+            }
+
+            $exchangeRate = 1.0;
+            $amtInBaseCurr = $amtInChgCurr;
+
+            if ($request->input('action') !== 'Delete') {
+                if ($chgCurr !== $baseCurrency) {
+                    $resolvedRate = $this->resolveExchangeRate(
+                        $officeCode,
+                        $chgCurr,
+                        $baseCurrency,
+                        now()->format('d/M/Y'),
+                    );
+
+                    if (!$resolvedRate) {
+                        return response()->json(
+                            [
+                                'success' => false,
+                                'message' => "No exchange rate found for {$chgCurr} → {$baseCurrency}",
+                            ],
+                            422,
+                        );
+                    }
+                    $exchangeRate = $resolvedRate;
+                }
+
+                // Amounts come from the request as-is — the client (or SP) is the source of truth.
+                // Base amount = charge amount × FX rate only.
+                // Do NOT re-derive from rate × quantity or apply markup — the client
+                // already computed the marked-up amount and the SP stores what it receives.
+                $amtInBaseCurr = round($amtInChgCurr * $exchangeRate, 2);
+            }
+
             $inputJson = json_encode([
                 'OperationType' => 'QuotationAddorEditCharge',
                 'SubmittedDatetime' => now()->format('YmdHis'),
@@ -2449,10 +2587,10 @@ class QuotationController extends Controller
                 'ChargeCode' => $request->input('charge_code'),
                 'Quantity' => (float) $request->input('quantity', 0),
                 'Rate' => (float) $request->input('rate', 0),
-                'AmtInChgCurr' => (float) $request->input('amt_in_chg_curr', 0),
-                'AmtInBaseCurr' => (float) $request->input('amt_in_base_curr', 0),
-                'ExChangeRate' => (float) $request->input('exchange_rate', 1),
-                'ChgCurr' => $request->input('chg_curr', 'KES'),
+                'AmtInChgCurr' => $amtInChgCurr,
+                'AmtInBaseCurr' => $amtInBaseCurr,
+                'ExChangeRate' => $exchangeRate,
+                'ChgCurr' => $chgCurr,
                 'BasedOnCode' => $request->input('based_on_code'),
                 'BasedOnUOM' => $request->input('based_on_uom', ''),
                 'ChargeCategory' => $request->input('charge_category', $request->input('category', '')),
@@ -2460,6 +2598,7 @@ class QuotationController extends Controller
                 'ChargeCatagory' => $request->input('charge_category', $request->input('category', '')),
                 'ChargeRemark' => $request->input('charge_remark', ''),
                 'ToBeAdded' => (int) $request->input('to_be_added', 0),
+                'RevenueChargeID' => $request->input('revenue_charge_id') ?: null,
                 'IncreaseBy' => (float) $request->input('increase_by', 0),
                 'IncreaseType' => $request->input('increase_type', 'Percentage'),
                 'SourceType' => ucfirst(strtolower($request->input('source_type', 'manual'))),
@@ -2662,7 +2801,7 @@ class QuotationController extends Controller
                     'action' => $request->input('action'),
                     'revenue_or_cost' => $request->input('revenue_or_cost'),
                     'charge_code' => $request->input('charge_code'),
-                    'amount' => $request->input('amt_in_base_curr'),
+                    'amount' => $amtInBaseCurr,
                     'user' => Auth::user()->displayName ?? (Auth::user()->Email ?? 'system'),
                 ]);
 
@@ -5269,6 +5408,16 @@ class QuotationController extends Controller
                 ->where('ID', $id)
                 ->update(['OfficeCode' => DB::raw('RTRIM(OfficeCode)')]);
 
+            // Persist the All-in-One remark, only for that quote type — the SP
+            // (sp_Quote_QuotationFormat) does not read or write this column, it's
+            // UI-side context saved alongside document generation.
+            $quoteType = request('QuoteType', 'Std. PDF');
+            if ($quoteType === 'All in One PDF' && request()->filled('AllInOneRemark')) {
+                DB::table('Quote_QuotationInfo')
+                    ->where('ID', $id)
+                    ->update(['AllInOneRemark' => substr(request('AllInOneRemark'), 0, 1000)]);
+            }
+
             // ── Call sp_Quote_QuotationFormat ─────────────────────────────────────
             $html = null;
             $spError = null;
@@ -5276,11 +5425,11 @@ class QuotationController extends Controller
             try {
                 $pdo = DB::getPdo();
                 $stmt = $pdo->prepare("
-                DECLARE @QuoteFormat VARCHAR(MAX);
-                                EXEC dbo.sp_Quote_QuotationFormat ?, ?,
-                    @QuoteFormat = @QuoteFormat OUTPUT;
-                SELECT @QuoteFormat AS QuoteFormat;
-            ");
+            DECLARE @QuoteFormat VARCHAR(MAX);
+            EXEC dbo.sp_Quote_QuotationFormat ?, ?,
+                @QuoteFormat = @QuoteFormat OUTPUT;
+            SELECT @QuoteFormat AS QuoteFormat;
+        ");
                 $stmt->execute([$quotation->ID, request('QuoteType', 'Std. PDF')]);
 
                 $setIndex = 0;
@@ -5312,8 +5461,17 @@ class QuotationController extends Controller
             }
 
             if (!empty($spError)) {
+                Log::error('PDF Generation - sp_Quote_QuotationFormat failure (DBA action required)', [
+                    'quotation_id' => $quotation->ID,
+                    'quote_type' => request('QuoteType', 'Std. PDF'),
+                    'sp_message' => $spError,
+                ]);
                 return response()->json(
-                    ['success' => false, 'message' => 'Quotation format SP failed: ' . $spError],
+                    [
+                        'success' => false,
+                        'message' => 'sp_Quote_QuotationFormat: ' . $spError,
+                        'dba_action_required' => true,
+                    ],
                     500,
                 );
             }
@@ -5372,7 +5530,10 @@ class QuotationController extends Controller
                 ]);
             }
 
-            $fileName = 'quote_' . now()->format('Ymd_His') . '.pdf';
+            // Tag VAT-quoted PDFs in the filename so the Versions list can
+            // label them distinctly (e.g. "Version 2 (PDF - VAT)").
+            $quoteType = request('QuoteType', 'Std. PDF');
+            $fileName = 'quote_' . now()->format('Ymd_His') . ($quoteType === 'Std. With VAT' ? '_vat' : '') . '.pdf';
             $storagePath = $folder . '/' . $fileName;
             $fullPath = \Storage::disk('public')->path($storagePath);
 
@@ -5418,13 +5579,13 @@ class QuotationController extends Controller
             try {
                 $pdoSp = DB::connection()->getPdo();
                 $stmtSp = $pdoSp->prepare("
-                    SET NOCOUNT ON;
-                    DECLARE @Status VARCHAR(25), @Remark VARCHAR(200);
-                    EXEC dbo.sp_Quote_QuotationDocumentAdd ?, ?, ?,
-                        @Status = @Status OUTPUT,
-                        @Remark = @Remark OUTPUT;
-                    SELECT @Status AS Status, @Remark AS Remark;
-                ");
+                SET NOCOUNT ON;
+                DECLARE @Status VARCHAR(25), @Remark VARCHAR(200);
+                EXEC dbo.sp_Quote_QuotationDocumentAdd ?, ?, ?,
+                    @Status = @Status OUTPUT,
+                    @Remark = @Remark OUTPUT;
+                SELECT @Status AS Status, @Remark AS Remark;
+            ");
                 $stmtSp->execute([
                     $quotation->ID, // @QuotationID
                     $submittedBy, // @Username (already trimmed to 50)
@@ -5571,315 +5732,1210 @@ class QuotationController extends Controller
      * registration SP, same Azure upload/cleanup flow. Only the render
      * step differs (PhpSpreadsheet HTML reader instead of Dompdf).
      *
-     * ⚠ VERIFY BEFORE SHIPPING: sp_Quote_QuotationDocumentAdd is called
-     * with only (QuotationID, Username, Filename) — no DocumentType param.
-     * If the SP hardcodes DocumentType = 'QuotationPDF' internally
-     * regardless of file extension, this will mislabel Excel files in
-     * Quote_Quotation_Document and break the version-count / download
-     * queries below (which filter on DocumentType = 'QuotationPDF').
-     * Check the SP body — if it infers type from filename, no change
-     * needed; if hardcoded, the SP needs a DocumentType param added
-     * (or a QuotationExcel variant) before this ships.
      */
-    // public function generateExcel($id)
-    // {
-    //     try {
-    //         ini_set('memory_limit', '512M');
-    //         ini_set('max_execution_time', '300');
+    public function generateExcel($id)
+    {
+        $tempFile = null;
 
-    //         Log::info('Excel Generation - Starting', ['quotation_id' => $id]);
+        try {
+            ini_set('memory_limit', '512M');
+            ini_set('max_execution_time', '300');
 
-    //         $quotation = \App\Models\QuotationInfo::where('ID', $id)->first();
+            Log::info('Excel Generation - Starting', [
+                'quotation_id' => $id,
+            ]);
 
-    //         if (!$quotation) {
-    //             Log::error('Excel Generation - Quotation not found', ['id' => $id]);
-    //             return response()->json(['success' => false, 'message' => 'Quotation not found'], 404);
-    //         }
+            $quotation = \App\Models\QuotationInfo::where('ID', $id)->first();
 
-    //         $submittedBy = substr(auth()->user()->displayName ?? (auth()->user()->Email ?? 'system'), 0, 50);
-    //         if (empty($quotation->ID)) {
-    //             Log::error('Excel Generation - QuotationID is empty', ['id' => $id]);
-    //             return response()->json(
-    //                 ['success' => false, 'message' => 'Quotation ID is not set. Cannot generate Excel.'],
-    //                 422,
-    //             );
-    //         }
+            if (!$quotation) {
+                Log::error('Excel Generation - Quotation not found', [
+                    'id' => $id,
+                ]);
 
-    //         // Force-trim OfficeCode — SP reads it directly via Left(QI.OfficeCode,2)
-    //         DB::table('Quote_QuotationInfo')
-    //             ->where('ID', $id)
-    //             ->update(['OfficeCode' => DB::raw('RTRIM(OfficeCode)')]);
+                return response()->json(
+                    [
+                        'success' => false,
+                        'message' => 'Quotation not found',
+                    ],
+                    404,
+                );
+            }
 
-    //         // ── Reuse the same HTML source as the PDF path ─────────────────────────
-    //         $html = $this->getQuotationHtml($quotation->ID, request('QuoteType', 'Cost & Sell EXCEL'));
+            $submittedBy = substr(auth()->user()->displayName ?? (auth()->user()->Email ?? 'system'), 0, 50);
 
-    //         if (empty($html) || trim($html) === '') {
-    //             return response()->json(
-    //                 [
-    //                     'success' => false,
-    //                     'message' =>
-    //                         'No quotation HTML returned from SP. Ensure a Terms & Conditions template is applied before generating.',
-    //                 ],
-    //                 422,
-    //             );
-    //         }
+            /*
+             * Generate quotation HTML.
+             *
+             * getQuotationHtml() now:
+             * - returns the generated HTML when successful
+             * - returns null when no HTML is available
+             * - throws RuntimeException when the SP itself reports a failure
+             */
+            $html = $this->getQuotationHtml($id, request('QuoteType', 'Cost & Sell EXCEL'));
 
-    //         Log::info('Excel Generation - HTML retrieved from SP', [
-    //             'quotation_id' => $quotation->ID,
-    //             'html_length' => strlen($html),
-    //             'tc_template' => $quotation->QuotationTCTemplate ?? 'N/A',
-    //         ]);
+            if (empty($html)) {
+                Log::error('Excel Generation - Empty quotation HTML', [
+                    'quotation_id' => $id,
+                    'quote_type' => request('QuoteType', 'Cost & Sell EXCEL'),
+                ]);
 
-    //         $html = str_replace('public/img/logo.png', public_path('img/logo.png'), $html);
+                throw new \RuntimeException('Unable to generate quotation HTML.');
+            }
 
-    //         // Remove HTML comments first — the SP leaves authoring notes containing
-    //         // a full duplicate <!DOCTYPE html>...</html> sample inside <!-- -->,
-    //         // which breaks naive regex/DOM parsing of the outer document.
-    //         $html = preg_replace('/<!--(?!\[).*?-->/s', '', $html);
+            /*
+             * Remove HTML comments before DOM parsing.
+             */
+            $html = preg_replace('/<!--.*?-->/s', '', $html);
 
-    //         // The T&C template content is a full standalone document nested inside
-    //         // the outer document's body. Parse the whole thing with libxml in
-    //         // permissive HTML mode, then re-serialize just the outer <html> node —
-    //         // libxml collapses any nested/duplicate <html>/<body> structure into
-    //         // one coherent DOM instead of us guessing tag boundaries via regex.
-    //         libxml_use_internal_errors(true);
-    //         $dom = new \DOMDocument();
-    //         $loaded = $dom->loadHTML(
-    //             '<?xml encoding="UTF-8">' . $html,
-    //             LIBXML_NOERROR | LIBXML_NOWARNING | LIBXML_NOBLANKS,
-    //         );
-    //         libxml_clear_errors();
+            /*
+             * Remove XML declarations returned by the SP.
+             *
+             * The SP may already return:
+             *
+             * <?xml encoding="UTF-8">
+             *
+             * Remove existing declarations and add one clean declaration
+             * before DOMDocument parsing.
+             */
+            $html = preg_replace('/<\?xml[^>]*\?>/i', '', $html);
+            /*
+             * Normalize the HTML using DOMDocument.
+             */
+            libxml_use_internal_errors(true);
 
-    //         if ($loaded) {
-    //             $htmlNode = $dom->getElementsByTagName('html')->item(0);
-    //             if ($htmlNode) {
-    //                 $html = $dom->saveHTML($htmlNode);
-    //             }
-    //         }
+            $dom = new \DOMDocument();
 
-    //         Log::info('Excel Gen - dom clean result', [
-    //             'loaded' => $loaded,
-    //             'final_len' => strlen($html),
-    //         ]);
+            $dom->loadHTML('<?xml encoding="UTF-8">' . $html, \LIBXML_HTML_NOIMPLIED | \LIBXML_HTML_NODEFDTD);
 
-    //         // Must run LAST, on the final single-document HTML — see method docblock.
-    //         $html = $this->normalizeHtmlForSpreadsheet($html);
+            $html = $dom->saveHTML();
 
-    //         // ── Convert HTML → Spreadsheet ──────────────────────────────────────────
-    //         // PhpSpreadsheet's HTML reader only imports table-based markup (rows/
-    //         // cells); div/CSS layout is ignored. If the SP output relies on
-    //         // non-table layout for visual structure, the result will look flatter
-    //         // than the PDF — verify against real output before relying on this.
-    //         try {
-    //             $reader = new \PhpOffice\PhpSpreadsheet\Reader\Html();
-    //             $spreadsheet = $reader->loadFromString($html);
+            Log::info('CANARY: HTML after initial DOMDocument', [
+                'html' => $html,
+            ]);
 
-    //             foreach ($spreadsheet->getActiveSheet()->getDrawingCollection() as $drawing) {
-    //                 $drawing->setHeight(42);
-    //                 $drawing->setResizeProportional(true);
-    //             }
+            libxml_clear_errors();
 
-    //             // Source HTML has no explicit column widths, so the writer defaults
-    //             // to a narrow column and wraps long cell text character-by-character.
-    //             $sheet = $spreadsheet->getActiveSheet();
-    //             foreach ($sheet->getColumnDimensions() as $colDim) {
-    //                 $colDim->setAutoSize(true);
-    //             }
-    //             $sheet->calculateColumnWidths();
-    //         } catch (\Exception $e) {
-    //             Log::error('Excel Generation - HTML to Spreadsheet conversion failed', [
-    //                 'quotation_id' => $quotation->ID,
-    //                 'error' => $e->getMessage(),
-    //             ]);
-    //             return response()->json(
-    //                 ['success' => false, 'message' => 'Excel conversion failed: ' . $e->getMessage()],
-    //                 500,
-    //             );
-    //         }
+            /*
+             * Normalize the HTML for PhpSpreadsheet.
+             */
+            Log::info('CANARY: BEFORE normalizeHtmlForSpreadsheet', [
+                'quotation_id' => $id,
+                'html_length' => strlen($html),
+            ]);
 
-    //         // ── Determine file naming — same convention as PDF ──────────────────────
-    //         $folder = 'quotations/' . $quotation->bookingno;
+            $html = $this->normalizeHtmlForSpreadsheet($html);
 
-    //         try {
-    //             \Storage::disk('public')->makeDirectory($folder);
-    //         } catch (\Exception $e) {
-    //             Log::warning('Excel Generation - Could not ensure directory exists', [
-    //                 'folder' => $folder,
-    //                 'error' => $e->getMessage(),
-    //             ]);
-    //         }
+            Log::info('CANARY: AFTER normalizeHtmlForSpreadsheet', [
+                'quotation_id' => $id,
+                'html_length' => strlen($html),
+            ]);
 
-    //         $fileName = 'quote_' . now()->format('Ymd_His') . '.xlsx';
-    //         $storagePath = $folder . '/' . $fileName;
-    //         $fullPath = \Storage::disk('public')->path($storagePath);
+            /*
+             * Normalize image paths so PhpSpreadsheet can load the logo.
+             */
+            $html = $this->normalizeImagePathsForSpreadsheet($html);
 
-    //         // ── Write Excel to local disk ────────────────────────────────────────────
-    //         $azureWarning = null;
+            /*
+             * TEMP DEBUG FILE
+             *
+             * Remove this after the Excel layout has been confirmed.
+             */
+            file_put_contents(storage_path('app/debug_quote_excel.html'), $html);
 
-    //         try {
-    //             $dir = dirname($fullPath);
-    //             if (!file_exists($dir)) {
-    //                 mkdir($dir, 0755, true);
-    //                 Log::info('Excel Generation - Created directory', ['dir' => $dir]);
-    //             }
+            /*
+             * Read the normalized HTML into PhpSpreadsheet.
+             */
+            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Html();
+            $spreadsheet = $reader->loadFromString($html);
+            $sheet = $spreadsheet->getActiveSheet();
 
-    //             $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
-    //             $writer->save($fullPath);
+            /*
+             * TEMP DEBUG: Check Terms & Conditions storage table rows.
+             */
+            for ($rowIdx = 1; $rowIdx <= $sheet->getHighestDataRow(); $rowIdx++) {
+                $value = trim((string) $sheet->getCell("A{$rowIdx}")->getValue());
 
-    //             if (!file_exists($fullPath)) {
-    //                 throw new \Exception('File was not found on disk after write: ' . $fullPath);
-    //             }
+                if (stripos($value, '16th – 24th Day') !== false || stripos($value, 'Over 24 Days') !== false) {
+                    Log::info('Storage table row check', [
+                        'row' => $rowIdx,
+                        'value' => $value,
+                        'height' => $sheet->getRowDimension($rowIdx)->getRowHeight(),
+                    ]);
 
-    //             Log::info('Excel Generation - File written to disk', [
-    //                 'path' => $fullPath,
-    //                 'size' => filesize($fullPath),
-    //             ]);
-    //         } catch (\Exception $e) {
-    //             Log::error('Excel Generation - File write failed', [
-    //                 'path' => $fullPath,
-    //                 'error' => $e->getMessage(),
-    //                 'file' => $e->getFile(),
-    //                 'line' => $e->getLine(),
-    //             ]);
-    //             return response()->json(
-    //                 ['success' => false, 'message' => 'Failed to save Excel to disk: ' . $e->getMessage()],
-    //                 500,
-    //             );
-    //         }
+                    for ($r = max(1, $rowIdx - 1); $r <= min($sheet->getHighestDataRow(), $rowIdx + 2); $r++) {
+                        Log::info('Storage nearby row', [
+                            'row' => $r,
+                            'A' => $sheet->getCell("A{$r}")->getValue(),
+                            'B' => $sheet->getCell("B{$r}")->getValue(),
+                            'C' => $sheet->getCell("C{$r}")->getValue(),
+                            'height' => $sheet->getRowDimension($r)->getRowHeight(),
+                        ]);
+                    }
+                }
+            }
 
-    //         // ── Step 1: Register document via SP ────────────────────────────────────
-    //         // Same SP call shape as generatePdf(). See method docblock — DocumentType
-    //         // handling inside this SP must be verified for non-PDF files.
-    //         try {
-    //             $pdoSp = DB::connection()->getPdo();
-    //             $stmtSp = $pdoSp->prepare("
-    //             SET NOCOUNT ON;
-    //             DECLARE @Status VARCHAR(25), @Remark VARCHAR(200);
-    //             EXEC dbo.sp_Quote_QuotationDocumentAdd ?, ?, ?,
-    //                 @Status = @Status OUTPUT,
-    //                 @Remark = @Remark OUTPUT;
-    //             SELECT @Status AS Status, @Remark AS Remark;
-    //         ");
-    //             $stmtSp->execute([$quotation->ID, $submittedBy, $fileName]);
+            Log::info('Excel A2 customer cell', [
+                'value' => $sheet->getCell('A2')->getValue(),
+            ]);
 
-    //             $spResult = null;
-    //             do {
-    //                 try {
-    //                     $spRows = $stmtSp->fetchAll(\PDO::FETCH_OBJ);
-    //                     if (!empty($spRows) && isset($spRows[0]->Status)) {
-    //                         $spResult = $spRows[0];
-    //                         break;
-    //                     }
-    //                 } catch (\PDOException $e) {
-    //                     continue;
-    //                 }
-    //             } while ($stmtSp->nextRowset());
+            /*
+             * PhpSpreadsheet's HTML reader is importing two blank rows before
+             * the normalized quotation header.
+             *
+             * The imported structure is:
+             *   Row 1-2 = blank
+             *   Row 3   = quotation header row 1
+             *   Row 4   = quotation header row 2
+             *
+             * Remove the two blank rows so the quotation header starts at Row 1.
+             */
+            $sheet->removeRow(1, 2);
 
-    //             if (!$spResult) {
-    //                 @unlink($fullPath);
-    //                 Log::error('Excel Generation - SP returned no output, local file removed', [
-    //                     'quotation_id' => $quotation->ID,
-    //                     'file' => $fileName,
-    //                 ]);
-    //                 return response()->json(
-    //                     ['success' => false, 'message' => 'Document registration SP returned no output.'],
-    //                     500,
-    //                 );
-    //             }
+            // Add a full blank row between the quotation header and GENERAL INFORMATION.
+            $sheet->insertNewRowBefore(3, 1);
 
-    //             if (strtolower(trim($spResult->Status)) !== 'success') {
-    //                 @unlink($fullPath);
-    //                 Log::error('Excel Generation - SP registration failed, local file removed', [
-    //                     'quotation_id' => $quotation->ID,
-    //                     'sp_status' => $spResult->Status,
-    //                     'sp_remark' => $spResult->Remark,
-    //                 ]);
-    //                 return response()->json(
-    //                     ['success' => false, 'message' => 'Document registration failed: ' . $spResult->Remark],
-    //                     500,
-    //                 );
-    //             }
+            Log::info('Excel T&C search', [
+                'highest_row' => $sheet->getHighestDataRow(),
+            ]);
 
-    //             Log::info('Excel Generation - SP registration succeeded', [
-    //                 'quotation_id' => $quotation->ID,
-    //                 'sp_remark' => $spResult->Remark,
-    //                 'file' => $fileName,
-    //             ]);
-    //         } catch (\Exception $spEx) {
-    //             @unlink($fullPath);
-    //             Log::error('Excel Generation - SP call failed, local file removed', [
-    //                 'quotation_id' => $quotation->ID,
-    //                 'error' => $spEx->getMessage(),
-    //             ]);
-    //             return response()->json(
-    //                 ['success' => false, 'message' => 'Document registration failed: ' . $spEx->getMessage()],
-    //                 500,
-    //             );
-    //         }
+            for ($rowIdx = 1; $rowIdx <= $sheet->getHighestDataRow(); $rowIdx++) {
+                $value = trim((string) $sheet->getCell("A{$rowIdx}")->getValue());
 
-    //         // ── Step 2: Upload to Azure ──────────────────────────────────────────────
-    //         $officeShortCode = DB::table('Cust_Office')
-    //             ->where('TeamCode', $quotation->teamid)
-    //             ->where('IsActive', 1)
-    //             ->where('IsDeleted', 0)
-    //             ->value('Code');
+                if (
+                    stripos($value, 'Terms') !== false ||
+                    stripos($value, 'Condition') !== false ||
+                    stripos($value, 'All local charges') !== false ||
+                    stripos($value, 'Port Storage') !== false
+                ) {
+                    Log::info('Excel T&C match', [
+                        'row' => $rowIdx,
+                        'value' => $value,
+                    ]);
+                }
+            }
 
-    //         $officeShortCode = $officeShortCode
-    //             ? strtoupper(trim($officeShortCode))
-    //             : strtoupper(substr($quotation->OfficeCode ?? 'XX', 0, 2));
+            Log::info('CANARY: Excel header cells after removing blank rows', [
+                'A1' => $sheet->getCell('A1')->getValue(),
+                'B1' => $sheet->getCell('B1')->getValue(),
+                'C1' => $sheet->getCell('C1')->getValue(),
+                'D1' => $sheet->getCell('D1')->getValue(),
+                'E1' => $sheet->getCell('E1')->getValue(),
+                'F1' => $sheet->getCell('F1')->getValue(),
+                'G1' => $sheet->getCell('G1')->getValue(),
+                'H1' => $sheet->getCell('H1')->getValue(),
 
-    //         $blobPath = 'Quotation/' . $officeShortCode . '/' . $fileName;
+                'A2' => $sheet->getCell('A2')->getValue(),
+                'C2' => $sheet->getCell('C2')->getValue(),
+                'E2' => $sheet->getCell('E2')->getValue(),
+                'G2' => $sheet->getCell('G2')->getValue(),
 
-    //         try {
-    //             \Storage::disk('azure')->put($blobPath, file_get_contents($fullPath));
+                'merged_cells' => $sheet->getMergeCells(),
+            ]);
 
-    //             Log::info('Excel Generation - Uploaded to Azure', [
-    //                 'quotation_id' => $quotation->ID,
-    //                 'blob_path' => $blobPath,
-    //             ]);
-    //         } catch (\Exception $azureEx) {
-    //             Log::error('Excel Generation - Azure upload failed (non-fatal)', [
-    //                 'quotation_id' => $quotation->ID,
-    //                 'blob_path' => $blobPath,
-    //                 'error' => $azureEx->getMessage(),
-    //             ]);
-    //             $azureWarning = 'Excel registered but Azure upload failed: ' . $azureEx->getMessage();
-    //         }
+            // Fix quotation header layout after HTML import.
+            // The HTML reader does not reliably preserve the nested header table layout,
+            // so explicitly control the header cells in Excel.
 
-    //         // ── Step 3: Cleanup local temp file ──────────────────────────────────────
-    //         @unlink($fullPath);
-    //         Log::info('Excel Generation - Local temp file removed', ['path' => $fullPath]);
+            $sheet->mergeCells('A1:B1');
+            $sheet->mergeCells('C1:D1');
+            $sheet->mergeCells('E1:H1');
 
-    //         // NOTE: filtered on DocumentType = 'QuotationPDF' to match generatePdf()'s
-    //         // existing convention. If the SP stores a different DocumentType for
-    //         // .xlsx files, this count (and the download route) need updating to match.
-    //         $versionNumber = DB::table('Quote_Quotation_Document')
-    //             ->where('QuotationInfoID', $quotation->ID)
-    //             ->where('DocumentType', 'QuotationPDF')
-    //             ->where('IsDeleted', 0)
-    //             ->count();
+            $sheet->mergeCells('A2:D2');
+            $sheet
+                ->getStyle('A2:D2')
+                ->getAlignment()
+                ->setWrapText(true)
+                ->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_TOP);
+            $sheet->mergeCells('E2:F2');
+            $sheet->mergeCells('G2:H2');
 
-    //         return response()->json([
-    //             'success' => true,
-    //             'version' => $versionNumber,
-    //             'label' => 'Version ' . $versionNumber,
-    //             'url' => route('quotation.download-pdf', [$id, $versionNumber]),
-    //             'warning' => $azureWarning,
-    //         ]);
-    //     } catch (\Exception $e) {
-    //         Log::error('Excel Generation - Unexpected top-level exception', [
-    //             'id' => $id,
-    //             'error' => $e->getMessage(),
-    //             'file' => $e->getFile(),
-    //             'line' => $e->getLine(),
-    //             'trace' => $e->getTraceAsString(),
-    //         ]);
-    //         return response()->json(
-    //             ['success' => false, 'message' => 'Excel generation failed unexpectedly: ' . $e->getMessage()],
-    //             500,
-    //         );
-    //     }
-    // }
+            $sheet->getStyle('A2:D2')->getAlignment()->setWrapText(true);
+
+            $sheet->getColumnDimension('A')->setWidth(10);
+            $sheet->getColumnDimension('B')->setWidth(10);
+            $sheet->getColumnDimension('C')->setWidth(24);
+            $sheet->getColumnDimension('D')->setWidth(24);
+
+            $sheet->getColumnDimension('E')->setWidth(12);
+            $sheet->getColumnDimension('F')->setWidth(12);
+            $sheet->getColumnDimension('G')->setWidth(12);
+            $sheet->getColumnDimension('H')->setWidth(12);
+
+            $sheet->getRowDimension(1)->setRowHeight(82);
+            $sheet->getRowDimension(2)->setRowHeight(100);
+            /*
+             * ============================================================
+             * GENERAL EXCEL FORMATTING
+             * ============================================================
+             */
+            $sheet->setShowGridlines(false);
+
+            /*
+             * ============================================================
+             * COLUMN WIDTHS
+             * ============================================================
+             *
+             * A:B = Logo
+             * C:D = Company information
+             * E:H = Quotation information
+             */
+            $columnWidths = [
+                'A' => 10,
+                'B' => 10,
+                'C' => 22,
+                'D' => 22,
+                'E' => 12,
+                'F' => 12,
+                'G' => 12,
+                'H' => 12,
+            ];
+
+            foreach ($columnWidths as $column => $width) {
+                $sheet->getColumnDimension($column)->setWidth($width);
+            }
+
+            /*
+             * Header row heights.
+             */
+            $sheet->getRowDimension(1)->setRowHeight(80);
+            $sheet->getRowDimension(2)->setRowHeight(78);
+            $sheet->getRowDimension(3)->setRowHeight(20);
+            $sheet->getRowDimension(4)->setRowHeight(18);
+
+            /*
+             * Format any images/drawings imported from the HTML.
+             */
+            foreach ($sheet->getDrawingCollection() as $drawing) {
+                $drawing->setCoordinates('A1');
+                $drawing->setOffsetX(5);
+                $drawing->setOffsetY(5);
+                $drawing->setHeight(48);
+            }
+
+            /*
+             * Header alignment.
+             *
+             * Row 1:
+             * A:D = company/logo
+             * E:H = quotation title/number
+             *
+             * Row 2:
+             * A:D = customer
+             * E:F = date
+             * G:H = currency
+             */
+            $sheet->getStyle('A1:D1')->applyFromArray([
+                'alignment' => [
+                    'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT,
+                    'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+                    'wrapText' => true,
+                ],
+            ]);
+
+            $sheet->getStyle('E1:H1')->applyFromArray([
+                'alignment' => [
+                    'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT,
+                    'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+                    'wrapText' => true,
+                ],
+            ]);
+
+            $sheet->getStyle('A2:D2')->applyFromArray([
+                'alignment' => [
+                    'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT,
+                    'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_TOP,
+                    'wrapText' => true,
+                ],
+            ]);
+
+            $sheet->getStyle('E2:F2')->applyFromArray([
+                'alignment' => [
+                    'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                    'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_TOP,
+                    'wrapText' => true,
+                ],
+            ]);
+
+            $sheet->getStyle('G2:H2')->applyFromArray([
+                'alignment' => [
+                    'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT,
+                    'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_TOP,
+                    'wrapText' => true,
+                ],
+            ]);
+
+            /*
+             * Add a little visual breathing room around the header.
+             */
+            $sheet->getStyle('A1:H2')->applyFromArray([
+                'font' => [
+                    'name' => 'Arial',
+                ],
+            ]);
+
+            /*
+             * Content-based styling for charge tables only.
+             */
+            $navyFill = '1F3864';
+            $headerFill = 'DCE6F1';
+            $categoryFill = 'D9D9F0';
+            $totalFill = 'E2EFDA';
+            $borderColor = '9DB4CE';
+
+            $reportTitleTexts = ['Equipment Based Charges', 'Non Equipment Based Charges'];
+
+            $highestRow = $sheet->getHighestDataRow();
+            $highestColumn = $sheet->getHighestDataColumn();
+
+            $highestColIdx = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($highestColumn);
+
+            $insideChargeSection = false;
+
+            for ($rowIdx = 4; $rowIdx <= $highestRow; $rowIdx++) {
+                $rowValues = [];
+
+                for ($c = 1; $c <= $highestColIdx; $c++) {
+                    $rowValues[] = trim((string) $sheet->getCellByColumnAndRow($c, $rowIdx)->getValue());
+                }
+
+                $firstCellValue = $rowValues[0] ?? '';
+
+                $rowRange = "A{$rowIdx}:{$highestColumn}{$rowIdx}";
+
+                /*
+                 * Report title: enters a charge section.
+                 */
+                if (in_array($firstCellValue, $reportTitleTexts, true)) {
+                    $insideChargeSection = true;
+
+                    $sheet->getStyle($rowRange)->applyFromArray([
+                        'font' => [
+                            'bold' => true,
+                            'color' => [
+                                'rgb' => 'FFFFFF',
+                            ],
+                            'size' => 11,
+                        ],
+                        'fill' => [
+                            'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                            'startColor' => [
+                                'rgb' => $navyFill,
+                            ],
+                        ],
+                        'alignment' => [
+                            'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT,
+                            'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+                        ],
+                    ]);
+
+                    $sheet->getRowDimension($rowIdx)->setRowHeight(20);
+
+                    continue;
+                }
+
+                /*
+                 * Outside charge sections:
+                 * leave General Information, Cargo Information,
+                 * spacer rows, Terms & Conditions, etc. untouched.
+                 */
+                if (!$insideChargeSection) {
+                    continue;
+                }
+
+                $hasRate = in_array('Rate', $rowValues, true);
+                $hasAmount = in_array('Amount', $rowValues, true);
+
+                /*
+                 * Header rows.
+                 */
+                if ($hasRate || $hasAmount || $firstCellValue === 'Description') {
+                    $sheet->getStyle($rowRange)->applyFromArray([
+                        'font' => [
+                            'bold' => true,
+                            'size' => 9.5,
+                        ],
+                        'fill' => [
+                            'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                            'startColor' => [
+                                'rgb' => $headerFill,
+                            ],
+                        ],
+                        'alignment' => [
+                            'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                            'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+                            'wrapText' => true,
+                        ],
+                        'borders' => [
+                            'allBorders' => [
+                                'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                                'color' => [
+                                    'rgb' => $borderColor,
+                                ],
+                            ],
+                        ],
+                    ]);
+
+                    continue;
+                }
+
+                /*
+                 * Total row.
+                 */
+                if (stripos($firstCellValue, 'total') === 0) {
+                    $sheet->getStyle($rowRange)->applyFromArray([
+                        'font' => [
+                            'bold' => true,
+                        ],
+                        'fill' => [
+                            'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                            'startColor' => [
+                                'rgb' => $totalFill,
+                            ],
+                        ],
+                        'borders' => [
+                            'top' => [
+                                'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                            ],
+                        ],
+                    ]);
+
+                    $insideChargeSection = false;
+
+                    continue;
+                }
+
+                /*
+                 * Category row:
+                 * single label, no Quantity value in column C.
+                 */
+                $quantityValue = $rowValues[2] ?? '';
+
+                if ($firstCellValue !== '' && $quantityValue === '') {
+                    $sheet->getStyle($rowRange)->applyFromArray([
+                        'font' => [
+                            'bold' => true,
+                            'size' => 9.5,
+                        ],
+                        'fill' => [
+                            'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                            'startColor' => [
+                                'rgb' => $categoryFill,
+                            ],
+                        ],
+                    ]);
+
+                    continue;
+                }
+
+                /*
+                 * Charge data row:
+                 * has a Quantity value in column C.
+                 */
+                if ($quantityValue !== '') {
+                    $sheet->getStyle("C{$rowIdx}:{$highestColumn}{$rowIdx}")->applyFromArray([
+                        'alignment' => [
+                            'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT,
+                        ],
+                        'borders' => [
+                            'bottom' => [
+                                'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                                'color' => [
+                                    'rgb' => 'DDDDDD',
+                                ],
+                            ],
+                        ],
+                    ]);
+                }
+            }
+
+            /*
+             * Unify section bars.
+             */
+            $blackBarTexts = ['GENERAL INFORMATION', 'CARGO INFROMATION', 'TERMS AND CONDITION'];
+
+            for ($rowIdx = 4; $rowIdx <= $highestRow; $rowIdx++) {
+                $cellValue = trim((string) $sheet->getCellByColumnAndRow(1, $rowIdx)->getValue());
+
+                $rowRange = "A{$rowIdx}:{$highestColumn}{$rowIdx}";
+
+                if (in_array($cellValue, $blackBarTexts, true) || stripos($cellValue, 'Sea import') === 0) {
+                    $sheet->getStyle($rowRange)->applyFromArray([
+                        'font' => [
+                            'bold' => true,
+                            'color' => [
+                                'rgb' => 'FFFFFF',
+                            ],
+                            'size' => 10.5,
+                        ],
+                        'fill' => [
+                            'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                            'startColor' => [
+                                'rgb' => $navyFill,
+                            ],
+                        ],
+                        'alignment' => [
+                            'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT,
+                            'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+                        ],
+                    ]);
+
+                    $sheet->getRowDimension($rowIdx)->setRowHeight(18);
+                }
+            }
+
+            /*
+             * Create a unique XLSX filename.
+             */
+            $fileName = 'Quotation_' . now()->format('Ymd_His') . '_' . substr((string) $id, 0, 8) . '.xlsx';
+
+            /*
+             * Create temporary file.
+             */
+            $tempFile = tempnam(sys_get_temp_dir(), 'quotation_excel_');
+
+            if ($tempFile === false) {
+                throw new \Exception('Unable to create temporary Excel file.');
+            }
+
+            /*
+             * Write XLSX file.
+             */
+            $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+
+            $writer->save($tempFile);
+
+            if (!file_exists($tempFile)) {
+                throw new \Exception('Excel file was not found after generation.');
+            }
+
+            Log::info('Excel Generation - XLSX created successfully', [
+                'quotation_id' => $id,
+                'file' => $tempFile,
+                'size' => filesize($tempFile),
+                'filename' => $fileName,
+            ]);
+
+            /*
+             * Register the document through the existing SP.
+             *
+             * The existing SP inserts:
+             * DocumentType = 'QuotationPDF'
+             */
+            try {
+                $pdoSp = DB::connection()->getPdo();
+
+                $stmtSp = $pdoSp->prepare("
+                SET NOCOUNT ON;
+
+                DECLARE @Status VARCHAR(25),
+                        @Remark VARCHAR(200);
+
+                EXEC dbo.sp_Quote_QuotationDocumentAdd
+                    ?,
+                    ?,
+                    ?,
+                    @Status = @Status OUTPUT,
+                    @Remark = @Remark OUTPUT;
+
+                SELECT
+                    @Status AS Status,
+                    @Remark AS Remark;
+            ");
+
+                $stmtSp->execute([$quotation->ID, $submittedBy, $fileName]);
+
+                $spResult = null;
+
+                do {
+                    try {
+                        $spRows = $stmtSp->fetchAll(\PDO::FETCH_OBJ);
+
+                        if (!empty($spRows) && isset($spRows[0]->Status)) {
+                            $spResult = $spRows[0];
+                            break;
+                        }
+                    } catch (\PDOException $e) {
+                        continue;
+                    }
+                } while ($stmtSp->nextRowset());
+
+                if (!$spResult) {
+                    @unlink($tempFile);
+                    $tempFile = null;
+
+                    Log::error('Excel Generation - SP returned no output', [
+                        'quotation_id' => $id,
+                        'file' => $fileName,
+                    ]);
+
+                    return response()->json(
+                        [
+                            'success' => false,
+                            'message' => 'Document registration SP returned no output.',
+                        ],
+                        500,
+                    );
+                }
+
+                if (strtolower(trim($spResult->Status)) !== 'success') {
+                    @unlink($tempFile);
+                    $tempFile = null;
+
+                    Log::error('Excel Generation - SP registration failed', [
+                        'quotation_id' => $id,
+                        'sp_status' => $spResult->Status,
+                        'sp_remark' => $spResult->Remark,
+                    ]);
+
+                    return response()->json(
+                        [
+                            'success' => false,
+                            'message' => 'Document registration failed: ' . $spResult->Remark,
+                        ],
+                        500,
+                    );
+                }
+
+                Log::info('Excel Generation - SP registration succeeded', [
+                    'quotation_id' => $id,
+                    'sp_remark' => $spResult->Remark,
+                    'file' => $fileName,
+                ]);
+            } catch (\Exception $spEx) {
+                @unlink($tempFile);
+                $tempFile = null;
+
+                Log::error('Excel Generation - SP call failed', [
+                    'quotation_id' => $id,
+                    'error' => $spEx->getMessage(),
+                    'file' => $spEx->getFile(),
+                    'line' => $spEx->getLine(),
+                ]);
+
+                return response()->json(
+                    [
+                        'success' => false,
+                        'message' => 'Document registration failed: ' . $spEx->getMessage(),
+                    ],
+                    500,
+                );
+            }
+
+            /*
+             * Determine the office code using the same source
+             * as sp_Quote_QuotationDocumentAdd:
+             *
+             * Left(QI.OfficeCode, 2)
+             */
+            $officeShortCode = strtoupper(substr(trim($quotation->OfficeCode ?? ''), 0, 2));
+
+            if ($officeShortCode === '') {
+                @unlink($tempFile);
+                $tempFile = null;
+
+                throw new \Exception('Unable to determine quotation office code.');
+            }
+
+            /*
+             * The SP stores the document using:
+             *
+             * Quotation/{officeCode}/{filename}
+             */
+            $blobPath = 'Quotation/' . $officeShortCode . '/' . $fileName;
+
+            $azureWarning = null;
+
+            /*
+             * Upload XLSX to Azure.
+             */
+            try {
+                \Storage::disk('azure')->put($blobPath, file_get_contents($tempFile));
+
+                Log::info('Excel Generation - Uploaded to Azure', [
+                    'quotation_id' => $id,
+                    'blob_path' => $blobPath,
+                ]);
+            } catch (\Exception $azureEx) {
+                /*
+                 * The document is already registered in the database,
+                 * so Azure failure is non-fatal.
+                 */
+                Log::error('Excel Generation - Azure upload failed (non-fatal)', [
+                    'quotation_id' => $id,
+                    'blob_path' => $blobPath,
+                    'error' => $azureEx->getMessage(),
+                ]);
+
+                $azureWarning = 'Excel registered but Azure upload failed: ' . $azureEx->getMessage();
+            }
+
+            /*
+             * Remove local temporary XLSX.
+             */
+            @unlink($tempFile);
+            $tempFile = null;
+
+            Log::info('Excel Generation - Local temp file removed', [
+                'path' => $tempFile,
+            ]);
+
+            /*
+             * Determine version number.
+             *
+             * Excel currently uses the same DocumentType as PDF:
+             * 'QuotationPDF'
+             */
+            $versionNumber = DB::table('Quote_Quotation_Document')
+                ->where('QuotationInfoID', $quotation->ID)
+                ->where('DocumentType', 'QuotationPDF')
+                ->where('IsDeleted', 0)
+                ->count();
+
+            /*
+             * Return JSON expected by the frontend.
+             */
+            return response()->json([
+                'success' => true,
+                'version' => $versionNumber,
+                'label' => 'Version ' . $versionNumber,
+                'url' => route('quotation.download-pdf', [$id, $versionNumber]),
+                'warning' => $azureWarning,
+            ]);
+        } catch (\RuntimeException $e) {
+            /*
+             * RuntimeException is used by getQuotationHtml()
+             * when the quotation-format SP itself reports a failure.
+             *
+             * Keep this separate so the frontend receives the actual
+             * SP-related error instead of the generic Excel error.
+             */
+            if ($tempFile && file_exists($tempFile)) {
+                @unlink($tempFile);
+                $tempFile = null;
+            }
+
+            Log::error('Excel Generation - Quotation HTML/SP failure', [
+                'id' => $id,
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                ],
+                500,
+            );
+        } catch (\Throwable $e) {
+            /*
+             * Always clean up a temporary file if anything unexpected
+             * happens after it has been created.
+             */
+            if ($tempFile && file_exists($tempFile)) {
+                @unlink($tempFile);
+                $tempFile = null;
+            }
+
+            Log::error('Excel Generation - Unexpected top-level exception', [
+                'id' => $id,
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => 'Excel generation failed unexpectedly: ' . $e->getMessage(),
+                ],
+                500,
+            );
+        }
+    }
+    /**
+     * Prepare the quotation header specifically for PhpSpreadsheet's HTML reader.
+     *
+     * The quotation HTML contains nested tables in the header. PhpSpreadsheet's
+     * HTML reader can interpret those nested tables as additional spreadsheet
+     * columns, which causes the header content to shift to the right.
+     *
+     * We flatten only the first two header rows into a simple 4-column structure.
+     * The quotation charges and Terms & Conditions are left untouched.
+     */
+    private function prepareExcelHeader(string $html): string
+    {
+        libxml_use_internal_errors(true);
+
+        $dom = new \DOMDocument();
+
+        $loaded = $dom->loadHTML(
+            '<?xml encoding="UTF-8">' . $html,
+            LIBXML_NOERROR | LIBXML_NOWARNING | LIBXML_NOBLANKS,
+        );
+
+        if (!$loaded) {
+            libxml_clear_errors();
+
+            Log::warning('Excel Header Preparation - Could not parse HTML');
+
+            return $html;
+        }
+
+        $xpath = new \DOMXPath($dom);
+
+        $outerTable = $xpath->query('//body/table')->item(0);
+
+        if (!$outerTable) {
+            libxml_clear_errors();
+
+            Log::warning('Excel Header Preparation - Outer quotation table not found');
+
+            return $html;
+        }
+
+        $headerRows = $xpath->query('./tbody/tr', $outerTable);
+
+        if (!$headerRows || $headerRows->length < 2) {
+            libxml_clear_errors();
+
+            return $html;
+        }
+
+        /*
+         * Remove nested tables from ONLY the first two header rows.
+         *
+         * This is the actual cause of the upper section being shifted.
+         * We deliberately do not touch the nested T&C/storage table.
+         */
+        for ($rowIndex = 0; $rowIndex < 2; $rowIndex++) {
+            $row = $headerRows->item($rowIndex);
+
+            if (!$row) {
+                continue;
+            }
+
+            $nestedTables = [];
+
+            foreach ($row->getElementsByTagName('table') as $nestedTable) {
+                $nestedTables[] = $nestedTable;
+            }
+
+            foreach (array_reverse($nestedTables) as $nestedTable) {
+                if (!$nestedTable->parentNode) {
+                    continue;
+                }
+
+                /*
+                 * Replace the nested table with its contents rather than
+                 * allowing PhpSpreadsheet to interpret it as another table.
+                 */
+                while ($nestedTable->firstChild) {
+                    $child = $nestedTable->firstChild;
+
+                    $nestedTable->parentNode->insertBefore($child, $nestedTable);
+                }
+
+                $nestedTable->parentNode->removeChild($nestedTable);
+            }
+        }
+
+        /*
+         * The first row still has the company information and quotation
+         * information in two cells. Keep it as a simple two-cell row.
+         *
+         * The important part is that the nested company table has already
+         * been removed.
+         */
+
+        libxml_clear_errors();
+
+        return $dom->saveHTML();
+    }
+
+    private function normalizeImagePathsForSpreadsheet(string $html): string
+    {
+        libxml_use_internal_errors(true);
+
+        $dom = new \DOMDocument();
+
+        $loaded = $dom->loadHTML(
+            '<?xml encoding="UTF-8">' . $html,
+            LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD | LIBXML_NOERROR | LIBXML_NOWARNING,
+        );
+
+        if (!$loaded) {
+            libxml_clear_errors();
+
+            return $html;
+        }
+
+        $logoPath = public_path('img/logo.png');
+
+        \Log::info('Quotation Excel image normalization', [
+            'logo_path' => $logoPath,
+            'logo_exists' => file_exists($logoPath),
+        ]);
+
+        foreach (iterator_to_array($dom->getElementsByTagName('img')) as $image) {
+            $src = trim($image->getAttribute('src'));
+
+            if (
+                $src === 'public/img/logo.png' ||
+                $src === '/public/img/logo.png' ||
+                $src === 'img/logo.png' ||
+                $src === '/img/logo.png'
+            ) {
+                if (file_exists($logoPath)) {
+                    $image->setAttribute('src', 'file:///' . str_replace('\\', '/', $logoPath));
+
+                    \Log::info('Quotation Excel logo path replaced', [
+                        'original_src' => $src,
+                        'new_src' => $logoPath,
+                    ]);
+                } else {
+                    \Log::error('Quotation Excel logo file not found', [
+                        'expected_path' => $logoPath,
+                        'original_src' => $src,
+                    ]);
+                }
+            }
+        }
+
+        $result = $dom->saveHTML();
+
+        libxml_clear_errors();
+
+        return $result;
+    }
+
+    private function normalizeQuotationHeaderForSpreadsheet(string $html): string
+    {
+        libxml_use_internal_errors(true);
+
+        $dom = new \DOMDocument('1.0', 'UTF-8');
+
+        $loaded = $dom->loadHTML(
+            '<?xml encoding="UTF-8">' . $html,
+            LIBXML_NOERROR | LIBXML_NOWARNING | LIBXML_NOBLANKS,
+        );
+
+        if (!$loaded) {
+            libxml_clear_errors();
+            return $html;
+        }
+
+        $xpath = new \DOMXPath($dom);
+
+        /*
+         * Get the main quotation table.
+         */
+        $outerTable = $xpath->query('/html/body/table')->item(0);
+
+        if (!$outerTable) {
+            $outerTable = $xpath->query('//body/table')->item(0);
+        }
+
+        if (!$outerTable) {
+            libxml_clear_errors();
+            return $html;
+        }
+
+        /*
+         * Only get rows directly belonging to the main table.
+         * This prevents nested table rows from being included.
+         */
+        $rows = $xpath->query('./tbody/tr | ./tr', $outerTable);
+
+        if ($rows->length < 2) {
+            libxml_clear_errors();
+            return $html;
+        }
+
+        $row1 = $rows->item(0);
+        $row2 = $rows->item(1);
+
+        $cells1 = $xpath->query('./td | ./th', $row1);
+
+        $cells2 = $xpath->query('./td | ./th', $row2);
+
+        /*
+         * Expected current header:
+         *
+         * Row 1:
+         *   Company/logo | Quotation
+         *
+         * Row 2:
+         *   To | Date | Currency
+         */
+        if ($cells1->length < 2 || $cells2->length < 3) {
+            libxml_clear_errors();
+            return $html;
+        }
+
+        $companySource = $cells1->item(0);
+        $quoteSource = $cells1->item(1);
+
+        $toSource = $cells2->item(0);
+        $dateSource = $cells2->item(1);
+        $currSource = $cells2->item(2);
+
+        /*
+         * Helper for creating a new cell.
+         */
+        $makeCell = function (string $style = '', ?int $colspan = null) use ($dom) {
+            $cell = $dom->createElement('td');
+
+            if ($style !== '') {
+                $cell->setAttribute('style', $style);
+            }
+
+            if ($colspan !== null) {
+                $cell->setAttribute('colspan', (string) $colspan);
+            }
+
+            return $cell;
+        };
+
+        /*
+         * Helper for copying the contents of an existing cell.
+         */
+        $copyChildren = function (\DOMElement $source, \DOMElement $target) {
+            foreach (iterator_to_array($source->childNodes) as $child) {
+                $target->appendChild($child->cloneNode(true));
+            }
+        };
+
+        /*
+         * ==========================================================
+         * ROW 1
+         * ==========================================================
+         *
+         * Convert:
+         *
+         *   [nested company table] [quotation]
+         *
+         * Into:
+         *
+         *   [Logo] [Company] [Quotation - colspan 2]
+         */
+
+        $newRow1 = $dom->createElement('tr');
+
+        /*
+         * Logo cell.
+         */
+        $imageCell = $makeCell('vertical-align:middle;');
+
+        $image = $xpath->query('.//img', $companySource)->item(0);
+
+        if ($image) {
+            $imageCell->appendChild($image->cloneNode(true));
+        }
+
+        $newRow1->appendChild($imageCell);
+
+        /*
+         * Company details cell.
+         */
+        $companyCell = $makeCell('vertical-align:middle;');
+
+        $companyClone = $companySource->cloneNode(true);
+
+        /*
+         * Remove the logo from the company-details copy.
+         */
+        while (($imageNode = $companyClone->getElementsByTagName('img')->item(0)) !== null) {
+            $imageNode->parentNode->removeChild($imageNode);
+        }
+
+        $copyChildren($companyClone, $companyCell);
+
+        $newRow1->appendChild($companyCell);
+
+        /*
+         * Quotation cell.
+         *
+         * It spans columns C and D so the quotation title
+         * and quotation number remain together on the right.
+         */
+        $quoteCell = $makeCell('text-align:right;vertical-align:middle;', 2);
+
+        $quoteDivs = $xpath->query('.//div', $quoteSource);
+
+        if ($quoteDivs->length > 0) {
+            $quoteCell->appendChild($quoteDivs->item(0)->cloneNode(true));
+
+            if ($quoteDivs->length > 1) {
+                $quoteCell->appendChild($quoteDivs->item(1)->cloneNode(true));
+            }
+        } else {
+            $copyChildren($quoteSource, $quoteCell);
+        }
+
+        $newRow1->appendChild($quoteCell);
+
+        /*
+         * ==========================================================
+         * ROW 2
+         * ==========================================================
+         *
+         * Convert into:
+         *
+         *   [To - colspan 2] [Date] [Currency]
+         */
+
+        $newRow2 = $dom->createElement('tr');
+
+        /*
+         * To cell spans columns A and B.
+         */
+        $toCell = $makeCell('vertical-align:top;', 2);
+
+        $copyChildren($toSource, $toCell);
+
+        $newRow2->appendChild($toCell);
+
+        /*
+         * Date cell.
+         */
+        $dateCell = $makeCell('vertical-align:top;text-align:center;');
+
+        $copyChildren($dateSource, $dateCell);
+
+        $newRow2->appendChild($dateCell);
+
+        /*
+         * Currency cell.
+         */
+        $currCell = $makeCell('vertical-align:top;text-align:right;');
+
+        $copyChildren($currSource, $currCell);
+
+        $newRow2->appendChild($currCell);
+
+        /*
+         * Replace ONLY the first two rows.
+         *
+         * Everything below the header remains untouched.
+         */
+        $parent = $row1->parentNode;
+
+        $parent->replaceChild($newRow1, $row1);
+
+        $parent->replaceChild($newRow2, $row2);
+
+        libxml_clear_errors();
+
+        /*
+         * Return the corrected HTML.
+         */
+        $htmlNode = $dom->getElementsByTagName('html')->item(0);
+
+        return $htmlNode ? $dom->saveHTML($htmlNode) : $html;
+    }
 
     /**
      * Normalize PDF-shaped quotation HTML for PhpSpreadsheet's HTML reader.
@@ -5895,28 +6951,321 @@ class QuotationController extends Controller
     private function normalizeHtmlForSpreadsheet(string $html): string
     {
         libxml_use_internal_errors(true);
+
         $dom = new \DOMDocument();
+
         $dom->loadHTML('<?xml encoding="utf-8" ?>' . $html, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+
         libxml_clear_errors();
 
         $body = $dom->getElementsByTagName('body')->item(0);
+
         if (!$body) {
             return $html;
         }
 
-        // Strip <style>/<script> — they carry no visible content, but if left in
-        // place they'd get caught by the wrapping pass below and their raw text
-        // would be imported as a literal cell value (PhpSpreadsheet doesn't skip
-        // these tags the way a browser does).
+        /*
+         * Remove styles/scripts.
+         */
         foreach (['style', 'script'] as $tagName) {
             foreach (iterator_to_array($body->getElementsByTagName($tagName)) as $node) {
-                $node->parentNode->removeChild($node);
+                if ($node->parentNode) {
+                    $node->parentNode->removeChild($node);
+                }
             }
         }
 
-        // Wrap runs of non-table elements (the SP's <div> sections) into
-        // synthetic tables so they aren't dropped on import. Existing <table>
-        // elements are left in place — never nested inside a wrapper.
+        /*
+         * Get only root-level tables.
+         *
+         * In the quotation HTML the header is actually made up of
+         * two separate root-level tables:
+         *
+         *   1. Company/logo + quotation number
+         *   2. Customer + date + currency
+         *
+         * Do not look for both rows inside the first table.
+         */
+        $rootTables = [];
+
+        foreach (iterator_to_array($body->childNodes) as $node) {
+            if ($node->nodeType === XML_ELEMENT_NODE && strtolower($node->nodeName) === 'table') {
+                $rootTables[] = $node;
+            }
+        }
+
+        /*
+         * Normalize the quotation header.
+         *
+         * Desired Excel structure:
+         *
+         * Row 1:
+         * A:D = Company / Logo
+         * E:H = Quotation information
+         *
+         * Row 2:
+         * A:D = Customer
+         * E:F = Date
+         * G:H = Currency
+         */
+        if (count($rootTables) >= 2) {
+            $headerTable = $rootTables[0];
+            $customerTable = $rootTables[1];
+
+            /*
+             * Get the table's direct row container.
+             *
+             * DOMDocument may insert <tbody>. If it does not exist,
+             * use the table itself.
+             */
+            /*
+             * Get only a DIRECT tbody child.
+             *
+             * This is important because the header table contains another
+             * nested table for the logo/company information. We must not
+             * accidentally select that nested table's tbody.
+             */
+            $getDirectTbody = static function (\DOMNode $table): ?\DOMElement {
+                foreach (iterator_to_array($table->childNodes) as $child) {
+                    if ($child->nodeType === XML_ELEMENT_NODE && strtolower($child->nodeName) === 'tbody') {
+                        return $child;
+                    }
+                }
+
+                return null;
+            };
+
+            $headerContainer = $getDirectTbody($headerTable) ?? $headerTable;
+            $customerContainer = $getDirectTbody($customerTable) ?? $customerTable;
+
+            /*
+             * Get only direct <tr> children.
+             */
+            $getDirectRows = static function (\DOMNode $container): array {
+                $rows = [];
+
+                foreach (iterator_to_array($container->childNodes) as $node) {
+                    if ($node->nodeType === XML_ELEMENT_NODE && strtolower($node->nodeName) === 'tr') {
+                        $rows[] = $node;
+                    }
+                }
+
+                return $rows;
+            };
+
+            /*
+             * Get only direct td/th children from a row.
+             */
+            $getDirectCells = static function (\DOMNode $row): array {
+                $cells = [];
+
+                foreach (iterator_to_array($row->childNodes) as $node) {
+                    if (
+                        $node->nodeType === XML_ELEMENT_NODE &&
+                        in_array(strtolower($node->nodeName), ['td', 'th'], true)
+                    ) {
+                        $cells[] = $node;
+                    }
+                }
+
+                return $cells;
+            };
+
+            $headerRows = $getDirectRows($headerContainer);
+            $customerRows = $getDirectRows($customerContainer);
+
+            /*
+             * The first table must contain:
+             *
+             *   [company] [quotation]
+             */
+            if (!empty($headerRows)) {
+                $headerRow = $headerRows[0];
+                $headerCells = $getDirectCells($headerRow);
+
+                if (count($headerCells) >= 2) {
+                    $companyCell = $headerCells[0];
+                    $quotationCell = $headerCells[1];
+
+                    /*
+                     * ---------------------------------------------------------
+                     * COMPANY AREA
+                     * ---------------------------------------------------------
+                     *
+                     * Original structure:
+                     *
+                     * company td
+                     *   └── nested table
+                     *       └── logo td
+                     *       └── company information td
+                     *
+                     * We create two NEW cells:
+                     *
+                     * A:B = Logo
+                     * C:D = Company information
+                     */
+
+                    $logoCell = $dom->createElement('td');
+                    $logoCell->setAttribute('colspan', '2');
+                    $logoCell->setAttribute('style', 'vertical-align: middle;');
+
+                    $companyInfoCell = $dom->createElement('td');
+                    $companyInfoCell->setAttribute('colspan', '2');
+                    $companyInfoCell->setAttribute('style', 'vertical-align: middle;');
+
+                    /*
+                     * Find the nested company table.
+                     */
+                    $companyNestedTable = null;
+
+                    foreach (iterator_to_array($companyCell->childNodes) as $child) {
+                        if ($child->nodeType === XML_ELEMENT_NODE && strtolower($child->nodeName) === 'table') {
+                            $companyNestedTable = $child;
+                            break;
+                        }
+                    }
+
+                    if ($companyNestedTable) {
+                        /*
+                         * Find the DIRECT row inside the nested table.
+                         */
+                        $nestedRow = null;
+
+                        foreach (iterator_to_array($companyNestedTable->childNodes) as $child) {
+                            if ($child->nodeType === XML_ELEMENT_NODE && strtolower($child->nodeName) === 'tbody') {
+                                foreach (iterator_to_array($child->childNodes) as $row) {
+                                    if ($row->nodeType === XML_ELEMENT_NODE && strtolower($row->nodeName) === 'tr') {
+                                        $nestedRow = $row;
+                                        break;
+                                    }
+                                }
+
+                                if ($nestedRow) {
+                                    break;
+                                }
+                            } elseif ($child->nodeType === XML_ELEMENT_NODE && strtolower($child->nodeName) === 'tr') {
+                                $nestedRow = $child;
+                                break;
+                            }
+                        }
+
+                        /*
+                         * Extract logo + company information.
+                         */
+                        if ($nestedRow) {
+                            $nestedCells = $getDirectCells($nestedRow);
+
+                            if (count($nestedCells) >= 2) {
+                                /*
+                                 * Copy the CONTENT of the original cells into
+                                 * newly-created cells.
+                                 *
+                                 * We intentionally do not move the original
+                                 * DOM nodes.
+                                 */
+                                foreach (iterator_to_array($nestedCells[0]->childNodes) as $child) {
+                                    $logoCell->appendChild($child->cloneNode(true));
+                                }
+
+                                foreach (iterator_to_array($nestedCells[1]->childNodes) as $child) {
+                                    $companyInfoCell->appendChild($child->cloneNode(true));
+                                }
+                            }
+                        }
+                    }
+
+                    /*
+                     * ---------------------------------------------------------
+                     * QUOTATION AREA
+                     * ---------------------------------------------------------
+                     *
+                     * Copy the quotation cell content into a new cell.
+                     */
+                    $newQuotationCell = $dom->createElement('td');
+
+                    $newQuotationCell->setAttribute('colspan', '4');
+                    $newQuotationCell->setAttribute('style', 'text-align: right; vertical-align: middle;');
+
+                    foreach (iterator_to_array($quotationCell->childNodes) as $child) {
+                        $newQuotationCell->appendChild($child->cloneNode(true));
+                    }
+
+                    /*
+                     * ---------------------------------------------------------
+                     * BUILD NEW HEADER ROW
+                     * ---------------------------------------------------------
+                     */
+                    $newHeaderRow = $dom->createElement('tr');
+
+                    $newHeaderRow->appendChild($logoCell);
+                    $newHeaderRow->appendChild($companyInfoCell);
+                    $newHeaderRow->appendChild($newQuotationCell);
+
+                    /*
+                     * IMPORTANT:
+                     *
+                     * Instead of replaceChild(), insert the new row first,
+                     * then remove the old row.
+                     *
+                     * This avoids the DOM "Not Found Error".
+                     */
+                    $headerContainer->insertBefore($newHeaderRow, $headerRow);
+
+                    $headerContainer->removeChild($headerRow);
+                }
+            }
+
+            /*
+             * The second table must contain:
+             *
+             *   [customer] [date] [currency]
+             */
+            if (!empty($customerRows)) {
+                $customerCells = $getDirectCells($customerRows[0]);
+
+                if (count($customerCells) >= 3) {
+                    $toCell = $customerCells[0];
+                    $dateCell = $customerCells[1];
+                    $currencyCell = $customerCells[2];
+
+                    $toCell->setAttribute('colspan', '4');
+                    $toCell->setAttribute('style', 'vertical-align: top;');
+
+                    $dateCell->setAttribute('colspan', '2');
+                    $dateCell->setAttribute('style', 'vertical-align: top; text-align: center;');
+
+                    $currencyCell->setAttribute('colspan', '2');
+                    $currencyCell->setAttribute('style', 'vertical-align: top; text-align: right;');
+
+                    $newCustomerRow = $dom->createElement('tr');
+
+                    $newCustomerRow->appendChild($toCell);
+                    $newCustomerRow->appendChild($dateCell);
+                    $newCustomerRow->appendChild($currencyCell);
+
+                    /*
+                     * Add the customer/date/currency row to the main
+                     * header table after the quotation header row.
+                     */
+                    $headerContainer->appendChild($newCustomerRow);
+
+                    /*
+                     * The second table has now been transferred into
+                     * the first table, so remove the empty second table.
+                     */
+                    if ($customerTable->parentNode) {
+                        $customerTable->parentNode->removeChild($customerTable);
+                    }
+                }
+            }
+        }
+
+        /*
+         * Wrap non-table root-level elements into tables.
+         *
+         * This keeps the HTML structure compatible with
+         * PhpSpreadsheet's HTML reader.
+         */
         $children = iterator_to_array($body->childNodes);
         $pendingTbody = null;
 
@@ -5933,30 +7282,280 @@ class QuotationController extends Controller
             if ($pendingTbody === null) {
                 $wrapper = $dom->createElement('table');
                 $pendingTbody = $dom->createElement('tbody');
+
                 $wrapper->appendChild($pendingTbody);
                 $body->insertBefore($wrapper, $node);
             }
 
             $tr = $dom->createElement('tr');
             $td = $dom->createElement('td');
+
             $td->appendChild($node);
             $tr->appendChild($td);
             $pendingTbody->appendChild($tr);
         }
 
-        $html = $dom->saveHTML();
+        /*
+         * Merge ONLY root-level tables.
+         *
+         * Nested tables such as the Terms & Conditions storage table
+         * are intentionally left untouched.
+         */
+        $tables = [];
 
-        // Force a non-breaking space after every closing tag that's immediately
-        // followed by a word char or another opening tag (not a closing tag —
-        // no separator needed there). A regular space gets silently trimmed by
-        // PhpSpreadsheet's Html reader when it concatenates inline runs inside a
-        // cell; &nbsp; survives that trimming, so this is the only reliable way
-        // to guarantee "Quotation For" + booking no, and "Date" + value, don't
-        // run together — regardless of whether the source HTML already had a
-        // space there or not.
-        return preg_replace('/(<\/[a-zA-Z]+>)\s*(?=\w|<[a-zA-Z])/', '$1&nbsp;', $html);
+        foreach (iterator_to_array($body->childNodes) as $node) {
+            if ($node->nodeType === XML_ELEMENT_NODE && strtolower($node->nodeName) === 'table') {
+                $tables[] = $node;
+            }
+        }
+
+        if (count($tables) > 1) {
+            $mainTable = $tables[0];
+
+            $mainTbody = $mainTable->getElementsByTagName('tbody')->item(0);
+
+            if (!$mainTbody) {
+                $mainTbody = $mainTable;
+            }
+
+            for ($i = 1; $i < count($tables); $i++) {
+                $table = $tables[$i];
+
+                foreach (iterator_to_array($table->childNodes) as $child) {
+                    if ($child->nodeType === XML_ELEMENT_NODE && strtolower($child->nodeName) === 'tbody') {
+                        foreach (iterator_to_array($child->childNodes) as $row) {
+                            if ($row->nodeType === XML_ELEMENT_NODE && strtolower($row->nodeName) === 'tr') {
+                                $mainTbody->appendChild($row);
+                            }
+                        }
+                    } elseif ($child->nodeType === XML_ELEMENT_NODE && strtolower($child->nodeName) === 'tr') {
+                        $mainTbody->appendChild($child);
+                    }
+                }
+
+                if ($table->parentNode) {
+                    $table->parentNode->removeChild($table);
+                }
+            }
+        }
+        /*
+         * ---------------------------------------------------------
+         * TERMS & CONDITIONS
+         * ---------------------------------------------------------
+         *
+         * Convert the HTML Terms & Conditions list into
+         * spreadsheet-friendly rows.
+         */
+
+        $termsDiv = null;
+
+        foreach (iterator_to_array($body->getElementsByTagName('div')) as $div) {
+            $hasHeading = false;
+            $hasList = false;
+
+            foreach (iterator_to_array($div->childNodes) as $child) {
+                if ($child->nodeType !== XML_ELEMENT_NODE) {
+                    continue;
+                }
+
+                $tag = strtolower($child->nodeName);
+
+                if ($tag === 'h3') {
+                    $headingText = trim($child->textContent);
+
+                    if (stripos($headingText, 'Terms & Conditions') !== false) {
+                        $hasHeading = true;
+                    }
+                }
+
+                if ($tag === 'ol') {
+                    $hasList = true;
+                }
+            }
+
+            if ($hasHeading && $hasList) {
+                $termsDiv = $div;
+                break;
+            }
+        }
+
+        if ($termsDiv) {
+            $termsTable = $dom->createElement('table');
+            $termsTable->setAttribute('width', '100%');
+            $termsTable->setAttribute('cellpadding', '4');
+            $termsTable->setAttribute('cellspacing', '0');
+
+            $termsTbody = $dom->createElement('tbody');
+            $termsTable->appendChild($termsTbody);
+
+            /*
+             * Terms & Conditions heading
+             */
+            $headingRow = $dom->createElement('tr');
+
+            $headingCell = $dom->createElement('td');
+            $headingCell->setAttribute('colspan', '8');
+            $headingCell->setAttribute('style', 'font-weight:700; font-size:12px; padding:5px 7px;');
+
+            $headingCell->appendChild($dom->createTextNode('Terms & Conditions'));
+
+            $headingRow->appendChild($headingCell);
+            $termsTbody->appendChild($headingRow);
+
+            /*
+             * Find the ordered list
+             */
+            $termsList = null;
+
+            foreach (iterator_to_array($termsDiv->childNodes) as $child) {
+                if ($child->nodeType === XML_ELEMENT_NODE && strtolower($child->nodeName) === 'ol') {
+                    $termsList = $child;
+                    break;
+                }
+            }
+
+            /*
+             * Convert every <li> into its own row.
+             */
+            if ($termsList) {
+                $letter = 'a';
+
+                foreach (iterator_to_array($termsList->childNodes) as $li) {
+                    if ($li->nodeType !== XML_ELEMENT_NODE || strtolower($li->nodeName) !== 'li') {
+                        continue;
+                    }
+
+                    /*
+                     * Check for the storage table.
+                     */
+                    $nestedTable = null;
+
+                    foreach (iterator_to_array($li->childNodes) as $child) {
+                        if ($child->nodeType === XML_ELEMENT_NODE && strtolower($child->nodeName) === 'table') {
+                            $nestedTable = $child;
+                            break;
+                        }
+                    }
+
+                    /*
+                     * Main text row.
+                     */
+                    $textRow = $dom->createElement('tr');
+
+                    $textCell = $dom->createElement('td');
+                    $textCell->setAttribute('colspan', '8');
+                    $textCell->setAttribute('style', 'padding:3px 7px; vertical-align:top;');
+
+                    $textCell->appendChild($dom->createTextNode('(' . $letter . ') '));
+
+                    /*
+                     * Copy the list item content,
+                     * excluding the nested table.
+                     */
+                    foreach (iterator_to_array($li->childNodes) as $child) {
+                        if ($child->nodeType === XML_ELEMENT_NODE && strtolower($child->nodeName) === 'table') {
+                            continue;
+                        }
+
+                        $textCell->appendChild($child->cloneNode(true));
+                    }
+
+                    $textRow->appendChild($textCell);
+                    $termsTbody->appendChild($textRow);
+
+                    /*
+                     * Add the storage table separately.
+                     */
+                    if ($nestedTable) {
+                        $tableRow = $dom->createElement('tr');
+
+                        $tableCell = $dom->createElement('td');
+                        $tableCell->setAttribute('colspan', '8');
+                        $tableCell->setAttribute('style', 'padding:3px 7px;');
+
+                        $storageTable = $nestedTable->cloneNode(true);
+
+                        /*
+                         * Remove HTML spacing that can cause oversized rows
+                         * when PhpSpreadsheet imports the nested storage table.
+                         */
+                        $storageTable->removeAttribute('style');
+                        $storageTable->setAttribute('cellpadding', '2');
+                        $storageTable->setAttribute('cellspacing', '0');
+                        $storageTable->setAttribute('border', '1');
+
+                        foreach (iterator_to_array($storageTable->getElementsByTagName('tr')) as $storageRow) {
+                            $storageRow->removeAttribute('height');
+                        }
+
+                        $tableCell->appendChild($storageTable);
+                        $tableRow->appendChild($tableCell);
+                        $termsTbody->appendChild($tableRow);
+                    }
+
+                    $letter++;
+                }
+            }
+
+            /*
+             * Replace the original Terms & Conditions div.
+             */
+            if ($termsDiv->parentNode) {
+                $termsDiv->parentNode->replaceChild($termsTable, $termsDiv);
+            }
+        }
+
+        /*
+         * Keep the existing whitespace normalization.
+         */
+        return preg_replace('/(<\/?[a-zA-Z]+>)\s*(?=\w|<[a-zA-Z])/', '$1&nbsp;', $dom->saveHTML());
     }
 
+    /**
+     * Flatten any <table> descendants of $cell into plain markup so
+     * PhpSpreadsheet's Html reader (which does not support nested
+     * tables) reads $cell's content as ordinary text/inline elements.
+     *
+     * Each nested row becomes a line (<br>), each nested cell in that
+     * row is separated by a space, images are preserved as-is.
+     */
+    private function unwrapNestedTables(\DOMDocument $dom, \DOMElement $cell): void
+    {
+        while ($nestedTable = $cell->getElementsByTagName('table')->item(0)) {
+            $fragmentNodes = [];
+
+            $rows = $nestedTable->getElementsByTagName('tr');
+
+            foreach (iterator_to_array($rows) as $rowIndex => $row) {
+                if ($rowIndex > 0) {
+                    $fragmentNodes[] = $dom->createElement('br');
+                }
+
+                foreach (iterator_to_array($row->childNodes) as $cellIndex => $nestedCell) {
+                    if (
+                        $nestedCell->nodeType !== XML_ELEMENT_NODE ||
+                        !in_array(strtolower($nestedCell->nodeName), ['td', 'th'], true)
+                    ) {
+                        continue;
+                    }
+
+                    if ($cellIndex > 0) {
+                        $fragmentNodes[] = $dom->createTextNode(' ');
+                    }
+
+                    foreach (iterator_to_array($nestedCell->childNodes) as $child) {
+                        $fragmentNodes[] = $child;
+                    }
+                }
+            }
+
+            foreach ($fragmentNodes as $node) {
+                $nestedTable->parentNode->insertBefore($node, $nestedTable);
+            }
+
+            $nestedTable->parentNode->removeChild($nestedTable);
+        }
+    }
     //  *   @QuoteFormat VARCHAR(MAX) OUTPUT
     //  *
     //  * On internal error the SP sets @QuoteFormat = 'Failed (Reason) - <message>'
@@ -6013,14 +7612,20 @@ class QuotationController extends Controller
             // SP CATCH block sets @QuoteFormat = 'Failed (Reason) - <message>'
             // instead of raising — detect this and treat as a failure.
             if (!empty($html) && str_starts_with(trim($html), 'Failed (Reason)')) {
-                return null;
+                Log::error('getQuotationHtml - sp_Quote_QuotationFormat failure (DBA action required)', [
+                    'quotation_id' => $quotationId,
+                    'quote_type' => $quoteType,
+                    'sp_message' => $html,
+                ]);
+                throw new \RuntimeException('sp_Quote_QuotationFormat: ' . $html);
             }
 
             if (empty($html) || trim($html) === '') {
                 return null;
             }
-
             return $html;
+        } catch (\RuntimeException $e) {
+            throw $e; // real SP failure — let the caller decide (DBA flag)
         } catch (\Exception $e) {
             return null;
         }
@@ -6066,6 +7671,9 @@ class QuotationController extends Controller
                     continue;
                 }
 
+                $ext = strtoupper(pathinfo($doc->Name, PATHINFO_EXTENSION));
+                $isVat = $ext === 'PDF' && preg_match('/_vat\b/i', $doc->Name);
+
                 $versionCounter++;
                 $versions[] = [
                     'version' => $versionCounter,
@@ -6073,6 +7681,7 @@ class QuotationController extends Controller
                     'url' => route('quotation.download-pdf', [$id, $versionCounter]),
                     'created_on' => $doc->CreatedOn,
                     'file_name' => $doc->Name,
+                    'file_type' => $isVat ? 'PDF - VAT' : $ext,
                     'doc_id' => $doc->Id,
                 ];
             }
@@ -6150,112 +7759,199 @@ class QuotationController extends Controller
         }
 
         try {
-            // Use quotation_id directly if passed — avoids hitting the wrong row
-            // when multiple quotations share the same bookingno across offices.
             if (!$quotationId) {
-                $quotation = DB::table('Quote_QuotationInfo')
-                    ->where('bookingno', $bookingNo)
-                    ->first(['ID']);
+                $quotationId = DB::table('Quote_QuotationInfo')->where('bookingno', $bookingNo)->value('ID');
 
-                if (!$quotation) {
+                if (!$quotationId) {
                     return response()->json(['success' => false, 'message' => 'Quotation not found'], 404);
                 }
-
-                $quotationId = $quotation->ID;
             }
 
             $pdo = DB::connection()->getPdo();
-            $revenue = $this->fetchChargeListFromSP($pdo, $quotationId, 1);
-            $cost = $this->fetchChargeListFromSP($pdo, $quotationId, 0);
+            $spResult = $this->fetchChargesFromSP($pdo, $quotationId);
+
+            // fetchChargesFromSP returns ['charges' => [...], 'message' => ...]
+            // — unwrap before iterating.
+            $allCharges = $spResult['charges'];
+            $spMessage = $spResult['message'];
+
+            // Supplementary read: the SP does not return ChargeCatagories /
+            // EstBaseAmount / BaseExchRate, so fetch them directly for the same IDs.
+            $chargeIds = [];
+            foreach ($allCharges as $c) {
+                if (!empty($c['CostChargeRowID'])) {
+                    $chargeIds[] = $c['CostChargeRowID'];
+                }
+                if (!empty($c['RevenueChargeRowID'])) {
+                    $chargeIds[] = $c['RevenueChargeRowID'];
+                }
+            }
+
+            $supplement = [];
+            if (!empty($chargeIds)) {
+                $sheetRows = DB::table('Quote_Quotation_ChargeSheet')
+                    ->whereIn('Id', $chargeIds)
+                    ->get(['Id', 'ChargeCatagories', 'EstBaseAmount', 'BaseExchRate']);
+
+                foreach ($sheetRows as $row) {
+                    $supplement[(string) $row->Id] = [
+                        'category' => $row->ChargeCatagories,
+                        'baseAmount' => (float) $row->EstBaseAmount,
+                        'exChangeRate' => (float) $row->BaseExchRate,
+                    ];
+                }
+            }
+
+            // Split each SP row into its cost and/or revenue representation.
+            $revenue = [];
+            $cost = [];
+
+            foreach ($allCharges as $c) {
+                if (!empty($c['RevenueChargeRowID'])) {
+                    $revenue[] = $this->mapChargeRow($c, 'revenue', $supplement);
+                }
+                if (!empty($c['CostChargeRowID'])) {
+                    $cost[] = $this->mapChargeRow($c, 'cost', $supplement);
+                }
+            }
 
             Log::info('getCharges - Success', [
                 'booking_no' => $bookingNo,
                 'quotation_id' => $quotationId,
-                'quotation_source' => $request->has('quotation_id') ? 'request' : 'db_lookup',
                 'revenue_count' => count($revenue),
                 'cost_count' => count($cost),
             ]);
 
-            return response()->json(['success' => true, 'revenue' => $revenue, 'cost' => $cost]);
+            // Pass through the SP's own message when it's present; otherwise
+            // fall back to a generic string only if both arrays ended up empty.
+            $isEmpty = empty($revenue) && empty($cost);
+
+            Log::info('getCharges - counts', [
+                'all_charges_raw' => is_array($allCharges) ? count($allCharges) : 'not-array',
+                'charge_ids' => count($chargeIds),
+                'supplement' => count($supplement),
+                'revenue_count' => count($revenue),
+                'cost_count' => count($cost),
+                'sp_message' => $spMessage ?? null,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'revenue' => $revenue,
+                'cost' => $cost,
+                'message' => $spMessage ?? ($isEmpty ? 'No Record Found' : null),
+            ]);
         } catch (\RuntimeException $e) {
             Log::error('getCharges - SP error (DBA action required)', [
                 'booking_no' => $bookingNo,
                 'sp_error' => $e->getMessage(),
             ]);
             return response()->json(
-                [
-                    'success' => false,
-                    'message' => $e->getMessage(),
-                    'dba_action_required' => true,
-                ],
+                ['success' => false, 'message' => $e->getMessage(), 'dba_action_required' => true],
                 500,
             );
         } catch (\Exception $e) {
-            Log::error('getCharges failed', [
-                'booking_no' => $bookingNo,
-                'error' => $e->getMessage(),
-            ]);
+            Log::error('getCharges failed', ['booking_no' => $bookingNo, 'error' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
 
-    private function fetchChargeListFromSP(\PDO $pdo, string $quotationId, int $isRevenue): array
-    {
-        $stmt = $pdo->prepare('SET NOCOUNT ON; EXEC dbo.sp_Quote_Quotation_ChargeList ?, ?, ?');
-        $stmt->bindValue(1, $quotationId, \PDO::PARAM_STR);
-        $stmt->bindValue(2, $isRevenue, \PDO::PARAM_INT);
-        $stmt->bindValue(3, null, \PDO::PARAM_NULL);
-        $stmt->execute();
+    // private function fetchChargeListFromSP(\PDO $pdo, string $quotationId, int $isRevenue): array
+    // {
+    //     $stmt = $pdo->prepare('SET NOCOUNT ON; EXEC dbo.sp_Quote_Quotation_ChargeList ?, ?, ?');
+    //     $stmt->bindValue(1, $quotationId, \PDO::PARAM_STR);
+    //     $stmt->bindValue(2, $isRevenue, \PDO::PARAM_INT);
+    //     $stmt->bindValue(3, null, \PDO::PARAM_NULL);
+    //     $stmt->execute();
 
-        $rows = [];
+    //     $rows = [];
 
-        do {
-            try {
-                $fetched = $stmt->fetchAll(\PDO::FETCH_OBJ);
+    //     do {
+    //         try {
+    //             $fetched = $stmt->fetchAll(\PDO::FETCH_OBJ);
 
-                if (empty($fetched)) {
-                    continue;
-                }
+    //             if (empty($fetched)) {
+    //                 continue;
+    //             }
 
-                $firstVal = array_values((array) $fetched[0])[0] ?? '';
+    //             $firstVal = array_values((array) $fetched[0])[0] ?? '';
 
-                if (is_string($firstVal) && str_starts_with($firstVal, 'Failed')) {
-                    Log::error('fetchChargeListFromSP - SP failure', [
-                        'quotation_id' => $quotationId,
-                        'is_revenue' => $isRevenue,
-                        'message' => $firstVal,
-                    ]);
-                    throw new \RuntimeException('sp_Quote_Quotation_ChargeList: ' . $firstVal);
-                }
+    //             if (is_string($firstVal) && str_starts_with($firstVal, 'Failed')) {
+    //                 Log::error('fetchChargeListFromSP - SP failure', [
+    //                     'quotation_id' => $quotationId,
+    //                     'is_revenue' => $isRevenue,
+    //                     'message' => $firstVal,
+    //                 ]);
+    //                 throw new \RuntimeException('sp_Quote_Quotation_ChargeList: ' . $firstVal);
+    //             }
 
-                $rows = $fetched;
-                break;
-            } catch (\PDOException $e) {
-                continue;
-            }
-        } while ($stmt->nextRowset());
+    //             $rows = $fetched;
+    //             break;
+    //         } catch (\PDOException $e) {
+    //             continue;
+    //         }
+    //     } while ($stmt->nextRowset());
 
-        return array_map(
-            fn($row) => [
-                'id' => $row->Id,
-                'chargeCode' => $row->ChargeCode ?? '',
-                'chargeName' => $row->ChargeDesp ?? '',
-                'rate' => (float) ($row->EstChargeRate ?? 0),
-                'quantity' => (float) ($row->Quantity ?? 0),
-                'amtInChgCurr' => (float) ($row->EstChargeAmount ?? 0),
-                'amtInBaseCurr' => (float) ($row->EstBaseAmount ?? 0),
-                'exChangeRate' => (float) ($row->BaseExchRate ?? 1),
-                'chgCurr' => $row->EstChargeCurrCode ?? 'KES',
-                'basedOnCode' => '', // not in list SP — fetched on edit
-                'basedOnAndUOM' => $row->BasedOnAndUOM ?? '',
-                'chargeRemark' => '', // not in list SP — fetched on edit
-                'partyCode' => '', // not in list SP — fetched on edit
-                'revenueOrCost' => $isRevenue ? 'Revenue' : 'Cost',
-                'sourceType' => 'manual',
-            ],
-            $rows,
-        );
-    }
+    //     // sp_Quote_Quotation_ChargeList does not select ChargeCatagories, so
+    //     // grouping by category is not possible from its result alone. Read it
+    //     // directly — read-only, does not duplicate or bypass any SP business
+    //     // logic (same pattern as the PartyCode/BasedOnCode/Remarks supplement
+    //     // query already used in getChargeDetails()).
+    //     $chargeIds = array_column($rows, 'Id');
+    //     $categoryById = [];
+    //     $quantityById = [];
+    //     $incrementById = [];
+    //     $incrementTypeById = [];
+
+    //     if (!empty($chargeIds)) {
+    //         $sheetRows = DB::table('Quote_Quotation_ChargeSheet')
+    //             ->whereIn('Id', $chargeIds)
+    //             ->get(['Id', 'ChargeCatagories', 'Quantity', 'IncrementBy', 'IncrementType']);
+
+    //         foreach ($sheetRows as $sheetRow) {
+    //             $categoryById[$sheetRow->Id] = $sheetRow->ChargeCatagories;
+    //             $quantityById[$sheetRow->Id] = (float) $sheetRow->Quantity;
+    //             $incrementById[$sheetRow->Id] = (float) ($sheetRow->IncrementBy ?? 0);
+    //             $incrementTypeById[$sheetRow->Id] = $sheetRow->IncrementType ?? 'Percentage';
+    //         }
+    //     }
+
+    //     return array_map(function ($row) use (
+    //         $isRevenue,
+    //         $categoryById,
+    //         $quantityById,
+    //         $incrementById,
+    //         $incrementTypeById,
+    //     ) {
+    //         $incrementBy = $incrementById[$row->Id] ?? 0;
+
+    //         // Cost with markup = a cost-side row that carries a non-zero IncrementBy.
+    //         // This mirrors how sp_Quote_WorkbookCharges_Display's classifyCharge()
+    //         // determines the scenario — markup is a cost-only attribute.
+    //         $isMarkup = !$isRevenue && $incrementBy > 0;
+
+    //         return [
+    //             'id' => $row->Id,
+    //             'chargeCode' => $row->ChargeCode ?? '',
+    //             'chargeName' => $row->ChargeDesp ?? '',
+    //             'rate' => (float) ($row->EstChargeRate ?? 0),
+    //             'quantity' => $quantityById[$row->Id] ?? 0,
+    //             'amtInChgCurr' => (float) ($row->EstChargeAmount ?? 0),
+    //             'amtInBaseCurr' => (float) ($row->EstBaseAmount ?? 0),
+    //             'exChangeRate' => (float) ($row->BaseExchRate ?? 1),
+    //             'chgCurr' => $row->EstChargeCurrCode ?? 'KES',
+    //             'basedOnCode' => '', // not in list SP — fetched on edit
+    //             'basedOnAndUOM' => $row->BasedOnAndUOM ?? '',
+    //             'chargeRemark' => '', // not in list SP — fetched on edit
+    //             'partyCode' => '', // not in list SP — fetched on edit
+    //             'category' => $categoryById[$row->Id] ?? '',
+    //             'increaseBy' => $incrementBy,
+    //             'increaseType' => $incrementTypeById[$row->Id] ?? 'Percentage',
+    //             'revenueOrCost' => $isMarkup ? 'Cost with Markup' : ($isRevenue ? 'Revenue' : 'Cost'),
+    //             'sourceType' => 'manual',
+    //         ];
+    //     }, $rows);
+    // }
 
     public function getCopyChargesSearch(Request $request): JsonResponse
     {
@@ -6545,26 +8241,39 @@ class QuotationController extends Controller
 
     private function fetchCopyChargeRows(\PDO $pdo, string $quotationId, int $isRevenue): array
     {
-        $stmt = $pdo->prepare('SET NOCOUNT ON; EXEC dbo.sp_Quote_Quotation_ChargeList ?, ?, NULL');
-        $stmt->execute([$quotationId, $isRevenue]);
+        $spResult = $this->fetchChargesFromSP($pdo, $quotationId);
+        $allCharges = $spResult['charges'];
 
         $rows = [];
-        do {
-            try {
-                $fetched = $stmt->fetchAll(\PDO::FETCH_ASSOC);
-                if (empty($fetched)) {
-                    continue;
-                }
-                $firstVal = array_values($fetched[0])[0] ?? '';
-                if (is_string($firstVal) && str_starts_with($firstVal, 'Failed')) {
-                    break;
-                }
-                $rows = $fetched;
-                break;
-            } catch (\PDOException $e) {
+        foreach ($allCharges as $c) {
+            // Keep only the side the caller asked for
+            if ($isRevenue && empty($c['RevenueChargeRowID'])) {
                 continue;
             }
-        } while ($stmt->nextRowset());
+            if (!$isRevenue && empty($c['CostChargeRowID'])) {
+                continue;
+            }
+
+            $mapped = $this->mapChargeRow($c, $isRevenue ? 'revenue' : 'cost');
+
+            // getCopyCharges() reads these keys — map the mapper's output back
+            // into the shape that consumer expects.
+            $rows[] = [
+                'Id' => $mapped['id'],
+                'ChargeCode' => $mapped['chargeCode'],
+                'ChargeDesp' => $mapped['chargeName'],
+                'BasedOn' => $mapped['basedOnCode'],
+                'BasedOnAndUOM' => $mapped['basedOnAndUOM'],
+                'UOMCode' => $mapped['uomCode'],
+                'Quantity' => $mapped['quantity'],
+                'EstChargeRate' => $mapped['rate'],
+                'EstChargeCurrCode' => $mapped['chgCurr'],
+                'EstChargeCurrencyId' => '',
+                'EstChargeAmount' => $mapped['amtInChgCurr'],
+                'EstBaseAmount' => $mapped['amtInBaseCurr'],
+                'BaseExchRate' => $mapped['exChangeRate'],
+            ];
+        }
 
         return $rows;
     }
@@ -7036,8 +8745,19 @@ class QuotationController extends Controller
     {
         $officeCode = trim($request->office_code);
         $fromCurrency = trim($request->from_currency);
-        $toCurrency = trim($request->to_currency ?? 'KES');
-
+        $toCurrency = trim($request->to_currency ?? '');
+        if (!$toCurrency && $officeCode) {
+            $toCurrency = self::OFFICE_BASE_CURRENCY[strtoupper(trim($officeCode))] ?? '';
+        }
+        if (!$toCurrency) {
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => 'Could not resolve target currency for office ' . $officeCode,
+                ],
+                422,
+            );
+        }
         // ============================================
         // SIMPLE FIX: Convert UUID to short code if needed
         // ============================================
@@ -7091,31 +8811,9 @@ class QuotationController extends Controller
         }
 
         try {
-            $result = DB::selectOne(
-                "
-            SELECT dbo.fn_GetCurrentExRateUsingCodeandPeriod(?, ?, ?, ?) AS ExchangeRate
-        ",
-                [$officeCode, $fromCurrency, $toCurrency, $dateFor],
-            );
+            $rate = $this->resolveExchangeRate($officeCode, $fromCurrency, $toCurrency, $dateFor);
 
-            $rate = $result ? (float) $result->ExchangeRate : null;
-
-            Log::info('getExchangeRate - Result', [
-                'office_code' => $officeCode,
-                'from_currency' => $fromCurrency,
-                'to_currency' => $toCurrency,
-                'date_for' => $dateFor,
-                'rate' => $rate,
-            ]);
-
-            if (!$rate || $rate <= 0) {
-                Log::warning('getExchangeRate - No rate found', [
-                    'office_code' => $officeCode,
-                    'from_currency' => $fromCurrency,
-                    'to_currency' => $toCurrency,
-                    'date_for' => $dateFor,
-                ]);
-
+            if ($rate === null) {
                 return response()->json(
                     [
                         'success' => false,
@@ -7146,6 +8844,44 @@ class QuotationController extends Controller
                 500,
             );
         }
+    }
+
+    /**
+     * Looks up the current exchange rate via the SQL Server function.
+     * $dateFor must be 'd/M/Y' (e.g. 05/Mar/2026), which is what the function expects.
+     * Returns null when no positive rate is configured; DB exceptions bubble up to the caller.
+     */
+    private function resolveExchangeRate(string $officeCode, string $from, string $to, string $dateFor): ?float
+    {
+        $result = DB::selectOne('SELECT dbo.fn_GetCurrentExRateUsingCodeandPeriod(?, ?, ?, ?) AS ExchangeRate', [
+            $officeCode,
+            $from,
+            $to,
+            $dateFor,
+        ]);
+
+        $rate = $result ? (float) $result->ExchangeRate : null;
+
+        Log::info('resolveExchangeRate - Result', [
+            'office_code' => $officeCode,
+            'from_currency' => $from,
+            'to_currency' => $to,
+            'date_for' => $dateFor,
+            'rate' => $rate,
+        ]);
+
+        if (!$rate || $rate <= 0) {
+            Log::warning('resolveExchangeRate - No rate found', [
+                'office_code' => $officeCode,
+                'from_currency' => $from,
+                'to_currency' => $to,
+                'date_for' => $dateFor,
+            ]);
+
+            return null;
+        }
+
+        return $rate;
     }
 
     public function getContractCharges(Request $request)
@@ -11236,6 +12972,138 @@ class QuotationController extends Controller
             'quotation' => $quotation,
             'action' => $request->query('action', 'approve'),
             'approverId' => $request->query('approver', auth()->id()),
+        ]);
+    }
+
+    /**
+     * Map one entry from the SP's Charges array into the flat structure the
+     * frontend consumes. $side is 'revenue' or 'cost' — a paired row is emitted
+     * once for each side so a markup charge appears in both the revenue table
+     * (at SellRate) and the cost table (at CostRate).
+     */
+    private function mapChargeRow(array $c, string $side, array $supplement = []): array
+    {
+        $isRevenue = $side === 'revenue';
+
+        // Row IDs — paired rows carry both; single-sided rows carry one.
+        $id = $isRevenue ? (string) ($c['RevenueChargeRowID'] ?? '') : (string) ($c['CostChargeRowID'] ?? '');
+
+        $rate = (float) ($isRevenue ? $c['SellRate'] ?? 0 : $c['CostRate'] ?? 0);
+        $amount = (float) ($isRevenue ? $c['SellAmount'] ?? 0 : $c['CostAmount'] ?? 0);
+        $quantity = (float) ($c['Quantity'] ?? 0);
+        $increaseBy = (float) ($c['IncreaseBy'] ?? 0);
+        $increaseType = $c['IncreaseType'] ?? '' ?: 'Percentage';
+
+        // Amount is what the SP returned — the client already computed it at save time.
+        // The supplement only carries category metadata; do NOT use its baseAmount
+        // as the display value, because EstBaseAmount in the sheet is the SP-owned
+        // figure and may drift from what the user actually saved.
+        $supp = $supplement[$id] ?? [];
+        $baseAmount = $amount;
+        $exchangeRate = (float) ($supp['exChangeRate'] ?? 1.0);
+        $category = (string) ($supp['category'] ?? ($c['ChargeCatagory'] ?? ''));
+
+        // Markup is a cost-side attribute — cost row with non-zero IncrementBy.
+        $isMarkup = !$isRevenue && $increaseBy > 0;
+
+        $basedOnCode = (string) ($c['BasedOnCode'] ?? '');
+        $basedOnUOM = (string) ($c['BasedOnUOM'] ?? '');
+
+        return [
+            'costId' => (string) ($c['CostChargeRowID'] ?? ''),
+            'revenueId' => (string) ($c['RevenueChargeRowID'] ?? ''),
+            'pairKey' => (string) ($c['CostChargeRowID'] ?? '') . '|' . (string) ($c['RevenueChargeRowID'] ?? ''),
+            'id' => $id,
+            'chargeCode' => (string) ($c['ChargeCode'] ?? ''),
+            'chargeName' => (string) ($c['ChargeDescription'] ?? ''),
+            'costRate' => (float) ($c['CostRate'] ?? 0),
+            'costAmount' => (float) ($c['CostAmount'] ?? 0),
+            'sellRate' => (float) ($c['SellRate'] ?? 0),
+            'sellAmount' => (float) ($c['SellAmount'] ?? 0),
+            'rate' => $rate,
+            'quantity' => $quantity,
+            'amtInChgCurr' => $amount,
+            'amtInBaseCurr' => $baseAmount,
+            'exChangeRate' => $exchangeRate,
+            'chgCurr' => (string) ($c['ChgCurr'] ?? 'KES'),
+            'basedOnCode' => $basedOnCode,
+            'basedOnAndUOM' => trim($basedOnCode . ' / ' . $basedOnUOM, ' /'),
+            'uomCode' => $basedOnUOM,
+            'chargeRemark' => (string) ($c['ChargeRemark'] ?? ''),
+            'margin' => (float) ($c['Margin'] ?? 0),
+            'partyCode' => (string) ($c['PartyCode'] ?? ''),
+            'category' => $category,
+            'increaseBy' => $increaseBy,
+            'increaseType' => $increaseType,
+            'revenueOrCost' => $isMarkup ? 'Cost with Markup' : ($isRevenue ? 'Revenue' : 'Cost'),
+            'sourceType' => 'manual',
+        ];
+    }
+    public function bulkSaveCharges(Request $request)
+    {
+        $request->validate([
+            'quotation_id' => 'required',
+            'booking_no' => 'required',
+            'office_code' => 'required',
+            'charges' => 'required|array',
+        ]);
+
+        $results = [];
+        $errors = [];
+
+        foreach ($request->input('charges') as $idx => $charge) {
+            try {
+                $payload = new Request([
+                    'action' => $charge['action'] ?? 'Add',
+                    'quotation_id' => $request->input('quotation_id'),
+                    'booking_no' => $request->input('booking_no'),
+                    'office_code' => $request->input('office_code'),
+                    'quote_charge_id' => $charge['quote_charge_id'] ?? '',
+                    'party_code' => $charge['party_code'] ?? '',
+                    'revenue_or_cost' => $charge['revenue_or_cost'] ?? 'Cost',
+                    'charge_code' => $charge['charge_code'] ?? '',
+                    'quantity' => $charge['quantity'] ?? 0,
+                    'rate' => $charge['rate'] ?? 0,
+                    'amt_in_chg_curr' => $charge['amt_in_chg_curr'] ?? 0,
+                    'amt_in_base_curr' => $charge['amt_in_base_curr'] ?? 0,
+                    'exchange_rate' => $charge['exchange_rate'] ?? 1,
+                    'chg_curr' => $charge['chg_curr'] ?? '',
+                    'based_on_code' => $charge['based_on_code'] ?? '',
+                    'based_on_uom' => $charge['based_on_uom'] ?? '',
+                    'charge_remark' => $charge['charge_remark'] ?? '',
+                    'to_be_added' => $charge['to_be_added'] ?? 0,
+                    'increase_by' => $charge['increase_by'] ?? 0,
+                    'increase_type' => $charge['increase_type'] ?? 'Percentage',
+                    'source_type' => $charge['source_type'] ?? 'manual',
+                ]);
+
+                $response = $this->saveCharge($payload);
+                $body = json_decode($response->getContent(), true);
+
+                if (!($body['success'] ?? false)) {
+                    $errors[] = "Row {$idx}: " . ($body['message'] ?? 'Unknown error');
+                }
+                $results[] = $body;
+            } catch (\Throwable $e) {
+                $errors[] = "Row {$idx}: " . $e->getMessage();
+            }
+        }
+
+        if ($errors) {
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => implode(' | ', $errors),
+                    'results' => $results,
+                ],
+                422,
+            );
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'All charges saved successfully',
+            'results' => $results,
         ]);
     }
 

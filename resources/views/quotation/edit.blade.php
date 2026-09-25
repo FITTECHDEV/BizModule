@@ -226,6 +226,9 @@
                                     <a class="dropdown-item" href="#" id="generateQuoteStandardOpt">
                                         <i class="fas fa-file-alt mr-2"></i> Standard Template
                                     </a>
+                                    <a class="dropdown-item" href="#" id="generateQuoteStandardVatOpt">
+                                        <i class="fas fa-file-invoice-dollar mr-2"></i> Std. With VAT
+                                    </a>
                                     <a class="dropdown-item" href="#" id="generateQuoteExcelOpt">
                                         <i class="fas fa-file-excel mr-2"></i> Excel
                                     </a>
@@ -814,40 +817,6 @@
                             </div>
                         </div>
 
-                        {{-- ── Quote Includes ── --}}
-                        <div class="row mt-3 pt-2" style="border-top: 1px solid #dee2e6;">
-                            <div class="col-12">
-                                <p class="text-uppercase font-weight-bold mb-2"
-                                    style="font-size: 0.75rem; letter-spacing: 0.08em; color: #003580;">
-                                    Quote Includes
-                                </p>
-                                <div class="d-flex flex-wrap" style="gap: 8px;">
-                                    <label
-                                        class="quote-includes-option d-flex align-items-center border rounded px-3 py-2 mb-0"
-                                        style="cursor:pointer; font-size:0.875rem; gap:8px; background:#fff;">
-                                        <input type="checkbox" id="quoteIncludesInsurance"
-                                            name="quote_includes_insurance">
-                                        Insurance
-                                    </label>
-                                    <label
-                                        class="quote-includes-option d-flex align-items-center border rounded px-3 py-2 mb-0"
-                                        style="cursor:pointer; font-size:0.875rem; gap:8px; background:#fff;">
-                                        <input type="checkbox" id="quoteIncludesLastMile"
-                                            name="quote_includes_last_mile">
-                                        Last Mile
-                                    </label>
-                                    <label
-                                        class="quote-includes-option d-flex align-items-center border rounded px-3 py-2 mb-0"
-                                        id="customDutyLabel"
-                                        style="cursor:pointer; font-size:0.875rem; gap:8px; background:#fff;">
-                                        <input type="checkbox" id="quoteIncludesCustomDuty"
-                                            name="quote_includes_custom_duty">
-                                        Custom Duty
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-
                         {{-- ── Product Details (visible only when Custom Duty is checked) ── --}}
                         <div class="row mt-3" id="productDetailsSection" style="display:none;">
                             <div class="col-12">
@@ -1165,7 +1134,8 @@
                                     </div>
                                 </div>
                                 <div class="form-group row mb-0">
-                                    <label class="col-sm-5 col-form-label">Forwarder</label>
+                                    <label class="col-sm-5 col-form-label">Forwarder <span
+                                            class="text-danger">*</span></label>
                                     <div class="col-sm-7">
                                         <input type="text" class="form-control form-control-sm"
                                             id="shipmentForwarderDisplay" value="{{ $quotation->Forwarder ?? '' }}"
@@ -1201,94 +1171,60 @@
                     </div>
                 </div>
 
-
-                <!-- Revenue Section -->
-                <div class="card card-success">
+                <!-- Charges (Revenue + Cost merged) -->
+                <div class="card card-primary" id="chargesCard">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <div class="d-flex align-items-center">
-                            <h3 class="card-title mb-0 mr-1">Revenue</h3>
+                            <h3 class="card-title mb-0 mr-1">
+                                <i class="fas fa-file-invoice-dollar mr-2"></i> Charges
+                            </h3>
                             <div class="card-tools ml-2">
                                 <button type="button" class="btn btn-tool" data-card-widget="collapse">
                                     <i class="fas fa-chevron-up"></i>
                                 </button>
                             </div>
-                            <span class="text-white small ml-2" id="revenueTotalHeader" style="white-space:nowrap;">
-                                Total: <strong id="revenueTotalHeaderAmount">0.00</strong>
-                            </span>
                         </div>
-                        <div class="d-flex align-items-center ml-auto">
-                            <a href="#" class="text-white show-items-link" data-table="revenue">
+                        <div class="d-flex align-items-center ml-auto" style="gap:18px;">
+                            <span class="text-white small" style="white-space:nowrap;">
+                                Revenue: <strong id="revenueTotalHeaderAmount">0.00</strong>
+                            </span>
+                            <span class="text-white small" style="white-space:nowrap;">
+                                Cost: <strong id="costTotalHeaderAmount">0.00</strong>
+                            </span>
+                            <span class="text-white small" style="white-space:nowrap;">
+                                Margin: <strong id="marginTotalHeaderAmount">0.00</strong>
+                            </span>
+                            <a href="#" class="text-white show-items-link ml-2" data-table="charges">
                                 <i class="fas fa-columns mr-1"></i> Show more
                             </a>
                         </div>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body p-0">
                         <div class="table-responsive">
-                            <table class="table table-bordered table-sm table-hover">
+                            <table class="table table-bordered table-sm table-hover mb-0" id="chargesTable">
                                 <thead class="thead-light">
                                     <tr>
-                                        <th style="width:32px; display:none;" class="bulk-delete-col"><input
-                                                type="checkbox" id="revenueSelectAll" title="Select all"></th>
-                                        <th>Charge Name</th>
-                                        <th>Rate</th>
-                                        <th class="col-extra">Quantity</th>
-                                        <th class="col-extra">Based On & UOM</th>
-                                        <th class="col-extra">Currency</th>
-                                        <th>Amount</th>
-                                        <th>Base Amount</th>
-                                        <th>Actions</th>
+                                        <th style="width:32px; display:none;" class="bulk-delete-col">
+                                            <input type="checkbox" id="chargesSelectAll" title="Select all">
+                                        </th>
+                                        <th>Description</th>
+                                        <th style="width:110px;">Based On</th>
+                                        <th style="width:80px;">UOM</th>
+                                        <th class="text-right" style="width:70px;">Qty</th>
+                                        <th class="col-extra text-right" style="width:90px;">Cost Rate</th>
+                                        <th class="text-right" style="width:110px;">Cost Amount</th>
+                                        <th class="col-extra text-right" style="width:90px;">Sell Rate</th>
+                                        <th class="text-right" style="width:110px;">Sell Amount</th>
+                                        <th class="text-right" style="width:110px;">Margin %</th>
+                                        <th class="col-extra" style="width:70px;">Currency</th>
+                                        <th class="text-center" style="width:90px;">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody id="revenueChargesTable">
+                                <tbody id="chargesTableBody">
                                     <tr>
-                                        <td colspan="8" class="text-center text-muted">Loading charges...</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Cost Section -->
-                <div class="card card-danger">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <div class="d-flex align-items-center">
-                            <h3 class="card-title mb-0 mr-1">Cost</h3>
-                            <div class="card-tools ml-2">
-                                <button type="button" class="btn btn-tool" data-card-widget="collapse">
-                                    <i class="fas fa-chevron-up"></i>
-                                </button>
-                            </div>
-                            <span class="text-white small ml-2" id="costTotalHeader" style="white-space:nowrap;">
-                                Total: <strong id="costTotalHeaderAmount">0.00</strong>
-                            </span>
-                        </div>
-                        <div class="d-flex align-items-center ml-auto">
-                            <a href="#" class="text-white show-items-link" data-table="cost">
-                                <i class="fas fa-columns mr-1"></i> Show More
-                            </a>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-bordered table-sm table-hover">
-                                <thead class="thead-light">
-                                    <tr>
-                                        <th style="width:32px; display:none;" class="bulk-delete-col"><input
-                                                type="checkbox" id="costSelectAll" title="Select all"></th>
-                                        <th>Charge Name</th>
-                                        <th>Rate</th>
-                                        <th class="col-extra">Quantity</th>
-                                        <th class="col-extra">Based On & UOM</th>
-                                        <th class="col-extra">Currency</th>
-                                        <th>Amount</th>
-                                        <th>Base Amount</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="costChargesTable">
-                                    <tr>
-                                        <td colspan="8" class="text-center text-muted">Loading charges...</td>
+                                        <td colspan="13" class="text-center text-muted py-3">
+                                            Loading charges...
+                                        </td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -1349,7 +1285,6 @@
                                 <button type="button" class="btn btn-primary" id="openChargesModal">
                                     <i class="fas fa-plus"></i> Add Charges
                                 </button>
-
                                 <button type="button" class="btn btn-secondary ml-2" id="openCopyChargesBtn">
                                     <i class="fas fa-copy"></i> Copy Charges
                                 </button>
@@ -1399,8 +1334,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                                                                                                                                                                                                        MODALS
-                                                                                                                                                                                                                        ============================================ -->
+                                    MODALS
+                                    ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -1496,22 +1431,9 @@
                                                 name="revenue_amount" step="0.01" value="0.00" readonly>
                                         </div>
                                     </div>
-                                    <div class="row mb-3">
-                                        <div class="col-6">
-                                            <label for="revenue_exchange_rate" class="form-label">
-                                                <span class="text-danger">*</span> Exchange Rate</label>
-                                            <input type="number" class="form-control" id="revenue_exchange_rate"
-                                                name="revenue_exchange_rate" readonly>
-                                        </div>
-                                        <div class="col-6">
-                                            <label for="revenue_base_amount" class="form-label text-nowrap">
-                                                Amount in Base Currency <span class="text-muted"
-                                                    id="revenue_base_currency_label">(KES)</span></label>
-                                            <input type="number" class="form-control" id="revenue_base_amount"
-                                                name="revenue_base_amount" step="0.01" value="0.00" readonly>
-                                        </div>
-                                    </div>
-                                </div>
+                                </div> {{-- end LEFT col --}}
+
+                                {{-- RIGHT COLUMN --}}
                                 <div class="col-md-6">
                                     <div class="mb-3">
                                         <label for="revenue_description" class="form-label">Description</label>
@@ -1519,7 +1441,8 @@
                                             name="revenue_description" readonly>
                                     </div>
                                     <div class="mb-3">
-                                        <label for="revenue_tax_applicable" class="form-label">Tax Applicable</label>
+                                        <label for="revenue_tax_applicable" class="form-label">Tax
+                                            Applicable</label>
                                         <input type="number" class="form-control" id="revenue_tax_applicable"
                                             name="revenue_tax_applicable" step="0.01" readonly>
                                     </div>
@@ -1563,10 +1486,10 @@
                                             <input type="text" class="form-control"
                                                 id="revenueSecondaryBillToParty" placeholder="Select Secondary Party">
                                             <input type="hidden" id="revenueSecondaryBillToPartyCode">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                                        </div> <!-- secondary container -->
+                                    </div> <!-- wrapper mb-3 -->
+                                </div> <!-- right col -->
+                            </div> <!-- row -->
                         </form>
                     </div>
                     <div class="modal-footer">
@@ -1696,21 +1619,6 @@
                                             <label for="cost_revenue_amount" class="form-label">Amount</label>
                                             <input type="number" class="form-control" id="cost_revenue_amount"
                                                 name="cost_revenue_amount" step="0.01" value="0.00" readonly>
-                                        </div>
-                                    </div>
-                                    <div class="row mb-3">
-                                        <div class="col-6">
-                                            <label for="cost_exchange_rate" class="form-label">
-                                                <span class="text-danger">*</span> Exchange Rate</label>
-                                            <input type="number" class="form-control" id="cost_exchange_rate"
-                                                name="cost_exchange_rate" readonly>
-                                        </div>
-                                        <div class="col-6">
-                                            <label for="cost_base_amount" class="form-label text-nowrap">
-                                                Amount in Base Currency <span class="text-muted"
-                                                    id="cost_base_currency_label">(KES)</span></label>
-                                            <input type="number" class="form-control" id="cost_base_amount"
-                                                name="cost_base_amount" step="0.01" value="0.00" readonly>
                                         </div>
                                     </div>
                                 </div>
@@ -2060,6 +1968,31 @@
             </div>
         </div>
 
+        {{-- ── EXCEL PREVIEW MODAL ───────────────────────────────────── --}}
+        <div class="modal fade" id="excelPreviewModal" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog" style="max-width: 95vw; width: 95vw;" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="fas fa-file-excel mr-2" style="color:#217346;"></i>Excel Preview
+                        </h5>
+                        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                    </div>
+                    <div class="modal-body p-0" style="overflow: auto; max-height: 78vh;">
+                        <div id="excelPreviewBody">
+                            <div class="text-center py-5">
+                                <i class="fas fa-spinner fa-spin text-primary" style="font-size:1.5rem;"></i>
+                                <p class="text-muted mt-2 mb-0">Loading Excel...</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="modal fade" id="contractTemplateModal" tabindex="-1" role="dialog" aria-hidden="true">
             <div class="modal-dialog modal-xl" role="document">
                 <div class="modal-content">
@@ -2098,33 +2031,15 @@
                                     <span class="cc-val"
                                         id="ccServiceType">{{ $quotation->ServiceVertical ?? '' }}</span>
                                 </div>
-                                {{-- Source toggle --}}
-                                <div class="cc-info-row" style="min-height:auto; flex-direction:column; align-items:flex-start; gap:4px; padding:4px 0;">
-                                    <span class="cc-lbl" style="min-width:auto;">Quotation Source</span>
-                                    <div class="d-flex flex-wrap" style="gap:6px 20px;">
-                                        <label class="d-flex align-items-center mb-0"
-                                            style="gap:6px; font-size:0.85rem; cursor:pointer; white-space:nowrap;">
-                                            <input type="radio" name="ccSourceType" id="ccSourceJob"
-                                                value="job" checked>
-                                            Existing Job
-                                        </label>
-                                        <label class="d-flex align-items-center mb-0"
-                                            style="gap:6px; font-size:0.85rem; cursor:pointer; white-space:nowrap;">
-                                            <input type="radio" name="ccSourceType" id="ccSourceTemplate"
-                                                value="template">
-                                            Standard Template
-                                        </label>
-                                    </div>
-                                </div>
-
                                 {{-- Existing Job dropdown --}}
                                 <div class="cc-info-row" id="ccJobSourceRow">
                                     <span class="cc-lbl cc-lbl-required">*&nbsp;Job No</span>
                                     <div class="cc-input-group" style="flex:1;">
-                                        <select class="cc-input cc-input-highlight" id="ccJobSelect"
+                                        <input type="text" class="cc-input cc-input-highlight" id="ccJobNo"
+                                            placeholder="Type at least 2 characters…" autocomplete="off"
                                             style="width:100%; height:28px;">
-                                            <option value="">-- Select Job --</option>
-                                        </select>
+                                        {{-- Hidden field holds the resolved UUID — rest of the JS keeps working --}}
+                                        <input type="hidden" id="ccJobSelect">
                                         <button type="button" class="cc-search-icon-btn" id="ccJobNoSearchBtn"
                                             title="Advanced search">
                                             <i class="fas fa-search"></i>
@@ -2132,16 +2047,6 @@
                                     </div>
                                 </div>
 
-                                {{-- Standard Template dropdown --}}
-                                <div class="cc-info-row" id="ccTemplateSourceRow" style="display:none;">
-                                    <span class="cc-lbl cc-lbl-required">*&nbsp;Template</span>
-                                    <div class="cc-input-group" style="flex:1;">
-                                        <select class="cc-input cc-input-highlight" id="ccTemplateSelect"
-                                            style="width:100%; height:28px;" disabled>
-                                            <option value="">-- Not available yet --</option>
-                                        </select>
-                                    </div>
-                                </div>
                                 <div class="cc-info-row" id="ccClientRow" style="display:none;">
                                     <span class="cc-lbl">Client</span>
                                     <span class="cc-val" id="ccClient"></span>
@@ -2453,10 +2358,9 @@
 @section('css')
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
-        /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        MODAL STYLING — matched to FitExpress UI
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ============================================= */
+        /* MODAL STYLING — matched to FitExpress UI */
 
         /* Remove number input spin arrows (Chrome/Safari/Edge + Firefox) */
         input[type="number"]::-webkit-outer-spin-button,
@@ -2464,12 +2368,12 @@
             -webkit-appearance: none;
             margin: 0;
         }
-        
+
         input[type="number"] {
             -moz-appearance: textfield;
             appearance: textfield;
         }
-        
+
         .modal-header {
             background-color: #fff !important;
             color: #000 !important;
@@ -2843,8 +2747,69 @@
             padding-left: 0.5rem !important;
         }
 
+        .cc-table-wrap {
+            overflow-x: auto;
+        }
+
+        .cc-table {
+            width: 100%;
+            min-width: 900px;
+            margin-bottom: 0;
+            font-size: 0.8rem;
+            border-collapse: collapse;
+        }
+
+        .cc-table th,
+        .cc-table td {
+            border: 1px solid #dee2e6;
+            padding: 5px 7px;
+            vertical-align: middle;
+            white-space: nowrap;
+        }
+
+        .cc-table thead th {
+            background: #fff;
+            font-weight: 600;
+            color: #6c757d;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+        }
+
+        .cc-col-chk {
+            width: 30px;
+            text-align: center;
+        }
+
+        .cc-empty-msg {
+            text-align: center;
+            color: #888;
+            padding: 10px;
+            font-size: 0.8rem;
+        }
+
+        .cc-toggle-group {
+            display: flex;
+            border: 1px solid #4B49AC;
+            border-radius: 3px;
+        }
+
+        .cc-toggle-btn {
+            border: none;
+            background: #fff;
+            color: #4B49AC;
+            font-size: 0.72rem;
+            padding: 3px 6px;
+        }
+
+        .cc-toggle-btn.active {
+            background: #4B49AC;
+            color: #fff;
+        }
+
         /* Email Quote Action Bar */
-        .card-primary .btn-email-quote {
+        .card-primary .btn-email-quote,
+        .card-success .btn-email-quote,
+        .card-danger .btn-email-quote {
             background-color: #ffffff;
             color: #4B49AC;
             border: 1px solid rgba(255, 255, 255, 0.3);
@@ -2855,7 +2820,9 @@
             transition: all 0.2s;
         }
 
-        .card-primary .btn-email-quote:hover {
+        .card-primary .btn-email-quote:hover,
+        .card-success .btn-email-quote:hover,
+        .card-danger .btn-email-quote:hover {
             background-color: rgba(255, 255, 255, 0.2);
             color: #ffffff;
             border-color: #ffffff;
@@ -2933,9 +2900,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -3838,6 +3805,222 @@
             background: #dc3545;
             color: #fff;
         }
+
+        .badge-markup {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+            font-size: 0.65rem;
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 10px;
+            margin-left: 6px;
+            white-space: nowrap;
+            vertical-align: middle;
+        }
+
+        .badge-markup i {
+            font-size: 0.6rem;
+            margin-right: 3px;
+        }
+
+        /* ── Merged Charges card — sub-section headers ───────────────── */
+        .charges-subsection-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 10px;
+            margin-bottom: 8px;
+            border-left: 4px solid #4B49AC;
+            background: linear-gradient(90deg, #f4f4fb 0%, #ffffff 60%);
+            border-radius: 0 4px 4px 0;
+        }
+
+        .charges-subsection-title {
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #4B49AC;
+        }
+
+        .charges-show-more {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: #4B49AC !important;
+            text-decoration: none;
+        }
+
+        .charges-show-more:hover {
+            text-decoration: underline;
+            color: #3a3990 !important;
+        }
+
+        /* Give the revenue table a soft purple header tint,
+                                                                       cost table a slightly warmer one — both still purple family */
+        #chargesCard #revenueChargesTable,
+        #chargesCard #costChargesTable {
+            font-size: 0.85rem;
+        }
+
+        #chargesCard .table-responsive {
+            border: 1px solid #e8e8f5;
+            border-radius: 4px;
+            padding: 0;
+        }
+
+        #chargesCard .table-responsive table {
+            margin-bottom: 0;
+        }
+
+        #chargesCard .table-responsive thead th {
+            background: #f4f4fb;
+            color: #4B49AC;
+            border-color: #dddcf5;
+            font-weight: 600;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        /* ── Merged Charges card ─────────────────────────────────── */
+        #chargesCard .table-responsive {
+            border-top: 1px solid #e8e8f5;
+        }
+
+        /* ── Category band (workbook-style) ──────────────────────── */
+        .charge-group-band td {
+            padding: 0 !important;
+            background: #eef1f8;
+            border-top: 1px solid #d8dfec;
+            border-bottom: 1px solid #d8dfec;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .charge-group-band-inner {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 9px 14px;
+        }
+
+        .charge-group-caret {
+            color: #4B49AC;
+            font-size: 0.9rem;
+            transition: transform 0.15s ease;
+        }
+
+        .charge-group-band.is-collapsed .charge-group-caret {
+            transform: rotate(-90deg);
+        }
+
+        .charge-group-band-label {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.09em;
+            color: #4B49AC;
+        }
+
+        .charge-group-band-total {
+            margin-left: auto;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #4B49AC;
+            letter-spacing: 0.02em;
+        }
+
+        .charge-group-band:hover td {
+            background: #e4e8f4;
+        }
+
+        #chargesCard tbody tr.charge-row:hover {
+            background: #f9f9fd;
+        }
+
+        #chargesCard .charge-margin-neg {
+            color: #dc3545;
+        }
+
+        #chargesCard .charge-margin-pos {
+            color: #218838;
+        }
+
+        #chargesCard .show-items-link {
+            text-decoration: underline;
+            font-size: 0.78rem;
+        }
+
+        /* ── Excel preview — rendered SheetJS table ─────────────────── */
+        #excelPreviewBody {
+            background: #fff;
+            padding: 12px;
+        }
+        
+        #excelPreviewBody table {
+            border-collapse: collapse;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 11px;
+            color: #222;
+            width: 100%;              /* stretch to fill the modal */
+            table-layout: auto;       /* size columns to content, capped by max-width */
+        }
+        
+        #excelPreviewBody td,
+        #excelPreviewBody th {
+            border: 1px solid #d8dfec;
+            padding: 4px 8px;
+            vertical-align: top;
+            white-space: normal;      /* let T&C paragraphs wrap instead of clip */
+            overflow-wrap: anywhere;  /* break long words rather than overflow */
+            /* max-width is set per-cell by JS from the workbook's !cols */
+        }
+
+        #excelPreviewBody tr:first-child td {
+            background: #eef1f8;
+            font-weight: 600;
+            color: #1F3864;
+        }
+
+        #excelPreviewBody tr:hover td {
+            background: #f9f9fd;
+        }
+
+        /* The nav/bar rows in the quotation sheet span full width —
+                                           give them breathing room so they read as section headers. */
+        #excelPreviewBody td[colspan] {
+            background: #f4f4fb;
+        }
+
+        /* Excel table padding lives here so iframe PDFs stay edge-to-edge */
+        #excelPreviewBody table {
+            margin: 12px;
+        }
+
+        #excelPreviewBody>.text-center,
+        #excelPreviewBody>.alert {
+            margin: 12px;
+        }
+
+        /* Force the form (and its ancestors) not to create a fixed-position containing block */
+        #bookingQuotationForm,
+        #bookingQuotationForm * {
+            transform: none !important;
+            filter: none !important;
+            perspective: none !important;
+            will-change: auto !important;
+            contain: none !important;
+        }
+
+        /* Raise modal above any AdminLTE wrapper stacking context */
+        .modal {
+            z-index: 1050 !important;
+        }
+
+        .modal-backdrop {
+            z-index: 1040 !important;
+        }
     </style>
 @stop
 
@@ -3855,7 +4038,11 @@
         // Mirrors QuotationController::OFFICE_BASE_CURRENCY — single source of truth via PHP
         const OFFICE_BASE_CURRENCY = @json(\App\Http\Controllers\QuotationController::OFFICE_BASE_CURRENCY);
         const CURRENT_OFFICE_CODE = '{{ trim($officeShortCode ?? '') }}';
+        const QUOTE_CURRENCY = '{{ addslashes(trim($quotation->QuoteCurr ?? 'USD')) }}';  
 
+
+        // Page-wide currency, used by renderCharges, SALES INTELLIGENCE, and the category-total renderer
+        const SI_CURRENCY = '{{ addslashes(trim($quotation->QuoteCurr ?? 'USD')) }}';
 
         $(document).ready(function() {
 
@@ -3868,7 +4055,6 @@
                 const SI_COMPANY = '{{ addslashes(trim($quotation->pri_partnermaster_name ?? '')) }}';
                 const SI_SERVICE = '{{ addslashes(trim($quotation->SVName ?? '')) }}';
                 const SI_OFFICE = '{{ addslashes(trim($officeShortCode ?? '')) }}';
-                const SI_CURRENCY = '{{ addslashes(trim($quotation->QuoteCurr ?? 'USD')) }}';
 
                 // Chart instances — kept so we can destroy before re-render
                 let siWinLossChartInst = null;
@@ -4325,8 +4511,7 @@
                                 return parseFloat(raw.replace(/[^0-9.\-]/g, '')) || 0;
                             };
                             const quotedRevenue = parsePageFloat('#quotedRevenue');
-                            const quotedCost = parsePageFloat('#totalCostBaseAmount') ||
-                                parsePageFloat('#costTotalHeaderAmount');
+                            const quotedCost = parsePageFloat('#costTotalHeaderAmount');
 
                             // Compute
                             const prob = computeProbability(allQuotes, SI_SERVICE);
@@ -4382,6 +4567,7 @@
                     '#incoTermSelect', // InCo Term
                     '#serviceClassSelect', // Service Class
                     '[data-field="commodity"]', // Commodity
+                    '#shipmentForwarderSelect', // Forwarder
                 ];
 
                 mandatoryFields.forEach(function(selector) {
@@ -4401,10 +4587,22 @@
             const bookingNo = '{{ $quotation->bookingno ?? '' }}';
             const quotationStatus = '{{ $quotation->status ?? 'Proposal' }}';
             const teamId = '{{ $quotation->teamid ?? '' }}';
+            // Real category order, matching sp_Quote_WorkbookCharges_Display's
+            // ORDER BY (the actual category values stored in ChargeCatagories).
+            // NOTE: index_blade.php's CHARGE_GROUP_ORDER is stale mock data
+            // from before the backend existed — do not copy it from there.
+            const CHARGE_GROUP_ORDER = [
+                'Origin Charges',
+                'Freight',
+                'Customs Charges',
+                'Destination Charges',
+                'Delivery Charges'
+            ];
+
             let revenueCharges = [];
             let costCharges = [];
             let currentEditingCharge = null;
-            let currentEditingType = null;
+            let currentEditingRevenueId = null;
             let currencyMap = {};
             let officeCode = '{{ trim($officeShortCode ?? '') }}';
 
@@ -4444,13 +4642,13 @@
             }
 
             function getBaseCurrency() {
-                return OFFICE_BASE_CURRENCY[officeCode] ?? 'KES';
+                const bc = OFFICE_BASE_CURRENCY[officeCode];
+                if (!bc) console.warn('No base currency mapped for office:', officeCode);
+                return bc || '';
             }
 
             function updateBaseCurrencyLabels() {
                 const bc = getBaseCurrency();
-                $('#revenue_base_currency_label').text('(' + bc + ')');
-                $('#cost_base_currency_label').text('(' + bc + ')');
                 $('.office-base-currency').text(bc);
             }
 
@@ -4936,6 +5134,11 @@
                     return;
                 }
 
+                if (!$('#shipmentForwarderSelect').val()) {
+                    showNotification('Please select a Forwarder', 'error');
+                    return;
+                }
+
                 $.ajax({
                     url: '{{ route('quotation.shipment.save') }}',
                     type: 'POST',
@@ -5078,6 +5281,14 @@
                 $('#statusModal').modal('hide');
             });
 
+            $(document).on('click', '.charge-group-band', function() {
+                const $band = $(this);
+                const cat = $band.data('cat');
+                const collapsed = $band.toggleClass('is-collapsed').hasClass('is-collapsed');
+
+                $('#chargesTableBody tr.charge-row[data-cat="' + cat + '"]').toggle(!collapsed);
+            });
+
             // ============================================
             // ESC KEY & BACKDROP HANDLERS
             // ============================================
@@ -5102,18 +5313,18 @@
             // ============================================
             // MODAL CLEANUP ON CLOSE
             // ============================================
-            $('#addRevenueModal').on('hidden.bs.modal', function() {
-                console.log('Revenue Modal hidden, resetting form');
-                clearRevenueModalForm();
-                currentEditingCharge = null;
-                currentEditingType = null;
-            });
-
             $('#addCostModal').on('hidden.bs.modal', function() {
-                console.log('Cost Modal hidden, resetting form');
+                $('.modal-backdrop').remove();
+                $('body').removeClass('modal-open').css('padding-right', '');
                 clearCostModalForm();
                 currentEditingCharge = null;
-                currentEditingType = null;
+            });
+
+            $('#addRevenueModal').on('hidden.bs.modal', function() {
+                $('.modal-backdrop').remove();
+                $('body').removeClass('modal-open').css('padding-right', '');
+                clearRevenueModalForm();
+                currentEditingCharge = null;
             });
 
             // ============================================
@@ -5130,20 +5341,17 @@
             // BULK DELETE — REVENUE & COST
             // ============================================
             const BULK_DELETE_URL = '{{ route('quotation.charges.bulk-delete') }}';
-            let bulkDeleteMode = false;
 
             function enterBulkDeleteMode() {
-                bulkDeleteMode = true;
                 $('.bulk-delete-col').show();
-                $('#revenueSelectAll, #costSelectAll').prop('checked', false);
+                $('#chargesSelectAll').prop('checked', false);
                 $('#openBulkDeleteBtn').addClass('d-none');
                 $('#confirmBulkDeleteBtn, #cancelBulkDeleteBtn').removeClass('d-none');
             }
 
             function exitBulkDeleteMode() {
-                bulkDeleteMode = false;
                 $('.bulk-delete-col').hide();
-                $('#revenueSelectAll, #costSelectAll').prop('checked', false);
+                $('#chargesSelectAll').prop('checked', false);
                 $('.charge-row-check').prop('checked', false);
                 $('#confirmBulkDeleteBtn, #cancelBulkDeleteBtn').addClass('d-none');
                 $('#openBulkDeleteBtn').removeClass('d-none');
@@ -5163,12 +5371,8 @@
             });
 
             // Master checkbox — checks all revenue AND cost rows
-            $(document).on('change', '#revenueSelectAll', function() {
-                $('#revenueChargesTable .charge-row-check').prop('checked', $(this).is(':checked'));
-            });
-
-            $(document).on('change', '#costSelectAll', function() {
-                $('#costChargesTable .charge-row-check').prop('checked', $(this).is(':checked'));
+            $(document).on('change', '#chargesSelectAll', function() {
+                $('#chargesTableBody .charge-row-check').prop('checked', $(this).is(':checked'));
             });
 
             $('#confirmBulkDeleteBtn').on('click', function() {
@@ -5247,25 +5451,53 @@
                         quotation_id: quotationId
                     },
                     beforeSend: function() {
-                        $('#revenueChargesTable, #costChargesTable').html(
-                            '<tr><td colspan="6" class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>'
+                        $('#chargesTableBody').html(
+                            '<tr><td colspan="12" class="text-center py-3">' +
+                            '<i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>'
                         );
                     },
                     success: function(response) {
                         if (response.success) {
                             revenueCharges = response.revenue || [];
                             costCharges = response.cost || [];
-                            renderRevenueCharges();
-                            renderCostCharges();
-                            updateSummary();
+
+                            // SP returned no charges — show its own message inline
+                            // instead of a generic "Failed to load".
+                            if (!revenueCharges.length && !costCharges.length) {
+                                const spMessage = response.message || 'No charges found.';
+                                $('#chargesTableBody').html(
+                                    '<tr><td colspan="12" class="text-center text-muted py-3">' +
+                                    '<i class="fas fa-info-circle mr-1"></i>' +
+                                    $('<div>').text(spMessage).html() +
+                                    '</td></tr>'
+                                );
+                                updateSummary();
+                                return;
+                            }
+
+                            renderCharges();
                         } else {
-                            showNotification('Failed to load charges', 'error');
+                            // Surface the SP's own message, fall back to a generic one
+                            const spMessage = response.message || 'Failed to load charges';
+                            showNotification(spMessage, 'error');
+                            $('#chargesTableBody').html(
+                                '<tr><td colspan="12" class="text-center text-danger py-3">' +
+                                $('<div>').text(spMessage).html() +
+                                '</td></tr>'
+                            );
                         }
                     },
-                    error: function() {
-                        showNotification('Failed to load charges', 'error');
-                        $('#revenueChargesTable, #costChargesTable').html(
-                            '<tr><td colspan="6" class="text-center text-danger">Failed to load</td></tr>'
+                    error: function(xhr) {
+                        // Prefer the SP / controller message over a generic string
+                        const spMessage = xhr.responseJSON?.message ||
+                            xhr.responseJSON?.error ||
+                            'Failed to load charges';
+
+                        showNotification(spMessage, 'error');
+                        $('#chargesTableBody').html(
+                            '<tr><td colspan="12" class="text-center text-danger py-3">' +
+                            $('<div>').text(spMessage).html() +
+                            '</td></tr>'
                         );
                     }
                 });
@@ -5288,65 +5520,33 @@
                         if (!res.success || !res.data) {
                             console.error('[ContractTemplate] list fetch failed:', res.message ||
                                 'Unknown error');
-                            return [];
+                            window.contractTemplateList = [];
+                            return {
+                                success: false,
+                                data: [],
+                                message: res.message || 'Unknown error'
+                            };
                         }
 
                         window.contractTemplateList = res.data;
-                        return res.data;
+                        return {
+                            success: true,
+                            data: res.data
+                        };
                     })
                     .catch(function(err) {
                         console.error('[ContractTemplate] list fetch failed:', err);
-                        return [];
+                        return {
+                            success: false,
+                            data: [],
+                            message: 'Failed to load contract list'
+                        };
                     });
 
                 return window.contractTemplateListRequest;
             }
-
             window.loadContractTemplateList = loadContractTemplateList;
             loadContractTemplateList();
-
-            // function loadContractTemplateCharges() {
-            //     $.ajax({
-            //         url: '{{ route('quotation.contract-template.charges', $quotation->ID) }}',
-            //         type: 'GET',
-            //         success: function(response) {
-            //             if (response.success && response.data) {
-            //                 (response.data.revenue_charges || []).forEach(function(item) {
-            //                     revenueCharges.push({
-            //                         id: null,
-            //                         chargeName: item.desc,
-            //                         rate: item.rate,
-            //                         quantity: 1,
-            //                         basedOnAndUOM: item.basedOn,
-            //                         chgCurr: item.currency,
-            //                         amtInChgCurr: item.sell,
-            //                         amtInBaseCurr: item.sell,
-            //                         source: 'template'
-            //                     });
-            //                 });
-            //                 (response.data.cost_charges || []).forEach(function(item) {
-            //                     costCharges.push({
-            //                         id: null,
-            //                         chargeName: item.desc,
-            //                         rate: item.rate,
-            //                         quantity: 1,
-            //                         basedOnAndUOM: item.basedOn,
-            //                         chgCurr: item.currency,
-            //                         amtInChgCurr: item.sell,
-            //                         amtInBaseCurr: item.sell,
-            //                         source: 'template'
-            //                     });
-            //                 });
-            //             }
-            //         },
-            //         complete: function() {
-            //             renderRevenueCharges();
-            //             renderCostCharges();
-            //             updateSummary();
-            //         }
-            //     });
-            // }
-
 
             // ── REQUEST OFFICE HISTORY ────────────────────────────────────────────────
             function loadRequestOfficeHistory() {
@@ -5399,7 +5599,8 @@
                 }
 
                 if (!receivedRows.length) {
-                    $received.html('<tr><td colspan="4" class="req-office-empty">No received requests</td></tr>');
+                    $received.html(
+                        '<tr><td colspan="4" class="req-office-empty">No received requests</td></tr>');
                 } else {
                     receivedRows.forEach(function(row) {
                         const date = row.CreatedOn ? new Date(row.CreatedOn).toLocaleDateString() : '—';
@@ -5417,22 +5618,6 @@
 
             // Load on page init
             loadRequestOfficeHistory();
-
-            // ============================================
-            // MODAL TRIGGERS
-            // ============================================
-
-            // NOTE: "Add Charges" opens the Revenue modal with Revenue pre-selected.
-            // The radio buttons inside allow switching to Cost or Cost with Markup.
-            // saveCharge() reads the radio value — not the modal name — to determine
-            // revenueOrCost, so switching the radio correctly saves as Cost.
-            $('#openChargesModal').on('click', function(e) {
-                e.preventDefault();
-                currentEditingCharge = null;
-                currentEditingType = 'revenue';
-                clearRevenueModalForm();
-                $('#addRevenueModal').modal('show');
-            });
 
             // ============================================
             // MODAL INITIALIZATION - SHOWN EVENT
@@ -5520,7 +5705,8 @@
                             '<option value="">Loading...</option>');
                     },
                     success: function(response) {
-                        if (response.success && response.currencies && response.currencies.length > 0) {
+                        if (response.success && response.currencies && response.currencies.length >
+                            0) {
                             $currencySelect.empty().append('<option value="">Select</option>');
                             currencyMap = {};
                             response.currencies.forEach(function(currency) {
@@ -5544,109 +5730,6 @@
             }
 
             // ============================================
-            // AUTO-FETCH EXCHANGE RATE ON CURRENCY CHANGE
-            // ============================================
-            // Format date as '05/Mar/2026' to match fn_GetCurrentExRateUsingCodeandPeriod signature
-            function formatDateForExRate(date) {
-                const d = date || new Date();
-                return d.toISOString().split('T')[0]; // '2026-03-09' — unambiguous, Carbon parses reliably
-            }
-
-            $(document).on('change', 'select[name="revenue_currency"], select[name="cost_currency"]', function() {
-                const $currencySelect = $(this);
-                const prefix = $currencySelect.attr('name').split('_')[0];
-                const currencyCode = $currencySelect.find('option:selected').data('code');
-                const $exchangeRateInput = $(`input[name="${prefix}_exchange_rate"]`);
-
-                if (!currencyCode || !officeCode) {
-                    console.warn('Currency code or office code missing', {
-                        currencyCode,
-                        officeCode
-                    });
-                    return;
-                }
-
-                const baseCurrency = OFFICE_BASE_CURRENCY[officeCode] ?? 'KES';
-
-                if (currencyCode === baseCurrency) {
-                    $exchangeRateInput.val('1.000000');
-                    calculateAmount(prefix);
-                    return;
-                }
-
-                const dateFor = formatDateForExRate(new Date());
-
-                console.log('Fetching exchange rate', {
-                    officeCode,
-                    currencyCode,
-                    baseCurrency,
-                    dateFor
-                });
-
-                $.ajax({
-                    url: '/quotation/exchange-rate',
-                    type: 'GET',
-                    data: {
-                        office_code: officeId,
-                        from_currency: currencyCode,
-                        to_currency: baseCurrency,
-                        date_for: dateFor
-                    },
-                    beforeSend: function() {
-                        $exchangeRateInput.val('').prop('readonly', true);
-                    },
-                    success: function(response) {
-                        if (response.success && response.exchange_rate) {
-                            $exchangeRateInput.val(parseFloat(response.exchange_rate).toFixed(
-                                6));
-                            calculateAmount(prefix);
-                        } else {
-                            showNotification(
-                                response.message ||
-                                `No rate found for ${currencyCode} → ${baseCurrency}`,
-                                'warning'
-                            );
-                            $exchangeRateInput.val('');
-                        }
-                    },
-                    error: function(xhr) {
-                        // Surface the actual server message — 404 = rate not configured, 500 = DB error
-                        const serverMsg = xhr.responseJSON?.message;
-                        const statusCode = xhr.status;
-
-                        if (statusCode === 404) {
-                            showNotification(
-                                serverMsg ||
-                                `No exchange rate found for ${currencyCode} → ${baseCurrency} on ${dateFor}. Please enter manually.`,
-                                'warning' // warning, not error — rate may just not be set up for this date
-                            );
-                        } else {
-                            showNotification(
-                                serverMsg ||
-                                'Exchange rate lookup failed. Please enter manually.',
-                                'error'
-                            );
-                        }
-
-                        console.error('Exchange rate fetch failed', {
-                            status: statusCode,
-                            message: serverMsg,
-                            officeCode,
-                            currencyCode,
-                            baseCurrency,
-                            dateFor
-                        });
-
-                        $exchangeRateInput.val('').prop('readonly',
-                            false); // Let user enter manually
-                    },
-                    complete: function() {
-                        $exchangeRateInput.prop('readonly', true);
-                    }
-                });
-            });
-
-            // ============================================
             // LOAD BASED ON LIST
             // ============================================
             function loadBasedOnList(type) {
@@ -5662,7 +5745,8 @@
                     },
                     success: function(response) {
                         if (response.success) {
-                            $basedOnSelect.empty().append('<option value="">Select Based On</option>');
+                            $basedOnSelect.empty().append(
+                                '<option value="">Select Based On</option>');
                             response.based_on_list.forEach(function(item) {
                                 $basedOnSelect.append(
                                     `<option value="${item.Code}" data-id="${item.Id}">${item.Name}</option>`
@@ -5671,15 +5755,33 @@
                             $basedOnSelect.prop('disabled', false);
                         } else {
                             showNotification('Failed to load Based On list', 'error');
-                            $basedOnSelect.empty().append('<option value="">Failed to load</option>');
+                            $basedOnSelect.empty().append(
+                                '<option value="">Failed to load</option>');
                         }
                     },
                     error: function() {
                         showNotification('Failed to load Based On list', 'error');
-                        $basedOnSelect.empty().append('<option value="">Failed to load</option>').prop(
-                            'disabled', false);
+                        $basedOnSelect.empty().append('<option value="">Failed to load</option>')
+                            .prop(
+                                'disabled', false);
                     }
                 });
+            }
+
+            function applyPendingChargeCategory($select) {
+                const wanted = String($select.data('pendingValue') || '').trim();
+                if (!wanted || $select.find('option').length <= 1) return; // options not loaded yet
+
+                // The list API returns the category name; the option value is the code, so match either.
+                const $match = $select.find('option').filter(function() {
+                    return $(this).val() === wanted || $(this).text().trim() === wanted;
+                }).first();
+
+                if ($match.length) {
+                    $select.val($match.val()).removeData('pendingValue');
+                } else {
+                    console.warn('Charge category not found in options:', wanted);
+                }
             }
 
             function loadChargeCategoryOptions(type) {
@@ -5701,7 +5803,8 @@
                         $categorySelect.empty().append('<option value="">Select</option>');
 
                         items.forEach(function(item) {
-                            const code = item.Code ?? item.code ?? item.Name ?? item.name ?? '';
+                            const code = item.Code ?? item.code ?? item.Name ?? item.name ??
+                                '';
                             const name = item.Name ?? item.name ?? item.Code ?? item.code ??
                                 code;
                             if (!code) return;
@@ -5711,6 +5814,7 @@
                         });
 
                         $categorySelect.prop('disabled', false);
+                        applyPendingChargeCategory($categorySelect);
                     },
                     error: function() {
                         $categorySelect.empty().append('<option value="">Unavailable</option>');
@@ -5770,7 +5874,8 @@
                                 $uomSelect.append('<option value="">Select UOM</option>');
                                 response.uom_list.forEach(function(uom) {
                                     $uomSelect.append(
-                                        `<option value="${uom.Code}">${uom.Name}</option>`);
+                                        `<option value="${uom.Code}">${uom.Name}</option>`
+                                    );
                                 });
                                 $uomSelect.prop('disabled', false).removeAttr('title');
                             }
@@ -5801,7 +5906,8 @@
                     },
                     success: function(response) {
                         if (response.success) {
-                            $basedOnSelect.empty().append('<option value="">Select Based On</option>');
+                            $basedOnSelect.empty().append(
+                                '<option value="">Select Based On</option>');
                             response.based_on_list.forEach(function(item) {
                                 $basedOnSelect.append(
                                     `<option value="${item.Code}" data-id="${item.Id}">${item.Name}</option>`
@@ -5874,7 +5980,8 @@
                                 $uomSelect.append('<option value="">Select UOM</option>');
                                 response.uom_list.forEach(function(uom) {
                                     $uomSelect.append(
-                                        `<option value="${uom.Code}">${uom.Name}</option>`);
+                                        `<option value="${uom.Code}">${uom.Name}</option>`
+                                    );
                                 });
                                 $uomSelect.prop('disabled', false).removeAttr('title');
                             }
@@ -5951,8 +6058,10 @@
                             let pageQty = 0;
                             $('#cargoDetailsCard #containerListBody tr[data-container-row]').each(
                                 function() {
-                                    const rowType = $(this).find('.container-type-select').val() ||
-                                        $(this).find('td:first').clone().children().remove().end()
+                                    const rowType = $(this).find('.container-type-select')
+                                        .val() ||
+                                        $(this).find('td:first').clone().children().remove()
+                                        .end()
                                         .text().trim();
                                     if (rowType === equipment) {
                                         const qtyText = $(this).find('.container-qty-input')
@@ -5967,7 +6076,8 @@
                                 $modal.find(`input[name="${prefix}_quantity"]`).val(pageQty);
                             } else if (response.quantity > 0) {
                                 // Fallback to SP value if page row not found
-                                $modal.find(`input[name="${prefix}_quantity"]`).val(response.quantity);
+                                $modal.find(`input[name="${prefix}_quantity"]`).val(response
+                                    .quantity);
                             }
 
                             const $uomSelect = $modal.find(`select[name="${prefix}_based_on_uom"]`);
@@ -5977,11 +6087,13 @@
                         } else {
                             // Non-equipment: SP is authoritative
                             if (response.quantity > 0) {
-                                $modal.find(`input[name="${prefix}_quantity"]`).val(response.quantity);
+                                $modal.find(`input[name="${prefix}_quantity"]`).val(response
+                                    .quantity);
                             }
 
                             if (response.based_on_uom_code) {
-                                const $uomSelect = $modal.find(`select[name="${prefix}_based_on_uom"]`);
+                                const $uomSelect = $modal.find(
+                                    `select[name="${prefix}_based_on_uom"]`);
                                 if ($uomSelect.find(`option[value="${response.based_on_uom_code}"]`)
                                     .length) {
                                     $uomSelect.val(response.based_on_uom_code);
@@ -6011,66 +6123,71 @@
             // @param basedOnCode   Selected Based On code
             // @param equipment     Equipment type code ('' unless BasedOn = 'Equipment')
             // ============================================
-            $(document).on('change', 'select[name="revenue_based_on"], select[name="cost_based_on"]', function() {
-                const $select = $(this);
-                const prefix = $select.attr('name').split('_')[0];
-                const basedOnCode = $select.val();
+            $(document).on('change', 'select[name="revenue_based_on"], select[name="cost_based_on"]',
+                function() {
+                    const $select = $(this);
+                    const prefix = $select.attr('name').split('_')[0];
+                    const basedOnCode = $select.val();
 
-                if (!basedOnCode) {
-                    loadBasedOnUOM(prefix, basedOnCode);
-                    return;
-                }
-
-                loadBasedOnUOMWithCallback(prefix, basedOnCode, function() {
-                    if (basedOnCode === 'Equipment') {
-                        // ── Auto-select first container type from cargo details ────────────
-                        // Runs INSIDE the callback — guaranteed after UOM options are rendered.
-                        // Handles both read-only (text cell) and edit mode (select element).
-                        const $modal = prefix === 'revenue' ? $('#addRevenueModal') : $(
-                            '#addCostModal');
-                        const containerTypes = [];
-                        $('#cargoDetailsCard #containerListBody tr[data-container-row]').each(
-                            function() {
-                                const fromSelect = $(this).find(
-                                    'td:first select.container-type-select').val();
-                                if (fromSelect) {
-                                    containerTypes.push(fromSelect);
-                                    return;
-                                }
-                                const fromText = $(this).find('td:first').clone()
-                                    .children().remove().end().text().trim();
-                                if (fromText && fromText !== '—') containerTypes.push(fromText);
-                            });
-
-                        if (containerTypes.length > 0) {
-                            const firstContainer = containerTypes[0];
-                            const $uomSelect = $modal.find(`select[name="${prefix}_based_on_uom"]`);
-
-                            // Confirm option exists before setting — no silent failures
-                            if ($uomSelect.find(`option[value="${firstContainer}"]`).length) {
-                                // Suppress the UOM change event during programmatic set
-                                // to prevent a second fetchBasedOnDefaults call racing
-                                // with the one below and overwriting the quantity with 0.
-                                $uomSelect.off('change.equipAutoFill')
-                                    .val(firstContainer)
-                                    .on('change.equipAutoFill', function() {
-                                        fetchBasedOnDefaults(prefix, 'Equipment', $(this)
-                                            .val());
-                                    });
-                                fetchBasedOnDefaults(prefix, basedOnCode, firstContainer);
-                            } else {
-                                console.warn('Equipment option not in UOM select:', firstContainer,
-                                    '| Available:', $uomSelect.find('option').map(function() {
-                                        return $(this).val();
-                                    }).get());
-                            }
-                        }
-                        // No containers found — leave UOM blank, user must add cargo first
-                    } else {
-                        fetchBasedOnDefaults(prefix, basedOnCode, '');
+                    if (!basedOnCode) {
+                        loadBasedOnUOM(prefix, basedOnCode);
+                        return;
                     }
+
+                    loadBasedOnUOMWithCallback(prefix, basedOnCode, function() {
+                        if (basedOnCode === 'Equipment') {
+                            // ── Auto-select first container type from cargo details ────────────
+                            // Runs INSIDE the callback — guaranteed after UOM options are rendered.
+                            // Handles both read-only (text cell) and edit mode (select element).
+                            const $modal = prefix === 'revenue' ? $('#addRevenueModal') : $(
+                                '#addCostModal');
+                            const containerTypes = [];
+                            $('#cargoDetailsCard #containerListBody tr[data-container-row]').each(
+                                function() {
+                                    const fromSelect = $(this).find(
+                                        'td:first select.container-type-select').val();
+                                    if (fromSelect) {
+                                        containerTypes.push(fromSelect);
+                                        return;
+                                    }
+                                    const fromText = $(this).find('td:first').clone()
+                                        .children().remove().end().text().trim();
+                                    if (fromText && fromText !== '—') containerTypes.push(
+                                        fromText);
+                                });
+
+                            if (containerTypes.length > 0) {
+                                const firstContainer = containerTypes[0];
+                                const $uomSelect = $modal.find(
+                                    `select[name="${prefix}_based_on_uom"]`);
+
+                                // Confirm option exists before setting — no silent failures
+                                if ($uomSelect.find(`option[value="${firstContainer}"]`).length) {
+                                    // Suppress the UOM change event during programmatic set
+                                    // to prevent a second fetchBasedOnDefaults call racing
+                                    // with the one below and overwriting the quantity with 0.
+                                    $uomSelect.off('change.equipAutoFill')
+                                        .val(firstContainer)
+                                        .on('change.equipAutoFill', function() {
+                                            fetchBasedOnDefaults(prefix, 'Equipment', $(this)
+                                                .val());
+                                        });
+                                    fetchBasedOnDefaults(prefix, basedOnCode, firstContainer);
+                                } else {
+                                    console.warn('Equipment option not in UOM select:',
+                                        firstContainer,
+                                        '| Available:', $uomSelect.find('option').map(
+                                            function() {
+                                                return $(this).val();
+                                            }).get());
+                                }
+                            }
+                            // No containers found — leave UOM blank, user must add cargo first
+                        } else {
+                            fetchBasedOnDefaults(prefix, basedOnCode, '');
+                        }
+                    });
                 });
-            });
 
             // ============================================
             // AUTO-FILL QUANTITY WHEN BASED ON UOM CHANGES
@@ -6152,8 +6269,10 @@
                         }
 
                         // FIX: Read the currently checked radio to determine charge type dynamically
-                        const $modal = type === 'revenue' ? $('#addRevenueModal') : $('#addCostModal');
-                        const selectedRadio = $modal.find(`input[name="${prefix}ChargeType"]:checked`)
+                        const $modal = type === 'revenue' ? $('#addRevenueModal') : $(
+                            '#addCostModal');
+                        const selectedRadio = $modal.find(
+                                `input[name="${prefix}ChargeType"]:checked`)
                             .val();
                         const chargeType = (selectedRadio === 'cost' || selectedRadio ===
                             'costmarkup') ? 'Cost' : 'Revenue';
@@ -6169,7 +6288,8 @@
                             },
                             dataType: 'json',
                             success: function(data) {
-                                if (data.success && data.charge_codes && data.charge_codes
+                                if (data.success && data.charge_codes && data
+                                    .charge_codes
                                     .length > 0) {
                                     response(data.charge_codes.map(item => ({
                                         label: item.Code + ' - ' + item
@@ -6392,6 +6512,7 @@
                 console.log('Revenue Charge Type Changed:', selectedValue);
                 $('#addRevenueModal .increase-by-row').removeClass('active').css('display', 'none');
                 toggleRevenueFormFields(selectedValue);
+                calculateAmount('revenue');
             });
 
             $('#addCostModal').on('change', 'input[name="costChargeType"]', function() {
@@ -6399,6 +6520,7 @@
                 console.log('Cost Charge Type Changed:', selectedValue);
                 $('#addCostModal .cost-markup-row').removeClass('active').css('display', 'none');
                 toggleCostFormFields(selectedValue);
+                calculateAmount('cost');
             });
 
             function toggleRevenueFormFields(type) {
@@ -6479,37 +6601,23 @@
                 }
             }
 
-            // ============================================
-            // AUTO-CALCULATE AMOUNTS
-            // ============================================
-            $('#addRevenueModal').on('input change',
-                'input[name="revenue_quantity"], input[name="revenue_rate"], input[name="revenue_exchange_rate"], input[name="revenue_increase_by"], select[name="revenue_increase_type"]',
-                function() {
-                    calculateAmount('revenue');
-                }
-            );
-
-            $('#addCostModal').on('input change',
-                'input[name="cost_quantity"], input[name="cost_rate"], input[name="cost_exchange_rate"], input[name="cost_increase_by"], select[name="cost_increase_type"]',
-                function() {
-                    calculateAmount('cost');
-                }
-            );
 
             function calculateAmount(prefix) {
                 const $modal = $(`#add${prefix.charAt(0).toUpperCase() + prefix.slice(1)}Modal`);
                 const quantity = parseFloat($modal.find(`input[name="${prefix}_quantity"]`).val()) || 0;
                 const rate = parseFloat($modal.find(`input[name="${prefix}_rate"]`).val()) || 0;
-                const exchangeRate = parseFloat($modal.find(`input[name="${prefix}_exchange_rate"]`).val()) || 1;
-                const amount = quantity * rate;
-                const baseAmount = amount * exchangeRate;
+                const exchangeRate = parseFloat($modal.find(`input[name="${prefix}_exchange_rate"]`).val()) ||
+                    1;
+                const amount = Math.round(quantity * rate * 100) / 100;
+                const baseAmount = Math.round(amount * exchangeRate * 100) / 100;
 
                 $modal.find(`input[name="${prefix}_amount"]`).val(amount.toFixed(2));
-                $modal.find(`input[name="${prefix}_base_amount"]`).val(baseAmount.toFixed(2));
 
                 const chargeType = $modal.find(`input[name="${prefix}ChargeType"]:checked`).val();
+
                 if (chargeType === 'costmarkup') {
-                    const increaseBy = parseFloat($modal.find(`input[name="${prefix}_increase_by"]`).val()) || 0;
+                    const increaseBy = parseFloat($modal.find(`input[name="${prefix}_increase_by"]`).val()) ||
+                        0;
                     const increaseType = $modal.find(`select[name="${prefix}_increase_type"]`).val();
 
                     // Mirror SP logic: markup applied to Rate first, then multiply by Quantity
@@ -6520,10 +6628,28 @@
                     const markupAmount = Math.round(newRate * quantity * 100) / 100;
                     const markupBaseAmount = Math.round(markupAmount * exchangeRate * 100) / 100;
 
-                    const markupFieldName = prefix === 'revenue' ? 'revenue_markup_amount' : 'cost_revenue_amount';
+                    const markupFieldName = prefix === 'revenue' ? 'revenue_markup_amount' :
+                        'cost_revenue_amount';
                     $modal.find(`input[name="${markupFieldName}"]`).val(markupAmount.toFixed(2));
+
+                    // Base currency amount must reflect the marked-up figure, not the raw amount
+                    $modal.find(`input[name="${prefix}_base_amount"]`).val(markupBaseAmount.toFixed(2));
+                } else {
+                    $modal.find(`input[name="${prefix}_base_amount"]`).val(baseAmount.toFixed(2));
                 }
             }
+
+            // Recalculate whenever an amount-driving field changes.
+            // Scoped to the two charge modals so unrelated *_quantity/*_rate inputs are untouched.
+            // Delegated because the revenue "Increase By" row is injected dynamically.
+            $('#addRevenueModal, #addCostModal').on(
+                'input change',
+                'input[name$="_quantity"], input[name$="_rate"], input[name$="_increase_by"], select[name$="_increase_type"]',
+                function() {
+                    const prefix = $(this).attr('name').split('_')[0]; // 'revenue' | 'cost'
+                    calculateAmount(prefix);
+                }
+            );
 
             // ============================================
             // SAVE CHARGES
@@ -6571,6 +6697,11 @@
                     const $reimbursableCheck = $modal.find('#revenueIsReimbursable, #costIsReimbursed');
                     toBeAdded = $reimbursableCheck.is(':checked') ? 1 : 0;
                 }
+                // 'Cost with Markup' has no ToBeAdded=1 branch in the SP — force 0
+                // to avoid the silent no-insert path.
+                if (revenueOrCost === 'Cost with Markup') {
+                    toBeAdded = 0;
+                }
 
                 // Prepare data payload — SP will handle currency, office, base amounts
                 const chargeData = {
@@ -6580,18 +6711,20 @@
                     booking_no: bookingNo,
                     office_code: officeCode,
                     quote_charge_id: currentEditingCharge || '',
+                    revenue_charge_id: currentEditingRevenueId || '',   // NEW
                     party_code: $modal.find(`input[name="${prefix}_bill_to_party_code"]`).val() || '',
                     revenue_or_cost: revenueOrCost,
                     charge_code: $modal.find(`input[name="${prefix}_charge_code"]`).val(),
                     quantity: parseFloat($modal.find(`input[name="${prefix}_quantity"]`).val()) || 0,
                     rate: parseFloat($modal.find(`input[name="${prefix}_rate"]`).val()) || 0,
                     amt_in_chg_curr: parseFloat($modal.find(`input[name="${prefix}_amount"]`).val()) || 0,
-                    amt_in_base_curr: parseFloat($modal.find(`input[name="${prefix}_base_amount"]`).val()) || 0,
-                    exchange_rate: parseFloat($modal.find(`input[name="${prefix}_exchange_rate"]`).val()) || 1,
-                    chg_curr: $modal.find(`select[name="${prefix}_currency"] option:selected`).data('code') ||
+                    // amt_in_base_curr / exchange_rate: resolved server-side
+                    chg_curr: $modal.find(`select[name="${prefix}_currency"] option:selected`).data(
+                            'code') ||
                         '',
                     based_on_code: $modal.find(`select[name="${prefix}_based_on"]`).val() || '',
                     based_on_uom: $modal.find(`select[name="${prefix}_based_on_uom"]`).val() || '',
+                    charge_category: $modal.find(`select[name="${prefix}_charge_category"]`).val() || '',
                     charge_remark: $modal.find(`input[name="${prefix}_remark"]`).val() || '',
                     to_be_added: toBeAdded,
                     increase_by: 0,
@@ -6601,7 +6734,8 @@
 
                 // Cost with Markup adjustments
                 if (chargeType === 'costmarkup') {
-                    chargeData.increase_by = parseFloat($modal.find(`input[name="${prefix}_increase_by"]`).val()) ||
+                    chargeData.increase_by = parseFloat($modal.find(`input[name="${prefix}_increase_by"]`)
+                            .val()) ||
                         0;
                     chargeData.increase_type = $modal.find(`select[name="${prefix}_increase_type"]`).val() ||
                         'Percentage';
@@ -6626,7 +6760,8 @@
                     },
                     success: function(response) {
                         const isSuccess = response.success === true;
-                        showNotification(response.message || (isSuccess ? 'Charge saved successfully' :
+                        showNotification(response.message || (isSuccess ?
+                                'Charge saved successfully' :
                                 'Failed to save charge'),
                             isSuccess ? 'success' : 'error');
 
@@ -6639,10 +6774,13 @@
                                 loadCharges();
                             }
                             currentEditingCharge = null;
+                            currentEditingRevenueId = null;   // still missing
+
                         }
                     },
                     error: function(xhr) {
-                        showNotification(xhr.responseJSON?.message || 'Failed to save charge', 'error');
+                        showNotification(xhr.responseJSON?.message || 'Failed to save charge',
+                            'error');
                     },
                     complete: function() {
                         $modal.find('.btn').prop('disabled', false);
@@ -6650,28 +6788,10 @@
                 });
             }
 
-            // ============================================
-            // DELETE CHARGES
-            // ============================================
-            $(document).on('click', '.delete-revenue-charge, .delete-cost-charge', function() {
+            $(document).on('click', '.delete-charge', function() {
                 const chargeId = $(this).data('id');
-
-                if (!chargeId) {
-                    // Template-sourced charge — never persisted server-side (id is null),
-                    // so there's nothing to delete via the SP. Drop it from local state only.
-                    const index = $(this).data('index');
-                    const tbodyId = $(this).closest('tbody').attr('id');
-                    if (tbodyId === 'revenueChargesTable') {
-                        revenueCharges.splice(index, 1);
-                    } else if (tbodyId === 'costChargesTable') {
-                        costCharges.splice(index, 1);
-                    }
-                    renderRevenueCharges();
-                    renderCostCharges();
-                    updateSummary();
-                    return;
-                }
-
+                const modal = $(this).data('modal') || 'cost';
+                if (!chargeId) return;
                 if (!confirm('Are you sure you want to delete this charge?')) return;
 
                 $.ajax({
@@ -6684,25 +6804,44 @@
                     },
                     success: function(response) {
                         if (response.success) {
-                            showNotification(response.message || 'Charge deleted successfully',
-                                'success');
+                            showNotification(response.message || 'Charge deleted', 'success');
                             loadCharges();
                         } else {
-                            showNotification(response.message || 'Failed to delete charge',
-                                'error');
+                            showNotification(response.message || 'Failed to delete', 'error');
                         }
                     },
                     error: function(xhr) {
-                        showNotification(xhr.responseJSON?.message || 'Failed to delete charge',
+                        showNotification(xhr.responseJSON?.message || 'Failed to delete',
                             'error');
                     }
                 });
             });
 
+
+            $('.show-items-link').on('click', function(e) {
+                e.preventDefault();
+                const tableKey = $(this).data('table');
+                if (tableKey !== 'charges') return;
+
+                const isExpanded = $(this).data('expanded') || false;
+                const nowExpanded = !isExpanded;
+
+                $('#chargesTable').find('.col-extra')
+                    .css('display', nowExpanded ? 'table-cell' : 'none');
+
+                $(this)
+                    .data('expanded', nowExpanded)
+                    .html(nowExpanded ?
+                        '<i class="fas fa-columns mr-1"></i> Show less' :
+                        '<i class="fas fa-columns mr-1"></i> Show more');
+            });
+
+
             // ============================================
             // EDIT CHARGES
             // ============================================
             function openChargeEditModal(chargeId, modalType) {
+
                 $.ajax({
                     url: '{{ route('quotation.charge-details') }}',
                     type: 'GET',
@@ -6710,7 +6849,6 @@
                         booking_no: bookingNo,
                         charge_id: chargeId,
                         office_code: officeCode
-
                     },
                     beforeSend: function() {
                         // Show the modal immediately with a loading state
@@ -6732,7 +6870,9 @@
                         }
 
                         currentEditingCharge = chargeId;
-                        currentEditingType = modalType;
+                        currentEditingRevenueId = (response.revenueId && response.revenueId !== chargeId)
+                            ? response.revenueId
+                            : null;
                         populateModal(modalType, response);
                     },
                     error: function(xhr) {
@@ -6740,19 +6880,13 @@
                             '#addCostModal');
                         $modal.find('.modal-body').css('opacity', 1);
                         $modal.modal('hide');
-                        showNotification(xhr.responseJSON?.message || 'Failed to load charge details',
-                            'error');
+                        showNotification(
+                            xhr.responseJSON?.message || 'Failed to load charge details',
+                            'error'
+                        );
                     }
                 });
             }
-
-            $(document).on('click', '.edit-revenue-charge', function() {
-                openChargeEditModal($(this).data('id'), 'revenue');
-            });
-
-            $(document).on('click', '.edit-cost-charge', function() {
-                openChargeEditModal($(this).data('id'), 'cost');
-            });
 
             // ============================================
             // POPULATE MODAL FOR EDITING A CHARGE
@@ -6778,6 +6912,11 @@
                 $modal.find(`input[name="${prefix}_charge_code"]`).val(charge.chargeCode);
                 $modal.find(`input[name="${prefix}_description"]`).val(charge.chargeName);
                 $modal.find(`input[name="${prefix}_remark"]`).val(charge.chargeRemark);
+
+                // Category options load async: store the value, apply now if ready, else after load
+                const $categorySelect = $modal.find(`select[name="${prefix}_charge_category"]`);
+                $categorySelect.data('pendingValue', charge.category || charge.chargeCategory || '');
+                applyPendingChargeCategory($categorySelect);
                 $modal.find(`input[name="${prefix}_quantity"]`).val(charge.quantity);
                 $modal.find(`input[name="${prefix}_rate"]`).val(charge.rate);
                 $modal.find(`input[name="${prefix}_exchange_rate"]`).val(charge.exChangeRate);
@@ -6791,8 +6930,25 @@
                 // ── Restore markup fields if Cost with Markup ──
                 if (savedChargeType === 'costmarkup') {
                     $modal.find(`input[name="${prefix}_increase_by"]`).val(charge.increaseBy || 0);
-                    $modal.find(`select[name="${prefix}_increase_type"]`).val(charge.increaseType || 'Percentage');
+                    $modal.find(`select[name="${prefix}_increase_type"]`).val(charge.increaseType ||
+                        'Percentage');
                 }
+
+                // ── Restore ToBeAdded checkbox from the saved DB state ──
+                // The SP writes ToBeAdded=1 when "Is Accruable" (Revenue) or
+                // "Is Reimbursable" (Cost) was ticked. Without this, opening and
+                // saving an unrelated edit silently clears the flag.
+                const savedToBeAdded = parseInt(charge.toBeAdded || 0, 10) === 1;
+                if (savedChargeType === 'revenue') {
+                    $modal.find('#revenueIsAccruable').prop('checked', savedToBeAdded);
+                } else if (savedChargeType === 'cost') {
+                    $modal.find('#revenueIsReimbursable, #costIsReimbursed').prop('checked', savedToBeAdded);
+                }
+
+
+                // Recalculate now — .val() above doesn't fire change, so calculateAmount()
+                // never ran otherwise, leaving stale amounts until the user touches a field.
+                calculateAmount(prefix);
 
                 // ── Currency — wait for currencyMap to be populated ──
                 function setCurrency() {
@@ -6850,7 +7006,8 @@
                         const $uomSelect = $modal.find(`select[name="${prefix}_based_on_uom"]`);
 
                         // Verify the option exists before setting — surface mismatches clearly
-                        const $matchingOption = $uomSelect.find(`option[value="${storedUomCode}"]`);
+                        const $matchingOption = $uomSelect.find(
+                            `option[value="${storedUomCode}"]`);
                         if ($matchingOption.length) {
                             $uomSelect.val(storedUomCode);
                             console.log('DEBUG UOM pre-selected:', storedUomCode);
@@ -6865,121 +7022,179 @@
                 });
             }
 
-            // ============================================
-            // RENDER FUNCTIONS
-            // ============================================
-            function renderRevenueCharges() {
-                const tbody = $('#revenueChargesTable');
-                tbody.empty();
-                let totalAmount = 0,
-                    totalBaseAmount = 0;
+            // Build paired rows: revenue row + its cost sibling grouped by pairKey
+            function buildPairedRows() {
+                const map = new Map(); // pairKey → { revenue, cost }
 
-                if (revenueCharges.length === 0) {
-                    tbody.append(
-                        '<tr><td colspan="8" class="text-center text-muted">No charges added</td></tr>');
-                } else {
-                    revenueCharges.forEach(function(charge, index) {
-                        totalAmount += parseFloat(charge.amtInChgCurr || 0);
-                        totalBaseAmount += parseFloat(charge.amtInBaseCurr || 0);
-                        tbody.append(`
-                        <tr>
-                            <td class="text-center bulk-delete-col" style="display:none;">
-                                <input type="checkbox" class="charge-row-check"
-                                    data-type="revenue" data-id="${charge.id}">
-                            </td>
-                            <td>${charge.chargeName || charge.chargeCode || ''}</td>
-                            <td class="text-right">${parseFloat(charge.rate || 0).toFixed(2)}</td>
-                            <td class="text-right col-extra">${parseFloat(charge.quantity || 0).toFixed(2)}</td>
-                            <td class="col-extra">${charge.basedOnAndUOM || charge.basedOnUOM || ''}</td>
-                            <td class="col-extra">${charge.chgCurr || getBaseCurrency()}</td>
-                            <td class="text-right">${parseFloat(charge.amtInChgCurr  || 0).toFixed(2)}</td>
-                            <td class="text-right">${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
-                            <td class="text-center">
-                            ${charge.source === 'template' ? `
-                                                                                        <button type="button" class="btn btn-danger btn-action delete-cost-charge"
-                                                                                            data-index="${index}" data-id="${charge.id}">
-                                                                                            <i class="fas fa-trash"></i>
-                                                                                        </button>
-                                                                                    ` : `
-                                                                                        <button type="button" class="btn btn-warning btn-action edit-cost-charge"
-                                                                                            data-index="${index}" data-id="${charge.id}">
-                                                                                            <i class="fas fa-edit"></i>
-                                                                                        </button>
-                                                                                        <button type="button" class="btn btn-danger btn-action delete-cost-charge"
-                                                                                            data-index="${index}" data-id="${charge.id}">
-                                                                                            <i class="fas fa-trash"></i>
-                                                                                        </button>
-                                                                                    `}
-                            </td>
-                        </tr>
-                    `);
+                revenueCharges.forEach(function(r) {
+                    const k = r.pairKey || ('rev:' + r.id);
+                    if (!map.has(k)) map.set(k, {
+                        revenue: null,
+                        cost: null
                     });
-                }
+                    map.get(k).revenue = r;
+                });
 
-                const revBC = getBaseCurrency();
-                $('#totalRevenueAmount').text(revBC + ' ' + totalAmount.toFixed(2));
-                $('#totalRevenueBaseAmount').text(revBC + ' ' + totalBaseAmount.toFixed(2));
-                $('#revenueTotalHeaderAmount').text(totalBaseAmount.toFixed(2));
+                costCharges.forEach(function(c) {
+                    const k = c.pairKey || ('cost:' + c.id);
+                    if (!map.has(k)) map.set(k, {
+                        revenue: null,
+                        cost: null
+                    });
+                    map.get(k).cost = c;
+                });
 
-                const revenueExpanded = $('.show-items-link[data-table="revenue"]').data('expanded') || false;
-                if (!revenueExpanded) $('#revenueChargesTable').find('.col-extra').hide();
+                return Array.from(map.values());
             }
 
-            function renderCostCharges() {
-                const tbody = $('#costChargesTable');
-                tbody.empty();
-                let totalAmount = 0,
-                    totalBaseAmount = 0;
+            const CHARGE_CATEGORY_ORDER = [
+                'Origin Charges', 'Freight', 'Customs Charges',
+                'Destination Charges', 'Delivery Charges'
+            ];
 
-                if (costCharges.length === 0) {
-                    tbody.append(
-                        '<tr><td colspan="8" class="text-center text-muted">No charges added</td></tr>');
-                } else {
-                    costCharges.forEach(function(charge, index) {
-                        totalAmount += parseFloat(charge.amtInChgCurr || 0);
-                        totalBaseAmount += parseFloat(charge.amtInBaseCurr || 0);
-                        tbody.append(`
-                            <tr>
-                            <td class="text-center bulk-delete-col" style="display:none;">
-                                <input type="checkbox" class="charge-row-check"
-                                data-type="cost" data-id="${charge.id}">
-                            </td>
-                                <td>${charge.chargeName || charge.chargeCode || ''}</td>
-                                <td class="text-right">${parseFloat(charge.rate || 0).toFixed(2)}</td>
-                                <td class="text-right col-extra">${parseFloat(charge.quantity || 0).toFixed(2)}</td>
-                                <td class="col-extra">${charge.basedOnAndUOM || charge.basedOnUOM || ''}</td>
-                                <td class="col-extra">${charge.chgCurr || getBaseCurrency()}</td>
-                                <td class="text-right">${parseFloat(charge.amtInChgCurr  || 0).toFixed(2)}</td>
-                                <td class="text-right">${parseFloat(charge.amtInBaseCurr || 0).toFixed(2)}</td>
-                                <td class="text-center">
-                                    ${charge.source === 'template' ? `
-                                                        <button type="button" class="btn btn-danger btn-action delete-cost-charge"
-                                                            data-index="${index}" data-id="${charge.id}">
-                                                            <i class="fas fa-trash"></i>
-                                                        </button>
-                                                    ` : `
-                                                        <button type="button" class="btn btn-warning btn-action edit-cost-charge"
-                                                            data-index="${index}" data-id="${charge.id}">
-                                                            <i class="fas fa-edit"></i>
-                                                        </button>
-                                                        <button type="button" class="btn btn-danger btn-action delete-cost-charge"
-                                                            data-index="${index}" data-id="${charge.id}">
-                                                            <i class="fas fa-trash"></i>
-                                                        </button>
-                                                    `}
-                                </td>
-                            </tr>
-                        `);
-                    });
+            function categoryRank(cat) {
+                const i = CHARGE_CATEGORY_ORDER.indexOf(cat);
+                return i === -1 ? 99 : i;
+            }
+
+            function renderCharges() {
+                const $tbody = $('#chargesTableBody').empty();
+                const pairs = buildPairedRows();
+
+                let totalRevenue = 0,
+                    totalCost = 0;
+
+                if (!pairs.length) {
+                    $tbody.append(
+                        '<tr><td colspan="12" class="text-center text-muted py-3">No charges added</td></tr>'
+                    );
+                    $('#revenueTotalHeaderAmount, #costTotalHeaderAmount, #marginTotalHeaderAmount').text('0.00');
+                    updateSummary();
+                    return;
                 }
 
-                const costBC = getBaseCurrency();
-                $('#totalCostAmount').text(costBC + ' ' + totalAmount.toFixed(2));
-                $('#totalCostBaseAmount').text(costBC + ' ' + totalBaseAmount.toFixed(2));
-                $('#costTotalHeaderAmount').text(totalBaseAmount.toFixed(2));
+                // Group by category
+                const byCategory = new Map();
+                pairs.forEach(function(p) {
+                    const cat = (p.revenue?.category) || (p.cost?.category) || 'Other';
+                    if (!byCategory.has(cat)) byCategory.set(cat, []);
+                    byCategory.get(cat).push(p);
+                });
 
-                const costExpanded = $('.show-items-link[data-table="cost"]').data('expanded') || false;
-                if (!costExpanded) $('#costChargesTable').find('.col-extra').hide();
+                const sortedCategories = Array.from(byCategory.keys())
+                    .sort((a, b) => categoryRank(a) - categoryRank(b));
+
+                sortedCategories.forEach(function(cat) {
+                    const catPairs = byCategory.get(cat);
+                    let catTotal = 0;
+                    const rowsHtml = [];
+
+                    catPairs.forEach(function(p) {
+                        const rev = p.revenue;
+                        const cost = p.cost;
+
+                        const costAmt = cost ? parseFloat(cost.amtInBaseCurr || 0) : null;
+                        const sellAmt = rev ? parseFloat(rev.amtInBaseCurr || 0) : null;
+
+                        if (rev) totalRevenue += parseFloat(rev.amtInBaseCurr || 0);
+                        if (cost) totalCost += parseFloat(cost.amtInBaseCurr || 0);
+                        catTotal += (rev ? parseFloat(rev.amtInBaseCurr || 0) : 0);
+
+                        const primary = cost || rev;
+                        const editId = cost ? cost.id : rev.id;
+                        const editModalType = cost ? 'cost' : 'revenue';
+
+                        const markupBadge = (cost && parseFloat(cost.increaseBy || 0) > 0) ?
+                            `<span class="badge-markup" title="Markup ${cost.increaseBy}${cost.increaseType === 'Percentage' ? '%' : ''}">
+        <i class="fas fa-percent"></i>${cost.increaseBy}${cost.increaseType === 'Percentage' ? '%' : ''}
+    </span>` :
+                            '';
+
+                        const basedOnCode = primary.basedOnCode || '';
+                        const uomCode = primary.uomCode || '';
+                        const currency = (cost && cost.chgCurr) || (rev && rev.chgCurr) ||
+                            getBaseCurrency();
+
+                        // Margin from the SP — percentage number (e.g. 25.00 for 25%)
+                        const marginPct = (primary.margin != null && primary.margin !== '') ?
+                            parseFloat(primary.margin) :
+                            null;
+                        const marginText = marginPct === null ? '—' : marginPct.toFixed(2) + '%';
+                        const marginClass = marginPct === null ? '' : (marginPct < 0 ?
+                            'charge-margin-neg' :
+                            'charge-margin-pos');
+
+                        rowsHtml.push(`
+    <tr class="charge-row" data-cat="${cat}">
+        <td class="text-center bulk-delete-col" style="display:none;">
+            <input type="checkbox" class="charge-row-check"
+                   data-type="${cost ? 'cost' : 'revenue'}"
+                   data-id="${editId}">
+        </td>
+        <td>
+            ${primary.chargeName || primary.chargeCode || ''}
+            ${markupBadge}
+        </td>
+        <td>${basedOnCode}</td>
+        <td>${uomCode}</td>
+        <td class="text-right">${parseFloat(primary.quantity || 0).toFixed(2)}</td>
+        <td class="col-extra text-right">${cost ? parseFloat(cost.rate || 0).toFixed(2) : ''}</td>
+        <td class="text-right">${costAmt !== null ? costAmt.toFixed(2) : ''}</td>
+        <td class="col-extra text-right">${rev ? parseFloat(rev.rate || 0).toFixed(2) : ''}</td>
+        <td class="text-right">${sellAmt !== null ? sellAmt.toFixed(2) : ''}</td>
+        <td class="text-right ${marginClass}">${marginText}</td>
+        <td class="col-extra">${currency}</td>
+        <td class="text-center">
+            <button type="button"
+                    class="btn btn-warning btn-action edit-charge"
+                    data-id="${editId}"
+                    data-modal="${editModalType}">
+                <i class="fas fa-edit"></i>
+            </button>
+            <button type="button"
+                    class="btn btn-danger btn-action delete-charge"
+                    data-id="${editId}"
+                    data-modal="${editModalType}">
+                <i class="fas fa-trash"></i>
+            </button>
+        </td>
+    </tr>
+`);
+                    });
+
+                    // Category band with total
+                    const catTotalText = catTotal.toFixed(2) + ' ' + SI_CURRENCY;
+
+                    $tbody.append(`
+            <tr class="charge-group-band" data-cat="${cat}">
+                <td colspan="12">
+                    <span class="charge-group-band-inner">
+                        <i class="fas fa-caret-down charge-group-caret"></i>
+                        <span class="charge-group-band-label">${cat}</span>
+                        <span class="charge-group-band-total">${catTotalText}</span>
+                    </span>
+                </td>
+            </tr>
+        `);
+
+
+                    // Emit the rows for this category
+                    rowsHtml.forEach(function(html) {
+                        $tbody.append(html);
+                    });
+                });
+
+                const headerMarginPct = totalRevenue > 0 ?
+                    ((totalRevenue - totalCost) / totalRevenue * 100) :
+                    0;
+                $('#revenueTotalHeaderAmount').text(totalRevenue.toFixed(2));
+                $('#costTotalHeaderAmount').text(totalCost.toFixed(2));
+                $('#marginTotalHeaderAmount').text(headerMarginPct.toFixed(2) + '%');
+
+                const expanded = $('.show-items-link[data-table="charges"]').data('expanded') || false;
+                $('#chargesTable').find('.col-extra').css('display', expanded ? 'table-cell' : 'none');
+
+                updateSummary();
             }
 
             // ============================================
@@ -6994,7 +7209,7 @@
 
                 const bc = getBaseCurrency();
                 $('#quotedRevenue').val(bc + ' ' + totalRevenue.toFixed(2));
-                $('#quotedMargin').val(bc + ' ' + margin.toFixed(2) + ' (' + marginPercentage.toFixed(2) + '%)');
+                $('#quotedMargin').val(marginPercentage.toFixed(2) + '%');
             }
 
             // ============================================
@@ -7014,10 +7229,6 @@
                 e.preventDefault();
                 $('#wonRemarkInput').val('');
                 $('#wonModal').modal('show');
-            });
-
-            $('#createBookingBtn').on('click', function() {
-                $('#createBookingModal').modal('show');
             });
 
             $('#confirmWonBtn').on('click', function() {
@@ -7174,6 +7385,9 @@
                     const versionNo = v.version ?? v.Version ?? v.VersionNo ?? v.version_no ?? null;
                     const versionLabel = v.label ?? v.Label ?? v.VersionLabel ?? ('Version ' +
                         versionNo);
+                    const fileType = v.file_type ?? null;
+                    const displayLabel = fileType ? (versionLabel + ' (' + fileType + ')') :
+                        versionLabel;
                     const versionUrl = v.url ?? v.Url ?? v.download_url ?? null;
 
                     if (!versionNo) {
@@ -7186,29 +7400,30 @@
                         `/quotation/${quotationId}/download-pdf/${versionNo}`;
 
                     html += `
-<div class="form-group row align-items-center mb-2">
-    <label class="col-sm-4 col-form-label fw-bold">${versionLabel}</label>
-    <div class="col-sm-8 d-flex align-items-center">
-        <button type="button"
-            class="btn btn-sm btn-outline-primary btn-view-pdf mr-1"
-            data-url="${downloadUrl}?preview=1"
-            data-version="${versionNo}">
-            <i class="fas fa-eye mr-1"></i> View
-        </button>
-        <button type="button"
-            class="btn btn-sm btn-outline-primary btn-download-pdf"
-            data-url="${downloadUrl}"
-            data-version="${versionNo}">
-            <i class="fas fa-download mr-1"></i> Download
-        </button>
-        <span class="ml-2 text-success"
-            id="download-success-${versionNo}"
-            style="display:none; font-size:0.8rem;">
-            <i class="fas fa-check-circle mr-1"></i> Downloaded
-        </span>
-    </div>
-</div>
-`;
+                        <div class="form-group row align-items-center mb-2">
+                            <label class="col-sm-4 col-form-label fw-bold">${displayLabel}</label>
+                            <div class="col-sm-8 d-flex align-items-center">
+                                   <button type="button"
+                                    class="btn btn-sm btn-outline-primary btn-view-file mr-1"
+                                    data-url="${downloadUrl}${fileType && fileType.toUpperCase() === 'XLSX' ? '' : '?preview=1'}"
+                                    data-file-type="${(fileType || 'PDF').toUpperCase()}"
+                                    data-version="${versionNo}">
+                                    <i class="fas fa-eye mr-1"></i> View
+                                </button>
+                                <button type="button"
+                                    class="btn btn-sm btn-outline-primary btn-download-pdf"
+                                    data-url="${downloadUrl}"
+                                    data-version="${versionNo}">
+                                    <i class="fas fa-download mr-1"></i> Download
+                                </button>
+                                <span class="ml-2 text-success"
+                                    id="download-success-${versionNo}"
+                                    style="display:none; font-size:0.8rem;">
+                                    <i class="fas fa-check-circle mr-1"></i> Downloaded
+                                </span>
+                            </div>
+                        </div>
+                        `;
                 });
 
                 if (html) {
@@ -7318,6 +7533,15 @@
                     });
             });
 
+            // Dropdown option — Standard Template with VAT charges included
+            $('#generateQuoteStandardVatOpt').on('click', function(e) {
+                e.preventDefault();
+                runGenerateQuote(GENERATE_PDF_URL, 'Quote',
+                    '<i class="fas fa-file-alt mr-1"></i> Generate Quote', {
+                        QuoteType: 'Std. With VAT'
+                    });
+            });
+
             // Dropdown option — Excel
             $('#generateQuoteExcelOpt').on('click', function(e) {
                 e.preventDefault();
@@ -7362,11 +7586,131 @@
             loadVersions();
             loadTermsTemplates();
 
-            $(document).on('click', '.btn-view-pdf', function(e) {
+            // ============================================
+            // VIEW HANDLER — unified for PDF + Excel
+            // Branches on data-file-type so a single handler
+            // covers both without relying on class names.
+            // ============================================
+            $(document).on('click', '.btn-view-file', function(e) {
                 e.preventDefault();
-                const url = $(this).data('url');
-                window.open(url, '_blank');
+                e.stopPropagation();
+
+                const $btn = $(this);
+                const url = $btn.data('url');
+                const fileType = String($btn.data('file-type') || '').toUpperCase();
+
+                // ── PDF (or any non-Excel) → new tab, browser renders it ──
+                if (fileType !== 'XLSX') {
+                    window.open(url, '_blank');
+                    return;
+                }
+
+                // ── Excel → fetch bytes + parse with SheetJS + render table ──
+                const $body = $('#excelPreviewBody');
+
+                $body.html(
+                    '<div class="text-center py-5">' +
+                    '<i class="fas fa-spinner fa-spin text-primary" style="font-size:1.5rem;"></i>' +
+                    '<p class="text-muted mt-2 mb-0">Loading Excel...</p>' +
+                    '</div>'
+                );
+                $('#excelPreviewModal').modal('show');
+                
+                if (typeof XLSX === 'undefined') {
+                    $body.html(
+                        '<div class="alert alert-danger m-3">' +
+                        'Excel viewer failed to load. Please check your network connection and try again.' +
+                        '</div>'
+                    );
+                    return;
+                }
+
+            fetch(url, { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(function (r) {
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    return r.arrayBuffer();
+                })
+                .then(function (buf) {
+                    const workbook = XLSX.read(buf, { type: 'array' });
+                    const firstSheetName = workbook.SheetNames[0];
+            
+                    if (!firstSheetName) {
+                        $body.html('<div class="alert alert-warning m-3">The workbook has no sheets.</div>');
+                        return;
+                    }
+            
+                    const sheet = workbook.Sheets[firstSheetName];
+            
+                    // ── Trim the used range ───────────────────────────────────────────
+                    // PhpSpreadsheet writes blank rows/cols after the last real cell (row
+                    // heights, merge scaffolding), which keeps !ref open and renders as a
+                    // wall of empty cells at the bottom and right of the preview.
+                    // Walk every populated cell and re-anchor !ref to the true last cell.
+                    if (sheet['!ref']) {
+                        const range = XLSX.utils.decode_range(sheet['!ref']);
+                        let maxR = range.s.r, maxC = range.s.c;
+            
+                        Object.keys(sheet).forEach(function (key) {
+                            if (key[0] === '!') return;
+                            const cell = sheet[key];
+                            if (!cell || cell.v == null || cell.v === '') return;
+                            const addr = XLSX.utils.decode_cell(key);
+                            if (addr.r > maxR) maxR = addr.r;
+                            if (addr.c > maxC) maxC = addr.c;
+                        });
+            
+                        sheet['!ref'] = XLSX.utils.encode_range({
+                            s: { r: range.s.r, c: range.s.c },
+                            e: { r: maxR, c: maxC },
+                        });
+        }
+
+        const html = XLSX.utils.sheet_to_html(sheet, { id: 'excel-sheet-preview' });
+        $body.html(html);
+
+        // ── Column widths: apply as max-widths, not min-widths ────────────
+        // min-width forces wide columns and leaves narrow ones tiny, which
+        // leaves dead space on the right of the table. max-width caps wide
+        // columns but lets table-layout:auto fill the modal evenly.
+        try {
+            const cols = sheet['!cols'] || [];
+            const $table = $body.find('table');
+            if ($table.length && cols.length) {
+                $table.find('tr').first().find('td').each(function (i) {
+                    if (cols[i] && cols[i].wch) {
+                        // wch is in Excel character units — ~7px per char.
+                        // Cap at 340px so a stray "wide" column doesn't dominate.
+                        const px = Math.min(cols[i].wch * 7, 340);
+                        $(this).css('max-width', px + 'px');
+                    }
+                });
+            }
+        } catch (_) {
+            /* column-width hint is best-effort */
+        }
+    })
+    .catch(function (err) {
+        console.error('[Excel Preview] load failed:', err);
+        $body.html(
+            '<div class="alert alert-danger m-3">' +
+            '<i class="fas fa-exclamation-triangle mr-2"></i>' +
+            'Failed to load Excel preview: ' + (err.message || 'Unknown error') +
+            '</div>'
+        );
+    });
             });
+
+            // Cleanup on modal close
+            $('#excelPreviewModal').on('hidden.bs.modal', function() {
+                $('#excelPreviewBody').empty();
+            });
+
+            // Dismiss handlers — match the pattern used by every other modal in this file
+            $('#excelPreviewModal .close, #excelPreviewModal button[data-dismiss="modal"]').on('click',
+                function(e) {
+                    e.preventDefault();
+                    $('#excelPreviewModal').modal('hide');
+                });
 
             // ============================================
             // EMAIL QUOTE — TEMPLATE LOADING
@@ -7456,17 +7800,6 @@
                 populateQuoteVersionDropdown();
                 $('#emailQuoteModal').modal('show');
             });
-
-            // ============================================
-            // EMAIL TO/FROM SWAP BUTTON
-            // Swaps the To and From email addresses
-            // ============================================
-            // $('#swapEmailBtn').on('click', function() {
-            //     const toVal = $('#emailTo').val();
-            //     const fromVal = $('#emailFrom').val();
-            //     $('#emailTo').val(fromVal);
-            //     $('#emailFrom').val(toVal);
-            // });
 
             function populateQuoteVersionDropdown() {
                 const $select = $('#emailQuoteVersionSelect');
@@ -7721,7 +8054,8 @@
                             });
                             $select.data('populated', true);
                         } else {
-                            $select.append('<option value="" disabled>No offices available</option>');
+                            $select.append(
+                                '<option value="" disabled>No offices available</option>');
                         }
                     },
                     error: function() {
@@ -7759,14 +8093,17 @@
                     beforeSend: function() {
                         $('#submitRequestOfficeBtn')
                             .prop('disabled', true)
-                            .html('<i class="fas fa-spinner fa-spin mr-1"></i> Submitting...');
+                            .html(
+                                '<i class="fas fa-spinner fa-spin mr-1"></i> Submitting...'
+                            );
                     },
                     success: function(response) {
                         console.log('requestOfficeQuotation OUTPUT', response);
 
                         if (response.success) {
                             showNotification(
-                                'Office quotation requested. New quote: ' + response.data
+                                'Office quotation requested. New quote: ' + response
+                                .data
                                 .quote_no,
                                 'success'
                             );
@@ -7774,7 +8111,8 @@
 
                             loadRequestOfficeHistory();
                         } else {
-                            showNotification(response.message || 'Request failed.', 'error');
+                            showNotification(response.message || 'Request failed.',
+                                'error');
                         }
                     },
                     error: function(xhr) {
@@ -8042,9 +8380,7 @@
                         if (response.success && response.templates.length) {
                             response.templates.forEach(function(t) {
                                 $select.append(
-                                    ` < option value = "${t.Name}" > $ {
-                                                t.Name
-                                            } < /option>`
+                                    `<option value="${t.Name}">${t.Name}</option>`
                                 );
                             });
                         } else {
@@ -8354,15 +8690,6 @@
             });
 
             // ============================================
-            // QUOTATION DOCUMENT CARD HEADER CLICK
-            // ============================================
-            $('#quotationDocHeader').on('click', function(e) {
-                if (!$(e.target).closest('#generateQuoteBtn').length) {
-                    $(this).find('[data-card-widget="collapse"]').click();
-                }
-            });
-
-            // ============================================
             // CUSTOMER TYPE FETCH (from SP)
             // FIX: Removed hardcoded fallback values that didn't match SP expectations.
             // Valid values come exclusively from sp_Quote_GetCustomerType.
@@ -8581,7 +8908,8 @@
                             .append('<option value="">-- Select --</option>');
                         (Array.isArray(data) ? data : []).forEach(function(i) {
                             const name = i.Name || '';
-                            const code = i.Code || ''; // Assuming the API returns Code field
+                            const code = i.Code ||
+                                ''; // Assuming the API returns Code field
                             $sel.append(
                                 `<option value="${code}" data-name="${name}">${name}</option>`
                             );
@@ -8590,7 +8918,8 @@
                         // Pre-select if we have saved industry
                         if (savedCustomerIndustry) {
                             $sel.find('option').each(function() {
-                                if ($(this).data('name') === savedCustomerIndustry || $(this)
+                                if ($(this).data('name') === savedCustomerIndustry || $(
+                                        this)
                                     .text().trim() === savedCustomerIndustry) {
                                     $(this).prop('selected', true);
                                     return false;
@@ -8625,7 +8954,8 @@
                 if (!$iSel.val()) {
                     const displayedIndustry = $('#customerIndustryDisplay').val();
                     $iSel.find('option').each(function() {
-                        if ($(this).text().trim() === displayedIndustry || $(this).data('name') ===
+                        if ($(this).text().trim() === displayedIndustry || $(this).data(
+                                'name') ===
                             displayedIndustry) {
                             $iSel.val($(this).val());
                             return false;
@@ -8839,7 +9169,8 @@
                 const companyName = $('input[data-field="companyname"]').val()?.trim() || '';
                 const address1 = $('input[data-field="pri_partner_steet"]').val()?.trim() || '';
 
-                const countryCode = $('#customerCountrySelect option:selected').data('code')?.trim() || '';
+                const countryCode = $('#customerCountrySelect option:selected').data('code')?.trim() ||
+                    '';
                 const countryName = $('#customerCountrySelect option:selected').text()?.trim() || '';
 
                 const industryCode = $('#customerIndustrySelect option:selected').val()?.trim() || '';
@@ -8936,12 +9267,14 @@
                             $('#customerIndustrySelect').hide();
 
                             $('input[data-field="companyname"]').attr('readonly', true);
-                            $('input[data-field="pri_partner_steet"]').attr('readonly', true);
+                            $('input[data-field="pri_partner_steet"]').attr('readonly',
+                                true);
                             $('.customer-mandatory-star').hide();
 
                             originalCustomerType = customerType;
                             originalAgentType = agentType;
-                            $('#customerTypeSelect, #agentTypeSelect').prop('disabled', true);
+                            $('#customerTypeSelect, #agentTypeSelect').prop('disabled',
+                                true);
                             $('#saveCustomerDetailsBtn, #cancelCustomerDetailsBtn').hide();
                             $('#editCustomerDetailsBtn').show();
                         } else {
@@ -8970,6 +9303,7 @@
             // ============================================
             function clearModalForm(type) {
                 const $modal = type === 'revenue' ? $('#addRevenueModal') : $('#addCostModal');
+                $modal.find('select[name$="_charge_category"]').removeData('pendingValue');
                 const chargeTypeRadioName = type === 'revenue' ? 'revenueChargeType' : 'costChargeType';
                 const increaseTypeSelectName = type === 'revenue' ? 'revenue_increase_type' :
                     'cost_increase_type';
@@ -9025,25 +9359,6 @@
             // CARD COLLAPSE & SHOW ITEMS
             // ============================================
             $('.col-extra').hide();
-
-            $('.show-items-link').on('click', function(e) {
-                e.preventDefault();
-                const tableId = $(this).data('table');
-                const $table = tableId === 'revenue' ?
-                    $('#revenueChargesTable').closest('table') :
-                    $('#costChargesTable').closest('table');
-                const isExpanded = $(this).data('expanded') || false;
-
-                if (isExpanded) {
-                    $table.find('.col-extra').hide();
-                    $(this).html('<i class="fas fa-columns mr-1"></i> Show more');
-                    $(this).data('expanded', false);
-                } else {
-                    $table.find('.col-extra').show();
-                    $(this).html('<i class="fas fa-columns mr-1"></i> Show Less');
-                    $(this).data('expanded', true);
-                }
-            });
 
             $('[data-card-widget="collapse"]').on('click', function() {
                 $(this).find('i').toggleClass('fa-chevron-down fa-chevron-up');
@@ -9128,7 +9443,8 @@
 
                                 // Single template — use cached description if SP returned it,
                                 // otherwise fall back to getCommunicationDescription
-                                const singleDesc = t.Description ? b64DecodeUnicode(t.Description) : '';
+                                const singleDesc = t.Description ? b64DecodeUnicode(t.Description) :
+                                    '';
 
                                 if (singleDesc) {
                                     (function() {
@@ -9201,8 +9517,10 @@
                                         success: function(descResponse) {
                                             if (!descResponse.success) return;
 
-                                            const description = descResponse.description;
-                                            $('#termsDescriptionPreview').val(description);
+                                            const description = descResponse
+                                                .description;
+                                            $('#termsDescriptionPreview').val(
+                                                description);
                                             $('#termsDescriptionWrapper').show();
                                             $('#applyTermsBtn').hide();
 
@@ -9221,8 +9539,10 @@
                                                     terms_condition: description,
                                                     template_name: t.Name
                                                 },
-                                                success: function(saveResponse) {
-                                                    if (saveResponse.success) {
+                                                success: function(
+                                                    saveResponse) {
+                                                    if (saveResponse
+                                                        .success) {
                                                         termsState.applied =
                                                             true;
                                                         setGenerateBtn();
@@ -9289,7 +9609,8 @@
                             if (svNameRaw) {
                                 const svLower = svNameRaw.toLowerCase();
                                 const processLower = processRaw.toLowerCase();
-                                const combined = (svNameRaw + ' ' + processRaw).toLowerCase().trim();
+                                const combined = (svNameRaw + ' ' + processRaw).toLowerCase()
+                                    .trim();
                                 let matchedName = null;
 
                                 // Priority 1: exact match against combined "SVName + Process"
@@ -9304,7 +9625,8 @@
                                 if (!matchedName && processLower) {
                                     response.templates.forEach(function(t) {
                                         const tLower = t.Name.toLowerCase();
-                                        if (!matchedName && tLower.includes(svLower) && tLower
+                                        if (!matchedName && tLower.includes(svLower) &&
+                                            tLower
                                             .includes(processLower)) {
                                             matchedName = t.Name;
                                         }
@@ -9379,7 +9701,8 @@
                                         termsState.applied = true;
                                         setGenerateBtn();
                                     }
-                                    console.warn('loadTermsTemplates - No T&C template matched SVName:',
+                                    console.warn(
+                                        'loadTermsTemplates - No T&C template matched SVName:',
                                         svNameRaw, '| Process:', processRaw);
                                 }
                             } else {
@@ -9390,7 +9713,8 @@
                                         (function() {
                                             const iframe = document.getElementById(
                                                 'termsDescriptionPreview');
-                                            if (iframe.dataset.blobUrl) URL.revokeObjectURL(iframe
+                                            if (iframe.dataset.blobUrl) URL.revokeObjectURL(
+                                                iframe
                                                 .dataset.blobUrl);
                                             const blob = new Blob([savedDesc], {
                                                 type: 'text/html'
@@ -9524,7 +9848,8 @@
                     },
                     success: function(response) {
                         if (!response.success) {
-                            $('#termsDescriptionPreview').val('Failed to load description.');
+                            $('#termsDescriptionPreview').val(
+                                'Failed to load description.');
                             showNotification('Could not load T&C description', 'warning');
                             return;
                         }
@@ -10009,7 +10334,8 @@
                         if (res.success) {
                             $('#salesPersonDisplay').attr('readonly', true);
                             $('#salesPersonEmail').attr('readonly', true);
-                            $('#quotationCurrencyDisplay').val(currency).removeClass('d-none');
+                            $('#quotationCurrencyDisplay').val(currency).removeClass(
+                                'd-none');
                             $('#quotationCurrencySelect').addClass('d-none');
                             $('#editInquiryBtn').removeClass('d-none');
                             $('#saveInquiryBtn, #cancelInquiryBtn').addClass('d-none');
@@ -10019,7 +10345,8 @@
                         }
                     },
                     error: function(xhr) {
-                        showNotification(xhr.responseJSON?.message || 'Server error.', 'error');
+                        showNotification(xhr.responseJSON?.message || 'Server error.',
+                            'error');
                     },
                     complete: function() {
                         $btn.prop('disabled', false).html(
@@ -10127,7 +10454,8 @@
                                 filter: request.term
                             },
                             success: function(res) {
-                                if (!res.success || !res.clients || !res.clients.length) {
+                                if (!res.success || !res.clients || !res.clients
+                                    .length) {
                                     response([{
                                         label: 'No clients found for "' +
                                             request.term + '"',
@@ -10138,8 +10466,9 @@
                                 }
                                 response(res.clients.map(function(c) {
                                     return {
-                                        label: (c.ClientCode || '') + ' — ' + (c
-                                            .ClientName || ''),
+                                        label: (c.ClientCode || '') +
+                                            ' — ' + (c
+                                                .ClientName || ''),
                                         value: c.ClientName || '',
                                         clientId: c.ClientID || '',
                                         clientCode: c.ClientCode || ''
@@ -10193,7 +10522,8 @@
                                         console.error('Client details failed:', res
                                             .message);
                                         showNotification(res.message ||
-                                            'Failed to load client details', 'error');
+                                            'Failed to load client details', 'error'
+                                        );
                                         return;
                                     }
 
@@ -10213,11 +10543,13 @@
 
                                     // Populate Country
                                     if (res.country_name) {
-                                        $('#customerCountryDisplay').val(res.country_name);
+                                        $('#customerCountryDisplay').val(res
+                                            .country_name);
                                     }
                                     if (res.country_id) {
                                         const $cSel = $('#customerCountrySelect');
-                                        if ($cSel.find(`option[value="${res.country_id}"]`)
+                                        if ($cSel.find(
+                                                `option[value="${res.country_id}"]`)
                                             .length === 0) {
                                             $cSel.append(
                                                 `<option value="${res.country_id}" 
@@ -10247,7 +10579,8 @@
                                     if (res.agent_type_name) {
                                         const $aSel = $('#agentTypeSelect');
                                         if ($aSel.find(
-                                                `option[value="${res.agent_type_name}"]`)
+                                                `option[value="${res.agent_type_name}"]`
+                                            )
                                             .length === 0) {
                                             $aSel.append(
                                                 `<option value="${res.agent_type_name}">${res.agent_type_name}</option>`
@@ -10277,7 +10610,8 @@
                                             });
                                     }
 
-                                    showNotification('Client details loaded successfully',
+                                    showNotification(
+                                        'Client details loaded successfully',
                                         'success');
                                 },
                                 error: function(xhr) {
@@ -10393,7 +10727,8 @@
                             var failedStep = (res.steps || []).find(function(s) {
                                 return s.status === 'Failed';
                             });
-                            var rawMsg = (failedStep && failedStep.remark) ? failedStep.remark : (res
+                            var rawMsg = (failedStep && failedStep.remark) ? failedStep.remark : (
+                                res
                                 .message || 'Unknown error');
                             var errorLines = rawMsg.split('|').map(function(s) {
                                 return s.trim();
@@ -10402,7 +10737,8 @@
                                 return '<li>' + l + '</li>';
                             }).join('') + '</ul>';
                             $('#wonProgressError')
-                                .html('<strong>' + (res.failed_label || 'Step') + ' failed:</strong>' +
+                                .html('<strong>' + (res.failed_label || 'Step') +
+                                    ' failed:</strong>' +
                                     bulletHtml)
                                 .removeClass('d-none');
                             $('#wonProcessCloseBtn').removeClass('d-none');
@@ -10480,13 +10816,11 @@
             // ============================================
             const CC_SEARCH_URL = '{{ route('quotation.copy-charges.search') }}';
             const CC_CHARGES_URL = '{{ route('quotation.copy-charges.charges') }}';
-            const CC_SAVE_URL = '{{ route('quotation.charge.save') }}';
 
             let ccSearchResults = [];
             let ccCurrentPage = 1;
             let ccPageSize = 10;
             let ccSelectedJobRow = null;
-            let ccJobMap = {};
 
             const ccTableState = {
                 ccRevenueBody: {
@@ -10501,16 +10835,11 @@
                 },
             };
 
-            // ── Open modal ────────────────────────────────────────────────────────────
             $('#openCopyChargesBtn').on('click', function() {
                 resetCopyChargesModal();
-                $('#ccSourceJob').prop('checked', true);
-                $('#ccJobSourceRow').show();
-                $('#ccTemplateSourceRow').hide();
                 $('#copyChargesModal').modal('show');
-                loadCcJobDropdown();
+                setTimeout(initCcJobNoAutocomplete, 150)
             });
-
 
             // ── Open job search ───────────────────────────────────────────────────────
             $('#ccJobNoSearchBtn').on('click', function() {
@@ -10543,7 +10872,8 @@
                             success: function(res) {
                                 if (!res.success || !res.data || !res.data.length) {
                                     response([{
-                                        label: 'No jobs found for "' + request
+                                        label: 'No jobs found for "' +
+                                            request
                                             .term + '"',
                                         value: request.term,
                                         disabled: true
@@ -10552,8 +10882,9 @@
                                 }
                                 response(res.data.map(function(row) {
                                     return {
-                                        label: (row.QuoteNo || '') + ' — ' + (
-                                            row.CompanyName || ''),
+                                        label: (row.QuoteNo || '') + ' — ' +
+                                            (
+                                                row.CompanyName || ''),
                                         value: row.QuoteNo || '',
                                         row: row
                                     };
@@ -10574,6 +10905,7 @@
                             return false;
                         }
                         $input.val(ui.item.value);
+                        $('#ccJobSelect').val(ui.item.row.id);
                         ccSelectedJobRow = ui.item.row;
                         loadJobCharges(ui.item.row);
                         return false;
@@ -10599,24 +10931,24 @@
             // ── Add Filter button ─────────────────────────────────────────
             $('#ccAddFilterBtn').on('click', function() {
                 const $filterRow = $(`
-        <div class="cc-filter-row">
-            <select class="cc-select cc-extra-field" style="width:160px;">
-                <option value="">Select</option>
-                <option value="jobno">Job No</option>
-                <option value="customer">Customer</option>
-                <option value="origin">Origin Country</option>
-                <option value="destination">Destination Country</option>
-                <option value="incoterm">InCo Term</option>
-                <option value="por">Place of Receipt</option>
-                <option value="pod">Place of Delivery</option>
-                <option value="equipment">Equipment Type</option>
-            </select>
-            <input type="text" class="cc-input cc-extra-value" style="width:200px;" placeholder="Value...">
-            <button type="button" class="cc-filter-remove" title="Remove filter">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-    `);
+                        <div class="cc-filter-row">
+                            <select class="cc-select cc-extra-field" style="width:160px;">
+                                <option value="">Select</option>
+                                <option value="jobno">Job No</option>
+                                <option value="customer">Customer</option>
+                                <option value="origin">Origin Country</option>
+                                <option value="destination">Destination Country</option>
+                                <option value="incoterm">InCo Term</option>
+                                <option value="por">Place of Receipt</option>
+                                <option value="pod">Place of Delivery</option>
+                                <option value="equipment">Equipment Type</option>
+                            </select>
+                            <input type="text" class="cc-input cc-extra-value" style="width:200px;" placeholder="Value...">
+                            <button type="button" class="cc-filter-remove" title="Remove filter">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    `);
 
                 // Insert after the main search controls row
                 $('#ccAddFilterBtn').closest('.cc-search-controls').append($filterRow);
@@ -10743,17 +11075,6 @@
                 });
             }
 
-            // ── Search pagination ─────────────────────────────────────────────────────
-            $(document).on('click', '.cc-page-btn', function() {
-                const action = $(this).data('action');
-                const totalPages = Math.max(1, Math.ceil(ccSearchResults.length / ccPageSize));
-                if (action === 'first') ccCurrentPage = 1;
-                else if (action === 'prev') ccCurrentPage = Math.max(1, ccCurrentPage - 1);
-                else if (action === 'next') ccCurrentPage = Math.min(totalPages, ccCurrentPage + 1);
-                else if (action === 'last') ccCurrentPage = totalPages;
-                renderSearchPage();
-            });
-
             $('#ccPageInput').on('change', function() {
                 const totalPages = Math.max(1, Math.ceil(ccSearchResults.length / ccPageSize));
                 ccCurrentPage = Math.min(totalPages, Math.max(1, parseInt($(this).val()) || 1));
@@ -10777,7 +11098,8 @@
 
                 $('#ccPageInput').val(ccCurrentPage);
                 $('#ccTotalPages').text(totalPages);
-                $('#ccViewRange').text(total === 0 ? 'View 0 - 0 of 0' : `View ${start + 1} - ${end} of ${total}`);
+                $('#ccViewRange').text(total === 0 ? 'View 0 - 0 of 0' :
+                    `View ${start + 1} - ${end} of ${total}`);
 
                 $tbody.empty();
 
@@ -10819,13 +11141,11 @@
             // ── Search Ok ─────────────────────────────────────────────────────────────
             $('#ccSearchOkBtn').on('click', function() {
                 if (!ccSelectedJobRow) return;
-                ccJobMap[ccSelectedJobRow.id] = ccSelectedJobRow;
-                if (!$(`#ccJobSelect option[value="${ccSelectedJobRow.id}"]`).length) {
-                    $('#ccJobSelect').append(
-                        `<option value="${ccSelectedJobRow.id}">${ccSelectedJobRow.QuoteNo} — ${ccSelectedJobRow.CompanyName || ''}</option>`
-                    );
-                }
+
+                // Set visible text + hidden UUID — replaces the old <option> append
+                $('#ccJobNo').val(ccSelectedJobRow.QuoteNo || '');
                 $('#ccJobSelect').val(ccSelectedJobRow.id);
+
                 $('#ccSearchModal').modal('hide');
                 loadJobCharges(ccSelectedJobRow);
             });
@@ -10956,7 +11276,8 @@
                 $('#ccCostBody input[type="checkbox"]').prop('checked', $(this).is(':checked'));
                 updateSaveBtn();
             });
-            $(document).on('change', '#ccRevenueBody input[type="checkbox"], #ccCostBody input[type="checkbox"]',
+            $(document).on('change',
+                '#ccRevenueBody input[type="checkbox"], #ccCostBody input[type="checkbox"]',
                 function() {
                     updateSaveBtn();
                 }
@@ -10988,7 +11309,8 @@
                 updateTablePagination(tbodyId);
 
                 // Re-apply column visibility after rows are rebuilt by pagination
-                const $showMoreBtn = tbodyId === 'ccRevenueBody' ? $('#ccRevenueShowMore') : $('#ccCostShowMore');
+                const $showMoreBtn = tbodyId === 'ccRevenueBody' ? $('#ccRevenueShowMore') : $(
+                    '#ccCostShowMore');
                 const $table = tbodyId === 'ccRevenueBody' ? $('#ccRevenueTable') : $('#ccCostTable');
                 const isExpanded = $showMoreBtn.data('expanded') || false;
                 toggleCcColumns($table, isExpanded);
@@ -11058,7 +11380,8 @@
                         }
                     },
                     error: function(xhr) {
-                        showNotification(xhr.responseJSON?.message || 'Copy failed', 'error');
+                        showNotification(xhr.responseJSON?.message || 'Copy failed',
+                            'error');
                     },
                     complete: function() {
                         $btn.prop('disabled', false).text('Save');
@@ -11084,43 +11407,6 @@
                     $('#ccSearchModal').modal('hide');
                 }
             });
-
-            // ── Job No direct entry — load charges on Enter or blur ───────────────────
-            // $('#ccJobNo').on('keypress', function(e) {
-            //     if (e.which === 13) triggerJobNoLoad();
-            // });
-            // $('#ccJobNo').on('blur', function() {
-            //     if ($(this).val().trim()) triggerJobNoLoad();
-            // });
-
-            // function triggerJobNoLoad() {
-            //     const jobNo = $('#ccJobNo').val().trim();
-            //     if (!jobNo) return;
-
-            //     // Search by quote number to get the quotation ID, then load charges
-            //     $.ajax({
-            //         url: CC_SEARCH_URL,
-            //         type: 'GET',
-            //         data: {
-            //             office_code: officeCode,
-            //             quote_no: jobNo
-            //         },
-            //         success: function(response) {
-            //             if (response.success && response.data && response.data.length > 0) {
-            //                 // Exact match first, fallback to first result
-            //                 const match = response.data.find(r => r.QuoteNo === jobNo) || response.data[
-            //                     0];
-            //                 ccSelectedJobRow = match;
-            //                 loadJobCharges(match);
-            //             } else {
-            //                 showNotification('No quote found for: ' + jobNo, 'warning');
-            //             }
-            //         },
-            //         error: function() {
-            //             showNotification('Failed to search for Job No', 'error');
-            //         }
-            //     });
-            // }
 
             // ── Search results sorting ────────────────────────────────────────────────
             let ccSortCol = null;
@@ -11170,72 +11456,16 @@
                 `;
             }
 
-            function loadCcJobDropdown() {
-                const $select = $('#ccJobSelect');
-                $select.prop('disabled', true).empty().append('<option value="">Loading...</option>');
-                ccJobMap = {};
-
-                $.ajax({
-                    url: CC_SEARCH_URL,
-                    type: 'GET',
-                    data: {
-                        office_code: officeCode
-                    },
-                    success: function(res) {
-                        $select.empty().append('<option value="">-- Select Job --</option>');
-                        if (res.success && res.data && res.data.length) {
-                            res.data.forEach(function(row) {
-                                ccJobMap[row.id] = row;
-                                const label = [row.QuoteNo, row.CompanyName,
-                                    (row.Origin && row.Destination) ? (row.Origin + ' → ' +
-                                        row.Destination) : '',
-                                    row.ServiceVertical || row.process || ''
-                                ].filter(Boolean).join(' | ');
-                                $select.append(`<option value="${row.id}">${label}</option>`);
-                            });
-                        } else {
-                            $select.append('<option value="" disabled>No jobs found</option>');
-                        }
-                    },
-                    error: function() {
-                        $select.empty().append(
-                            '<option value="" disabled>Failed to load jobs</option>');
-                    },
-                    complete: function() {
-                        $select.prop('disabled', false);
-                    }
-                });
-            }
-
-            $(document).on('change', '#ccJobSelect', function() {
-                const jobId = $(this).val();
-                if (!jobId || !ccJobMap[jobId]) return;
-                ccSelectedJobRow = ccJobMap[jobId];
-                loadJobCharges(ccSelectedJobRow);
-            });
-
-            $(document).on('change', 'input[name="ccSourceType"]', function() {
-                if ($('#ccSourceJob').is(':checked')) {
-                    $('#ccJobSourceRow').show();
-                    $('#ccTemplateSourceRow').hide();
-                    $('#ccTemplateSelect').val('');
-                } else {
-                    $('#ccJobSourceRow').hide();
-                    $('#ccTemplateSourceRow').show();
-                    $('#ccJobSelect').val('');
-                }
-                resetCopyChargesModal();
-            });
-
             // ── Helpers ───────────────────────────────────────────────────────────────
             function resetCopyChargesModal() {
                 $('#copyChargesModal .cc-modal-dialog').removeClass('cc-expanded cc-charges-loaded');
+                $('#ccJobNo').val('');
                 $('#ccJobSelect').val('');
-                $('#ccTemplateSelect').val('');
                 $('#ccJobDetails, #ccJobDetailsCost').hide();
                 $('#ccClientRow, #ccShipperRow, #ccConsigneeRow, #ccPolRow, #ccPodRow').hide();
                 $('#ccClient, #ccShipper, #ccConsignee, #ccPortOfLoading, #ccPortOfDischarge').text('');
-                const empty = '<tr><td colspan="8" class="cc-empty-msg">Enter a Job No to load charges</td></tr>';
+                const empty =
+                    '<tr><td colspan="8" class="cc-empty-msg">Enter a Job No to load charges</td></tr>';
                 $('#ccRevenueBody, #ccCostBody').html(empty);
                 $('#ccRevenueSummary').text('[ Total Record(s): 0 ]');
                 $('#ccCostSummary').text('[ Total Record(s): 0 ]');
@@ -11324,27 +11554,23 @@
                         '<i class="fas fa-columns mr-1"></i> Show more');
                 syncCcModalExpansion();
             });
+
+            // Add Charges → opens the manual Add Charges modal (revenue modal)
+            $('#openChargesModal').on('click', function(e) {
+                e.preventDefault();
+                currentEditingCharge = null;
+                clearRevenueModalForm();
+                $('#addRevenueModal').modal('show');
+            });
+
+            // Row pencil → opens the same "Add Manual Charges" modal as the
+            // Add Charges button, but pre-filled with the row's data.
+            $(document).on('click', '.edit-charge', function() {
+                const id = $(this).data('id');
+                const modal = $(this).data('modal') || 'cost';
+                if (id) openChargeEditModal(id, modal);
+            });
         }); // end document.ready
-    </script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            fetch('{{ route('quotation.contract-template.charges', $quotation->ID) }}')
-                .then(function(r) {
-                    return r.json();
-                })
-                .then(function(res) {
-                    if (!res.success || !res.data) return;
-                    document.getElementById('revenueTotalHeaderAmount').textContent = res.data.revenue_total
-                        .toFixed(2);
-                    document.getElementById('costTotalHeaderAmount').textContent = res.data.cost_total.toFixed(
-                        2);
-                    document.getElementById('quotedRevenue').value = res.data.revenue_total.toFixed(2);
-                    document.getElementById('quotedMargin').value = res.data.margin.toFixed(2);
-                })
-                .catch(function(err) {
-                    console.error('[ContractTemplate] charges fetch failed:', err);
-                });
-        });
     </script>
 
     <script>

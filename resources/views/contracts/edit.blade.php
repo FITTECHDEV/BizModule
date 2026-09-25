@@ -9,7 +9,10 @@
         <div class="cc-box cc-box-compact mb-3">
             <div class="cc-box-title d-flex align-items-center">
                 <span id="ceContractNo">{{ $contractInfo->ContractNo }}</span>
-                <a href="{{ route('contracts.view', $contractInfo->Id) }}" class="btn btn-secondary btn-sm ml-auto">
+                <button type="button" class="btn btn-outline-primary btn-sm ml-auto ce-copy-contract-btn">
+                    <i class="fas fa-copy"></i> Copy Contract
+                </button>
+                <a href="{{ route('contracts.view', $contractInfo->Id) }}" class="btn btn-secondary btn-sm ml-2">
                     <i class="fas fa-arrow-left"></i> Back to View
                 </a>
             </div>
@@ -78,6 +81,7 @@
                 <div class="cc-section-block-header cc-header-revenue">
                     <strong>Services</strong>
                     <span class="ml-auto mr-3 cc-totals-inline">{{ $services->count() }} total</span>
+
                     <button type="button" class="btn btn-sm btn-light ce-add-service-btn">
                         <i class="fas fa-plus"></i> Add Service
                     </button>
@@ -191,149 +195,230 @@
                                 </div>
                             </div>
 
-                            <div class="d-flex justify-content-end mb-3">
-                                <button type="button" class="btn btn-sm btn-outline-danger mr-auto ce-delete-service-btn"
+                            {{-- Service Action Buttons --}}
+                            <div class="ce-svc-actions-row">
+                                <button type="button" class="btn btn-sm btn-outline-danger ce-delete-service-btn"
                                     data-svc="{{ $service->Id }}">
                                     <i class="fas fa-trash"></i> Delete Service
                                 </button>
+
+                                <button type="button" class="btn btn-sm btn-outline-secondary ce-copy-service-btn"
+                                    data-svc="{{ $service->Id }}">
+                                    <i class="fas fa-copy"></i> Copy Service
+                                </button>
+
                                 <button type="button" class="btn btn-sm btn-outline-primary ce-edit-service-btn">
                                     <i class="fas fa-pen"></i> Edit
                                 </button>
-                                <button type="button" class="btn btn-sm btn-secondary mr-2 ce-cancel-service-btn"
+
+                                <button type="button" class="btn btn-sm btn-secondary ce-cancel-service-btn"
                                     style="display:none;">
                                     Cancel
                                 </button>
+
                                 <button type="button" class="btn btn-sm btn-success ce-save-service-btn"
                                     style="display:none;">
                                     Save
                                 </button>
                             </div>
 
-                            <div class="d-flex justify-content-between align-items-center mb-2">
+                            {{-- Charges Header --}}
+                            <div class="ce-charges-header-row">
                                 <strong class="ctr-lbl mb-0">Charges</strong>
                                 <button type="button" class="btn btn-sm btn-outline-primary ce-add-charge-btn"
                                     data-svc="{{ $service->Id }}">
                                     <i class="fas fa-plus"></i> Add Charge
                                 </button>
                             </div>
+
                             @php
-                                $serviceCharges = $charges[$service->Id] ?? collect();
-                                $chargeGroups = [
+                                $serviceCharges = $service->Charges ?? collect();
+
+                                $revenueCharges = $serviceCharges
+                                    ->filter(function ($c) {
+                                        return trim((string) ($c->RevenueOrCost ?? 'Revenue')) !== 'Cost';
+                                    })
+                                    ->values();
+
+                                $costCharges = $serviceCharges
+                                    ->filter(function ($c) {
+                                        return trim((string) ($c->RevenueOrCost ?? 'Revenue')) === 'Cost';
+                                    })
+                                    ->values();
+
+                                $revenueTotal = $revenueCharges->sum(function ($c) {
+                                    return (float) ($c->Rate ?? 0);
+                                });
+                                $costTotal = $costCharges->sum(function ($c) {
+                                    return (float) ($c->Rate ?? 0);
+                                });
+
+                                $sections = [
                                     [
                                         'key' => 'rev',
-                                        'label' => 'Revenue',
-                                        'items' => $serviceCharges->filter(
-                                            fn($c) => ($c->RevenueOrCost ?? 'Revenue') !== 'Cost',
-                                        ),
+                                        'title' => 'Revenue',
+                                        'charges' => $revenueCharges,
+                                        'total' => $revenueTotal,
+                                        'emptyMsg' => 'No revenue charges.',
                                     ],
                                     [
                                         'key' => 'cost',
-                                        'label' => 'Cost',
-                                        'items' => $serviceCharges->filter(
-                                            fn($c) => ($c->RevenueOrCost ?? 'Revenue') === 'Cost',
-                                        ),
+                                        'title' => 'Cost',
+                                        'charges' => $costCharges,
+                                        'total' => $costTotal,
+                                        'emptyMsg' => 'No cost charges.',
                                     ],
                                 ];
                             @endphp
 
-                            @foreach ($chargeGroups as $group)
-                                <div class="cc-charge-group mb-2">
-                                    <div class="cc-group-header collapsed"
-                                        data-target="chargeBody{{ $service->Id }}{{ $group['key'] }}">
-                                        <span class="cc-caret">&#9660;</span>
-                                        <span>{{ $group['label'] }} Charges</span>
-                                        <span class="cc-group-total">{{ $group['items']->count() }}</span>
-                                    </div>
-                                    <div class="cc-group-body collapsed"
-                                        id="chargeBody{{ $service->Id }}{{ $group['key'] }}">
-                                        @if ($group['items']->count())
-                                            <div class="cc-table-wrap">
-                                                <table class="cc-table">
-                                                    <thead>
-                                                        <tr>
-                                                            <th>Code</th>
-                                                            <th>Description</th>
-                                                            <th>Based On</th>
-                                                            <th>UOM</th>
-                                                            <th>Rate Type</th>
-                                                            <th>Rate</th>
-                                                            <th></th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        @foreach ($group['items'] as $charge)
-                                                            @php
-                                                                $slabs = $charge->RateSlabJson
-                                                                    ? json_decode($charge->RateSlabJson, true)
-                                                                    : null;
-                                                                $chargeJs = [
-                                                                    'id' => 'chg_' . $charge->Id,
-                                                                    'chargeId' => $charge->Id,
-                                                                    'chargeCode' => $charge->ChargeCode,
-                                                                    'chargeCategory' => $charge->ChargeCatagory,
-                                                                    'chargeDescription' => $charge->ChargeDescription,
-                                                                    'chargeBasedOn' => $charge->ChargeBasedon,
-                                                                    'chargeBasedOnUOM' => $charge->ChargeBasedOnUOM,
-                                                                    'chargeCurr' => $charge->ChargeCurr,
-                                                                    'minAmount' => $charge->MinAmount,
-                                                                    'maxAmount' => $charge->MaxAmount,
-                                                                    'rateType' => $charge->RateType,
-                                                                    'rate' => $charge->Rate,
-                                                                    'formula' => $charge->Formula,
-                                                                    'rateSlab' => $slabs,
-                                                                    'chargeAction' => $charge->ChargeAction ?? 'R',
-                                                                    'chargeNature' => $charge->RevenueOrCost ?? null,
-                                                                    'markupRateType' => $charge->MarkupRateType ?? null,
-                                                                    'markupRate' => $charge->MarkupRate ?? null,
-                                                                    'markupFormula' => $charge->MarkupFormula ?? null,
-                                                                    'markupRateSlab' =>
-                                                                        isset($charge->MarkupRateSlab) &&
-                                                                        $charge->MarkupRateSlab
-                                                                            ? json_decode($charge->MarkupRateSlab, true)
-                                                                            : null,
-                                                                    'isAccruable' => $charge->IsAccruable ?? '0',
-                                                                    'isReimbursable' => $charge->IsReimbursable ?? '0',
-                                                                ];
-                                                            @endphp
+                            <div class="ce-charges-sections">
+                                @foreach ($sections as $section)
+                                    <div class="ce-charge-section">
+                                        <div class="ce-charge-section-header"
+                                            data-target="ceChg{{ ucfirst($section['key']) }}-{{ $service->Id }}">
+                                            <span class="ce-sec-title">{{ $section['title'] }}</span>
+                                            <span class="ce-sec-caret">&#9660;</span>
+                                            <span class="ce-sec-total">Total:
+                                                {{ number_format($section['total'], 2) }}</span>
+                                        </div>
+                                        <div class="ce-charge-section-body"
+                                            id="ceChg{{ ucfirst($section['key']) }}-{{ $service->Id }}">
+                                            @if ($section['charges']->count())
+                                                @php
+                                                    $byCat = $section['charges']->groupBy(function ($c) {
+                                                        $cat = trim((string) ($c->ChargeCatagory ?? ''));
+                                                        return $cat !== '' ? $cat : 'Other';
+                                                    });
+                                                @endphp
+                                                <div class="ce-charges-table-wrap">
+                                                    <table class="cc-table ce-charges-table">
+                                                        <thead>
                                                             <tr>
-                                                                <td>{{ $charge->ChargeCode }}</td>
-                                                                <td>{{ $charge->ChargeDescription }}</td>
-                                                                <td>{{ $charge->ChargeBasedon }}</td>
-                                                                <td>{{ $charge->ChargeBasedOnUOM }}</td>
-                                                                <td>{{ $charge->RateType }}</td>
-                                                                <td>
-                                                                    @if ($charge->RateType === 'Single')
-                                                                        {{ $charge->Rate }}
-                                                                    @elseif(in_array($charge->RateType, ['SlabBased', 'Slab Based', 'StepUp', 'Step Up']))
-                                                                        {{ is_array($slabs) ? count($slabs) . ' slabs' : '—' }}
-                                                                    @elseif($charge->RateType === 'Formula')
-                                                                        {{ $charge->Formula }}
-                                                                    @else—
-                                                                    @endif
-                                                                </td>
-                                                                <td>
-                                                                    <i class="fas fa-pen ce-edit-charge"
-                                                                        style="cursor:pointer;color:#4B49AC;"
-                                                                        title="Edit" data-svc="{{ $service->Id }}"
-                                                                        data-charge='@json($chargeJs)'></i>
-                                                                    <i class="fas fa-trash ce-delete-charge ml-2"
-                                                                        style="cursor:pointer;color:#dc3545;"
-                                                                        title="Delete" data-svc="{{ $service->Id }}"
-                                                                        data-charge-id="{{ $charge->Id }}"></i>
-                                                                </td>
+                                                                <th>Nature</th>
+                                                                <th>Code</th>
+                                                                <th>Description</th>
+                                                                <th>Rate Type</th>
+                                                                <th>Rate</th>
+                                                                <th>Curr</th>
+                                                                <th style="width:90px;"></th>
                                                             </tr>
-                                                        @endforeach
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        @else
-                                            <div class="cc-empty-msg">No {{ strtolower($group['label']) }} charges for
-                                                this service.</div>
-                                        @endif
+                                                        </thead>
+                                                        <tbody>
+                                                            @foreach ($byCat as $category => $categoryCharges)
+                                                                <tr class="ce-charge-category-row">
+                                                                    <td colspan="7">
+                                                                        <i class="fas fa-folder-open mr-1"></i>
+                                                                        {{ $category }}
+                                                                        <span class="text-muted ml-1">
+                                                                            ({{ $categoryCharges->count() }})
+                                                                        </span>
+                                                                    </td>
+                                                                </tr>
+                                                                @foreach ($categoryCharges as $charge)
+                                                                    @php
+                                                                        $revenueOrCost = trim(
+                                                                            (string) ($charge->RevenueOrCost ??
+                                                                                'Revenue'),
+                                                                        );
+                                                                        if ($revenueOrCost === '') {
+                                                                            $revenueOrCost = 'Revenue';
+                                                                        }
+                                                                        $incrementBy = isset($charge->IncrementBy)
+                                                                            ? (float) $charge->IncrementBy
+                                                                            : 0;
+                                                                        $hasMarkup = $incrementBy > 0;
+
+                                                                        $chargeJson = [
+                                                                            'chargeId' => $charge->Id ?? null,
+                                                                            'chargeCategory' =>
+                                                                                $charge->ChargeCatagory ?? '',
+                                                                            'chargeCode' => $charge->ChargeCode ?? '',
+                                                                            'chargeDescription' =>
+                                                                                $charge->ChargeDescription ?? '',
+                                                                            'chargeBasedOn' =>
+                                                                                $charge->ChargeBasedOn ?? '',
+                                                                            'chargeBasedOnUOM' =>
+                                                                                $charge->ChargeBasedOnUOM ?? '',
+                                                                            'chargeCurr' => $charge->ChargeCurr ?? '',
+                                                                            'minAmount' => $charge->MinAmount ?? null,
+                                                                            'maxAmount' => $charge->MaxAmount ?? null,
+                                                                            'rateType' => $charge->RateType ?? '',
+                                                                            'rate' => $charge->Rate ?? null,
+                                                                            'formula' => $charge->Formula ?? null,
+                                                                            'rateSlab' =>
+                                                                                isset($charge->RateSlabJson) &&
+                                                                                $charge->RateSlabJson
+                                                                                    ? json_decode(
+                                                                                        $charge->RateSlabJson,
+                                                                                        true,
+                                                                                    )
+                                                                                    : null,
+                                                                            'chargeAction' => $hasMarkup ? 'M' : 'R',
+                                                                            'chargeNature' => $revenueOrCost,
+                                                                            'markupType' =>
+                                                                                $charge->IncrementType ?? null,
+                                                                            'markupRateType' =>
+                                                                                $charge->IncrementType ?? null,
+                                                                            'markupRate' =>
+                                                                                $charge->IncrementBy ?? null,
+                                                                            'markupFormula' => null,
+                                                                            'markupRateSlab' => null,
+                                                                            'isAccruable' => '0',
+                                                                            'isReimbursable' => '0',
+                                                                        ];
+
+                                                                        if ($hasMarkup) {
+                                                                            $natureLabel = $revenueOrCost . ' + Markup';
+                                                                            $natureClass = 'ce-nature-cost-markup';
+                                                                        } elseif ($revenueOrCost === 'Cost') {
+                                                                            $natureLabel = 'Cost';
+                                                                            $natureClass = 'ce-nature-cost';
+                                                                        } else {
+                                                                            $natureLabel = 'Revenue';
+                                                                            $natureClass = 'ce-nature-revenue';
+                                                                        }
+                                                                    @endphp
+                                                                    <tr class="ce-charge-row">
+                                                                        <td>
+                                                                            <span
+                                                                                class="ce-nature-badge {{ $natureClass }}">{{ $natureLabel }}</span>
+                                                                        </td>
+                                                                        <td>{{ $chargeJson['chargeCode'] }}</td>
+                                                                        <td>{{ $chargeJson['chargeDescription'] }}</td>
+                                                                        <td>{{ $chargeJson['rateType'] }}</td>
+                                                                        <td>{{ $chargeJson['rate'] }}</td>
+                                                                        <td>{{ $chargeJson['chargeCurr'] }}</td>
+                                                                        <td class="text-right">
+                                                                            <button type="button"
+                                                                                class="btn btn-sm btn-outline-primary ce-edit-charge"
+                                                                                data-svc="{{ $service->Id }}"
+                                                                                data-charge-id="{{ $chargeJson['chargeId'] }}"
+                                                                                data-charge='@json($chargeJson)'>
+                                                                                <i class="fas fa-pen"></i>
+                                                                            </button>
+                                                                            <button type="button"
+                                                                                class="btn btn-sm btn-outline-danger ce-delete-charge"
+                                                                                data-svc="{{ $service->Id }}"
+                                                                                data-charge-id="{{ $chargeJson['chargeId'] }}">
+                                                                                <i class="fas fa-trash"></i>
+                                                                            </button>
+                                                                        </td>
+                                                                    </tr>
+                                                                @endforeach
+                                                            @endforeach
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            @else
+                                                <div class="cc-empty-msg">{{ $section['emptyMsg'] }}</div>
+                                            @endif
+                                        </div>
                                     </div>
-                                </div>
-                            @endforeach
-                            <div class="ctr-subform mt-2" id="chargeform-{{ $service->Id }}" style="display:none;">
+                                @endforeach
+                            </div>
+
+                            {{-- Inline edit form: populated by JS when .ce-edit-charge is clicked --}}
+                            <div id="chargeform-{{ $service->Id }}" class="ctr-subform mt-3" style="display:none;">
                             </div>
                         </div>
                     </div>
@@ -653,6 +738,140 @@
             color: #fff;
             border: none;
         }
+
+        /* Service Action Row - keeps buttons in a horizontal line */
+        .ce-svc-actions-row {
+            display: flex;
+            justify-content: flex-end;
+            /* Pushes buttons to the right */
+            align-items: center;
+            gap: 8px;
+            /* Spacing between buttons */
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            /* Prevents breaking on small screens */
+        }
+
+        /* Pushes the Delete button to the far left */
+        .ce-svc-actions-row .ce-delete-service-btn {
+            margin-right: auto;
+        }
+
+        /* Charges Header Row */
+        .ce-charges-header-row {
+            display: flex;
+            justify-content: space-between;
+            /* Pushes "Charges" left, "Add Charge" right */
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .ce-charges-table-wrap {
+            margin-top: 8px;
+            overflow-x: auto;
+        }
+
+        .ce-charges-table {
+            min-width: 640px;
+        }
+
+        .ce-charges-table td,
+        .ce-charges-table th {
+            padding: 4px 6px;
+            font-size: 0.78rem;
+        }
+
+        .ce-charges-table .ce-charge-category-row td {
+            background: #f4f4fb;
+            color: #4B49AC;
+            font-weight: 700;
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            border-top: 1px solid #dddcf5;
+        }
+
+        .ce-charges-table .ce-charge-row td {
+            background: #fff;
+        }
+
+        .ce-nature-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            white-space: nowrap;
+        }
+
+        .ce-nature-badge.ce-nature-revenue {
+            background: #e6f4ea;
+            color: #1e7e34;
+            border: 1px solid #b7dfc3;
+        }
+
+        .ce-nature-badge.ce-nature-cost {
+            background: #fdecea;
+            color: #b21f2d;
+            border: 1px solid #f5c2c7;
+        }
+
+        /* Revenue / Cost collapsible sections */
+        .ce-charges-sections {
+            margin-top: 8px;
+        }
+
+        .ce-charge-section {
+            margin-bottom: 14px;
+        }
+
+        .ce-charge-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .ce-charge-section-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 10px 14px;
+            background: #4B49AC;
+            color: #fff;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            user-select: none;
+        }
+
+        .ce-charge-section-header:hover {
+            background: #3f3e94;
+        }
+
+        .ce-charge-section-header .ce-sec-title {
+            font-weight: 500;
+        }
+
+        .ce-charge-section-header .ce-sec-caret {
+            font-size: 0.7rem;
+            transition: transform 0.15s ease;
+            color: rgba(255, 255, 255, 0.85);
+        }
+
+        .ce-charge-section-header.collapsed .ce-sec-caret {
+            transform: rotate(-90deg);
+        }
+
+        .ce-charge-section-header .ce-sec-total {
+            font-weight: 500;
+        }
+
+        .ce-charge-section-body {
+            padding-top: 8px;
+        }
+
+        .ce-charge-section-body.collapsed {
+            display: none;
+        }
     </style>
 @stop
 
@@ -664,7 +883,7 @@
             var OFFICE_CODE = @json($officeCode ?? '');
             var MASTER_BASE = '{{ url('/contracts/masters') }}';
 
-            // ── Collapsible groups ────────────────────────────────────────────
+            // ── Collapsible groups (service blocks) ──────────────────────────
             document.addEventListener('click', function(e) {
                 var header = e.target.closest('.cc-group-header');
                 if (header) {
@@ -672,6 +891,15 @@
                     header.classList.toggle('collapsed');
                     if (body) body.classList.toggle('collapsed');
                 }
+            });
+
+            // ── Collapsible Revenue/Cost charge sections ─────────────────────
+            document.addEventListener('click', function(e) {
+                var header = e.target.closest('.ce-charge-section-header');
+                if (!header) return;
+                var body = document.getElementById(header.getAttribute('data-target'));
+                header.classList.toggle('collapsed');
+                if (body) body.classList.toggle('collapsed');
             });
 
             // ── Master data helpers (same pattern as create.blade.php) ────────
@@ -757,7 +985,9 @@
             function normalizeRateType(rt) {
                 var map = {
                     'SlabBased': 'Slab Based',
-                    'StepUp': 'Step Up'
+                    'StepUp': 'Step Up',
+                    'AtActual': 'At Actual'
+
                 };
                 return map[rt] || rt;
             }
@@ -1133,6 +1363,82 @@
                 });
             });
 
+            // ── Copy Contract (whole contract → new contract) ───────────────────
+            $(document).on('click', '.ce-copy-contract-btn', function() {
+                if (!confirm('Copy this entire contract (header, services, and charges) into a new contract?'))
+                    return;
+
+                var btn = this;
+                var originalHtml = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Copying...';
+
+                $.ajax({
+                    url: '/contracts/' + encodeURIComponent(CONTRACT_ID) + '/duplicate',
+                    type: 'POST',
+                    data: {
+                        _token: document.querySelector('meta[name="csrf-token"]').content,
+                        CopyContractID: CONTRACT_ID,
+                        Action: 'Copy'
+                    },
+                    dataType: 'json'
+                }).done(function(res) {
+                    if (!res.success) {
+                        alert('Failed to copy contract: ' + (res.message || 'Unknown error'));
+                        return;
+                    }
+                    alert(res.message || 'Contract copied.');
+                    if (res.data && res.data.newContractId) {
+                        window.location = '/contracts/' + encodeURIComponent(res.data.newContractId) +
+                            '/edit';
+                    } else {
+                        window.location.reload();
+                    }
+                }).fail(function(xhr) {
+                    alert('Failed to copy contract: ' + ((xhr.responseJSON && xhr.responseJSON
+                        .message) || 'Copy failed.'));
+                }).always(function() {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
+                });
+            });
+
+            // ── Copy Service (service + all its revenue/cost charges → new service) ──
+            $(document).on('click', '.ce-copy-service-btn', function() {
+                var svcId = $(this).data('svc');
+                if (!confirm('Copy this service and all its charges as a new service?')) return;
+
+                var btn = this;
+                var originalHtml = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Copying...';
+
+                $.ajax({
+                    url: '/contracts/' + encodeURIComponent(CONTRACT_ID) + '/services/' +
+                        encodeURIComponent(svcId) + '/duplicate',
+                    type: 'POST',
+                    data: {
+                        _token: document.querySelector('meta[name="csrf-token"]').content,
+                        CopyServiceID: svcId,
+                        Action: 'Copy'
+                    },
+                    dataType: 'json'
+                }).done(function(res) {
+                    if (!res.success) {
+                        alert('Failed to copy service: ' + (res.message || 'Unknown error'));
+                        return;
+                    }
+                    alert(res.message || 'Service copied.');
+                    window.location.reload();
+                }).fail(function(xhr) {
+                    alert('Failed to copy service: ' + ((xhr.responseJSON && xhr.responseJSON
+                        .message) || 'Copy failed.'));
+                }).always(function() {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
+                });
+            });
+
             // ── Save Service ───────────────────────────────────────────────────
             $(document).on('click', '.ce-save-service-btn', function() {
                 var $group = $(this).closest('.cc-group-body');
@@ -1350,7 +1656,7 @@
                     return '<label class="ctr-lbl">Rate</label>' +
                         '<input type="number" step="0.00001" class="form-control form-control-sm ctr-cf-rate">';
                 }
-                return '';
+                return ''; // At Actual falls through here — no rate input, correct
             }
 
             function slabRowHtml() {
@@ -1588,6 +1894,7 @@
                                     <option value="Slab Based">Slab Based</option>
                                     <option value="Step Up">Step Up</option>
                                     <option value="Formula">Formula</option>
+                                    <option value="At Actual">At Actual</option>
                                 </select>
                             </div>
                             
@@ -1827,7 +2134,14 @@
                 $(wrap).find('.ctr-cf-accruable-wrap').toggle(naVal === 'Revenue');
                 $(wrap).find('.ctr-cf-reimbursable-wrap').toggle(naVal === 'Cost');
 
-                if (normalizedRateType === 'Single') {
+                if (normalizedRateType === 'At Actual') {
+                    // Rate is always 0 for At Actual — no input exists, so
+                    // nothing to prefill. Downstream save will force 0.
+                    $(wrap).find('input[name="ctr-cf-natureaction"][value="CostMarkup"]')
+                        .prop('disabled', true)
+                        .closest('label').css('opacity', '0.5');
+                    $(wrap).find('.ctr-cf-markup-wrap').hide();
+                } else if (normalizedRateType === 'Single') {
                     wrap.querySelector('.ctr-cf-rate').value = chargeToEdit.rate ?? '';
                 } else if (normalizedRateType === 'Slab Based' || normalizedRateType === 'Step Up') {
                     fillSlabRows(wrap.querySelector('.ctr-slab-rows'), chargeToEdit.rateSlab);
@@ -1856,6 +2170,22 @@
                     $(wrap).find('.ctr-cf-ratearea').html(rateAreaHtml(this.value));
                     if (this.value === 'Formula') bindFormulaBuilderEvents(wrap);
 
+                    // At Actual has no rate to mark up — force Revenue/Cost only
+                    if (this.value === 'At Actual') {
+                        var $mkRadio = $(wrap).find('input[name="ctr-cf-natureaction"][value="CostMarkup"]');
+                        if ($mkRadio.is(':checked')) {
+                            $(wrap).find('input[name="ctr-cf-natureaction"][value="Revenue"]')
+                                .prop('checked', true)
+                                .trigger('change');
+                        }
+                        $mkRadio.prop('disabled', true)
+                            .closest('label').css('opacity', '0.5');
+                        $(wrap).find('.ctr-cf-markup-wrap').hide();
+                    } else {
+                        $(wrap).find('input[name="ctr-cf-natureaction"][value="CostMarkup"]')
+                            .prop('disabled', false)
+                            .closest('label').css('opacity', '1');
+                    }
                 });
                 $(wrap).find('.ctr-cf-cancel').on('click', function() {
                     var modal = $(wrap).closest('.modal');
@@ -2016,8 +2346,14 @@
                     return;
                 }
                 var naVal = naRadio.value;
-                var derivedNature = (naVal === 'Revenue') ? 'Revenue' : 'Cost';
-                var derivedAction = (naVal === 'Revenue') ? 'A' : (naVal === 'CostMarkup') ? 'M' : 'R';
+                // Revenue  → Revenue       / action R
+                // Cost     → Cost          / action R
+                // CostMarkup → Cost with Markup / action M
+                var derivedNature =
+                    naVal === 'Revenue' ? 'Revenue' :
+                    naVal === 'CostMarkup' ? 'Cost with Markup' :
+                    'Cost';
+                var derivedAction = (naVal === 'CostMarkup') ? 'M' : 'R';
 
                 var charge = {
                     chargeNature: derivedNature,
@@ -2038,6 +2374,10 @@
                     rateSlab: null,
                     formula: null
                 };
+
+                // sp_Quote_DetailsUpdate routing (dispatcher)
+                charge.OperationType = 'WorkbookCharges';
+                charge.Action = chargeId ? 'Edit' : 'Add';
 
                 if (rateType === 'Single') {
                     var rateInput = wrap.querySelector('.ctr-cf-rate');
@@ -2083,6 +2423,9 @@
                         return;
                     }
                     charge.formula = formulaVal;
+                } else if (rateType === 'At Actual') {
+                    // At Actual has no rate — send 0 or null depending on SP expectation.
+                    charge.rate = 0; // ← change to null if SP stores NULL
                 }
 
                 // --- Charge Action and Markup ---
@@ -2104,6 +2447,11 @@
                 charge.markupRateSlab = null;
 
                 if (actionVal === 'M') {
+                    if (rateType === 'At Actual') {
+                        alert('Cost with markup is not allowed when Rate Type is "At Actual". ' +
+                            'Please choose Revenue or Cost, or select a different Rate Type.');
+                        return;
+                    }
                     var mkType = wrap.querySelector('.ctr-mk-ratetype').value;
                     var mkRateVal = wrap.querySelector('.ctr-mk-rate').value;
                     if (!mkType || mkRateVal === '') {
@@ -2116,9 +2464,12 @@
                         baseRateVal + mkRateNum :
                         baseRateVal + (baseRateVal * mkRateNum / 100);
 
-                    charge.markupRateType = 'Single';
+                    charge.markupRateType = mkType;
                     charge.markupType = mkType;
                     charge.markupRate = parseFloat(markedUpRate.toFixed(5));
+
+                    charge.incrementBy = mkRateNum;
+                    charge.incrementType = mkType;
 
                 } else if (charge.toBeAdded === 1) {
                     charge.markupRateType = charge.rateType;
@@ -2192,20 +2543,23 @@
                 var svcId = $(this).data('svc');
                 var chargeToEdit = $(this).data('charge');
                 var wrap = document.getElementById('chargeform-' + svcId);
-                if (!wrap) return;
+                if (!wrap || !chargeToEdit) return;
+
                 wrap.style.display = 'block';
                 wrap.innerHTML = chargeFormHtml();
                 bindChargeFormEvents(svcId, chargeToEdit.chargeId, wrap, chargeToEdit);
                 loadChargeFormMasters(wrap, chargeToEdit);
+
                 var isRevenueForFormula = chargeToEdit.chargeNature === 'Cost' ? 0 : 1;
-                loadFormulaFields(svcId, isRevenueForFormula).done(function(res) {
-                    if (res.success) FORMULA_FIELDS = res.data.map(function(name) {
+                loadFormulaFields(svcId, isRevenueForFormula).done(function(r) {
+                    if (r.success) FORMULA_FIELDS = r.data.map(function(name) {
                         return {
                             label: name,
                             token: name
                         };
                     });
                 });
+
                 wrap.scrollIntoView({
                     behavior: 'smooth',
                     block: 'center'
@@ -2257,17 +2611,45 @@
                 $('#addChargeModalBody').empty();
             });
 
+            // Matches server-side number_format(x, 2) — adds thousand separators.
+            function ceFormatTotal(num) {
+                return Number(num || 0).toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                });
+            }
+
             $(document).on('click', '.ce-delete-charge', function() {
-                var svcId = $(this).data('svc');
-                var chargeId = $(this).data('charge-id');
+                var $btn = $(this);
+                var svcId = $btn.data('svc');
+                var chargeId = $btn.data('charge-id');
                 if (!confirm('Delete this charge?')) return;
 
-                var icon = this;
+                // Resolve every element we'll touch BEFORE the AJAX call. If the DOM
+                // mutates while the request is in flight, we still hold valid refs.
+                var $row = $btn.closest('tr.ce-charge-row');
+                var $section = $row.closest('.ce-charge-section');
+                var $sectionBody = $section.find('.ce-charge-section-body');
+                var $tableWrap = $sectionBody.find('.ce-charges-table-wrap');
+                var $tableBody = $tableWrap.find('table.ce-charges-table tbody');
+
+                // Bail with a clear console trace if the path is broken — never
+                // silently manipulate an unexpected DOM shape.
+                if (!$row.length || !$section.length || !$sectionBody.length || !$tableWrap.length) {
+                    console.error('[Delete charge] DOM path incomplete:', {
+                        row: $row.length,
+                        section: $section.length,
+                        sectionBody: $sectionBody.length,
+                        tableWrap: $tableWrap.length,
+                        tableBody: $tableBody.length
+                    });
+                    alert('Could not locate the charge row in the page. Please refresh and try again.');
+                    return;
+                }
 
                 $.ajax({
                     url: '/contracts/' + encodeURIComponent(CONTRACT_ID) + '/services/' +
-                        encodeURIComponent(svcId) +
-                        '/charges/' + encodeURIComponent(chargeId),
+                        encodeURIComponent(svcId) + '/charges/' + encodeURIComponent(chargeId),
                     type: 'DELETE',
                     data: {
                         _token: document.querySelector('meta[name="csrf-token"]').content
@@ -2278,24 +2660,48 @@
                         alert('Failed to delete charge: ' + (res.message || 'Unknown error'));
                         return;
                     }
-                    var $row = $(icon).closest('tr');
-                    var $groupBody = $row.closest('.cc-group-body');
+
+                    // 1. Remove ONLY the deleted row.
                     $row.remove();
 
-                    if ($groupBody.length) {
-                        var $header = $('.cc-group-header[data-target="' + $groupBody.attr('id') +
-                            '"]');
-                        var $total = $header.find('.cc-group-total');
-                        var newCount = $groupBody.find('.cc-table tbody tr').length;
-                        $total.text(newCount);
-
-                        if (newCount === 0) {
-                            $groupBody.find('.cc-table-wrap').remove();
-                            if (!$groupBody.find('.cc-empty-msg').length) {
-                                $groupBody.append(
-                                    '<div class="cc-empty-msg">No charges for this service.</div>');
-                            }
+                    // 2. Remove category headers that no longer own any charge rows.
+                    //    A category is "orphaned" if its next sibling is either another
+                    //    category row or does not exist.
+                    $tableBody.find('.ce-charge-category-row').each(function() {
+                        var $cat = $(this);
+                        var $next = $cat.next('tr');
+                        if (!$next.length || $next.hasClass('ce-charge-category-row')) {
+                            $cat.remove();
                         }
+                    });
+
+                    // 3. Recompute the section total from the rows that survived.
+                    //    Column layout: 0=Nature 1=Code 2=Desc 3=RateType 4=Rate 5=Curr 6=Actions
+                    var newTotal = 0;
+                    $tableBody.find('tr.ce-charge-row').each(function() {
+                        var rate = parseFloat($(this).find('td').eq(4).text().trim());
+                        if (!isNaN(rate)) newTotal += rate;
+                    });
+                    $section.find('.ce-sec-total').text('Total: ' + ceFormatTotal(newTotal));
+
+                    // 4. Show the empty state ONLY when every charge row is gone.
+                    //    Keep the table-wrap element in the DOM (just hidden) so nothing
+                    //    downstream is holding a stale reference to a removed node.
+                    var remaining = $tableBody.find('tr.ce-charge-row').length;
+                    if (remaining === 0) {
+                        $tableWrap.hide();
+                        if (!$sectionBody.find('.cc-empty-msg').length) {
+                            var isCost = $section.find('.ce-sec-title').text().trim() === 'Cost';
+                            $sectionBody.append(
+                                '<div class="cc-empty-msg">' +
+                                (isCost ? 'No cost charges.' : 'No revenue charges.') +
+                                '</div>'
+                            );
+                        }
+                    } else {
+                        // Defensive: if a stale empty message somehow lingers, drop it.
+                        $sectionBody.find('.cc-empty-msg').remove();
+                        $tableWrap.show();
                     }
                 }).fail(function(xhr) {
                     var msg = (xhr.responseJSON && xhr.responseJSON.message) || 'Delete failed.';

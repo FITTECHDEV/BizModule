@@ -41,7 +41,12 @@
                         <option value="all">All</option>
                     </select>
                 </div>
-                <button type="button" class="btn btn-primary" id="ctrNewContractBtn">+ New</button>
+                <div>
+                    <button type="button" class="btn btn-outline-primary mr-2" id="ctrCopyContractBtn">
+                        <i class="fas fa-copy mr-1"></i> Copy
+                    </button>
+                    <button type="button" class="btn btn-primary" id="ctrNewContractBtn">+ New</button>
+                </div>
             </div>
             <table class="table table-sm table-bordered" id="ctrContractsTable">
                 <thead>
@@ -104,6 +109,41 @@
                                 <input type="text" class="form-control form-control-sm" id="ctrRemark">
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- ── Copy Contract modal ─────────────────────────────────────── --}}
+        <div class="modal fade" id="ctrCopyContractModal" tabindex="-1" role="dialog">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Copy Contract</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span>&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-muted mb-3">
+                            Pick a contract to copy. The header, all services, and all
+                            charges will be duplicated into a new contract.
+                        </p>
+                        <div class="form-group mb-0">
+                            <label class="ctr-lbl ctr-required">Source Contract</label>
+                            <select class="form-control form-control-sm" id="ctrCopySourceSelect">
+                                <option value="">-- Select Contract --</option>
+                            </select>
+                            <small class="form-text text-muted" id="ctrCopySourceHelp" style="display:none;">
+                                <span class="text-danger">Failed to load contracts.</span>
+                            </small>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" id="ctrCopyConfirmBtn">
+                            <i class="fas fa-copy mr-1"></i> Copy Contract
+                        </button>
                     </div>
                 </div>
             </div>
@@ -350,9 +390,6 @@
                         '<button type="button" class="btn btn-xs btn-outline-secondary ctr-edit-contract" data-id="' +
                         contractId +
                         '" title="Edit" aria-label="Edit"><i class="fas fa-pen"></i></button>' +
-                        '<button type="button" class="btn btn-xs btn-outline-danger ctr-delete-contract ml-1" data-id="' +
-                        contractId +
-                        '" title="Delete" aria-label="Delete"><i class="fas fa-trash"></i></button>' +
                         '</td></tr>');
                 });
             }
@@ -505,7 +542,7 @@
                     CONTRACT_ID = realId; // CHANGED: keep module state in sync
                     clearLocalDraft();
                     window.location.href = '/contracts/' + encodeURIComponent(realId) +
-                    '/edit'; // CHANGED
+                        '/edit'; // CHANGED
                 });
             });
 
@@ -514,6 +551,106 @@
 
             $('#ctrContractInfoModal .close').on('click', function() {
                 $(this).closest('.modal').modal('hide');
+            });
+
+            // ── Copy Contract flow ──────────────────────────────────────────────
+            // Reuses the same `/contracts/{id}/duplicate` endpoint the edit page's
+            // "Copy Contract" button already calls. On success we redirect straight
+            // into the new contract's edit page, mirroring the edit page's flow.
+
+            function loadCopySourceOptions() {
+                var $sel = $('#ctrCopySourceSelect');
+                var $help = $('#ctrCopySourceHelp');
+                $sel.empty().append('<option value="">-- Select Contract --</option>');
+                $help.hide();
+
+                function fill(list) {
+                    if (!list || !list.length) {
+                        $sel.append('<option value="" disabled>No contracts available</option>');
+                        return;
+                    }
+                    list.forEach(function(c) {
+                        var id = c.id || c.contractId || c.Id || '';
+                        var label = (c.contractNo || '') + ' — ' + (c.contractName || '');
+                        $sel.append('<option value="' + id + '">' + label + '</option>');
+                    });
+                }
+
+                // state.allContracts is already populated on page load — reuse it
+                // instead of an extra round-trip. Fall back to a fetch only if the
+                // list hasn't arrived yet (e.g. user clicks fast after page load).
+                if (state.allContracts && state.allContracts.length) {
+                    fill(state.allContracts);
+                    return;
+                }
+
+                $.get(CONTRACTS_LIST_URL, function(res) {
+                    if (!res.success) {
+                        $help.show();
+                        return;
+                    }
+                    state.allContracts = res.data || [];
+                    fill(state.allContracts);
+                }).fail(function() {
+                    $help.show();
+                });
+            }
+
+            $('#ctrCopyContractBtn').on('click', function() {
+                loadCopySourceOptions();
+                $('#ctrCopyContractModal').modal('show');
+            });
+
+            $('#ctrCopyConfirmBtn').on('click', function() {
+                var sourceId = $('#ctrCopySourceSelect').val();
+                if (!sourceId) {
+                    alert('Please select a contract to copy.');
+                    return;
+                }
+
+                var $btn = $(this).prop('disabled', true).html(
+                    '<i class="fas fa-spinner fa-spin mr-1"></i> Copying...'
+                );
+
+                $.ajax({
+                    url: '/contracts/' + encodeURIComponent(sourceId) + '/duplicate',
+                    type: 'POST',
+                    data: {
+                        _token: document.querySelector('meta[name="csrf-token"]').content,
+                        CopyContractID: sourceId,
+                        Action: 'Copy'
+                    },
+                    dataType: 'json'
+                }).done(function(res) {
+                    if (!res.success) {
+                        alert('Failed to copy contract: ' + (res.message || 'Unknown error'));
+                        return;
+                    }
+
+                    $('#ctrCopyContractModal').modal('hide');
+
+                    if (res.data && res.data.newContractId) {
+                        window.location.href = '/contracts/' +
+                            encodeURIComponent(res.data.newContractId) + '/edit';
+                    } else {
+                        // Fallback — refresh the list so the new contract appears
+                        loadContractsList();
+                    }
+                }).fail(function(xhr) {
+                    var msg = (xhr.responseJSON && xhr.responseJSON.message) || 'Copy failed.';
+                    alert('Failed to copy contract: ' + msg);
+                }).always(function() {
+                    $btn.prop('disabled', false).html(
+                        '<i class="fas fa-copy mr-1"></i> Copy Contract'
+                    );
+                });
+            });
+
+            // Clear the dropdown when the modal closes so re-opening always
+            // starts from a clean state (fresh contract list, nothing pre-selected).
+            $('#ctrCopyContractModal').on('hidden.bs.modal', function() {
+                $('#ctrCopySourceSelect').val('');
+                $('#ctrCopySourceHelp').hide();
             });
 
             // ── View / Edit / Delete Contract Click Handlers ──────────────────────
@@ -529,40 +666,7 @@
                 if (!contractId) return;
                 window.location.href = '/contracts/' + encodeURIComponent(contractId) + '/edit';
             });
-
-            $(document).on('click', '.ctr-delete-contract', function() {
-                var contractId = $(this).data('id');
-                if (!contractId) return;
-                if (!confirm('Delete this contract and all its services/charges? This cannot be undone.'))
-                    return;
-
-                var btn = this;
-                btn.disabled = true;
-
-                $.ajax({
-                    url: '/contracts/' + encodeURIComponent(contractId),
-                    type: 'DELETE',
-                    data: {
-                        _token: document.querySelector('meta[name="csrf-token"]').content
-                    },
-                    dataType: 'json'
-                }).done(function(res) {
-                    if (!res.success) {
-                        alert('Failed to delete contract: ' + (res.message || 'Unknown error'));
-                        btn.disabled = false;
-                        return;
-                    }
-                    state.allContracts = state.allContracts.filter(function(x) {
-                        return (x.id || x.contractId || x.Id || '') !== contractId;
-                    });
-                    applyStatusFilterAndRender();
-                }).fail(function(xhr) {
-                    var msg = (xhr.responseJSON && xhr.responseJSON.message) || 'Delete failed.';
-                    alert('Failed to delete contract: ' + msg);
-                    btn.disabled = false;
-                });
-            });
-
+            
             $(document).on('click', '.ctr-stat-card', function() {
                 state.activeStatusFilter = $(this).data('status') || '';
                 applyStatusFilterAndRender();
