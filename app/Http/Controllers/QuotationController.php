@@ -10,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Symfony\Component\Mailer\Exception\TransportException;
 use Illuminate\Support\Facades\Auth;
 use Yajra\DataTables\Facades\DataTables;
+use Illuminate\Support\Facades\Cache;
 
 class QuotationController extends Controller
 {
@@ -29,7 +30,7 @@ class QuotationController extends Controller
         'RW' => 'RWF',
         'SA' => 'KES',
         'SS' => 'SSP',
-        'SO' => 'USD', 
+        'SO' => 'USD',
         'TZ' => 'TZS',
         'UG' => 'UGX',
         'ZM' => 'ZMW',
@@ -1969,8 +1970,8 @@ class QuotationController extends Controller
                     FROM Quote_Quotation_ChargeSheet QC WITH (NOLOCK)
                     INNER JOIN Quote_QuotationInfo QI WITH (NOLOCK) ON QI.id = QC.QuotationInfoID
                     LEFT JOIN Cust_ChargecodeBasedOn          CB  WITH (NOLOCK) ON CB.Id  = QC.BasedOnId
-                    LEFT JOIN [FITSCM].dbo.Cust_Party      CP  WITH (NOLOCK) ON CP.Id  = QC.PartyID
                     LEFT JOIN [FITSCM].dbo.Cust_Equipment  EQ  WITH (NOLOCK) ON EQ.Id  = QC.UOMId AND QC.UOMType = 'Equipment'
+                    LEFT JOIN [FITSCM].dbo.Cust_Party      CP  WITH (NOLOCK) ON CP.Id  = QC.PartyID
                     LEFT JOIN [FITSCM].dbo.Sys_UOM         UOM WITH (NOLOCK) ON UOM.Id = QC.UOMId AND QC.UOMType != 'Equipment'
                     WHERE QC.Id = ? AND QC.IsDeleted = 0
                 ",
@@ -5412,52 +5413,90 @@ class QuotationController extends Controller
             // (sp_Quote_QuotationFormat) does not read or write this column, it's
             // UI-side context saved alongside document generation.
             $quoteType = request('QuoteType', 'Std. PDF');
+
+            // Persist the remark BEFORE the guard — must run regardless of which
+            // engine renders the PDF.
             if ($quoteType === 'All in One PDF' && request()->filled('AllInOneRemark')) {
                 DB::table('Quote_QuotationInfo')
                     ->where('ID', $id)
                     ->update(['AllInOneRemark' => substr(request('AllInOneRemark'), 0, 1000)]);
+                $quotation->refresh();
+            }
+
+            // The Laravel renderer supports the standard layouts plus All in One
+            // (rendered as the standard layout + VAT + remark block).
+            if (
+                request('Engine') !== 'legacy' &&
+                !in_array($quoteType, ['Std. PDF', 'Std. With VAT', 'All in One PDF'], true)
+            ) {
+                return response()->json(
+                    [
+                        'success' => false,
+                        'message' => "Quote type '{$quoteType}' is not supported by the current quotation format.",
+                    ],
+                    422,
+                );
             }
 
             // ── Call sp_Quote_QuotationFormat ─────────────────────────────────────
             $html = null;
             $spError = null;
 
-            try {
-                $pdo = DB::getPdo();
-                $stmt = $pdo->prepare("
+            // Opt-in Laravel-built HTML: ?Engine=laravel. Without it, the existing SP call below runs unchanged.
+            if (request('Engine') !== 'legacy') {
+                try {
+                    $showVat = in_array($quoteType, ['Std. With VAT', 'All in One PDF'], true);
+                    $allInOneRemark = $quoteType === 'All in One PDF' ? $quotation->AllInOneRemark ?? null : null;
+
+                    $html = $this->buildQuotationHtml(
+                        $this->getQuotationData($quotation->ID),
+                        $showVat,
+                        $allInOneRemark,
+                    );
+                } catch (\RuntimeException $e) {
+                    return response()->json(
+                        ['success' => false, 'message' => $e->getMessage(), 'dba_action_required' => true],
+                        500,
+                    );
+                }
+            } else {
+                try {
+                    $pdo = DB::getPdo();
+                    $stmt = $pdo->prepare("
             DECLARE @QuoteFormat VARCHAR(MAX);
             EXEC dbo.sp_Quote_QuotationFormat ?, ?,
                 @QuoteFormat = @QuoteFormat OUTPUT;
             SELECT @QuoteFormat AS QuoteFormat;
         ");
-                $stmt->execute([$quotation->ID, request('QuoteType', 'Std. PDF')]);
+                    $stmt->execute([$quotation->ID, request('QuoteType', 'Std. PDF')]);
 
-                $setIndex = 0;
-                do {
-                    $setIndex++;
-                    try {
-                        $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
-                        if (empty($rows)) {
+                    $setIndex = 0;
+                    do {
+                        $setIndex++;
+                        try {
+                            $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+                            if (empty($rows)) {
+                                continue;
+                            }
+                            if (isset($rows[0]->QuoteFormat)) {
+                                $raw = (string) $rows[0]->QuoteFormat;
+                                if (str_starts_with(trim($raw), 'Failed (Reason)')) {
+                                    $spError = $raw;
+                                } else {
+                                    $html = $raw;
+                                }
+                                break;
+                            }
+                        } catch (\PDOException $e) {
                             continue;
                         }
-                        if (isset($rows[0]->QuoteFormat)) {
-                            $raw = (string) $rows[0]->QuoteFormat;
-                            if (str_starts_with(trim($raw), 'Failed (Reason)')) {
-                                $spError = $raw;
-                            } else {
-                                $html = $raw;
-                            }
-                            break;
-                        }
-                    } catch (\PDOException $e) {
-                        continue;
-                    }
-                } while ($stmt->nextRowset());
-            } catch (\Exception $e) {
-                return response()->json(
-                    ['success' => false, 'message' => 'Failed to execute quotation format SP: ' . $e->getMessage()],
-                    500,
-                );
+                    } while ($stmt->nextRowset());
+                } catch (\Exception $e) {
+                    return response()->json(
+                        ['success' => false, 'message' => 'Failed to execute quotation format SP: ' . $e->getMessage()],
+                        500,
+                    );
+                }
             }
 
             if (!empty($spError)) {
@@ -5493,8 +5532,10 @@ class QuotationController extends Controller
                 'tc_template' => $quotation->QuotationTCTemplate ?? 'N/A',
             ]);
 
-            $html = str_replace('public/img/logo.png', public_path('img/logo.png'), $html);
-            $html = str_replace('style="height: 42px;"', 'style="height: 80px; width: auto;"', $html);
+            if (request('Engine') === 'legacy') {
+                $html = str_replace('public/img/logo.png', public_path('img/logo.png'), $html);
+                $html = str_replace('style="height: 42px;"', 'style="height: 80px; width: auto;"', $html);
+            }
 
             // ── Render PDF ────────────────────────────────────────────────────────
             try {
@@ -5533,7 +5574,12 @@ class QuotationController extends Controller
             // Tag VAT-quoted PDFs in the filename so the Versions list can
             // label them distinctly (e.g. "Version 2 (PDF - VAT)").
             $quoteType = request('QuoteType', 'Std. PDF');
-            $fileName = 'quote_' . now()->format('Ymd_His') . ($quoteType === 'Std. With VAT' ? '_vat' : '') . '.pdf';
+            $fileName =
+                'quote_' .
+                now()->format('Ymd_His') .
+                ($quoteType === 'Std. With VAT' ? '_vat' : '') .
+                ($quoteType === 'All in One PDF' ? '_allinone' : '') .
+                '.pdf';
             $storagePath = $folder . '/' . $fileName;
             $fullPath = \Storage::disk('public')->path($storagePath);
 
@@ -5771,8 +5817,9 @@ class QuotationController extends Controller
              * - returns null when no HTML is available
              * - throws RuntimeException when the SP itself reports a failure
              */
-            $html = $this->getQuotationHtml($id, request('QuoteType', 'Cost & Sell EXCEL'));
-
+            $quoteData = $this->getQuotationData($quotation->ID);
+            $serviceText = trim((string) ($quoteData['Service'] ?? ''));
+            $html = $this->buildExcelQuotationHtml($quoteData, $this->getQuotationExcelTable($quotation->ID));
             if (empty($html)) {
                 Log::error('Excel Generation - Empty quotation HTML', [
                     'quotation_id' => $id,
@@ -6033,6 +6080,7 @@ class QuotationController extends Controller
             ]);
 
             $sheet->getStyle('E1:H1')->applyFromArray([
+                'font' => ['bold' => true, 'size' => 14],
                 'alignment' => [
                     'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT,
                     'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
@@ -6251,14 +6299,18 @@ class QuotationController extends Controller
             /*
              * Unify section bars.
              */
-            $blackBarTexts = ['GENERAL INFORMATION', 'CARGO INFROMATION', 'TERMS AND CONDITION'];
+            $blackBarTexts = ['GENERAL INFORMATION', 'CARGO INFORMATION', 'TERMS AND CONDITION'];
 
             for ($rowIdx = 4; $rowIdx <= $highestRow; $rowIdx++) {
                 $cellValue = trim((string) $sheet->getCellByColumnAndRow(1, $rowIdx)->getValue());
 
                 $rowRange = "A{$rowIdx}:{$highestColumn}{$rowIdx}";
 
-                if (in_array($cellValue, $blackBarTexts, true) || stripos($cellValue, 'Sea import') === 0) {
+                $plainValue = preg_replace('/^[\s\x{00A0}]+/u', '', $cellValue);
+                if (
+                    in_array($plainValue, $blackBarTexts, true) ||
+                    ($serviceText !== '' && stripos($plainValue, $serviceText) === 0)
+                ) {
                     $sheet->getStyle($rowRange)->applyFromArray([
                         'font' => [
                             'bold' => true,
@@ -7631,6 +7683,305 @@ class QuotationController extends Controller
         }
     }
 
+    /**
+     * Fetch the structured quotation JSON from sp_Quote_QuotationFormat.
+     * The SP takes only @QuotationID and returns JSON in @QuoteFormat.
+     *
+     * @throws \RuntimeException when the SP reports a failure or returns unusable output
+     */
+    private function getQuotationData(string $quotationId, bool $withEquipmentRows = true): array
+    {
+        $quotationId = trim($quotationId);
+        if ($quotationId === '') {
+            throw new \RuntimeException('getQuotationData: quotationId is empty');
+        }
+
+        $stmt = DB::getPdo()->prepare("
+            SET NOCOUNT ON;
+            DECLARE @QuoteFormat VARCHAR(MAX);
+            EXEC dbo.sp_Quote_QuotationFormat ?, @QuoteFormat = @QuoteFormat OUTPUT;
+            SELECT @QuoteFormat AS QuoteFormat;
+        ");
+        $stmt->execute([$quotationId]);
+
+        // The SP creates a temp table, which can produce empty result sets before the SELECT.
+        $raw = null;
+        do {
+            try {
+                $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+                if (!empty($rows) && isset($rows[0]->QuoteFormat)) {
+                    $raw = (string) $rows[0]->QuoteFormat;
+                    break;
+                }
+            } catch (\PDOException $e) {
+                continue;
+            }
+        } while ($stmt->nextRowset());
+
+        // NULL output means the SP's Terms join found no row: no T&C template applied.
+        if ($raw === null || trim($raw) === '') {
+            throw new \RuntimeException(
+                'No quotation data returned from SP. Ensure a Terms & Conditions template is applied before generating.',
+            );
+        }
+
+        if (str_starts_with(trim($raw), 'Failed (Reason)')) {
+            Log::error('getQuotationData - sp_Quote_QuotationFormat failure (DBA action required)', [
+                'quotation_id' => $quotationId,
+                'sp_message' => $raw,
+            ]);
+            throw new \RuntimeException('sp_Quote_QuotationFormat: ' . $raw);
+        }
+
+        $data = json_decode($raw, true);
+        if (!is_array($data)) {
+            Log::error('getQuotationData - JSON decode failed', [
+                'quotation_id' => $quotationId,
+                'json_error' => json_last_error_msg(),
+            ]);
+            throw new \RuntimeException('sp_Quote_QuotationFormat: invalid JSON response');
+        }
+
+        // Workaround: the SP returns @OfficeJson as Customer and never uses @ContractJson.
+        $data['Customer'] = $this->getQuotationCustomer($quotationId);
+
+        // Workaround: add the VAT description the SP omits, matched on description, rate and amount.
+        $vatDescriptions = $this->getQuotationVatDescriptions($quotationId);
+        foreach ($data['ChargeDetails'] ?? [] as $index => $charge) {
+            if (!isset($charge['VATRate'])) {
+                continue;
+            }
+            $key = $this->vatKey($charge['ChargeDescription'] ?? '', $charge['Rate'] ?? 0, $charge['Amount'] ?? 0);
+            if (isset($vatDescriptions[$key])) {
+                $data['ChargeDetails'][$index]['VATDescription'] = $vatDescriptions[$key];
+            }
+        }
+        // Equipment-based charges are not in the JSON (it only carries their count),        // so read them from sp_Quote_QuotationFormat_Data.
+        if ($withEquipmentRows && (int) ($data['EquipmentBasedChargesNo'] ?? 0) > 0) {
+            $data['EquipmentRows'] = $this->getQuotationEquipmentRows($quotationId);
+
+            // The SP swallows its own errors and returns nothing, so an empty result here is a failure.
+            if (empty($data['EquipmentRows'])) {
+                Log::error('getQuotationData - no equipment rows returned (DBA action required)', [
+                    'quotation_id' => $quotationId,
+                    'equipment_charge_count' => $data['EquipmentBasedChargesNo'],
+                ]);
+                throw new \RuntimeException(
+                    'sp_Quote_QuotationFormat_Data returned no rows for a quotation with equipment-based charges',
+                );
+            }
+        }
+
+        Log::info('getQuotationData - retrieved', [
+            'quotation_id' => $quotationId,
+            'charge_count' => count($data['ChargeDetails'] ?? []),
+            'equipment_row_count' => count($data['EquipmentRows'] ?? []),
+        ]);
+
+        return $data;
+    }
+
+    private function getQuotationExcelTable(string $quotationId): string
+    {
+        $stmt = DB::getPdo()->prepare("
+        SET NOCOUNT ON;
+        DECLARE @TableList VARCHAR(MAX);
+        EXEC dbo.sp_Quote_QuotationFormat_DataExcel ?, @TableList = @TableList OUTPUT;
+        SELECT @TableList AS TableList;
+    ");
+        $stmt->execute([trim($quotationId)]);
+
+        do {
+            try {
+                $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+                if (!empty($rows) && isset($rows[0]->TableList) && trim((string) $rows[0]->TableList) !== '') {
+                    return (string) $rows[0]->TableList;
+                }
+            } catch (\PDOException $e) {
+                continue;
+            }
+        } while ($stmt->nextRowset());
+
+        // The SP's empty CATCH leaves the output NULL, so an empty result is a failure.
+        throw new \RuntimeException('sp_Quote_QuotationFormat_DataExcel returned no table (DBA action required)');
+    }
+
+    private function buildExcelQuotationHtml(array $data, string $tableList): string
+    {
+        return view('quotation.excel_document', ['quote' => $data, 'tableList' => $tableList])->render();
+    }
+
+    // Reads the pivoted equipment charges. Columns: ChargeCatagories, Description, then per equipment
+    // code "<Code> Rate", "<Code>" and "<Code> VAT". Values arrive already formatted as strings.
+    private function getQuotationEquipmentRows(string $quotationId): array
+    {
+        // The SP builds the global temp table ##Result, so concurrent runs would overwrite each other.
+        try {
+            return Cache::lock('sp_quote_quotationformat_data', 30)->block(
+                15,
+                fn() => $this->fetchQuotationEquipmentRows($quotationId),
+            );
+        } catch (\Illuminate\Contracts\Cache\LockTimeoutException $e) {
+            throw new \RuntimeException(
+                'Equipment charges are being generated for another quotation. Please retry in a moment.',
+            );
+        }
+    }
+
+    private function fetchQuotationEquipmentRows(string $quotationId): array
+    {
+        $stmt = DB::getPdo()->prepare('SET NOCOUNT ON; EXEC dbo.sp_Quote_QuotationFormat_Data ?');
+        $stmt->execute([trim($quotationId)]);
+
+        do {
+            try {
+                $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+                if (empty($rows)) {
+                    continue;
+                }
+
+                // SP emitted a real data set — the column we expect
+                if (array_key_exists('ChargeCatagories', $rows[0])) {
+                    return $rows;
+                }
+
+                // SP emitted a single-column response — either an error string
+                // ('Error Message - ...') or a placeholder ('' / NULL).
+                $firstValue = reset($rows[0]);
+                $firstValue = is_string($firstValue) ? trim($firstValue) : $firstValue;
+
+                if (is_string($firstValue) && str_starts_with($firstValue, 'Error Message - ')) {
+                    throw new \RuntimeException($firstValue);
+                }
+                // Any other single-column response means "no equipment data" —
+                // fall through and try the next rowset / eventually return [].
+            } catch (\PDOException $e) {
+                continue;
+            }
+        } while ($stmt->nextRowset());
+
+        return [];
+    }
+
+    private function getQuotationCustomer(string $quotationId): array
+    {
+        $quote = DB::table('Quote_QuotationInfo')->where('ID', trim($quotationId))->first();
+        if (!$quote) {
+            return [];
+        }
+        $pad = fn($value) => trim((string) $value) === '' ? '' : ' ' . $value;
+
+        return [
+            'Name' => (string) ($quote->pri_partnermaster_name ?? ''),
+            'Address1' => (string) ($quote->pri_partner_steet ?? ''),
+            'Address2' => (string) ($quote->pri_partner_steet2 ?? ''),
+            'City' => (string) ($quote->pri_partner_city ?? ''),
+            'State' => $pad($quote->pri_partner_statename ?? ''),
+            'Pin' => $pad($quote->pri_partner_zip ?? ''),
+            'Country' => (string) ($quote->countryname ?? ''),
+        ];
+    }
+
+    // Workaround: sp_Quote_QuotationFormat omits the VAT description. Read-only, cosmetic, so a failure only logs.
+    // Workaround: sp_Quote_QuotationFormat omits the VAT description. Read-only, cosmetic, so a failure only logs.
+    private function getQuotationVatDescriptions(string $quotationId): array
+    {
+        try {
+            $rows = DB::select(
+                "SELECT QS.Description, QS.QuoteChargeRate, QS.QuoteChargeAmount, MAX(BT.Description) AS VATDescription
+             FROM Quote_Quotation_ChargeSheet QS WITH (NOLOCK)
+             INNER JOIN Quote_QuotationInfo QI WITH (NOLOCK) ON QI.ID = QS.QuotationInfoID AND QI.ID = ?
+             INNER JOIN [FITSCM].dbo.Bill_ChargeCodeOfficeMap BCO WITH (NOLOCK) ON BCO.ChargeCodeId = QS.ChargeCodeId AND BCO.IsActive = 1
+             INNER JOIN [FITSCM].dbo.Bill_ChargeCodeOfficeTaxMap BCOT WITH (NOLOCK) ON BCOT.ChargeCodeOfficeId = BCO.Id AND BCOT.IsActive = 1 AND BCOT.ApplicableFor = 'Revenue'
+             INNER JOIN [FITSCM].dbo.Bill_TaxCodeGroup BT WITH (NOLOCK) ON BT.Id = BCOT.TaxGroupId
+             INNER JOIN [FITSCM].dbo.Bill_TaxCodeRate BTR WITH (NOLOCK) ON BTR.TaxCodeGroupId = BT.Id
+                 AND CAST(GETDATE() AS date) BETWEEN CAST(BTR.FromDate AS date) AND CAST(BTR.ToDate AS date)
+             INNER JOIN [FITSCM].dbo.Cust_Office CO WITH (NOLOCK) ON CO.Id = BCO.OfficeId AND CO.Code = QI.OfficeCode
+             WHERE QS.IsDeleted = 0 AND QS.IsRevenue = 1
+             GROUP BY QS.Description, QS.QuoteChargeRate, QS.QuoteChargeAmount",
+                [trim($quotationId)],
+            );
+        } catch (\Throwable $e) {
+            Log::warning('getQuotationVatDescriptions - lookup failed', ['error' => $e->getMessage()]);
+            return [];
+        }
+
+        $map = [];
+        foreach ($rows as $row) {
+            $map[$this->vatKey($row->Description, $row->QuoteChargeRate, $row->QuoteChargeAmount)] =
+                $row->VATDescription;
+        }
+
+        return $map;
+    }
+
+    private function vatKey($description, $rate, $amount): string
+    {
+        return trim((string) $description) .
+            '|' .
+            number_format((float) $rate, 2, '.', '') .
+            '|' .
+            number_format((float) $amount, 2, '.', '');
+    }
+
+    // The equipment codes are read from the "<Code> Rate" column names, in the SP's own column order.
+    private function shapeQuotationEquipment(array $rows): array
+    {
+        $codes = [];
+        foreach (array_keys($rows[0] ?? []) as $column) {
+            if (str_ends_with($column, ' Rate')) {
+                $codes[] = substr($column, 0, -5);
+            }
+        }
+
+        // The Data SP sorts 'Custom Charges' but the main SP uses 'Customs Charges'; re-rank so customs rows stay before the totals.
+        $rank = fn(array $row) => match (trim($row['ChargeCatagories'] ?? '')) {
+            'No of Container' => 1,
+            'Origin Charges' => 2,
+            'Freight' => 3,
+            'Custom Charges', 'Customs Charges' => 4,
+            'Destination Charges' => 5,
+            'Delivery Charges' => 6,
+            'Sub Total' => 7,
+            'Total' => 8,
+            default => 9,
+        };
+        usort($rows, fn($a, $b) => $rank($a) <=> $rank($b)); // stable in PHP 8+, keeps the SP's Description order
+
+        // Rows with a blank category sort after Total in the SP (Else 9); keep them ahead of the totals.
+        $rank = fn(array $row) => match (trim($row['ChargeCatagories'] ?? '')) {
+            'No of Container' => 1,
+            'Sub Total' => 8,
+            'Total' => 9,
+            default => 5,
+        };
+        usort($rows, fn($a, $b) => $rank($a) <=> $rank($b)); // stable in PHP 8+, keeps the SP's order
+
+        return ['codes' => $codes, 'rows' => $rows];
+    }
+
+    // Groups ChargeDetails by ChargeCatagory. The SP already orders the rows    // (Origin, Freight, Customs, Destination, Delivery, others) and groupBy keeps that order.
+    private function groupQuotationCharges(array $data): array
+    {
+        return collect($data['ChargeDetails'] ?? [])
+            ->groupBy(fn($charge) => trim((string) ($charge['ChargeCatagory'] ?? '')))
+            ->map(fn($rows) => $rows->values()->all())
+            ->all();
+    }
+
+    private function buildQuotationHtml(array $data, bool $showVat = false, ?string $allInOneRemark = null): string
+    {
+        return view('quotation.pdf_document', [
+            'quote' => $data,
+            'showVat' => $showVat,
+            'allInOneRemark' => $allInOneRemark,
+            'chargeGroups' => $this->groupQuotationCharges($data),
+            'equipment' => $this->shapeQuotationEquipment($data['EquipmentRows'] ?? []),
+            'logoPath' => public_path('img/logo.png'),
+        ])->render();
+    }
+
     public function getQuotationVersions($id)
     {
         try {
@@ -7673,6 +8024,7 @@ class QuotationController extends Controller
 
                 $ext = strtoupper(pathinfo($doc->Name, PATHINFO_EXTENSION));
                 $isVat = $ext === 'PDF' && preg_match('/_vat\b/i', $doc->Name);
+                $isAllInOne = $ext === 'PDF' && preg_match('/_allinone\b/i', $doc->Name);
 
                 $versionCounter++;
                 $versions[] = [
@@ -7681,7 +8033,7 @@ class QuotationController extends Controller
                     'url' => route('quotation.download-pdf', [$id, $versionCounter]),
                     'created_on' => $doc->CreatedOn,
                     'file_name' => $doc->Name,
-                    'file_type' => $isVat ? 'PDF - VAT' : $ext,
+                    'file_type' => $isVat ? 'PDF - VAT' : ($isAllInOne ? 'PDF - All in One' : $ext),
                     'doc_id' => $doc->Id,
                 ];
             }

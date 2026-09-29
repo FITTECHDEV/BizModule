@@ -15,11 +15,11 @@
     $equipmentColumns = 1 + count($equipmentCodes) * ($showVat ? 3 : 2);
 
     $money = fn($value) => number_format((float) $value, 2);
-    $chargeColumns = 6;
+    $chargeColumns = $showVat ? 6 : 5;
 
-    // Rows with no VAT carry no VATAmount key (FOR JSON PATH omits NULLs).
-    $totalAmount = $charges->sum(fn($charge) => (float) ($charge['Amount'] ?? 0));
-    $totalVat = $charges->sum(fn($charge) => (float) ($charge['VATAmount'] ?? 0));
+    // Category names the SP emits as total rows — these render as full-width
+    // total rows, not as category headers with a following value row.
+    $spTotalCategories = ['Sub Total', 'Total With VAT', 'Total'];
 
     $addressLines = fn(array $party): array => array_values(
         array_filter(
@@ -291,6 +291,16 @@
         </tr>
     </table>
 
+    {{-- All-in-One remark --}}
+    @if (!empty($allInOneRemark))
+        <div class="bar">REMARK</div>
+        <table class="info">
+            <tr>
+                <td>{{ $allInOneRemark }}</td>
+            </tr>
+        </table>
+    @endif
+
     {{-- Service bar --}}
     <div class="bar">{{ $quote['Service'] ?? 'Charges' }}</div>
 
@@ -366,63 +376,73 @@
                     <th class="right">Qty.</th>
                     <th class="right">Rate</th>
                     <th class="right">Quote Amt.</th>
-                    <th>VAT</th>
+                    @if ($showVat)
+                        <th>VAT</th>
+                    @endif
                 </tr>
             </thead>
             <tbody>
                 @forelse ($chargeGroups as $category => $rows)
-                    @if ((string) $category !== '')
-                        <tr class="category">
-                            <td colspan="{{ $chargeColumns }}">{{ $category }}</td>
-                        </tr>
+                    @php
+                        $categoryTrimmed = trim((string) $category);
+                        $isSpTotal = in_array($categoryTrimmed, $spTotalCategories, true);
+                    @endphp
+
+                    @if ($isSpTotal)
+                        @foreach ($rows as $charge)
+                            @if ($showVat)
+                                {{-- VAT-enabled: show both Sub Total and Total With VAT, with VAT column --}}
+                                <tr class="total">
+                                    <td colspan="4" class="right">{{ $categoryTrimmed }}</td>
+                                    <td class="right">{{ $money($charge['Amount'] ?? 0) }}</td>
+                                    <td class="right">{{ $money($charge['VATAmount'] ?? 0) }}</td>
+                                </tr>
+                            @else
+                                {{-- Std. PDF: use the SP's Sub Total row (no VAT) as the "Total", skip "Total With VAT" --}}
+                                @if ($categoryTrimmed === 'Sub Total')
+                                    <tr class="total">
+                                        <td colspan="4" class="right">Total</td>
+                                        <td class="right">{{ $money($charge['Amount'] ?? 0) }}</td>
+                                    </tr>
+                                @endif
+                            @endif
+                        @endforeach
+                    @else
+                        @if ($categoryTrimmed !== '')
+                            <tr class="category">
+                                <td colspan="{{ $chargeColumns }}">{{ $categoryTrimmed }}</td>
+                            </tr>
+                        @endif
+                        @foreach ($rows as $charge)
+                            <tr>
+                                <td>
+                                    {{ $charge['ChargeDescription'] ?? '' }}
+                                    @if (!empty($charge['Remarks']))
+                                        <div class="remarks">{{ $charge['Remarks'] }}</div>
+                                    @endif
+                                </td>
+                                <td>{{ $charge['BasedOn'] ?? '' }}</td>
+                                <td class="right">{{ $money($charge['Quantity'] ?? 0) }}</td>
+                                <td class="right">{{ $money($charge['Rate'] ?? 0) }}</td>
+                                <td class="right">{{ $money($charge['Amount'] ?? 0) }}</td>
+                                @if ($showVat)
+                                    <td>
+                                        @if (isset($charge['VATRate']))
+                                            {{ !empty($charge['VATDescription']) ? $charge['VATDescription'] . ' @ ' : '' }}{{ $money($charge['VATRate']) }}%
+                                        @endif
+                                        @if (isset($charge['VATAmount']))
+                                            <br>{{ $money($charge['VATAmount']) }}
+                                        @endif
+                                    </td>
+                                @endif
+                            </tr>
+                        @endforeach
                     @endif
-                    @foreach ($rows as $charge)
-                        <tr>
-                            <td>
-                                {{ $charge['ChargeDescription'] ?? '' }}
-                                @if (!empty($charge['Remarks']))
-                                    <div class="remarks">{{ $charge['Remarks'] }}</div>
-                                @endif
-                            </td>
-                            <td>{{ $charge['BasedOn'] ?? '' }}</td>
-                            <td class="right">{{ $money($charge['Quantity'] ?? 0) }}</td>
-                            <td class="right">{{ $money($charge['Rate'] ?? 0) }}</td>
-                            <td class="right">{{ $money($charge['Amount'] ?? 0) }}</td>
-                            <td>
-                                @if ($showVat && isset($charge['VATRate']))
-                                    {{ !empty($charge['VATDescription']) ? $charge['VATDescription'] . ' @ ' : '' }}{{ $money($charge['VATRate']) }}%
-                                @endif
-                                @if ($showVat && isset($charge['VATAmount']))
-                                    <br>{{ $money($charge['VATAmount']) }}
-                                @endif
-                            </td>
-                        </tr>
-                    @endforeach
                 @empty
                     <tr>
                         <td colspan="{{ $chargeColumns }}">No charges available.</td>
                     </tr>
                 @endforelse
-                @if ($charges->isNotEmpty())
-                    @if ($totalVat > 0)
-                        <tr class="total">
-                            <td colspan="4" class="right">Sub Total</td>
-                            <td class="right">{{ $money($totalAmount) }}</td>
-                            <td></td>
-                        </tr>
-                        <tr class="total">
-                            <td colspan="4" class="right">Total</td>
-                            <td class="right">{{ $money($totalAmount + $totalVat) }}</td>
-                            <td class="right">{{ $money($totalVat) }}</td>
-                        </tr>
-                    @else
-                        <tr class="total">
-                            <td colspan="4" class="right">Total</td>
-                            <td class="right">{{ $money($totalAmount) }}</td>
-                            <td></td>
-                        </tr>
-                    @endif
-                @endif
             </tbody>
         </table>
     @endif
