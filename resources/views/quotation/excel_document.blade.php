@@ -16,9 +16,11 @@
 <table cellpadding="0" cellspacing="0" style="width:100%;">
     <tr>
         <td style="width:55%;">
+            {{-- Logo is injected as a PhpSpreadsheet Drawing in generateExcel().
+                 Keeping a blank cell here reserves the space in the header row. --}}
             <table cellpadding="0" cellspacing="0">
                 <tr>
-                    <td><img src="public/img/logo.png" style="height:42px;"></td>
+                    <td style="width:60px;">&nbsp;</td>
                     <td>
                         <strong>{{ $office['Name'] ?? '' }}</strong><br>
                         @foreach ($lines($office) as $line){{ $line }}<br>@endforeach
@@ -59,11 +61,17 @@
     </tr>
 </table>
 <div style="{{ $bar }}">{{ $quote['Service'] ?? '' }}</div>
-{{-- SP-generated table HTML (already escaped inside the SP) --}}
+{{-- Charge table HTML — built by QuotationController::getQuotationExcelTable() --}}
 {!! $tableList !!}
 @if (!empty($quote['Terms']))
     <div style="{{ $bar }}">TERMS AND CONDITION</div>
-    <div>{!! $quote['Terms'] !!}</div>
+    <table cellpadding="4" cellspacing="0" style="width:100%;">
+        <tr>
+            <td colspan="8" style="font-size:9px; line-height:1.4; vertical-align:top; white-space:normal;">
+                {!! $quote['Terms'] !!}
+            </td>
+        </tr>
+    </table>
 @endif
 </body>
 </html>

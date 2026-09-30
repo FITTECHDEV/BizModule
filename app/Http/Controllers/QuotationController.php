@@ -5819,7 +5819,10 @@ class QuotationController extends Controller
              */
             $quoteData = $this->getQuotationData($quotation->ID);
             $serviceText = trim((string) ($quoteData['Service'] ?? ''));
-            $html = $this->buildExcelQuotationHtml($quoteData, $this->getQuotationExcelTable($quotation->ID));
+            $html = $this->buildExcelQuotationHtml(
+                $quoteData,
+                $this->getQuotationExcelTable($quotation->ID, $quoteData),
+            );
             if (empty($html)) {
                 Log::error('Excel Generation - Empty quotation HTML', [
                     'quotation_id' => $id,
@@ -5895,6 +5898,25 @@ class QuotationController extends Controller
             $reader = new \PhpOffice\PhpSpreadsheet\Reader\Html();
             $spreadsheet = $reader->loadFromString($html);
             $sheet = $spreadsheet->getActiveSheet();
+
+            // PhpSpreadsheet's Html reader does not reliably import <img> tags.
+            // Inject the logo as a native drawing so it renders in Excel.
+            $logoFile = public_path('img/logo.png');
+            if (is_file($logoFile)) {
+                $drawing = new \PhpOffice\PhpSpreadsheet\Worksheet\Drawing();
+                $drawing->setName('Logo');
+                $drawing->setDescription('Company logo');
+                $drawing->setPath($logoFile);
+                $drawing->setHeight(48);
+                $drawing->setCoordinates('A1');
+                $drawing->setOffsetX(5);
+                $drawing->setOffsetY(5);
+                $drawing->setWorksheet($sheet);
+                Log::info('Excel Generation - logo drawing injected', [
+                    'quotation_id' => $id,
+                    'path' => $logoFile,
+                ]);
+            }
 
             /*
              * TEMP DEBUG: Check Terms & Conditions storage table rows.
@@ -6027,20 +6049,23 @@ class QuotationController extends Controller
              * E:H = Quotation information
              */
             $columnWidths = [
-                'A' => 10,
-                'B' => 10,
-                'C' => 22,
-                'D' => 22,
-                'E' => 12,
-                'F' => 12,
-                'G' => 12,
-                'H' => 12,
+                'A' => 14,
+                'B' => 14,
+                'C' => 18,
+                'D' => 18,
+                'E' => 14,
+                'F' => 14,
+                'G' => 14,
+                'H' => 14,
+                'I' => 12,
+                'J' => 12,
+                'K' => 12,
+                'L' => 12,
             ];
 
             foreach ($columnWidths as $column => $width) {
                 $sheet->getColumnDimension($column)->setWidth($width);
             }
-
             /*
              * Header row heights.
              */
@@ -7725,6 +7750,12 @@ class QuotationController extends Controller
             );
         }
 
+        Log::info('getQuotationData - raw SP output', [
+            'quotation_id' => $quotationId,
+            'json_length' => strlen($raw ?? ''),
+            'json' => $raw,
+        ]);
+
         if (str_starts_with(trim($raw), 'Failed (Reason)')) {
             Log::error('getQuotationData - sp_Quote_QuotationFormat failure (DBA action required)', [
                 'quotation_id' => $quotationId,
@@ -7781,31 +7812,163 @@ class QuotationController extends Controller
         return $data;
     }
 
-    private function getQuotationExcelTable(string $quotationId): string
+    /**
+     * Returns the HTML charge table for the Excel export.
+     *
+     * sp_Quote_QuotationFormat_DataExcel is not deployed in production, so this
+     * method falls back to building the table in PHP from the same JSON
+     * sp_Quote_QuotationFormat returns. When the SP is later deployed, its
+     * output is used directly and the PHP fallback is skipped.
+     */
+    private function getQuotationExcelTable(string $quotationId, ?array $preloadedData = null): string
     {
-        $stmt = DB::getPdo()->prepare("
-        SET NOCOUNT ON;
-        DECLARE @TableList VARCHAR(MAX);
-        EXEC dbo.sp_Quote_QuotationFormat_DataExcel ?, @TableList = @TableList OUTPUT;
-        SELECT @TableList AS TableList;
-    ");
-        $stmt->execute([trim($quotationId)]);
+        // Try the SP first — if it exists and returns a table, use it.
+        try {
+            $stmt = DB::getPdo()->prepare("
+            SET NOCOUNT ON;
+            DECLARE @TableList VARCHAR(MAX);
+            EXEC dbo.sp_Quote_QuotationFormat_DataExcel ?, @TableList = @TableList OUTPUT;
+            SELECT @TableList AS TableList;
+        ");
+            $stmt->execute([trim($quotationId)]);
 
-        do {
-            try {
-                $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
-                if (!empty($rows) && isset($rows[0]->TableList) && trim((string) $rows[0]->TableList) !== '') {
-                    return (string) $rows[0]->TableList;
+            do {
+                try {
+                    $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+                    if (!empty($rows) && isset($rows[0]->TableList) && trim((string) $rows[0]->TableList) !== '') {
+                        return (string) $rows[0]->TableList;
+                    }
+                } catch (\PDOException $e) {
+                    continue;
                 }
-            } catch (\PDOException $e) {
-                continue;
-            }
-        } while ($stmt->nextRowset());
+            } while ($stmt->nextRowset());
+        } catch (\PDOException $e) {
+            Log::info('getQuotationExcelTable - SP unavailable, building table in PHP', [
+                'quotation_id' => $quotationId,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
-        // The SP's empty CATCH leaves the output NULL, so an empty result is a failure.
-        throw new \RuntimeException('sp_Quote_QuotationFormat_DataExcel returned no table (DBA action required)');
+        // SP missing or returned nothing — build the charge table in PHP.
+        return $this->buildChargeTableHtml($quotationId, $preloadedData);
     }
 
+    /**
+     * Build the charge table HTML from sp_Quote_QuotationFormat JSON.
+     *
+     * Renders categories, charges, and both SP total rows (Sub Total, Total With
+     * VAT) as a single HTML table. The Excel HTML reader preserves table layout
+     * reliably, unlike raw <div> / <p> markup.
+     */
+    private function buildChargeTableHtml(string $quotationId, ?array $preloadedData = null): string
+    {
+        try {
+            $data = $preloadedData ?? $this->getQuotationData($quotationId, false);
+        } catch (\Throwable $e) {
+            Log::warning('buildChargeTableHtml - could not load quotation data', [
+                'quotation_id' => $quotationId,
+                'error' => $e->getMessage(),
+            ]);
+            return '';
+        }
+
+        $charges = $data['ChargeDetails'] ?? [];
+        if (empty($charges)) {
+            return '';
+        }
+
+        $esc = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES);
+
+        // Group by ChargeCatagory, preserving SP order.
+        $groups = [];
+        foreach ($charges as $charge) {
+            $cat = trim((string) ($charge['ChargeCatagory'] ?? ''));
+            $groups[$cat][] = $charge;
+        }
+
+        $spTotalCategories = ['Sub Total', 'Total With VAT', 'Total'];
+
+        $html =
+            '<table border="1" cellpadding="4" cellspacing="0" ' .
+            'style="border-collapse:collapse; font-size:11px; width:100%;">';
+
+        $html .=
+            '<tr style="background:#DCE6F1; font-weight:bold;">' .
+            '<td>Charge Description Activity</td>' .
+            '<td>Based on &amp; UOM</td>' .
+            '<td>Qty.</td>' .
+            '<td>Rate</td>' .
+            '<td>Quote Amt.</td>' .
+            '<td>VAT</td>' .
+            '</tr>';
+
+        foreach ($groups as $cat => $rows) {
+            $isTotal = in_array($cat, $spTotalCategories, true);
+
+            if ($isTotal) {
+                foreach ($rows as $charge) {
+                    $html .=
+                        '<tr style="background:#E2EFDA; font-weight:bold;">' .
+                        '<td colspan="4" align="right">' .
+                        $esc($cat) .
+                        '</td>' .
+                        '<td align="right">' .
+                        number_format((float) ($charge['Amount'] ?? 0), 2) .
+                        '</td>' .
+                        '<td align="right">' .
+                        number_format((float) ($charge['VATAmount'] ?? 0), 2) .
+                        '</td>' .
+                        '</tr>';
+                }
+                continue;
+            }
+
+            // Category band
+            if ($cat !== '') {
+                $html .=
+                    '<tr style="background:#513D6C; color:#fff; font-weight:bold;">' .
+                    '<td colspan="6">' .
+                    $esc($cat) .
+                    '</td>' .
+                    '</tr>';
+            }
+
+            // Individual charge rows
+            foreach ($rows as $charge) {
+                $html .=
+                    '<tr>' .
+                    '<td>' .
+                    $esc($charge['ChargeDescription'] ?? '') .
+                    '</td>' .
+                    '<td>' .
+                    $esc($charge['BasedOn'] ?? '') .
+                    '</td>' .
+                    '<td align="right">' .
+                    number_format((float) ($charge['Quantity'] ?? 0), 2) .
+                    '</td>' .
+                    '<td align="right">' .
+                    number_format((float) ($charge['Rate'] ?? 0), 2) .
+                    '</td>' .
+                    '<td align="right">' .
+                    number_format((float) ($charge['Amount'] ?? 0), 2) .
+                    '</td>' .
+                    '<td align="right">';
+
+                if (isset($charge['VATRate'])) {
+                    $html .= number_format((float) $charge['VATRate'], 2) . '%';
+                }
+                if (isset($charge['VATAmount'])) {
+                    $html .= '<br>' . number_format((float) $charge['VATAmount'], 2);
+                }
+
+                $html .= '</td>' . '</tr>';
+            }
+        }
+
+        $html .= '</table>';
+
+        return $html;
+    }
     private function buildExcelQuotationHtml(array $data, string $tableList): string
     {
         return view('quotation.excel_document', ['quote' => $data, 'tableList' => $tableList])->render();

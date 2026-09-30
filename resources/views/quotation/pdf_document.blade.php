@@ -12,10 +12,10 @@
     $equipmentCodes = $equipment['codes'] ?? [];
     $equipmentRows = collect($equipment['rows'] ?? []);
     $hasEquipment = $equipmentRows->isNotEmpty();
-    $equipmentColumns = 1 + count($equipmentCodes) * ($showVat ? 3 : 2);
+    $equipmentColumns = 1 + count($equipmentCodes) * 3;
 
     $money = fn($value) => number_format((float) $value, 2);
-    $chargeColumns = $showVat ? 6 : 5;
+    $chargeColumns = 6;
 
     // Category names the SP emits as total rows — these render as full-width
     // total rows, not as category headers with a following value row.
@@ -313,9 +313,7 @@
                     @foreach ($equipmentCodes as $code)
                         <th class="right">Rate</th>
                         <th class="right">{{ $code }}</th>
-                        @if ($showVat)
-                            <th class="right">{{ $code }} VAT</th>
-                        @endif
+                        <th class="right">{{ $code }} VAT</th>
                     @endforeach
                 </tr>
             </thead>
@@ -328,7 +326,6 @@
                         $isSubTotal = $type === 'Sub Total';
                         $isTotal = $type === 'Total';
                     @endphp
-                    {{-- Without VAT the old layout showed one Total (the sum of amounts), which is the SP's Sub Total row. --}}
                     @continue($isTotal && !$showVat)
                     @if (!$isQuantity && !$isSubTotal && !$isTotal && $type !== '' && $type !== $lastCategory)
                         @php $lastCategory = $type; @endphp
@@ -353,9 +350,7 @@
                             <td class="right">
                                 {{ $isQuantity && ($row[$code] ?? '') !== '' ? (int) str_replace(',', '', $row[$code]) : $row[$code] ?? '' }}
                             </td>
-                            @if ($showVat)
-                                <td class="right">{{ $row[$code . ' VAT'] ?? '' }}</td>
-                            @endif
+                            <td class="right">{{ $showVat ? ($row[$code . ' VAT'] ?? '') : '' }}</td>
                         @endforeach
                     </tr>
                 @endforeach
@@ -376,9 +371,7 @@
                     <th class="right">Qty.</th>
                     <th class="right">Rate</th>
                     <th class="right">Quote Amt.</th>
-                    @if ($showVat)
-                        <th>VAT</th>
-                    @endif
+                    <th>VAT</th>
                 </tr>
             </thead>
             <tbody>
@@ -389,23 +382,13 @@
                     @endphp
 
                     @if ($isSpTotal)
+                        {{-- SP-emitted total row — always render as-is, both Sub Total and Total With VAT. --}}
                         @foreach ($rows as $charge)
-                            @if ($showVat)
-                                {{-- VAT-enabled: show both Sub Total and Total With VAT, with VAT column --}}
-                                <tr class="total">
-                                    <td colspan="4" class="right">{{ $categoryTrimmed }}</td>
-                                    <td class="right">{{ $money($charge['Amount'] ?? 0) }}</td>
-                                    <td class="right">{{ $money($charge['VATAmount'] ?? 0) }}</td>
-                                </tr>
-                            @else
-                                {{-- Std. PDF: use the SP's Sub Total row (no VAT) as the "Total", skip "Total With VAT" --}}
-                                @if ($categoryTrimmed === 'Sub Total')
-                                    <tr class="total">
-                                        <td colspan="4" class="right">Total</td>
-                                        <td class="right">{{ $money($charge['Amount'] ?? 0) }}</td>
-                                    </tr>
-                                @endif
-                            @endif
+                            <tr class="total">
+                                <td colspan="4" class="right">{{ $categoryTrimmed }}</td>
+                                <td class="right">{{ $money($charge['Amount'] ?? 0) }}</td>
+                                <td class="right">{{ $money($charge['VATAmount'] ?? 0) }}</td>
+                            </tr>
                         @endforeach
                     @else
                         @if ($categoryTrimmed !== '')
@@ -425,16 +408,14 @@
                                 <td class="right">{{ $money($charge['Quantity'] ?? 0) }}</td>
                                 <td class="right">{{ $money($charge['Rate'] ?? 0) }}</td>
                                 <td class="right">{{ $money($charge['Amount'] ?? 0) }}</td>
-                                @if ($showVat)
-                                    <td>
-                                        @if (isset($charge['VATRate']))
-                                            {{ !empty($charge['VATDescription']) ? $charge['VATDescription'] . ' @ ' : '' }}{{ $money($charge['VATRate']) }}%
-                                        @endif
-                                        @if (isset($charge['VATAmount']))
-                                            <br>{{ $money($charge['VATAmount']) }}
-                                        @endif
-                                    </td>
-                                @endif
+                                <td>
+                                    @if ($showVat && isset($charge['VATRate']))
+                                        {{ !empty($charge['VATDescription']) ? $charge['VATDescription'] . ' @ ' : '' }}{{ $money($charge['VATRate']) }}%
+                                    @endif
+                                    @if ($showVat && isset($charge['VATAmount']))
+                                        <br>{{ $money($charge['VATAmount']) }}
+                                    @endif
+                                </td>
                             </tr>
                         @endforeach
                     @endif
