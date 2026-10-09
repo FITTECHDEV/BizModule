@@ -63,14 +63,16 @@
 <div style="{{ $bar }}">{{ $quote['Service'] ?? '' }}</div>
 {{-- Charge table HTML — built by QuotationController::getQuotationExcelTable() --}}
 {!! $tableList !!}
-@if (!empty($quote['Terms']))
+@if (!empty($quote['TermParagraphs']))
     <div style="{{ $bar }}">TERMS AND CONDITION</div>
     <table cellpadding="4" cellspacing="0" style="width:100%;">
-        <tr>
-            <td colspan="8" style="font-size:9px; line-height:1.4; vertical-align:top; white-space:normal;">
-                {!! $quote['Terms'] !!}
-            </td>
-        </tr>
+        @foreach ($quote['TermParagraphs'] as $paragraph)
+            <tr>
+                <td colspan="8" style="font-size:9px; line-height:1.4; vertical-align:top;">
+                    {{ $paragraph }}
+                </td>
+            </tr>
+        @endforeach
     </table>
 @endif
 </body>

@@ -324,7 +324,7 @@
                         $type = trim($row['ChargeCatagories'] ?? '');
                         $isQuantity = $type === 'No of Container';
                         $isSubTotal = $type === 'Sub Total';
-                        $isTotal = $type === 'Total';
+                        $isTotal = in_array($type, ['Total', 'Total With VAT'], true);
                     @endphp
                     @continue($isTotal && !$showVat)
                     @if (!$isQuantity && !$isSubTotal && !$isTotal && $type !== '' && $type !== $lastCategory)

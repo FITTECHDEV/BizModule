@@ -2444,6 +2444,7 @@ class QuotationController extends Controller
                 'based_on_code' => 'required|string',
                 'revenue_or_cost' => 'required|string',
                 'action' => 'required|in:Add,Edit,Delete',
+                'charge_category' => 'required_unless:action,Delete|string',
             ]);
 
             if ($validator->fails()) {
@@ -8098,7 +8099,9 @@ class QuotationController extends Controller
             }
         }
 
-        // The Data SP sorts 'Custom Charges' but the main SP uses 'Customs Charges'; re-rank so customs rows stay before the totals.
+        // Rank every possible category in display order. Both 'Total' and
+        // 'Total With VAT' are covered so the SP's naming is fully handled.
+        // Blank categories sit just before the totals.
         $rank = fn(array $row) => match (trim($row['ChargeCatagories'] ?? '')) {
             'No of Container' => 1,
             'Origin Charges' => 2,
@@ -8106,31 +8109,42 @@ class QuotationController extends Controller
             'Custom Charges', 'Customs Charges' => 4,
             'Destination Charges' => 5,
             'Delivery Charges' => 6,
-            'Sub Total' => 7,
-            'Total' => 8,
-            default => 9,
-        };
-        usort($rows, fn($a, $b) => $rank($a) <=> $rank($b)); // stable in PHP 8+, keeps the SP's Description order
-
-        // Rows with a blank category sort after Total in the SP (Else 9); keep them ahead of the totals.
-        $rank = fn(array $row) => match (trim($row['ChargeCatagories'] ?? '')) {
-            'No of Container' => 1,
+            '' => 7,
             'Sub Total' => 8,
             'Total' => 9,
-            default => 5,
+            'Total With VAT' => 9,
+            default => 10,
         };
-        usort($rows, fn($a, $b) => $rank($a) <=> $rank($b)); // stable in PHP 8+, keeps the SP's order
+
+        usort($rows, fn($a, $b) => $rank($a) <=> $rank($b));
 
         return ['codes' => $codes, 'rows' => $rows];
     }
-
     // Groups ChargeDetails by ChargeCatagory. The SP already orders the rows    // (Origin, Freight, Customs, Destination, Delivery, others) and groupBy keeps that order.
     private function groupQuotationCharges(array $data): array
     {
-        return collect($data['ChargeDetails'] ?? [])
+        $grouped = collect($data['ChargeDetails'] ?? [])
             ->groupBy(fn($charge) => trim((string) ($charge['ChargeCatagory'] ?? '')))
             ->map(fn($rows) => $rows->values()->all())
             ->all();
+
+        // Enforce display order regardless of SP ordering.
+        $rank = fn(string $cat) => match ($cat) {
+            'No of Container' => 1,
+            'Origin Charges' => 2,
+            'Freight' => 3,
+            'Custom Charges', 'Customs Charges' => 4,
+            'Destination Charges' => 5,
+            'Delivery Charges' => 6,
+            '' => 7,
+            'Sub Total' => 8,
+            'Total', 'Total With VAT' => 9,
+            default => 10,
+        };
+
+        uksort($grouped, fn($a, $b) => $rank($a) <=> $rank($b));
+
+        return $grouped;
     }
 
     private function buildQuotationHtml(array $data, bool $showVat = false, ?string $allInOneRemark = null): string
