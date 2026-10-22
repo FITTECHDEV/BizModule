@@ -112,8 +112,8 @@
                         <label class="col-sm-5 col-form-label">Sales Person</label>
                         <div class="col-sm-7">
                             <input type="text" class="form-control form-control-sm" data-field="username"
-                                data-code="{{ $quotation->SalesPersonCode ?? '' }}"
-                                value="{{ $quotation->username ?? '' }}" readonly>
+                                data-code="{{ $quotation->SalesPersonCode ?? '' }}" value="{{ $quotation->username ?? '' }}"
+                                readonly>
                         </div>
                     </div>
                     <div class="form-group row">
@@ -643,7 +643,7 @@
                                 <label class="col-sm-5 col-form-label">Service</label>
                                 <div class="col-sm-7">
                                     <input type="text" class="form-control form-control-sm"
-                                        value="{{ $quotation->SVName ?? '' }}" readonly>
+                                        value="{{ $quotation->ServiceVertical ?? '' }}" readonly>
                                 </div>
                             </div>
                             <div class="form-group row">

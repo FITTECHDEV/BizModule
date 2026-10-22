@@ -29,236 +29,90 @@
     <form id="bookingQuotationForm">
         @csrf
 
-        {{-- ═══════════════════════════════════════════════════════════ --}}
-        {{-- SALES INTELLIGENCE CARD                                     --}}
-        {{-- ═══════════════════════════════════════════════════════════ --}}
+        {{-- SALES INTELLIGENCE CARD — data from sp_Quote_ClientAnalysis via quotation.sales-intelligence --}}
         <div class="row mb-3" id="salesIntelligenceSection">
             <div class="col-12">
                 <div class="card" id="salesIntelligenceCard" style="border-top: 3px solid #4B49AC;">
                     <div class="card-header d-flex justify-content-between align-items-center"
                         style="background:#f4f4fb; cursor:pointer;" id="salesIntelligenceHeader">
                         <h3 class="card-title mb-0" style="color:#4B49AC; font-weight:700;">
-                            <i class="fas fa-chart-line mr-2"></i> Sales Intelligence
+                            <i class="fas fa-chart-line mr-2"></i> Business Intelligence
                         </h3>
-                        <div class="d-flex align-items-center" style="gap:8px;">
-                            {{-- View toggle --}}
-                            <div class="btn-group btn-group-sm" id="siViewToggle" style="display:none !important;">
-                                <button type="button" class="btn btn-outline-secondary active" id="siTableViewBtn"
-                                    title="Table view">
-                                    <i class="fas fa-table"></i>
-                                </button>
-                                <button type="button" class="btn btn-outline-secondary" id="siChartViewBtn"
-                                    title="Chart view">
-                                    <i class="fas fa-chart-bar"></i>
-                                </button>
-                            </div>
-                            <button type="button" class="btn btn-tool" id="siCollapseBtn">
-                                <i class="fas fa-chevron-up"></i>
-                            </button>
-                        </div>
+                        <button type="button" class="btn btn-tool" id="siCollapseBtn">
+                            <i class="fas fa-chevron-up"></i>
+                        </button>
                     </div>
 
                     <div class="card-body" id="salesIntelligenceBody">
 
-                        {{-- Loading state --}}
                         <div id="siLoading" class="text-center py-4">
                             <i class="fas fa-spinner fa-spin text-primary" style="font-size:1.5rem;"></i>
                             <p class="text-muted mt-2 mb-0">Loading client intelligence...</p>
                         </div>
 
-                        {{-- Error state --}}
                         <div id="siError" class="alert alert-warning d-none py-2 px-3">
                             <i class="fas fa-exclamation-triangle mr-2"></i>
                             <span id="siErrorMsg">Unable to load sales intelligence.</span>
                         </div>
 
-                        {{-- Content (hidden until loaded) --}}
                         <div id="siContent" style="display:none;">
-
-                            {{-- Top row: Probability + Expected Revenue + Profit --}}
                             <div class="row mb-3" id="siMetricsRow">
+                    <div class="col-6 col-md mb-2">
+                        <div class="p-3 rounded text-center" style="background:#f0f0fb; border:1px solid #dddcf5;">
+                            <div style="font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#4B49AC; margin-bottom:4px;">No of Quotes</div>
+                            <div id="siTotalQuotes" style="font-size:1.6rem; font-weight:800; color:#4B49AC; line-height:1;">—</div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md mb-2">
+                        <div class="p-3 rounded text-center" style="background:#f0f0fb; border:1px solid #dddcf5;">
+                            <div style="font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#4B49AC; margin-bottom:4px;">Won</div>
+                            <div id="siTotalWon" style="font-size:1.6rem; font-weight:800; color:#28a745; line-height:1;">—</div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md mb-2">
+                        <div class="p-3 rounded text-center" style="background:#f0f0fb; border:1px solid #dddcf5;">
+                            <div style="font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#4B49AC; margin-bottom:4px;">Lost</div>
+                            <div id="siTotalLost" style="font-size:1.6rem; font-weight:800; color:#dc3545; line-height:1;">—</div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md mb-2">
+                        <div class="p-3 rounded text-center" style="background:#f0f0fb; border:1px solid #dddcf5;">
+                            <div style="font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#4B49AC; margin-bottom:4px;">Quoted (USD)</div>
+                            <div id="siTotalQuoted" style="font-size:1.2rem; font-weight:800; color:#4B49AC; line-height:1;">—</div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md mb-2">
+                        <div class="p-3 rounded text-center" style="background:#f0f0fb; border:1px solid #dddcf5;">
+                            <div style="font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#4B49AC; margin-bottom:4px;">Invoiced (USD)</div>
+                            <div id="siTotalInvoiced" style="font-size:1.2rem; font-weight:800; color:#28a745; line-height:1;">—</div>
+                        </div>
+                    </div>
+                            </div>
 
-                                {{-- Probability --}}
-                                <div class="col-6 col-md-3 mb-2">
-                                    <div class="p-3 rounded text-center"
-                                        style="background:#f0f0fb; border:1px solid #dddcf5;">
-                                        <div
-                                            style="font-size:0.7rem; font-weight:700; text-transform:uppercase;
-                                    letter-spacing:0.08em; color:#4B49AC; margin-bottom:4px;">
-                                            Win Probability
-                                        </div>
-                                        <div id="siProbabilityValue"
-                                            style="font-size:2rem; font-weight:800; color:#4B49AC; line-height:1;">
-                                            —
-                                        </div>
-                                        <div id="siProbabilityBasis" style="font-size:0.7rem; color:#888; margin-top:4px;">
-                                            —
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {{-- Confidence --}}
-                                <div class="col-6 col-md-3 mb-2">
-                                    <div class="p-3 rounded text-center"
-                                        style="background:#f0f0fb; border:1px solid #dddcf5;">
-                                        <div
-                                            style="font-size:0.7rem; font-weight:700; text-transform:uppercase;
-                                    letter-spacing:0.08em; color:#4B49AC; margin-bottom:4px;">
-                                            Confidence
-                                        </div>
-                                        <div id="siConfidenceValue" style="font-size:2rem; font-weight:800; line-height:1;">
-                                            —
-                                        </div>
-                                        <div id="siConfidenceBasis" style="font-size:0.7rem; color:#888; margin-top:4px;">
-                                            —
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {{-- Expected Revenue --}}
-                                <div class="col-6 col-md-3 mb-2">
-                                    <div class="p-3 rounded text-center"
-                                        style="background:#f0f0fb; border:1px solid #dddcf5;">
-                                        <div
-                                            style="font-size:0.7rem; font-weight:700; text-transform:uppercase;
-                                    letter-spacing:0.08em; color:#4B49AC; margin-bottom:4px;">
-                                            Expected Revenue
-                                        </div>
-                                        <div id="siExpectedRevenue"
-                                            style="font-size:1.4rem; font-weight:800; color:#28a745; line-height:1;">
-                                            —
-                                        </div>
-                                        <div style="font-size:0.7rem; color:#888; margin-top:4px;">
-                                            Quoted × Probability
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {{-- Expected Profit --}}
-                                <div class="col-6 col-md-3 mb-2">
-                                    <div class="p-3 rounded text-center"
-                                        style="background:#f0f0fb; border:1px solid #dddcf5;">
-                                        <div
-                                            style="font-size:0.7rem; font-weight:700; text-transform:uppercase;
-                                    letter-spacing:0.08em; color:#4B49AC; margin-bottom:4px;">
-                                            Expected Profit
-                                        </div>
-                                        <div id="siExpectedProfit"
-                                            style="font-size:1.4rem; font-weight:800; line-height:1;">
-                                            —
-                                        </div>
-                                        <div id="siProfitMargin" style="font-size:0.7rem; color:#888; margin-top:4px;">
-                                            —
-                                        </div>
-                                    </div>
-                                </div>
-
-                            </div>{{-- END metrics row --}}
-
-                            {{-- TABLE VIEW --}}
-                            <div id="siTableView">
-
-                                {{-- Service History --}}
-                                <div class="mb-3">
-                                    <div
-                                        style="font-size:0.75rem; font-weight:700; text-transform:uppercase;
-                                letter-spacing:0.08em; color:#4B49AC; border-bottom:2px solid #4B49AC;
-                                padding-bottom:4px; margin-bottom:8px;">
-                                        Client Service History
-                                    </div>
-                                    <div class="table-responsive">
-                                        <table class="table table-sm table-bordered mb-0" style="font-size:0.82rem;">
-                                            <thead style="background:#f4f4fb;">
-                                                <tr>
-                                                    <th>Service</th>
-                                                    <th class="text-center">Offered</th>
-                                                    <th class="text-center">Won</th>
-                                                    <th class="text-center">Lost/Cancelled</th>
-                                                    <th class="text-center">Win Rate</th>
-                                                    <th>Last Offer</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody id="siServiceHistoryBody">
-                                                <tr>
-                                                    <td colspan="6" class="text-center text-muted">
-                                                        Loading...
-                                                    </td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-
-                                {{-- Recent Quotes --}}
-                                <div>
-                                    <div
-                                        style="font-size:0.75rem; font-weight:700; text-transform:uppercase;
-                                letter-spacing:0.08em; color:#4B49AC; border-bottom:2px solid #4B49AC;
-                                padding-bottom:4px; margin-bottom:8px;">
-                                        Recent Quote History
-                                        <span id="siQuoteCount" class="badge badge-secondary ml-1"
-                                            style="font-size:0.65rem; font-weight:600;">0</span>
-                                    </div>
-                                    <div class="table-responsive">
-                                        <table class="table table-sm table-bordered mb-0" style="font-size:0.82rem;">
-                                            <thead style="background:#f4f4fb;">
-                                                <tr>
-                                                    <th>Quote No</th>
-                                                    <th>Date</th>
-                                                    <th>Service</th>
-                                                    <th>Status</th>
-                                                    <th>Sales Person</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody id="siRecentQuotesBody">
-                                                <tr>
-                                                    <td colspan="5" class="text-center text-muted">
-                                                        Loading...
-                                                    </td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-
-                            </div>{{-- END siTableView --}}
-
-                            {{-- CHART VIEW --}}
-                            <div id="siChartView" style="display:none;">
-                                <div class="row">
-                                    <div class="col-md-4 mb-3">
-                                        <div
-                                            style="font-size:0.75rem; font-weight:700; text-transform:uppercase;
-                                    letter-spacing:0.08em; color:#4B49AC; margin-bottom:8px;">
-                                            Win / Loss Ratio
-                                        </div>
-                                        <canvas id="siWinLossChart" height="200"></canvas>
-                                    </div>
-                                    <div class="col-md-8 mb-3">
-                                        <div
-                                            style="font-size:0.75rem; font-weight:700; text-transform:uppercase;
-                                    letter-spacing:0.08em; color:#4B49AC; margin-bottom:8px;">
-                                            Service Performance
-                                        </div>
-                                        <canvas id="siServiceChart" height="200"></canvas>
-                                    </div>
-                                </div>
-                                <div class="row">
-                                    <div class="col-12">
-                                        <div
-                                            style="font-size:0.75rem; font-weight:700; text-transform:uppercase;
-                                    letter-spacing:0.08em; color:#4B49AC; margin-bottom:8px;">
-                                            Quote Activity (Last 12 Months)
-                                        </div>
-                                        <canvas id="siTrendChart" height="100"></canvas>
-                                    </div>
-                                </div>
-                            </div>{{-- END siChartView --}}
-
+                            <div style="font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#4B49AC; border-bottom:2px solid #4B49AC; padding-bottom:4px; margin-bottom:8px;">
+                                Client Quote Ageing
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered mb-0" style="font-size:0.82rem;">
+                                    <thead style="background:#f4f4fb;">
+                                        <tr>
+                                            <th>Analysis</th>
+                                            <th class="text-right">0-30 Days</th>
+                                            <th class="text-right">30-60 Days</th>
+                                            <th class="text-right">60-90 Days</th>
+                                            <th class="text-right">&gt; 90 Days</th>
+                                            <th class="text-right">Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="siAgeingBody">
+                                        <tr><td colspan="6" class="text-center text-muted">Loading...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>{{-- END siContent --}}
 
-                    </div>{{-- END card-body --}}
-                </div>{{-- END card --}}
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -4714,11 +4568,37 @@
                 }
 
                 // ── Main load function ────────────────────────────────────
+                // Renders sp_Quote_ClientAnalysis output: data.total = [{TotalType, Total}], data.details = [{Analysis, '0-30 Days', ..., Total}]
+                function renderClientAnalysis(data) {
+                    const esc = (v) => $('<div>').text(v ?? '').html();
+                    const num = (v) => Number(v) || 0;
+                    const fmtMoney = (v) => num(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    const fmtCount = (v) => num(v).toLocaleString();
+
+                    // A type is absent from the SP result when it has no rows, so default to 0
+                    const totals = {};
+                    (data.total || []).forEach(t => { totals[String(t.TotalType).toLowerCase()] = t.Total; });
+                    $('#siTotalQuotes').text(fmtCount(totals['no of quotes']));
+                    $('#siTotalWon').text(fmtCount(totals['won']));
+                    $('#siTotalLost').text(fmtCount(totals['lost']));
+                    $('#siTotalQuoted').text(fmtMoney(totals['quoted in usd']));
+                    $('#siTotalInvoiced').text(fmtMoney(totals['invoiced in usd']));
+
+                    const buckets = ['0-30 Days', '30-60 Days', '60-90 Days', '> 90 Days', 'Total'];
+                    const rows = (data.details || []).map(row => {
+                        const fmt = /usd/i.test(row.Analysis) ? fmtMoney : fmtCount;
+                        const cells = buckets.map(b => `<td class="text-right">${fmt(row[b])}</td>`).join('');
+                        return `<tr><td>${esc(row.Analysis)}</td>${cells}</tr>`;
+                    });
+                    $('#siAgeingBody').html(rows.length ? rows.join('') :
+                        '<tr><td colspan="6" class="text-center text-muted">No data</td></tr>');
+                }
+
                 function loadSalesIntelligence() {
-                    if (!SI_COMPANY || !SI_OFFICE) {
+                    if (!quotationId) {
                         $('#siLoading').hide();
                         $('#siError').removeClass('d-none');
-                        $('#siErrorMsg').text('Client or office information not available.');
+                        $('#siErrorMsg').text('Quotation ID not available.');
                         return;
                     }
 
@@ -4726,47 +4606,19 @@
                         url: '{{ route('quotation.sales-intelligence') }}',
                         type: 'GET',
                         data: {
-                            office_code: SI_OFFICE,
-                            customer: SI_COMPANY
+                            quotation_id: quotationId
                         },
                         success: function(response) {
                             $('#siLoading').hide();
 
-                            if (!response.success || !response.data.length) {
+                            if (!response.success) {
                                 $('#siError').removeClass('d-none');
-                                $('#siErrorMsg').text('No quote history found for this client.');
+                                $('#siErrorMsg').text(response.message || 'No analysis found for this client.');
                                 return;
                             }
 
-                            const allQuotes = response.data;
-
-                            // Read quoted revenue + cost from the page (already calculated)
-                            const parsePageFloat = function(selector) {
-                                const raw = $(selector).val() || '0';
-                                return parseFloat(raw.replace(/[^0-9.\-]/g, '')) || 0;
-                            };
-                            const quotedRevenue = parsePageFloat('#quotedRevenue');
-                            const quotedCost = parsePageFloat('#costTotalHeaderAmount');
-
-                            // Compute
-                            const prob = computeProbability(allQuotes, SI_SERVICE);
-                            const svcMap = buildServiceHistory(allQuotes);
-
-                            // Store for chart re-render on tab switch
-                            window._siComputedData = {
-                                allQuotes,
-                                svcMap
-                            };
+                            renderClientAnalysis(response.data);
                             siDataLoaded = true;
-
-                            // Render
-                            renderMetrics(prob, quotedRevenue, quotedCost, SI_CURRENCY);
-                            renderServiceHistory(svcMap);
-                            renderRecentQuotes(allQuotes);
-
-                            // Show view toggle + content
-                            $('#siViewToggle').css('display', 'flex !important')
-                                .attr('style', 'display:flex !important; gap:4px;');
                             $('#siContent').show();
                         },
                         error: function(xhr) {
@@ -6037,38 +5889,38 @@
                         const items = response && Array.isArray(response.data) ? response.data : [];
                         $categorySelect.empty().append('<option value="">Select</option>');
 
-                    items.forEach(function(item) {
-                        const code = item.Code ?? item.code ?? item.Name ?? item.name ??
-                            '';
-                        const name = item.Name ?? item.name ?? item.Code ?? item.code ??
-                            code;
-                        if (!code) return;
-                        $categorySelect.append(
-                            `<option value="${code}">${name}</option>`
-                        );
-                    });
-        
-                    // ── Guard: no categories returned from the master endpoint ──
-                    // The select only has the placeholder option, so the required
-                    // validation added to saveCharge() would block every save with
-                    // a generic "Please select a Charge Category" error. Surface
-                    // the real cause instead.
-                    if (items.length === 0) {
-                        $categorySelect.empty().append('<option value="">No categories configured</option>');
-                        showNotification(
-                            'No charge categories are configured — please contact your administrator.',
-                            'warning'
-                        );
-                    }
-        
-                    $categorySelect.prop('disabled', false);
-                    applyPendingChargeCategory($categorySelect);
-                    },
-                    error: function() {
-                        $categorySelect.empty().append('<option value="">Unavailable</option>');
-                    }
-                });
-            }
+                        items.forEach(function(item) {
+                            const code = item.Code ?? item.code ?? item.Name ?? item.name ??
+                                '';
+                            const name = item.Name ?? item.name ?? item.Code ?? item.code ??
+                                code;
+                            if (!code) return;
+                            $categorySelect.append(
+                                `<option value="${code}">${name}</option>`
+                            );
+                        });
+            
+                        // ── Guard: no categories returned from the master endpoint ──
+                        // The select only has the placeholder option, so the required
+                        // validation added to saveCharge() would block every save with
+                        // a generic "Please select a Charge Category" error. Surface
+                        // the real cause instead.
+                        if (items.length === 0) {
+                            $categorySelect.empty().append('<option value="">No categories configured</option>');
+                            showNotification(
+                                'No charge categories are configured — please contact your administrator.',
+                                'warning'
+                            );
+                        }
+
+                        $categorySelect.prop('disabled', false);
+                        applyPendingChargeCategory($categorySelect);
+                                },
+                                error: function() {
+                                    $categorySelect.empty().append('<option value="">Unavailable</option>');
+                                }
+                            });
+                        }
 
             function loadBasedOnUOM(type, basedOnCode) {
                 const prefix = type === 'revenue' ? 'revenue' : 'cost';
@@ -6989,20 +6841,20 @@
                         'Percentage';
                 }
 
-                // Local validation before sending to SP
-                if (!chargeData.charge_code) {
-                    showNotification('Please enter a charge code', 'error');
-                    return;
-                }
-                if (!chargeData.based_on_code) {
-                    showNotification('Please select Based On', 'error');
-                    return;
-                }
-                if (!chargeData.charge_category) {
-                    showNotification('Please select a Charge Category', 'error');
-                    $modal.find(`select[name="${prefix}_charge_category"]`).focus();
-                    return;
-                }
+         // Local validation before sending to SP
+if (!chargeData.charge_code) {
+    showNotification('Please enter a charge code', 'error');
+    return;
+}
+if (!chargeData.based_on_code) {
+    showNotification('Please select Based On', 'error');
+    return;
+}
+if (!chargeData.charge_category) {
+    showNotification('Please select a Charge Category', 'error');
+    $modal.find(`select[name="${prefix}_charge_category"]`).focus();
+    return;
+}
 
                 $.ajax({
                     url: '{{ route('quotation.charge.save') }}',

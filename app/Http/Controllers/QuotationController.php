@@ -1922,14 +1922,42 @@ class QuotationController extends Controller
             return collect();
         }
 
-        $names = $offices->pluck('name')->filter()->values()->toArray();
+        $officeCodes = $offices
+            ->pluck('code')
+            ->filter(fn($code) => is_string($code) && trim($code) !== '')
+            ->map(fn($code) => strtoupper(trim($code)))
+            ->unique()
+            ->values();
+
+        $namesWithoutCodes = $offices
+            ->filter(fn($office) => empty($office['code']))
+            ->pluck('name')
+            ->filter()
+            ->values()
+            ->toArray();
+
+        if ($officeCodes->isEmpty() && empty($namesWithoutCodes)) {
+            return collect();
+        }
 
         return DB::table('Cust_Office')
-            ->whereIn('Name', $names)
+            ->where(function ($query) use ($officeCodes, $namesWithoutCodes) {
+                if ($officeCodes->isNotEmpty()) {
+                    $query->whereIn('Code', $officeCodes);
+                }
+
+                if (!empty($namesWithoutCodes)) {
+                    if ($officeCodes->isNotEmpty()) {
+                        $query->orWhereIn('Name', $namesWithoutCodes);
+                    } else {
+                        $query->whereIn('Name', $namesWithoutCodes);
+                    }
+                }
+            })
             ->where('IsActive', 1)
             ->where('IsDeleted', 0)
             ->pluck('Code')
-            ->map(fn($c) => strtoupper(trim($c)))
+            ->map(fn($code) => strtoupper(trim($code)))
             ->unique()
             ->values();
     }
@@ -4497,16 +4525,23 @@ class QuotationController extends Controller
             'user' => $submittedBy,
         ]);
 
-        // ── Step 2: Re-run if SCMBookingID is not set ─────────────────────────────
-        if (empty($quotation->SCMBookingID)) {
-            Log::warning('retrigger - SCMBookingID is NULL, re-running Step 2', [
+        // ── Step 2: Re-run if SCMBookingID is not set or forced ───────────────────
+        $forceStep2 = (int) $request->input('force_step2', 0);
+
+        if (empty($quotation->SCMBookingID) || $forceStep2) {
+            Log::warning('retrigger - Re-running Step 2', [
                 'booking_no' => $bookingNo,
                 'quote_no' => $quoteNo,
+                'force_step2' => $forceStep2,
             ]);
 
-            // FIX 1: was "$step2 = $this->runBookingProcessMain($quotation->ID, $stepDef['type'])"
-            // $stepDef is not in scope here. The correct process type for this branch is 'XML'.
-            // Also renamed to $result to be consistent with the read below.
+            // NEW: If forced, wipe the old XML and ID so it generates fresh data
+            if ($forceStep2) {
+                DB::table('Quote_QuotationInfo')
+                    ->where('ID', $quotation->ID)
+                    ->update(['SCMBookingXML' => null, 'SCMBookingID' => null]);
+            }
+
             $result = $this->runBookingProcessMain($quotation->ID, 'XML');
 
             $steps[] = [
@@ -4564,6 +4599,11 @@ class QuotationController extends Controller
             ]);
 
             if (!($pushResponse['success'] ?? false)) {
+                // NEW: Clear the SCMBookingID and XML because the push failed
+                DB::table('Quote_QuotationInfo')
+                    ->where('ID', $quotation->ID)
+                    ->update(['SCMBookingID' => null, 'SCMBookingXML' => null]);
+
                 $this->markAsFailed(
                     $quotation->ID,
                     'SCM Push',
@@ -10632,7 +10672,7 @@ class QuotationController extends Controller
 
         $quotation = DB::table('Quote_QuotationInfo')
             ->where('ID', $request->id)
-            ->first(['ID', 'QuoteNo']);
+            ->first(['ID', 'QuoteNo', 'SCMBookingID']); // Added SCMBookingID
 
         if (!$quotation) {
             return response()->json(
@@ -10644,6 +10684,16 @@ class QuotationController extends Controller
                 ],
                 404,
             );
+        }
+
+        // ── GUARD: Skip XML generation if the booking already exists in SCM ──
+        if (!empty($quotation->SCMBookingID)) {
+            return response()->json([
+                'success' => true,
+                'step' => 2,
+                'status' => 'Success',
+                'remark' => 'Skipped: Booking already exists in SCM.',
+            ]);
         }
 
         Log::info('processBookingStep2 - Input', [
@@ -10697,6 +10747,18 @@ class QuotationController extends Controller
             );
         }
 
+        // ── GUARD: Skip pushing to SCM if the booking already exists ──
+        if (!empty($quotation->SCMBookingID)) {
+            return response()->json([
+                'success' => true,
+                'step' => '2b',
+                'status' => 'Success',
+                'remark' => 'Skipped: Booking already pushed to SCM.',
+                'scm_booking_id' => $quotation->SCMBookingID,
+                'scm_booking_no' => $quotation->SCMBookingNo ?? null, // In case it exists in your DB
+            ]);
+        }
+
         Log::info('processBookingStep2b - Input', [
             'id' => $request->id,
             'quote_no' => $quotation->QuoteNo,
@@ -10716,6 +10778,12 @@ class QuotationController extends Controller
         ]);
 
         if (!($pushResponse['success'] ?? false)) {
+            // NEW: Clear the SCMBookingID and XML because the external push failed.
+            // This prevents "orphaned" IDs like 17949 and allows the user to retry.
+            DB::table('Quote_QuotationInfo')
+                ->where('ID', $quotation->ID)
+                ->update(['SCMBookingID' => null, 'SCMBookingXML' => null]);
+
             $this->markAsFailed(
                 $quotation->ID,
                 'SCM Push',
@@ -10877,7 +10945,7 @@ class QuotationController extends Controller
 
         $quotation = DB::table('Quote_QuotationInfo')
             ->where('ID', $request->id)
-            ->first(['ID', 'QuoteNo', 'bookingno', 'QuoteStatus', 'teamid', 'OfficeCode']);
+            ->first(['ID', 'QuoteNo', 'bookingno', 'QuoteStatus', 'teamid', 'OfficeCode', 'SCMBookingID']);
 
         if (!$quotation) {
             Log::error('processBooking - Quotation not found', [
@@ -10953,6 +11021,17 @@ class QuotationController extends Controller
         ];
 
         foreach ($processSteps as $stepNo => $stepDef) {
+            // ── GUARD: Skip Step 2 if the booking already exists in SCM ──
+            if ($stepNo === 2 && !empty($quotation->SCMBookingID)) {
+                $steps[] = [
+                    'step' => 2,
+                    'label' => 'Booking XML',
+                    'status' => 'Success',
+                    'remark' => 'Skipped: Booking already exists in SCM.',
+                ];
+                continue;
+            }
+
             $result = $this->runBookingProcessMain($quotation->ID, $stepDef['type']);
 
             $steps[] = [
@@ -12886,10 +12965,14 @@ class QuotationController extends Controller
 
         try {
             $instance = new self();
+            $allowedOfficeCodes = $instance->resolveAllowedOfficeCodesViaSP();
 
-            $allowedOfficeCodes = $officeCode
-                ? collect([strtoupper(trim($officeCode))])
-                : $instance->resolveAllowedOfficeCodesViaSP();
+            if ($officeCode !== null && trim($officeCode) !== '') {
+                $selectedOfficeCode = strtoupper(trim($officeCode));
+                $allowedOfficeCodes = $allowedOfficeCodes
+                    ->filter(fn($allowedCode) => $allowedCode === $selectedOfficeCode)
+                    ->values();
+            }
 
             \Log::info('QuotationController::getHomeStats - office codes resolved', [
                 'user_email' => \Auth::user()->Email ?? 'null',
@@ -13201,6 +13284,17 @@ class QuotationController extends Controller
                 'scm_status' => $status,
             ]);
 
+            // 🚨 NEW: If SCM failed, force clear the ID and XML immediately
+            // This prevents orphaned IDs like 70369D34... from getting stuck in the DB
+            if ($status !== 'Success') {
+                DB::table('Quote_QuotationInfo')
+                    ->where('QuoteNo', $quotation->QuoteNo)
+                    ->update(['SCMBookingID' => null, 'SCMBookingXML' => null]);
+
+                $updated->SCMBookingID = null; // Update local variable for the log/response
+                $updated->SCMBookingNo = null;
+            }
+
             return response()->json([
                 'success' => $status === 'Success',
                 'message' =>
@@ -13230,37 +13324,78 @@ class QuotationController extends Controller
         }
     }
 
+    /**
+     * Client analysis (aging buckets) for the quotation's client.
+     * Calls sp_Quote_ClientAnalysis, which returns its result in @OutputJson.
+     * SP shape: {status, Remark, Total:[{TotalType,Total}], Details:[{Analysis,[0-30 Days],...,Total}]}
+     */
     public function salesIntelligence(Request $request)
     {
-        $officeCode = $request->input('office_code');
-        $customer = $request->input('customer');
+        $quotationId = trim((string) $request->input('quotation_id'));
 
-        $inputJson = json_encode([
-            'OfficeCode' => $officeCode,
-            'Status' => 'Total',
-            'Customer' => $customer,
-            'FromDate' => '',
-            'ToDate' => '',
-            'Service' => '',
-            'Process' => '',
-        ]);
+        if (!preg_match('/^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$/', $quotationId)) {
+            return response()->json(
+                ['success' => false, 'message' => 'A valid quotation_id is required.', 'data' => null],
+                422,
+            );
+        }
 
         try {
-            $results = DB::select('EXEC sp_Quote_QuotationList @InputJson = ?', [$inputJson]);
+            Log::info('salesIntelligence - request', ['quotation_id' => $quotationId]);
 
-            // Exact match guard — SP uses LIKE, we enforce exact match here
-            $company = $customer;
-            $filtered = array_filter($results, fn($r) => trim($r->CompanyName) === trim($company));
+            $pdo = DB::connection()->getPdo();
+            $stmt = $pdo->prepare(
+                'SET NOCOUNT ON; ' .
+                    'DECLARE @OutputJson NVARCHAR(MAX); ' .
+                    'EXEC dbo.sp_Quote_ClientAnalysis @QuotationID = ?, @OutputJson = @OutputJson OUTPUT; ' .
+                    'SELECT @OutputJson AS OutputJson;',
+            );
+            $stmt->execute([$quotationId]);
+
+            // Walk the rowsets until the one holding OutputJson
+            $outputJson = null;
+            do {
+                try {
+                    $rows = $stmt->fetchAll(\PDO::FETCH_OBJ);
+                } catch (\PDOException $e) {
+                    continue; // rowset with no result columns
+                }
+                if (!empty($rows) && isset($rows[0]->OutputJson)) {
+                    $outputJson = $rows[0]->OutputJson;
+                    break;
+                }
+            } while ($stmt->nextRowset());
+
+            $decoded = $outputJson ? json_decode($outputJson, true) : null;
+
+            if (!is_array($decoded)) {
+                Log::error('salesIntelligence - unreadable SP output', [
+                    'quotation_id' => $quotationId,
+                    'raw' => $outputJson,
+                ]);
+                return response()->json(
+                    ['success' => false, 'message' => 'Client analysis returned no readable data.', 'data' => null],
+                    500,
+                );
+            }
+
+            $isSuccess = ($decoded['status'] ?? '') === 'Success';
+            Log::info('salesIntelligence - SP result', [
+                'quotation_id' => $quotationId,
+                'status' => $decoded['status'] ?? null,
+            ]);
 
             return response()->json([
-                'success' => true,
-                'data' => array_values($filtered),
+                'success' => $isSuccess,
+                'message' => $decoded['Remark'] ?? ($isSuccess ? 'Success' : 'Failed'),
+                'data' => $isSuccess
+                    ? ['total' => $decoded['Total'] ?? [], 'details' => $decoded['Details'] ?? []]
+                    : null,
             ]);
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-            ]);
+            // RAISERROR(16) from the SP's validation guards lands here
+            Log::error('salesIntelligence - exception', ['quotation_id' => $quotationId, 'error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => $e->getMessage(), 'data' => null], 500);
         }
     }
 
