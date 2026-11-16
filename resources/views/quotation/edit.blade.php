@@ -57,39 +57,60 @@
 
                         <div id="siContent" style="display:none;">
                             <div class="row mb-3" id="siMetricsRow">
-                    <div class="col-6 col-md mb-2">
-                        <div class="p-3 rounded text-center" style="background:#f0f0fb; border:1px solid #dddcf5;">
-                            <div style="font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#4B49AC; margin-bottom:4px;">No of Quotes</div>
-                            <div id="siTotalQuotes" style="font-size:1.6rem; font-weight:800; color:#4B49AC; line-height:1;">—</div>
-                        </div>
-                    </div>
-                    <div class="col-6 col-md mb-2">
-                        <div class="p-3 rounded text-center" style="background:#f0f0fb; border:1px solid #dddcf5;">
-                            <div style="font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#4B49AC; margin-bottom:4px;">Won</div>
-                            <div id="siTotalWon" style="font-size:1.6rem; font-weight:800; color:#28a745; line-height:1;">—</div>
-                        </div>
-                    </div>
-                    <div class="col-6 col-md mb-2">
-                        <div class="p-3 rounded text-center" style="background:#f0f0fb; border:1px solid #dddcf5;">
-                            <div style="font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#4B49AC; margin-bottom:4px;">Lost</div>
-                            <div id="siTotalLost" style="font-size:1.6rem; font-weight:800; color:#dc3545; line-height:1;">—</div>
-                        </div>
-                    </div>
-                    <div class="col-6 col-md mb-2">
-                        <div class="p-3 rounded text-center" style="background:#f0f0fb; border:1px solid #dddcf5;">
-                            <div style="font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#4B49AC; margin-bottom:4px;">Quoted (USD)</div>
-                            <div id="siTotalQuoted" style="font-size:1.2rem; font-weight:800; color:#4B49AC; line-height:1;">—</div>
-                        </div>
-                    </div>
-                    <div class="col-6 col-md mb-2">
-                        <div class="p-3 rounded text-center" style="background:#f0f0fb; border:1px solid #dddcf5;">
-                            <div style="font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#4B49AC; margin-bottom:4px;">Invoiced (USD)</div>
-                            <div id="siTotalInvoiced" style="font-size:1.2rem; font-weight:800; color:#28a745; line-height:1;">—</div>
-                        </div>
-                    </div>
+                                <div class="col-6 col-md mb-2">
+                                    <div class="p-3 rounded text-center"
+                                        style="background:#f0f0fb; border:1px solid #dddcf5;">
+                                        <div
+                                            style="font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#4B49AC; margin-bottom:4px;">
+                                            No of Quotes</div>
+                                        <div id="siTotalQuotes"
+                                            style="font-size:1.6rem; font-weight:800; color:#4B49AC; line-height:1;">—</div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md mb-2">
+                                    <div class="p-3 rounded text-center"
+                                        style="background:#f0f0fb; border:1px solid #dddcf5;">
+                                        <div
+                                            style="font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#4B49AC; margin-bottom:4px;">
+                                            Won</div>
+                                        <div id="siTotalWon"
+                                            style="font-size:1.6rem; font-weight:800; color:#28a745; line-height:1;">—</div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md mb-2">
+                                    <div class="p-3 rounded text-center"
+                                        style="background:#f0f0fb; border:1px solid #dddcf5;">
+                                        <div
+                                            style="font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#4B49AC; margin-bottom:4px;">
+                                            Lost</div>
+                                        <div id="siTotalLost"
+                                            style="font-size:1.6rem; font-weight:800; color:#dc3545; line-height:1;">—</div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md mb-2">
+                                    <div class="p-3 rounded text-center"
+                                        style="background:#f0f0fb; border:1px solid #dddcf5;">
+                                        <div
+                                            style="font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#4B49AC; margin-bottom:4px;">
+                                            Quoted (USD)</div>
+                                        <div id="siTotalQuoted"
+                                            style="font-size:1.2rem; font-weight:800; color:#4B49AC; line-height:1;">—</div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md mb-2">
+                                    <div class="p-3 rounded text-center"
+                                        style="background:#f0f0fb; border:1px solid #dddcf5;">
+                                        <div
+                                            style="font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#4B49AC; margin-bottom:4px;">
+                                            Invoiced (USD)</div>
+                                        <div id="siTotalInvoiced"
+                                            style="font-size:1.2rem; font-weight:800; color:#28a745; line-height:1;">—</div>
+                                    </div>
+                                </div>
                             </div>
 
-                            <div style="font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#4B49AC; border-bottom:2px solid #4B49AC; padding-bottom:4px; margin-bottom:8px;">
+                            <div
+                                style="font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#4B49AC; border-bottom:2px solid #4B49AC; padding-bottom:4px; margin-bottom:8px;">
                                 Client Quote Ageing
                             </div>
                             <div class="table-responsive">
@@ -105,7 +126,9 @@
                                         </tr>
                                     </thead>
                                     <tbody id="siAgeingBody">
-                                        <tr><td colspan="6" class="text-center text-muted">Loading...</td></tr>
+                                        <tr>
+                                            <td colspan="6" class="text-center text-muted">Loading...</td>
+                                        </tr>
                                     </tbody>
                                 </table>
                             </div>
@@ -1157,7 +1180,8 @@
                                     </div>
                                 </div>
                                 <div class="form-group row">
-                                    <label class="col-sm-5 col-form-label">Shipment Mode</label>
+                                    <label class="col-sm-5 col-form-label">Shipment Mode <span
+                                            class="text-danger">*</span></label>
                                     <div class="col-sm-7">
                                         <select class="form-control form-control-sm" id="shipmentModeSelect"
                                             name="shipment_mode" disabled>
@@ -1166,7 +1190,8 @@
                                     </div>
                                 </div>
                                 <div class="form-group row">
-                                    <label class="col-sm-5 col-form-label">Service Class</label>
+                                    <label class="col-sm-5 col-form-label">Service Class <span
+                                            class="text-danger">*</span></label>
                                     <div class="col-sm-7">
                                         <input type="text" class="form-control form-control-sm"
                                             id="serviceClassDisplay" value="{{ $quotation->ServiceClass ?? '' }}"
@@ -1421,8 +1446,8 @@
         <!-- END ROW -->
 
         <!-- ============================================
-                                    MODALS
-                                    ============================================ -->
+                                        MODALS
+                                        ============================================ -->
 
         {{-- REVENUE MODAL --}}
         <div class="modal fade" id="addRevenueModal" tabindex="-1" role="dialog"
@@ -2989,9 +3014,9 @@
         }
 
         /* =============================================
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       CREATE BOOKING MODAL — Specific overrides
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       to match the "Creation of Booking" design
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       ============================================= */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           CREATE BOOKING MODAL — Specific overrides
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           to match the "Creation of Booking" design
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           ============================================= */
 
         #createBookingModal .modal-title {
             color: #003580 !important;
@@ -3946,7 +3971,7 @@
         }
 
         /* Give the revenue table a soft purple header tint,
-                                                                       cost table a slightly warmer one — both still purple family */
+                                                                           cost table a slightly warmer one — both still purple family */
         #chargesCard #revenueChargesTable,
         #chargesCard #costChargesTable {
             font-size: 0.85rem;
@@ -4046,23 +4071,27 @@
             background: #fff;
             padding: 12px;
         }
-        
+
         #excelPreviewBody table {
             border-collapse: collapse;
             font-family: Arial, Helvetica, sans-serif;
             font-size: 11px;
             color: #222;
-            width: 100%;              /* stretch to fill the modal */
-            table-layout: auto;       /* size columns to content, capped by max-width */
+            width: 100%;
+            /* stretch to fill the modal */
+            table-layout: auto;
+            /* size columns to content, capped by max-width */
         }
-        
+
         #excelPreviewBody td,
         #excelPreviewBody th {
             border: 1px solid #d8dfec;
             padding: 4px 8px;
             vertical-align: top;
-            white-space: normal;      /* let T&C paragraphs wrap instead of clip */
-            overflow-wrap: anywhere;  /* break long words rather than overflow */
+            white-space: normal;
+            /* let T&C paragraphs wrap instead of clip */
+            overflow-wrap: anywhere;
+            /* break long words rather than overflow */
             /* max-width is set per-cell by JS from the workbook's !cols */
         }
 
@@ -4077,7 +4106,7 @@
         }
 
         /* The nav/bar rows in the quotation sheet span full width —
-                                           give them breathing room so they read as section headers. */
+                                               give them breathing room so they read as section headers. */
         #excelPreviewBody td[colspan] {
             background: #f4f4fb;
         }
@@ -4127,7 +4156,7 @@
         // Mirrors QuotationController::OFFICE_BASE_CURRENCY — single source of truth via PHP
         const OFFICE_BASE_CURRENCY = @json(\App\Http\Controllers\QuotationController::OFFICE_BASE_CURRENCY);
         const CURRENT_OFFICE_CODE = '{{ trim($officeShortCode ?? '') }}';
-        const QUOTE_CURRENCY = '{{ addslashes(trim($quotation->QuoteCurr ?? 'USD')) }}';  
+        const QUOTE_CURRENCY = '{{ addslashes(trim($quotation->QuoteCurr ?? 'USD')) }}';
 
 
         // Page-wide currency, used by renderCharges, SALES INTELLIGENCE, and the category-total renderer
@@ -4572,12 +4601,17 @@
                 function renderClientAnalysis(data) {
                     const esc = (v) => $('<div>').text(v ?? '').html();
                     const num = (v) => Number(v) || 0;
-                    const fmtMoney = (v) => num(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    const fmtMoney = (v) => num(v).toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    });
                     const fmtCount = (v) => num(v).toLocaleString();
 
                     // A type is absent from the SP result when it has no rows, so default to 0
                     const totals = {};
-                    (data.total || []).forEach(t => { totals[String(t.TotalType).toLowerCase()] = t.Total; });
+                    (data.total || []).forEach(t => {
+                        totals[String(t.TotalType).toLowerCase()] = t.Total;
+                    });
                     $('#siTotalQuotes').text(fmtCount(totals['no of quotes']));
                     $('#siTotalWon').text(fmtCount(totals['won']));
                     $('#siTotalLost').text(fmtCount(totals['lost']));
@@ -4587,7 +4621,8 @@
                     const buckets = ['0-30 Days', '30-60 Days', '60-90 Days', '> 90 Days', 'Total'];
                     const rows = (data.details || []).map(row => {
                         const fmt = /usd/i.test(row.Analysis) ? fmtMoney : fmtCount;
-                        const cells = buckets.map(b => `<td class="text-right">${fmt(row[b])}</td>`).join('');
+                        const cells = buckets.map(b => `<td class="text-right">${fmt(row[b])}</td>`)
+                            .join('');
                         return `<tr><td>${esc(row.Analysis)}</td>${cells}</tr>`;
                     });
                     $('#siAgeingBody').html(rows.length ? rows.join('') :
@@ -4613,7 +4648,8 @@
 
                             if (!response.success) {
                                 $('#siError').removeClass('d-none');
-                                $('#siErrorMsg').text(response.message || 'No analysis found for this client.');
+                                $('#siErrorMsg').text(response.message ||
+                                    'No analysis found for this client.');
                                 return;
                             }
 
@@ -4692,6 +4728,7 @@
             let currentEditingRevenueId = null;
             let currencyMap = {};
             let officeCode = '{{ trim($officeShortCode ?? '') }}';
+            let generatedVersionCount = 0;
 
             // ── Single source of truth for Generate Quote gate ────────────────────────
             // All paths that touch the button must go through setGenerateBtn().
@@ -5867,7 +5904,13 @@
                 if ($match.length) {
                     $select.val($match.val()).removeData('pendingValue');
                 } else {
-                    console.warn('Charge category not found in options:', wanted);
+                    // If the saved category is NOT in the master list (e.g. 'Other' or legacy data),
+                    // inject it dynamically so the user doesn't lose their data on Edit.
+                    $select.append(
+                        `<option value="${wanted}">${wanted}</option>`
+                    );
+                    $select.val(wanted).removeData('pendingValue');
+                    console.warn('Charge category not found in master list, added dynamically:', wanted);
                 }
             }
 
@@ -5899,14 +5942,15 @@
                                 `<option value="${code}">${name}</option>`
                             );
                         });
-            
+
                         // ── Guard: no categories returned from the master endpoint ──
                         // The select only has the placeholder option, so the required
                         // validation added to saveCharge() would block every save with
                         // a generic "Please select a Charge Category" error. Surface
                         // the real cause instead.
                         if (items.length === 0) {
-                            $categorySelect.empty().append('<option value="">No categories configured</option>');
+                            $categorySelect.empty().append(
+                                '<option value="">No categories configured</option>');
                             showNotification(
                                 'No charge categories are configured — please contact your administrator.',
                                 'warning'
@@ -5915,12 +5959,12 @@
 
                         $categorySelect.prop('disabled', false);
                         applyPendingChargeCategory($categorySelect);
-                                },
-                                error: function() {
-                                    $categorySelect.empty().append('<option value="">Unavailable</option>');
-                                }
-                            });
-                        }
+                    },
+                    error: function() {
+                        $categorySelect.empty().append('<option value="">Unavailable</option>');
+                    }
+                });
+            }
 
             function loadBasedOnUOM(type, basedOnCode) {
                 const prefix = type === 'revenue' ? 'revenue' : 'cost';
@@ -6811,7 +6855,7 @@
                     booking_no: bookingNo,
                     office_code: officeCode,
                     quote_charge_id: currentEditingCharge || '',
-                    revenue_charge_id: currentEditingRevenueId || '',   // NEW
+                    revenue_charge_id: currentEditingRevenueId || '', // NEW
                     party_code: $modal.find(`input[name="${prefix}_bill_to_party_code"]`).val() || '',
                     revenue_or_cost: revenueOrCost,
                     charge_code: $modal.find(`input[name="${prefix}_charge_code"]`).val(),
@@ -6841,20 +6885,20 @@
                         'Percentage';
                 }
 
-         // Local validation before sending to SP
-if (!chargeData.charge_code) {
-    showNotification('Please enter a charge code', 'error');
-    return;
-}
-if (!chargeData.based_on_code) {
-    showNotification('Please select Based On', 'error');
-    return;
-}
-if (!chargeData.charge_category) {
-    showNotification('Please select a Charge Category', 'error');
-    $modal.find(`select[name="${prefix}_charge_category"]`).focus();
-    return;
-}
+                // Local validation before sending to SP
+                if (!chargeData.charge_code) {
+                    showNotification('Please enter a charge code', 'error');
+                    return;
+                }
+                if (!chargeData.based_on_code) {
+                    showNotification('Please select Based On', 'error');
+                    return;
+                }
+                if (!chargeData.charge_category) {
+                    showNotification('Please select a Charge Category', 'error');
+                    $modal.find(`select[name="${prefix}_charge_category"]`).focus();
+                    return;
+                }
 
                 $.ajax({
                     url: '{{ route('quotation.charge.save') }}',
@@ -6879,7 +6923,7 @@ if (!chargeData.charge_category) {
                                 loadCharges();
                             }
                             currentEditingCharge = null;
-                            currentEditingRevenueId = null;   // still missing
+                            currentEditingRevenueId = null; // still missing
 
                         }
                     },
@@ -6975,9 +7019,10 @@ if (!chargeData.charge_category) {
                         }
 
                         currentEditingCharge = chargeId;
-                        currentEditingRevenueId = (response.revenueId && response.revenueId !== chargeId)
-                            ? response.revenueId
-                            : null;
+                        currentEditingRevenueId = (response.revenueId && response.revenueId !==
+                                chargeId) ?
+                            response.revenueId :
+                            null;
                         populateModal(modalType, response);
                     },
                     error: function(xhr) {
@@ -7332,6 +7377,34 @@ if (!chargeData.charge_category) {
 
             $('#wonQuoteBtn').on('click', function(e) {
                 e.preventDefault();
+
+                // 1. Check Shipment Mode (check the hidden saved value or the select if in edit mode)
+                const shipmentMode = $('#shipmentModeSelect').val() ||
+                    '{{ $quotation->shipmentmode ?? '' }}';
+                if (!shipmentMode) {
+                    showNotification('Shipment Mode is mandatory. Please select and save it first.',
+                        'error');
+                    return;
+                }
+
+                // 2. Check Service Class (check the hidden saved value or the select if in edit mode)
+                const serviceClass = $('#serviceClassSelect').val() ||
+                    '{{ $quotation->ServiceClass ?? '' }}';
+                if (!serviceClass) {
+                    showNotification('Service Class is mandatory. Please select and save it first.',
+                        'error');
+                    return;
+                }
+
+                // 3. Check if a quote was generated
+                if (generatedVersionCount === 0) {
+                    showNotification(
+                        'You must generate a quotation document (PDF or Excel) before marking as Won.',
+                        'error');
+                    return;
+                }
+
+                // If all checks pass, show the modal
                 $('#wonRemarkInput').val('');
                 $('#wonModal').modal('show');
             });
@@ -7474,6 +7547,7 @@ if (!chargeData.charge_category) {
             const VERSIONS_URL = '{{ route('quotation.versions', $quotation->ID) }}';
 
             function renderVersions(versions) {
+                generatedVersionCount = (versions && versions.length) ? versions.length : 0;
                 const $container = $('#quotationVersionsList');
                 $container.empty();
 
@@ -7720,7 +7794,7 @@ if (!chargeData.charge_category) {
                     '</div>'
                 );
                 $('#excelPreviewModal').modal('show');
-                
+
                 if (typeof XLSX === 'undefined') {
                     $body.html(
                         '<div class="alert alert-danger m-3">' +
@@ -7730,79 +7804,97 @@ if (!chargeData.charge_category) {
                     return;
                 }
 
-            fetch(url, { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-                .then(function (r) {
-                    if (!r.ok) throw new Error('HTTP ' + r.status);
-                    return r.arrayBuffer();
-                })
-                .then(function (buf) {
-                    const workbook = XLSX.read(buf, { type: 'array' });
-                    const firstSheetName = workbook.SheetNames[0];
-            
-                    if (!firstSheetName) {
-                        $body.html('<div class="alert alert-warning m-3">The workbook has no sheets.</div>');
-                        return;
-                    }
-            
-                    const sheet = workbook.Sheets[firstSheetName];
-            
-                    // ── Trim the used range ───────────────────────────────────────────
-                    // PhpSpreadsheet writes blank rows/cols after the last real cell (row
-                    // heights, merge scaffolding), which keeps !ref open and renders as a
-                    // wall of empty cells at the bottom and right of the preview.
-                    // Walk every populated cell and re-anchor !ref to the true last cell.
-                    if (sheet['!ref']) {
-                        const range = XLSX.utils.decode_range(sheet['!ref']);
-                        let maxR = range.s.r, maxC = range.s.c;
-            
-                        Object.keys(sheet).forEach(function (key) {
-                            if (key[0] === '!') return;
-                            const cell = sheet[key];
-                            if (!cell || cell.v == null || cell.v === '') return;
-                            const addr = XLSX.utils.decode_cell(key);
-                            if (addr.r > maxR) maxR = addr.r;
-                            if (addr.c > maxC) maxC = addr.c;
+                fetch(url, {
+                        credentials: 'same-origin',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                    .then(function(r) {
+                        if (!r.ok) throw new Error('HTTP ' + r.status);
+                        return r.arrayBuffer();
+                    })
+                    .then(function(buf) {
+                        const workbook = XLSX.read(buf, {
+                            type: 'array'
                         });
-            
-                        sheet['!ref'] = XLSX.utils.encode_range({
-                            s: { r: range.s.r, c: range.s.c },
-                            e: { r: maxR, c: maxC },
+                        const firstSheetName = workbook.SheetNames[0];
+
+                        if (!firstSheetName) {
+                            $body.html(
+                                '<div class="alert alert-warning m-3">The workbook has no sheets.</div>'
+                                );
+                            return;
+                        }
+
+                        const sheet = workbook.Sheets[firstSheetName];
+
+                        // ── Trim the used range ───────────────────────────────────────────
+                        // PhpSpreadsheet writes blank rows/cols after the last real cell (row
+                        // heights, merge scaffolding), which keeps !ref open and renders as a
+                        // wall of empty cells at the bottom and right of the preview.
+                        // Walk every populated cell and re-anchor !ref to the true last cell.
+                        if (sheet['!ref']) {
+                            const range = XLSX.utils.decode_range(sheet['!ref']);
+                            let maxR = range.s.r,
+                                maxC = range.s.c;
+
+                            Object.keys(sheet).forEach(function(key) {
+                                if (key[0] === '!') return;
+                                const cell = sheet[key];
+                                if (!cell || cell.v == null || cell.v === '') return;
+                                const addr = XLSX.utils.decode_cell(key);
+                                if (addr.r > maxR) maxR = addr.r;
+                                if (addr.c > maxC) maxC = addr.c;
+                            });
+
+                            sheet['!ref'] = XLSX.utils.encode_range({
+                                s: {
+                                    r: range.s.r,
+                                    c: range.s.c
+                                },
+                                e: {
+                                    r: maxR,
+                                    c: maxC
+                                },
+                            });
+                        }
+
+                        const html = XLSX.utils.sheet_to_html(sheet, {
+                            id: 'excel-sheet-preview'
                         });
-        }
+                        $body.html(html);
 
-        const html = XLSX.utils.sheet_to_html(sheet, { id: 'excel-sheet-preview' });
-        $body.html(html);
-
-        // ── Column widths: apply as max-widths, not min-widths ────────────
-        // min-width forces wide columns and leaves narrow ones tiny, which
-        // leaves dead space on the right of the table. max-width caps wide
-        // columns but lets table-layout:auto fill the modal evenly.
-        try {
-            const cols = sheet['!cols'] || [];
-            const $table = $body.find('table');
-            if ($table.length && cols.length) {
-                $table.find('tr').first().find('td').each(function (i) {
-                    if (cols[i] && cols[i].wch) {
-                        // wch is in Excel character units — ~7px per char.
-                        // Cap at 340px so a stray "wide" column doesn't dominate.
-                        const px = Math.min(cols[i].wch * 7, 340);
-                        $(this).css('max-width', px + 'px');
-                    }
-                });
-            }
-        } catch (_) {
-            /* column-width hint is best-effort */
-        }
-    })
-    .catch(function (err) {
-        console.error('[Excel Preview] load failed:', err);
-        $body.html(
-            '<div class="alert alert-danger m-3">' +
-            '<i class="fas fa-exclamation-triangle mr-2"></i>' +
-            'Failed to load Excel preview: ' + (err.message || 'Unknown error') +
-            '</div>'
-        );
-    });
+                        // ── Column widths: apply as max-widths, not min-widths ────────────
+                        // min-width forces wide columns and leaves narrow ones tiny, which
+                        // leaves dead space on the right of the table. max-width caps wide
+                        // columns but lets table-layout:auto fill the modal evenly.
+                        try {
+                            const cols = sheet['!cols'] || [];
+                            const $table = $body.find('table');
+                            if ($table.length && cols.length) {
+                                $table.find('tr').first().find('td').each(function(i) {
+                                    if (cols[i] && cols[i].wch) {
+                                        // wch is in Excel character units — ~7px per char.
+                                        // Cap at 340px so a stray "wide" column doesn't dominate.
+                                        const px = Math.min(cols[i].wch * 7, 340);
+                                        $(this).css('max-width', px + 'px');
+                                    }
+                                });
+                            }
+                        } catch (_) {
+                            /* column-width hint is best-effort */
+                        }
+                    })
+                    .catch(function(err) {
+                        console.error('[Excel Preview] load failed:', err);
+                        $body.html(
+                            '<div class="alert alert-danger m-3">' +
+                            '<i class="fas fa-exclamation-triangle mr-2"></i>' +
+                            'Failed to load Excel preview: ' + (err.message || 'Unknown error') +
+                            '</div>'
+                        );
+                    });
             });
 
             // Cleanup on modal close

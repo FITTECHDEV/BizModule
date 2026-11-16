@@ -263,6 +263,9 @@ Route::group(['middleware' => ['auth', 'HtmlMinifier']], function () {
     Route::get('offices/get-name', [App\Http\Controllers\OfficeController::class, 'getOfficeName'])->name(
         'office.get_name',
     );
+    Route::post('/switch-office', [App\Http\Controllers\OfficeController::class, 'switchOffice'])->name(
+        'home.switch-office',
+    );
     /**
      * MODULES
      */

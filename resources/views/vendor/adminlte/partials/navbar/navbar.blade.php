@@ -41,7 +41,7 @@
                                     </span>
                                 </h3>
                                 <p class="text-sm">
-                                        {!! $notification->data['data'] !!} 
+                                        {!! $notification->data['data'] !!}
                                 </p>
                                 <p class="text-sm text-muted">
                                     <i class="far fa-clock mr-1"></i>
@@ -53,7 +53,7 @@
                         <!-- Message End -->
                     </span>
                     <div class="dropdown-divider"></div>
-                    @empty 
+                    @empty
                     <a href="#" class="dropdown-item">
                         <!-- Message Start -->
                         <div class="media">
@@ -66,13 +66,52 @@
                     </a>
                 @endforelse
                 @if (auth()->user()->unreadNotifications->count() > 2)
-                     <div class="dropdown-divider"></div>
+                    <div class="dropdown-divider"></div>
                 <a href="{{ route('mark') }}" class="dropdown-item dropdown-footer" onclick="return confirm('Are you sure ?')">Mark All As Read</a>
                 @endif
             </div> --}}
         </li>
-        {{-- Custom right links --}}
-        @yield('content_top_nav_right')
+        {{-- Global office switcher --}}
+        @if (!empty($switcherBaseOffice))
+        <li class="nav-item d-flex align-items-center" style="gap: 6px; padding-right: 8px;">
+            <small class="text-muted" style="white-space: nowrap;">
+                <i class="fas fa-building mr-1"></i>Office:
+            </small>
+
+            @if (!empty($switcherOtherOffices))
+                <form method="POST" action="{{ route('home.switch-office') }}" id="globalOfficeSwitcherForm" class="m-0">
+                    @csrf
+                    <select name="office_code" class="form-control form-control-sm" style="min-width: 160px;"
+                        onchange="document.getElementById('globalOfficeSwitcherForm').submit()">
+
+                        <option value="{{ $switcherBaseOffice }}"
+                            {{ !$switcherActiveCode || $switcherActiveCode === $switcherBaseOffice ? 'selected' : '' }}>
+                            {{ $switcherBaseOffice }} (Base)
+                        </option>
+
+                        @foreach ($switcherOtherOffices as $office)
+                        @php
+                            $code = is_array($office) ? ($office['OfficeCode'] ?? '') : ($office->OfficeCode ?? '');
+                            $name = is_array($office) ? ($office['OfficeName'] ?? $code) : ($office->OfficeName ?? $code);
+                        @endphp
+                        <option value="{{ trim($code) }}"
+                            {{ trim($switcherActiveCode) === trim($code) ? 'selected' : '' }}>
+                            {{ $name }}
+                        </option>
+                        @endforeach
+
+                    </select>
+                </form>
+            @else
+                <span class="badge badge-secondary" style="font-size: 0.85rem; padding: 5px 10px;">
+                    {{ $switcherActiveCode ?? $switcherBaseOffice }}
+                </span>
+            @endif
+        </li>
+        @endif
+
+{{-- Custom right links --}}
+@yield('content_top_nav_right')
 
         {{-- Configured right links --}}
         @each('adminlte::partials.navbar.menu-item', $adminlte->menu('navbar-right'), 'item')

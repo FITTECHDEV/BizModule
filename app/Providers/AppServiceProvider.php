@@ -5,6 +5,9 @@ namespace App\Providers;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 // use ConsoleTVs\Charts\Registrar as Charts;
+use App\Http\View\Composers\OfficeSwitcherComposer;
+use Illuminate\Support\Facades\View;
+
 use URL;
 class AppServiceProvider extends ServiceProvider
 {
@@ -43,6 +46,9 @@ class AppServiceProvider extends ServiceProvider
             URL::forceScheme('https');
             //use \URL:forceSchema('https') if you use laravel < 5.4
         }
+
+        View::composer('adminlte::partials.navbar.navbar', OfficeSwitcherComposer::class);
+
         //
     }
 }

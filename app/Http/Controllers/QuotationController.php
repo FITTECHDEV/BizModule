@@ -170,6 +170,47 @@ class QuotationController extends Controller
             $lostCancelledRows = $this->callQuotationListSP('Lost', $spFromDate, $spToDate, $spOfficeCode);
             $failedProgressRows = $this->callQuotationListSP('Failed Progress', $spFromDate, $spToDate, $spOfficeCode);
 
+            // ── TEMPORARY FIX: Include quotes that the SP drops due to NULL ServiceClass ──
+            // if ($spOfficeCode) {
+            //     $missingQuotes = DB::table('Quote_QuotationInfo')
+            //         ->where('OfficeCode', $spOfficeCode)
+            //         ->where(function ($q) {
+            //             $q->whereNull('ServiceClass')->orWhere('ServiceClass', '');
+            //         })
+            //         ->get();
+
+            //     if ($missingQuotes->isNotEmpty()) {
+            //         // Create a fast lookup map of existing quotes to avoid duplicates
+            //         $existingQuoteNos = array_flip(array_column($allRows, 'QuoteNo'));
+
+            //         foreach ($missingQuotes as $mq) {
+            //             if (!isset($existingQuoteNos[$mq->QuoteNo])) {
+            //                 // Map the DB columns to exactly match what the SP returns
+            //                 $allRows[] = (object) [
+            //                     'QuoteNo' => $mq->QuoteNo,
+            //                     'Date' => $mq->CreatedOn,
+            //                     'CompanyName' => $mq->pri_partnermaster_name,
+            //                     'Service' => $mq->ServiceVertical,
+            //                     'Process' => $mq->process,
+            //                     'OriginCountry' => $mq->origincountry,
+            //                     'DestinationCountry' => $mq->destinationcountry,
+            //                     'IncoTerm' => $mq->incoterm,
+            //                     'ScopeOfVolume' => $mq->scopevolume,
+            //                     'CargoVolume' => $mq->cargovolume,
+            //                     'ContainerList' => $mq->containerlist,
+            //                     'SalesPerson' => $mq->username,
+            //                     'Remark' => 'CRM No - ' . $mq->bookingno,
+            //                     'Status' => $mq->QuoteStatus ?? 'In Progress',
+            //                 ];
+
+            //                 // Add to map so we don't add it twice if there are duplicates
+            //                 $existingQuoteNos[$mq->QuoteNo] = true;
+            //             }
+            //         }
+            //     }
+            // }
+            // ── END TEMPORARY FIX ──
+
             // ── Load SCMINTStatus for Total branch rows ───────────────────────
             $allQuoteNos = array_column($allRows, 'QuoteNo');
             $scmLookup = collect();
@@ -4021,8 +4062,83 @@ class QuotationController extends Controller
             ->where('ID', $quotationId)
             ->first(['ID', 'QuoteNo', 'QuoteStatus', 'status', 'pri_partnermaster_name', 'teamid']);
 
+                // Fetch ALL columns to avoid case-sensitivity issues with SQL Server PDO
+        $quotation = DB::table('Quote_QuotationInfo')
+            ->where('ID', $quotationId)
+            ->first();
+
         if (!$quotation) {
             return response()->json(['success' => false, 'message' => 'Quotation not found'], 404);
+        }
+
+        // Safely check for both lowercase and PascalCase property names
+        $dbShipmentMode = trim($quotation->shipmentmode ?? $quotation->ShipmentMode ?? '');
+        $dbServiceClass = trim($quotation->ServiceClass ?? $quotation->serviceclass ?? '');
+
+        // ADD A DEBUG LOG SO WE CAN SEE EXACTLY WHAT THE DB HAS
+        \Log::info('processWon - DB Check', [
+            'quotation_id' => $quotationId,
+            'shipmentmode_found' => $dbShipmentMode,
+            'serviceclass_found' => $dbServiceClass
+        ]);
+
+        if (empty($dbShipmentMode)) {
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => 'Shipment Mode is mandatory. Please select a valid Shipment Mode before marking as Won.',
+                ],
+                422,
+            );
+        }
+
+        if (empty($dbServiceClass)) {
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => 'Service Class is mandatory. Please select a valid Service Class before marking as Won.',
+                ],
+                422,
+            );
+        }
+
+        if (empty(trim($quotation->shipmentmode ?? ''))) {
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' =>
+                        'Shipment Mode is mandatory. Please select a valid Shipment Mode before marking as Won.',
+                ],
+                422,
+            );
+        }
+
+        if (empty(trim($quotation->ServiceClass ?? ''))) {
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' =>
+                        'Service Class is mandatory. Please select a valid Service Class before marking as Won.',
+                ],
+                422,
+            );
+        }
+
+        $hasDocument = DB::table('Quote_Quotation_Document')
+            ->where('QuotationInfoID', $quotationId)
+            ->where('DocumentType', 'QuotationPDF')
+            ->where('IsDeleted', 0)
+            ->exists();
+
+        if (!$hasDocument) {
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' =>
+                        'You must generate a quotation document (PDF/Excel) before marking this quotation as Won.',
+                ],
+                422,
+            );
         }
 
         $steps = [];
@@ -11593,6 +11709,19 @@ class QuotationController extends Controller
 
                 return response()->json(['success' => false, 'message' => $message]);
             }
+
+            // ── TEMP FIX: Force update the DB columns if the SP missed them ──
+            DB::connection('sqlsrv')->table('Quote_QuotationInfo')
+                ->where('ID', $request->quotation_id)
+                ->update([
+                    'shipmentmode' => $request->shipment_mode,
+                    'ServiceClass' => $request->service_class,
+                    'TransportMode' => $request->transport_mode,
+                    'incoterm' => $request->incoterm,
+                    'origincountry' => $request->origincountry,
+                    'destinationcountry' => $request->destinationcountry,
+                ]);
+            // ── END TEMP FIX ─────────────────────────────────────────────────
 
             return response()->json([
                 'success' => true,
