@@ -174,8 +174,6 @@ class HomeController extends Controller
                 'rra' => ['RW'],
             ];
 
-            $effectiveOffice = $activeOfficeCode ?? $baseOffice;
-
             $canSeeAll = $hasAzure && (in_array('ALL', $activeModules) || in_array(null, $activeModules));
             // ─────────────────────────────────────────────────────────────────────
 
@@ -183,7 +181,7 @@ class HomeController extends Controller
 
             try {
                 $quotation_stats = $canViewQuotationCard
-                    ? \App\Http\Controllers\QuotationController::getHomeStats($effectiveOffice)
+                    ? \App\Http\Controllers\QuotationController::getHomeStats($activeOfficeCode)
                     : ['total' => 0, 'in_progress' => 0, 'failed_int' => 0, 'failed_progress' => 0];
             } catch (\Exception $e) {
                 \Log::error('Quotation Stats Error: ' . $e->getMessage());

@@ -133,117 +133,6 @@
                 </div>
             </div>
 
-            <!-- Shipment Details -->
-            <div class="card card-primary" id="viewShipmentCard">
-                <div class="card-header">
-                    <h3 class="card-title">Shipment Details</h3>
-                    <div class="card-tools">
-                        <button type="button" class="btn btn-tool" data-card-widget="collapse">
-                            <i class="fas fa-chevron-up"></i>
-                        </button>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <!-- LEFT COLUMN -->
-                        <div class="col-md-6">
-                            <div class="form-group row">
-                                <label class="col-sm-5 col-form-label">Service</label>
-                                <div class="col-sm-7">
-                                    <input type="text" class="form-control form-control-sm"
-                                        value="{{ $quotation->SVName ?? '' }}" readonly>
-                                </div>
-                            </div>
-                            <div class="form-group row">
-                                <label class="col-sm-5 col-form-label">InCO Terms</label>
-                                <div class="col-sm-7">
-                                    <input type="text" class="form-control form-control-sm" id="viewIncoTermDisplay"
-                                        value="{{ $quotation->incoterm ?? '' }}" readonly>
-                                </div>
-                            </div>
-                            <div class="form-group row">
-                                <label class="col-sm-5 col-form-label">Transport Mode</label>
-                                <div class="col-sm-7">
-                                    <input type="text" class="form-control form-control-sm"
-                                        id="viewTransportModeDisplay" value="{{ $quotation->TransportMode ?? '' }}"
-                                        readonly>
-                                </div>
-                            </div>
-                            <div class="form-group row">
-                                <label class="col-sm-5 col-form-label">Origin Country</label>
-                                <div class="col-sm-7">
-                                    <input type="text" class="form-control form-control-sm"
-                                        id="viewOriginCountryDisplay" value="{{ $quotation->origincountry ?? '' }}"
-                                        readonly>
-                                </div>
-                            </div>
-                            <div class="form-group row">
-                                <label class="col-sm-5 col-form-label">Port of Loading</label>
-                                <div class="col-sm-7">
-                                    <input type="text" class="form-control form-control-sm"
-                                        value="{{ $quotation->PortOfLoadingCode ?? '' }}" readonly>
-                                </div>
-                            </div>
-                            <div class="form-group row">
-                                <label class="col-sm-5 col-form-label">Place of Receipt</label>
-                                <div class="col-sm-7">
-                                    <input type="text" class="form-control form-control-sm"
-                                        value="{{ $quotation->PlaceOfReceiptCode ?? '' }}" readonly>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- RIGHT COLUMN -->
-                        <div class="col-md-6">
-                            <div class="form-group row">
-                                <label class="col-sm-5 col-form-label">Process</label>
-                                <div class="col-sm-7">
-                                    <input type="text" class="form-control form-control-sm"
-                                        value="{{ $quotation->process ?? '' }}" readonly>
-                                </div>
-                            </div>
-                            <div class="form-group row">
-                                <label class="col-sm-5 col-form-label">Shipment Mode</label>
-                                <div class="col-sm-7">
-                                    <input type="text" class="form-control form-control-sm"
-                                        id="viewShipmentModeDisplay" value="{{ $quotation->shipmentmode ?? '' }}"
-                                        readonly>
-                                </div>
-                            </div>
-                            <div class="form-group row">
-                                <label class="col-sm-5 col-form-label">Service Class</label>
-                                <div class="col-sm-7">
-                                    <input type="text" class="form-control form-control-sm"
-                                        id="viewServiceClassDisplay" value="{{ $quotation->ServiceClass ?? '' }}"
-                                        readonly>
-                                </div>
-                            </div>
-                            <div class="form-group row">
-                                <label class="col-sm-5 col-form-label">Destination Country</label>
-                                <div class="col-sm-7">
-                                    <input type="text" class="form-control form-control-sm"
-                                        value="{{ $quotation->destinationcountry ?? '' }}" readonly>
-                                </div>
-                            </div>
-                            <div class="form-group row">
-                                <label class="col-sm-5 col-form-label">Port of Discharge</label>
-                                <div class="col-sm-7">
-                                    <input type="text" class="form-control form-control-sm"
-                                        value="{{ $quotation->PortOfDischargeCode ?? '' }}" readonly>
-                                </div>
-                            </div>
-                            <div class="form-group row">
-                                <label class="col-sm-5 col-form-label">Place of Delivery</label>
-                                <div class="col-sm-7">
-                                    <input type="text" class="form-control form-control-sm"
-                                        value="{{ $quotation->PlaceOfDeliveryCode ?? '' }}" readonly>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- Cargo Details -->
             <div class="card card-primary">
                 <div class="card-header">
@@ -311,43 +200,13 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    @php
-                        $documents = DB::table('Quote_Quotation_Document')
-                            ->where('QuotationInfoID', $quotation->ID)
-                            ->where('DocumentType', 'QuotationPDF')
-                            ->where('IsDeleted', 0)
-                            ->orderByDesc('CreatedOn')
-                            ->get(['Name', 'FilePath', 'CreatedOn']);
-                    @endphp
+                    {{-- Versions list — populated dynamically by JS (mirrors the edit page) --}}
+                    <div id="viewQuotationVersionsList">
+                        <p class="text-muted text-center mb-2" id="viewVersionsLoadingMsg">
+                            <i class="fas fa-spinner fa-spin"></i> Loading versions...
+                        </p>
+                    </div>
 
-                    @if ($documents->isNotEmpty())
-                        @foreach ($documents as $index => $doc)
-                            @php
-                                preg_match('/_V(\d+)_/i', $doc->Name, $matches);
-                                $version = $matches[1] ?? $index + 1;
-                                $displayName = $doc->Name ?? "Quotation_{$quotation->bookingno}_V{$version}.pdf";
-
-                                // Use the same route the edit page uses — avoids the storage::exists() false negative
-                                $downloadUrl = route('quotation.download-pdf', [
-                                    'id' => $quotation->ID,
-                                    'version' => $version,
-                                ]);
-                            @endphp
-                            <div class="form-group row mb-1">
-                                <label class="col-sm-4 col-form-label">Version {{ $version }}</label>
-                                <div class="col-sm-8">
-                                    <a href="{{ $downloadUrl }}" class="text-primary" target="_blank" download>
-                                        {{ $displayName }}
-                                    </a>
-                                    <small class="text-muted d-block">
-                                        {{ \Carbon\Carbon::parse($doc->CreatedOn)->format('d M Y H:i') }}
-                                    </small>
-                                </div>
-                            </div>
-                        @endforeach
-                    @else
-                        <p class="text-muted text-center mb-0">No PDF versions generated yet</p>
-                    @endif
                     @if ($quotation->QuotationTCTemplate)
                         <div class="mt-2 pt-2" style="border-top:1px solid #dee2e6;">
                             <div class="form-group row mb-0">
@@ -667,82 +526,274 @@
                                         value="{{ $quotation->industryname ?? '' }}" readonly>
                                 </div>
                             </div>
+
+                            {{-- Quote Includes --}}
+                            @php
+                                $insurance = 0;
+                                $lastMile = 0;
+                                $customDuty = 0;
+                                if (\Illuminate\Support\Facades\Schema::hasTable('Quote_Quotation_Includes')) {
+                                    $quoteIncludes = DB::table('Quote_Quotation_Includes')
+                                        ->where('QuotationInfoID', $quotation->ID)
+                                        ->first();
+                                    if ($quoteIncludes) {
+                                        $insurance = $quoteIncludes->Insurance ?? 0;
+                                        $lastMile = $quoteIncludes->LastMile ?? 0;
+                                        $customDuty = $quoteIncludes->CustomDuty ?? 0;
+                                    }
+                                }
+                            @endphp
+                            <div class="row mt-3 pt-2" style="border-top: 1px solid #dee2e6;">
+                                <div class="col-12">
+                                    <p class="text-uppercase font-weight-bold mb-2"
+                                        style="font-size: 0.75rem; letter-spacing: 0.08em; color: #003580;">
+                                        Quote Includes
+                                    </p>
+                                    <div class="d-flex flex-wrap" style="gap: 8px;">
+                                        <span class="d-inline-block border rounded px-3 py-2 mb-0"
+                                            style="background:#f8f9fa; font-size:0.875rem;">
+                                            <i
+                                                class="fas {{ $insurance ? 'fa-check-circle text-success' : 'fa-times-circle text-muted' }} mr-1"></i>
+                                            Insurance
+                                        </span>
+                                        <span class="d-inline-block border rounded px-3 py-2 mb-0"
+                                            style="background:#f8f9fa; font-size:0.875rem;">
+                                            <i
+                                                class="fas {{ $lastMile ? 'fa-check-circle text-success' : 'fa-times-circle text-muted' }} mr-1"></i>
+                                            Last Mile
+                                        </span>
+                                        <span class="d-inline-block border rounded px-3 py-2 mb-0"
+                                            style="background:#f8f9fa; font-size:0.875rem;">
+                                            <i
+                                                class="fas {{ $customDuty ? 'fa-check-circle text-success' : 'fa-times-circle text-muted' }} mr-1"></i>
+                                            Custom Duty
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- Product Details (if Custom Duty is checked) --}}
+                            @if ($customDuty == 1)
+                                @php
+                                    $products = [];
+                                    if (
+                                        \Illuminate\Support\Facades\Schema::hasTable('Quote_Quotation_ProductDetails')
+                                    ) {
+                                        $products = DB::table('Quote_Quotation_ProductDetails')
+                                            ->where('QuotationInfoID', $quotation->ID)
+                                            ->where('IsDeleted', 0)
+                                            ->get();
+                                    }
+                                @endphp
+                                @if ($products->isNotEmpty())
+                                    <div class="row mt-3">
+                                        <div class="col-12">
+                                            <p class="text-uppercase font-weight-bold mb-2"
+                                                style="font-size: 0.75rem; letter-spacing: 0.08em; color: #003580;">
+                                                Product Details
+                                            </p>
+                                            <div class="table-responsive">
+                                                <table class="table table-sm table-bordered mb-1">
+                                                    <thead class="thead-light">
+                                                        <tr>
+                                                            <th style="font-size:0.75rem;">Description</th>
+                                                            <th style="width:100px; font-size:0.75rem;">Weight (kg)</th>
+                                                            <th style="width:100px; font-size:0.75rem;">L×B×H (m³)</th>
+                                                            <th style="width:80px; font-size:0.75rem;">QTY</th>
+                                                            <th style="width:120px; font-size:0.75rem;">Price (USD)</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        @foreach ($products as $product)
+                                                            <tr>
+                                                                <td>{{ $product->Description ?? '' }}</td>
+                                                                <td>{{ $product->Weight ?? '' }}</td>
+                                                                <td>{{ $product->Dimensions ?? '' }}</td>
+                                                                <td>{{ $product->QTY ?? '' }}</td>
+                                                                <td>{{ number_format($product->Price ?? 0, 2) }}</td>
+                                                            </tr>
+                                                        @endforeach
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
+                            @endif
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Revenue -->
-            <div class="card card-success">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <div class="d-flex align-items-center">
-                        <h3 class="card-title mb-0 mr-1">Revenue</h3>
-                        <span class="text-white small">
-                            Total: <strong id="revenueTotalHeaderAmount">0.00</strong>
-                        </span>
-                    </div>
-                    <div class="d-flex align-items-center ml-auto">
-                        <a href="#" class="text-white show-items-link" data-table="revenue">
-                            <i class="fas fa-columns mr-1"></i> Show more
-                        </a>
+            <!-- Shipment Details -->
+            <div class="card card-primary" id="viewShipmentCard">
+                <div class="card-header">
+                    <h3 class="card-title">Shipment Details</h3>
+                    <div class="card-tools">
+                        <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                            <i class="fas fa-chevron-up"></i>
+                        </button>
                     </div>
                 </div>
                 <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-bordered table-sm table-hover">
-                            <thead class="thead-light">
-                                <tr>
-                                    <th>Charge Name</th>
-                                    <th>Rate</th>
-                                    <th class="col-extra">Quantity</th>
-                                    <th class="col-extra">Based On UOM</th>
-                                    <th class="col-extra">Currency</th>
-                                    <th>Amount</th>
-                                    <th>Base Amount</th>
-                                </tr>
-                            </thead>
-                            <tbody id="revenueChargesViewTable">
-                                <tr>
-                                    <td colspan="7" class="text-center text-muted">Loading charges...</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                    <div class="row">
+                        <!-- LEFT COLUMN -->
+                        <div class="col-md-6">
+                            <div class="form-group row">
+                                <label class="col-sm-5 col-form-label">Service</label>
+                                <div class="col-sm-7">
+                                    <input type="text" class="form-control form-control-sm"
+                                        value="{{ $quotation->ServiceVertical ?? '' }}" readonly>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-sm-5 col-form-label">InCO Terms</label>
+                                <div class="col-sm-7">
+                                    <input type="text" class="form-control form-control-sm" id="viewIncoTermDisplay"
+                                        value="{{ $quotation->incoterm ?? '' }}" readonly>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-sm-5 col-form-label">Transport Mode</label>
+                                <div class="col-sm-7">
+                                    <input type="text" class="form-control form-control-sm"
+                                        id="viewTransportModeDisplay" value="{{ $quotation->TransportMode ?? '' }}"
+                                        readonly>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-sm-5 col-form-label">Origin Country</label>
+                                <div class="col-sm-7">
+                                    <input type="text" class="form-control form-control-sm"
+                                        id="viewOriginCountryDisplay" value="{{ $quotation->origincountry ?? '' }}"
+                                        readonly>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-sm-5 col-form-label">Port of Loading</label>
+                                <div class="col-sm-7">
+                                    <input type="text" class="form-control form-control-sm"
+                                        value="{{ $quotation->PortOfLoadingCode ?? '' }}" readonly>
+                                </div>
+                            </div>
+                            <div class="form-group row mb-0">
+                                <label class="col-sm-5 col-form-label">Place of Receipt</label>
+                                <div class="col-sm-7">
+                                    <input type="text" class="form-control form-control-sm"
+                                        value="{{ $quotation->PlaceOfReceiptCode ?? '' }}" readonly>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- RIGHT COLUMN -->
+                        <div class="col-md-6">
+                            <div class="form-group row">
+                                <label class="col-sm-5 col-form-label">Process</label>
+                                <div class="col-sm-7">
+                                    <input type="text" class="form-control form-control-sm"
+                                        value="{{ $quotation->process ?? '' }}" readonly>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-sm-5 col-form-label">Shipment Mode</label>
+                                <div class="col-sm-7">
+                                    <input type="text" class="form-control form-control-sm"
+                                        id="viewShipmentModeDisplay" value="{{ $quotation->shipmentmode ?? '' }}"
+                                        readonly>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-sm-5 col-form-label">Service Class</label>
+                                <div class="col-sm-7">
+                                    <input type="text" class="form-control form-control-sm"
+                                        id="viewServiceClassDisplay" value="{{ $quotation->ServiceClass ?? '' }}"
+                                        readonly>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-sm-5 col-form-label">Destination Country</label>
+                                <div class="col-sm-7">
+                                    <input type="text" class="form-control form-control-sm"
+                                        id="viewDestCountryDisplay" value="{{ $quotation->destinationcountry ?? '' }}"
+                                        readonly>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-sm-5 col-form-label">Port of Discharge</label>
+                                <div class="col-sm-7">
+                                    <input type="text" class="form-control form-control-sm"
+                                        value="{{ $quotation->PortOfDischargeCode ?? '' }}" readonly>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-sm-5 col-form-label">Place of Delivery</label>
+                                <div class="col-sm-7">
+                                    <input type="text" class="form-control form-control-sm"
+                                        value="{{ $quotation->PlaceOfDeliveryCode ?? '' }}" readonly>
+                                </div>
+                            </div>
+                            <div class="form-group row mb-0">
+                                <label class="col-sm-5 col-form-label">Forwarder</label>
+                                <div class="col-sm-7">
+                                    <input type="text" class="form-control form-control-sm"
+                                        value="{{ $quotation->Forwarder ?? '' }}" readonly>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Cost -->
-            <div class="card card-danger">
+            <!-- Charges (Revenue + Cost merged) -->
+            <div class="card card-primary" id="chargesCard">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <div class="d-flex align-items-center">
-                        <h3 class="card-title mb-0 mr-1">Cost</h3>
-                        <span class="text-white small">
-                            Total: <strong id="costTotalHeaderAmount">0.00</strong>
-                        </span>
+                        <h3 class="card-title mb-0 mr-1">
+                            <i class="fas fa-file-invoice-dollar mr-2"></i> Charges
+                        </h3>
+                        <div class="card-tools ml-2">
+                            <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                <i class="fas fa-chevron-up"></i>
+                            </button>
+                        </div>
                     </div>
-                    <div class="d-flex align-items-center ml-auto">
-                        <a href="#" class="text-white show-items-link" data-table="cost">
+                    <div class="d-flex align-items-center ml-auto" style="gap:18px;">
+                        <span class="text-white small" style="white-space:nowrap;">
+                            Revenue: <strong id="viewRevenueTotalHeaderAmount">0.00</strong>
+                        </span>
+                        <span class="text-white small" style="white-space:nowrap;">
+                            Cost: <strong id="viewCostTotalHeaderAmount">0.00</strong>
+                        </span>
+                        <span class="text-white small" style="white-space:nowrap;">
+                            Margin: <strong id="viewMarginTotalHeaderAmount">0.00</strong>
+                        </span>
+                        <a href="#" class="text-white show-items-link ml-2" data-table="charges">
                             <i class="fas fa-columns mr-1"></i> Show more
                         </a>
                     </div>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-bordered table-sm table-hover">
+                        <table class="table table-bordered table-sm table-hover mb-0" id="chargesTable">
                             <thead class="thead-light">
                                 <tr>
-                                    <th>Charge Name</th>
-                                    <th>Rate</th>
-                                    <th class="col-extra">Quantity</th>
-                                    <th class="col-extra">Based On UOM</th>
-                                    <th class="col-extra">Currency</th>
-                                    <th>Amount</th>
-                                    <th>Base Amount</th>
+                                    <th>Description</th>
+                                    <th style="width:110px;">Based On</th>
+                                    <th style="width:80px;">UOM</th>
+                                    <th class="text-right" style="width:70px;">Qty</th>
+                                    <th class="col-extra text-right" style="width:90px;">Cost Rate</th>
+                                    <th class="text-right" style="width:110px;">Cost Amount</th>
+                                    <th class="col-extra text-right" style="width:90px;">Sell Rate</th>
+                                    <th class="text-right" style="width:110px;">Sell Amount</th>
+                                    <th class="text-right" style="width:110px;">Margin %</th>
+                                    <th class="col-extra" style="width:70px;">Currency</th>
                                 </tr>
                             </thead>
-                            <tbody id="costChargesViewTable">
+                            <tbody id="chargesTableBody">
                                 <tr>
-                                    <td colspan="7" class="text-center text-muted">Loading charges...</td>
+                                    <td colspan="10" class="text-center text-muted py-3">
+                                        Loading charges...
+                                    </td>
                                 </tr>
                             </tbody>
                         </table>
@@ -806,9 +857,35 @@
             </div>
         </div>
     </div>
+
+    {{-- ── EXCEL PREVIEW MODAL ───────────────────────────────────── --}}
+    <div class="modal fade" id="excelPreviewModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog" style="max-width: 95vw; width: 95vw;" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-file-excel mr-2" style="color:#217346;"></i>Excel Preview
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                </div>
+                <div class="modal-body p-0" style="overflow: auto; max-height: 78vh;">
+                    <div id="excelPreviewBody">
+                        <div class="text-center py-5">
+                            <i class="fas fa-spinner fa-spin text-primary" style="font-size:1.5rem;"></i>
+                            <p class="text-muted mt-2 mb-0">Loading Excel...</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
 @stop
 
 @section('css')
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         .card-primary>.card-header,
         .card.card-primary>.card-header {
@@ -900,8 +977,142 @@
             background-color: #fff9e6;
             border-color: #ffc107 !important;
         }
+
+        /* ── Merged Charges card ─────────────────────────────────── */
+        #chargesCard .table-responsive {
+            border-top: 1px solid #e8e8f5;
+        }
+
+        .charge-group-band td {
+            padding: 0 !important;
+            background: #eef1f8;
+            border-top: 1px solid #d8dfec;
+            border-bottom: 1px solid #d8dfec;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .charge-group-band-inner {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 9px 14px;
+        }
+
+        .charge-group-caret {
+            color: #4B49AC;
+            font-size: 0.9rem;
+            transition: transform 0.15s ease;
+        }
+
+        .charge-group-band.is-collapsed .charge-group-caret {
+            transform: rotate(-90deg);
+        }
+
+        .charge-group-band-label {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.09em;
+            color: #4B49AC;
+        }
+
+        .charge-group-band-total {
+            margin-left: auto;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #4B49AC;
+            letter-spacing: 0.02em;
+        }
+
+        .charge-group-band:hover td {
+            background: #e4e8f4;
+        }
+
+        #chargesCard tbody tr.charge-row:hover {
+            background: #f9f9fd;
+        }
+
+        #chargesCard .charge-margin-neg {
+            color: #dc3545;
+        }
+
+        #chargesCard .charge-margin-pos {
+            color: #218838;
+        }
+
+        #chargesCard .show-items-link {
+            text-decoration: underline;
+            font-size: 0.78rem;
+        }
+
+        .badge-markup {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+            font-size: 0.65rem;
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 10px;
+            margin-left: 6px;
+            white-space: nowrap;
+            vertical-align: middle;
+        }
+
+        .badge-markup i {
+            font-size: 0.6rem;
+            margin-right: 3px;
+        }
+
+        /* ── Excel preview — rendered SheetJS table ─────────────────── */
+        #excelPreviewBody {
+            background: #fff;
+            padding: 12px;
+        }
+
+        #excelPreviewBody table {
+            border-collapse: collapse;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 11px;
+            color: #222;
+            width: 100%;
+            table-layout: auto;
+        }
+
+        #excelPreviewBody td,
+        #excelPreviewBody th {
+            border: 1px solid #d8dfec;
+            padding: 4px 8px;
+            vertical-align: top;
+            white-space: normal;
+            overflow-wrap: anywhere;
+        }
+
+        #excelPreviewBody tr:first-child td {
+            background: #eef1f8;
+            font-weight: 600;
+            color: #1F3864;
+        }
+
+        #excelPreviewBody tr:hover td {
+            background: #f9f9fd;
+        }
+
+        #excelPreviewBody td[colspan] {
+            background: #f4f4fb;
+        }
+
+        #excelPreviewBody table {
+            margin: 12px;
+        }
+
+        #excelPreviewBody>.text-center,
+        #excelPreviewBody>.alert {
+            margin: 12px;
+        }
     </style>
 @stop
+
 
 @section('js')
     <script>
@@ -917,6 +1128,510 @@
             const bookingNo = '{{ $quotation->bookingno ?? '' }}';
             const QUOTE_NO_VIEW = '{{ $quotation->QuoteNo ?? '' }}';
             const SCOPE_OF_VOLUME = '{{ $quotation->scopevolume ?? '' }}';
+
+            // SALES INTELLIGENCE
+            (function() {
+
+                // Values already available on the page from PHP/JS
+                const SI_COMPANY = '{{ addslashes(trim($quotation->pri_partnermaster_name ?? '')) }}';
+                const SI_SERVICE = '{{ addslashes(trim($quotation->SVName ?? '')) }}';
+                const SI_OFFICE = '{{ addslashes(trim($officeShortCode ?? '')) }}';
+                const SI_CURRENCY = '{{ addslashes(trim($quotation->QuoteCurr ?? 'USD')) }}';
+
+                // Chart instances — kept so we can destroy before re-render
+                let siWinLossChartInst = null;
+                let siServiceChartInst = null;
+                let siTrendChartInst = null;
+                let siDataLoaded = false;
+
+                // ── Collapse toggle ───────────────────────────────────────
+                $('#salesIntelligenceHeader').on('click', function(e) {
+                    if ($(e.target).closest('button, .btn-group').length) return;
+                    const $body = $('#salesIntelligenceBody');
+                    const $icon = $('#siCollapseBtn i');
+                    $body.slideToggle(200);
+                    $icon.toggleClass('fa-chevron-up fa-chevron-down');
+                });
+
+                $('#siCollapseBtn').on('click', function(e) {
+                    e.stopPropagation();
+                    const $body = $('#salesIntelligenceBody');
+                    const $icon = $(this).find('i');
+                    $body.slideToggle(200);
+                    $icon.toggleClass('fa-chevron-up fa-chevron-down');
+                });
+
+                // ── View toggle ───────────────────────────────────────────
+                $('#siTableViewBtn').on('click', function() {
+                    $(this).addClass('active');
+                    $('#siChartViewBtn').removeClass('active');
+                    $('#siTableView').show();
+                    $('#siChartView').hide();
+                });
+
+                $('#siChartViewBtn').on('click', function() {
+                    $(this).addClass('active');
+                    $('#siTableViewBtn').removeClass('active');
+                    $('#siTableView').hide();
+                    $('#siChartView').show();
+                    // Render charts only when first switched to chart view
+                    if (siDataLoaded) renderCharts(window._siComputedData);
+                });
+
+                // ── Helpers ───────────────────────────────────────────────
+                function fmtCurrency(val, currency) {
+                    return new Intl.NumberFormat('en-US', {
+                        style: 'currency',
+                        currency: currency || 'USD',
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                    }).format(val);
+                }
+
+                function statusGroup(status) {
+                    if (['Won', 'Completed'].includes(status)) return 'won';
+                    if (['Lost', 'Cancelled'].includes(status)) return 'lost';
+                    if (['In Progress'].includes(status)) return 'open';
+                    return 'other';
+                }
+
+                // ── Probability engine ────────────────────────────────────
+                // Returns { probability: float|null, confidence: string, basis: string }
+                function computeProbability(allQuotes, targetService) {
+                    const closed = allQuotes.filter(q => ['Won', 'Completed', 'Lost', 'Cancelled'].includes(q
+                        .Status));
+
+                    // Insufficient data rule — minimum 3 closed quotes required
+                    if (closed.length < 3) {
+                        return {
+                            probability: null,
+                            confidence: 'Insufficient data',
+                            basis: closed.length + ' closed quote(s) — need at least 3',
+                            color: '#aaa',
+                        };
+                    }
+
+                    // Base win rate across all services
+                    const won = closed.filter(q => statusGroup(q.Status) === 'won').length;
+                    const baseRate = won / closed.length;
+
+                    // Service-specific win rate (weighted 60%)
+                    const svcQuotes = closed.filter(q => q.Service === targetService);
+                    let serviceRate = baseRate; // fallback to base if no service history
+                    if (svcQuotes.length >= 2) {
+                        const svcWon = svcQuotes.filter(q => statusGroup(q.Status) === 'won').length;
+                        serviceRate = svcWon / svcQuotes.length;
+                    }
+                    let probability = (baseRate * 0.4) + (serviceRate * 0.6);
+
+                    // Recency adjustment — days since most recent quote
+                    const dates = allQuotes.map(q => new Date(q.Date)).filter(d => !isNaN(d));
+                    const lastDate = dates.length ? new Date(Math.max(...dates)) : null;
+                    if (lastDate) {
+                        const daysSince = Math.floor((new Date() - lastDate) / 86400000);
+                        if (daysSince < 30) probability = Math.min(1, probability + 0.05);
+                        else if (daysSince > 180) probability = Math.max(0, probability - 0.10);
+                    }
+
+                    // Confidence tier
+                    let confidence, confColor;
+                    if (closed.length >= 10) {
+                        confidence = 'High';
+                        confColor = '#28a745';
+                    } else if (closed.length >= 5) {
+                        confidence = 'Medium';
+                        confColor = '#fd7e14';
+                    } else {
+                        confidence = 'Low';
+                        confColor = '#dc3545';
+                    }
+
+                    return {
+                        probability: Math.round(probability * 1000) / 10, // 1 decimal place
+                        confidence,
+                        confColor,
+                        basis: `Based on ${closed.length} closed quotes (${won} won)`,
+                    };
+                }
+
+                // ── Service history aggregation ───────────────────────────
+                function buildServiceHistory(allQuotes) {
+                    const map = {};
+                    allQuotes.forEach(function(q) {
+                        const svc = q.Service || 'Unknown';
+                        if (!map[svc]) map[svc] = {
+                            offered: 0,
+                            won: 0,
+                            lost: 0,
+                            lastDate: null
+                        };
+                        map[svc].offered++;
+                        const grp = statusGroup(q.Status);
+                        if (grp === 'won') map[svc].won++;
+                        if (grp === 'lost') map[svc].lost++;
+                        const d = new Date(q.Date);
+                        if (!isNaN(d) && (!map[svc].lastDate || d > map[svc].lastDate)) {
+                            map[svc].lastDate = d;
+                        }
+                    });
+                    return map;
+                }
+
+                // ── Render metrics ────────────────────────────────────────
+                function renderMetrics(prob, quotedRevenue, quotedCost, currency) {
+                    if (prob.probability === null) {
+                        $('#siProbabilityValue').text('N/A').css('color', '#aaa');
+                        $('#siProbabilityBasis').text(prob.basis);
+                        $('#siConfidenceValue').text('N/A').css('color', '#aaa');
+                        $('#siConfidenceBasis').text('Insufficient history');
+                        $('#siExpectedRevenue').text('N/A');
+                        $('#siExpectedProfit').text('N/A');
+                        $('#siProfitMargin').text('—');
+                        return;
+                    }
+
+                    const pct = prob.probability;
+                    const expectedRev = (quotedRevenue * pct) / 100;
+                    const profit = quotedRevenue - quotedCost;
+                    const expectedProfit = (profit * pct) / 100;
+                    const margin = quotedRevenue > 0 ?
+                        ((profit / quotedRevenue) * 100).toFixed(2) :
+                        null;
+
+                    $('#siProbabilityValue').text(pct.toFixed(1) + '%').css('color', '#4B49AC');
+                    $('#siProbabilityBasis').text(prob.basis);
+
+                    $('#siConfidenceValue').text(prob.confidence).css('color', prob.confColor);
+                    $('#siConfidenceBasis').text(closed => prob.basis);
+                    $('#siConfidenceBasis').text('');
+
+                    $('#siExpectedRevenue')
+                        .text(fmtCurrency(expectedRev, currency))
+                        .css('color', expectedRev >= 0 ? '#28a745' : '#dc3545');
+
+                    $('#siExpectedProfit')
+                        .text(fmtCurrency(expectedProfit, currency))
+                        .css('color', expectedProfit >= 0 ? '#28a745' : '#dc3545');
+
+                    $('#siProfitMargin').text(
+                        margin !== null ?
+                        'Margin: ' + margin + '%' :
+                        quotedCost === 0 ? 'No cost data' : '—'
+                    );
+                }
+
+                // ── Render service history table ──────────────────────────
+                function renderServiceHistory(svcMap) {
+                    const $tbody = $('#siServiceHistoryBody').empty();
+                    const rows = Object.entries(svcMap).sort((a, b) => b[1].offered - a[1].offered);
+
+                    if (!rows.length) {
+                        $tbody.html('<tr><td colspan="6" class="text-center text-muted">No history</td></tr>');
+                        return;
+                    }
+
+                    rows.forEach(function([svc, data]) {
+                        const winRate = data.offered > 0 ?
+                            ((data.won / data.offered) * 100).toFixed(1) + '%' :
+                            '—';
+                        const winColor = data.offered > 0 ?
+                            (data.won / data.offered >= 0.5 ? '#28a745' : '#dc3545') :
+                            '#aaa';
+                        const lastDate = data.lastDate ?
+                            data.lastDate.toLocaleDateString('en-GB') :
+                            '—';
+                        $tbody.append(`
+                            <tr>
+                                <td>${svc}</td>
+                                <td class="text-center">${data.offered}</td>
+                                <td class="text-center">${data.won}</td>
+                                <td class="text-center">${data.lost}</td>
+                                <td class="text-center font-weight-bold" style="color:${winColor};">
+                                    ${winRate}
+                                </td>
+                                <td>${lastDate}</td>
+                            </tr>
+                        `);
+                    });
+                }
+
+                // ── Render recent quotes table ────────────────────────────
+                function renderRecentQuotes(allQuotes) {
+                    const STATUS_COLORS = {
+                        'Won': 'success',
+                        'Completed': 'success',
+                        'Lost': 'danger',
+                        'Cancelled': 'danger',
+                        'In Progress': 'primary',
+                        'Failed Int.': 'warning',
+                        'Failed Progress': 'secondary',
+                    };
+
+                    const $tbody = $('#siRecentQuotesBody').empty();
+                    const sorted = [...allQuotes].sort((a, b) => new Date(b.Date) - new Date(a.Date));
+                    const recent = sorted.slice(0, 10);
+
+                    $('#siQuoteCount').text(allQuotes.length + ' total');
+
+                    if (!recent.length) {
+                        $tbody.html(
+                            '<tr><td colspan="5" class="text-center text-muted">No quotes found</td></tr>');
+                        return;
+                    }
+
+                    recent.forEach(function(q) {
+                        const badgeType = STATUS_COLORS[q.Status] || 'secondary';
+                        $tbody.append(`
+                            <tr>
+                                <td><strong>${q.QuoteNo}</strong></td>
+                                <td>${q.Date || '—'}</td>
+                                <td>${q.Service || '—'}</td>
+                                <td>
+                                    <span class="badge badge-${badgeType}">${q.Status}</span>
+                                </td>
+                                <td>${q.SalesPerson || '—'}</td>
+                            </tr>
+                        `);
+                    });
+                }
+
+                // ── Render charts ─────────────────────────────────────────
+                function renderCharts(data) {
+                    if (!data) return;
+
+                    const {
+                        allQuotes,
+                        svcMap
+                    } = data;
+
+                    // -- Win/Loss doughnut --
+                    const won = allQuotes.filter(q => statusGroup(q.Status) === 'won').length;
+                    const lost = allQuotes.filter(q => statusGroup(q.Status) === 'lost').length;
+                    const open = allQuotes.filter(q => statusGroup(q.Status) === 'open').length;
+                    const other = allQuotes.length - won - lost - open;
+
+                    if (siWinLossChartInst) siWinLossChartInst.destroy();
+                    siWinLossChartInst = new Chart(
+                        document.getElementById('siWinLossChart').getContext('2d'), {
+                            type: 'doughnut',
+                            data: {
+                                labels: ['Won / Completed', 'Lost / Cancelled', 'In Progress', 'Other'],
+                                datasets: [{
+                                    data: [won, lost, open, other],
+                                    backgroundColor: ['#28a745', '#dc3545', '#4B49AC', '#adb5bd'],
+                                    borderWidth: 1,
+                                }],
+                            },
+                            options: {
+                                responsive: true,
+                                plugins: {
+                                    legend: {
+                                        position: 'bottom',
+                                        labels: {
+                                            font: {
+                                                size: 11
+                                            }
+                                        }
+                                    }
+                                },
+                            },
+                        });
+
+                    // -- Service bar --
+                    const svcLabels = Object.keys(svcMap);
+                    const svcWon = svcLabels.map(s => svcMap[s].won);
+                    const svcLost = svcLabels.map(s => svcMap[s].lost);
+                    const svcOpen = svcLabels.map(s =>
+                        svcMap[s].offered - svcMap[s].won - svcMap[s].lost
+                    );
+
+                    if (siServiceChartInst) siServiceChartInst.destroy();
+                    siServiceChartInst = new Chart(
+                        document.getElementById('siServiceChart').getContext('2d'), {
+                            type: 'bar',
+                            data: {
+                                labels: svcLabels,
+                                datasets: [{
+                                        label: 'Won',
+                                        data: svcWon,
+                                        backgroundColor: '#28a745'
+                                    },
+                                    {
+                                        label: 'Lost',
+                                        data: svcLost,
+                                        backgroundColor: '#dc3545'
+                                    },
+                                    {
+                                        label: 'In Progress',
+                                        data: svcOpen,
+                                        backgroundColor: '#4B49AC'
+                                    },
+                                ],
+                            },
+                            options: {
+                                responsive: true,
+                                scales: {
+                                    x: {
+                                        stacked: true
+                                    },
+                                    y: {
+                                        stacked: true,
+                                        beginAtZero: true
+                                    }
+                                },
+                                plugins: {
+                                    legend: {
+                                        position: 'bottom',
+                                        labels: {
+                                            font: {
+                                                size: 11
+                                            }
+                                        }
+                                    }
+                                },
+                            },
+                        });
+
+                    // -- Monthly trend line (last 12 months) --
+                    const now = new Date();
+                    const months = [];
+                    const monthly = {};
+                    for (let i = 11; i >= 0; i--) {
+                        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                        const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+                        months.push(key);
+                        monthly[key] = {
+                            total: 0,
+                            won: 0
+                        };
+                    }
+                    allQuotes.forEach(function(q) {
+                        const d = new Date(q.Date);
+                        if (isNaN(d)) return;
+                        const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+                        if (monthly[key]) {
+                            monthly[key].total++;
+                            if (statusGroup(q.Status) === 'won') monthly[key].won++;
+                        }
+                    });
+
+                    if (siTrendChartInst) siTrendChartInst.destroy();
+                    siTrendChartInst = new Chart(
+                        document.getElementById('siTrendChart').getContext('2d'), {
+                            type: 'line',
+                            data: {
+                                labels: months,
+                                datasets: [{
+                                        label: 'Total Quotes',
+                                        data: months.map(m => monthly[m].total),
+                                        borderColor: '#4B49AC',
+                                        backgroundColor: 'rgba(75,73,172,0.08)',
+                                        tension: 0.3,
+                                        fill: true,
+                                    },
+                                    {
+                                        label: 'Won',
+                                        data: months.map(m => monthly[m].won),
+                                        borderColor: '#28a745',
+                                        backgroundColor: 'rgba(40,167,69,0.08)',
+                                        tension: 0.3,
+                                        fill: true,
+                                    },
+                                ],
+                            },
+                            options: {
+                                responsive: true,
+                                scales: {
+                                    y: {
+                                        beginAtZero: true
+                                    }
+                                },
+                                plugins: {
+                                    legend: {
+                                        position: 'bottom',
+                                        labels: {
+                                            font: {
+                                                size: 11
+                                            }
+                                        }
+                                    }
+                                },
+                            },
+                        });
+                }
+
+                // ── Main load function ────────────────────────────────────
+                function loadSalesIntelligence() {
+                    if (!SI_COMPANY || !SI_OFFICE) {
+                        $('#siLoading').hide();
+                        $('#siError').removeClass('d-none');
+                        $('#siErrorMsg').text('Client or office information not available.');
+                        return;
+                    }
+
+                    $.ajax({
+                        url: '{{ route('quotation.sales-intelligence') }}',
+                        type: 'GET',
+                        data: {
+                            office_code: SI_OFFICE,
+                            customer: SI_COMPANY
+                        },
+                        success: function(response) {
+                            $('#siLoading').hide();
+
+                            if (!response.success || !response.data.length) {
+                                $('#siError').removeClass('d-none');
+                                $('#siErrorMsg').text('No quote history found for this client.');
+                                return;
+                            }
+
+                            const allQuotes = response.data;
+
+                            // Read quoted revenue + cost from the page (already calculated)
+                            const parsePageFloat = function(selector) {
+                                const raw = $(selector).val() || '0';
+                                return parseFloat(raw.replace(/[^0-9.\-]/g, '')) || 0;
+                            };
+                            const quotedRevenue = parsePageFloat('#viewQuotedRevenue');
+                            const quotedCost = parsePageFloat('#costTotalHeaderAmount');
+
+                            // Compute
+                            const prob = computeProbability(allQuotes, SI_SERVICE);
+                            const svcMap = buildServiceHistory(allQuotes);
+
+                            // Store for chart re-render on tab switch
+                            window._siComputedData = {
+                                allQuotes,
+                                svcMap
+                            };
+                            siDataLoaded = true;
+
+                            // Render
+                            renderMetrics(prob, quotedRevenue, quotedCost, SI_CURRENCY);
+                            renderServiceHistory(svcMap);
+                            renderRecentQuotes(allQuotes);
+
+                            // Show view toggle + content
+                            $('#siViewToggle').css('display', 'flex !important')
+                                .attr('style', 'display:flex !important; gap:4px;');
+                            $('#siContent').show();
+                        },
+                        error: function(xhr) {
+                            $('#siLoading').hide();
+                            $('#siError').removeClass('d-none');
+                            $('#siErrorMsg').text(
+                                xhr.responseJSON?.message ||
+                                'Failed to load sales intelligence.'
+                            );
+                        },
+                    });
+                }
+
+                // Delay slightly so page charges load first (they populate #quotedRevenue)
+                setTimeout(loadSalesIntelligence, 1200);
+
+            })();
+            // END SALES INTELLIGENCE
 
             // ============================================================
             // VIEW PAGE — Load containers (read-only)
@@ -952,272 +1667,6 @@
                     }
                 });
             }
-
-            // ============================================================
-            // SHIPMENT DETAILS — Edit / Save / Cancel
-            // ============================================================
-            const savedShipmentMode = '{{ $quotation->shipmentmode ?? '' }}';
-            const savedTransportMode = '{{ $quotation->TransportMode ?? '' }}';
-            const savedOriginCountry = '{{ $quotation->origincountry ?? '' }}';
-            const savedDestCountry = '{{ $quotation->destinationcountry ?? '' }}';
-            const savedIncoTerm = '{{ $quotation->incoterm ?? '' }}';
-            const savedServiceClass = '{{ $quotation->ServiceClass ?? '' }}';
-
-            let viewShipmentSnapshot = {};
-            let viewShipmentDropdownsLoaded = false;
-
-            function bindCountrySearch(searchId, selectId) {
-                const $select = $('#' + selectId);
-                const allOptions = $select.find('option').clone();
-                $('#' + searchId).on('input', function() {
-                    const term = $(this).val().toLowerCase().trim();
-                    const currentVal = $select.val();
-                    $select.empty();
-                    allOptions.each(function() {
-                        const optText = $(this).text().toLowerCase();
-                        const optVal = $(this).val();
-                        if (optVal === '' || optText.includes(term)) {
-                            $select.append($(this).clone());
-                        }
-                    });
-                    if ($select.find(`option[value="${currentVal}"]`).length) {
-                        $select.val(currentVal);
-                    }
-                });
-            }
-
-            function loadViewShipmentDropdowns(callback) {
-                if (viewShipmentDropdownsLoaded) {
-                    if (typeof callback === 'function') callback();
-                    return;
-                }
-                let remaining = 5;
-
-                function oneDone() {
-                    remaining--;
-                    if (remaining === 0) {
-                        viewShipmentDropdownsLoaded = true;
-                        if (typeof callback === 'function') callback();
-                    }
-                }
-                $.ajax({
-                    url: '{{ route('quotation.shipment-modes') }}',
-                    type: 'GET',
-                    success: function(r) {
-                        const $sel = $('#viewShipmentModeSelect').empty()
-                            .append('<option value="">-- Select --</option>');
-                        (r.success ? r.data : []).forEach(function(item) {
-                            $sel.append(
-                                `<option value="${item.Code}" ${item.Code === savedShipmentMode ? 'selected' : ''}>${item.Code}</option>`
-                            );
-                        });
-                    },
-                    complete: oneDone
-                });
-                $.ajax({
-                    url: '{{ route('quotation.transport-modes') }}',
-                    type: 'GET',
-                    success: function(r) {
-                        const $sel = $('#viewTransportModeSelect').empty()
-                            .append('<option value="">-- Select --</option>');
-                        (r.success ? r.data : []).forEach(function(item) {
-                            $sel.append(
-                                `<option value="${item.Code}" ${item.Code === savedTransportMode ? 'selected' : ''}>${item.Name}</option>`
-                            );
-                        });
-                    },
-                    complete: oneDone
-                });
-                $.ajax({
-                    url: '{{ route('quotation.lookup.countries') }}',
-                    type: 'GET',
-                    data: {
-                        filter: ''
-                    },
-                    success: function(countries) {
-                        const list = Array.isArray(countries) ? countries : [];
-
-                        function fillCountrySelect(selectId, savedValue) {
-                            const $sel = $('#' + selectId).empty()
-                                .append('<option value="">-- Select --</option>');
-                            const normalizedSaved = (savedValue || '').trim().toLowerCase();
-                            list.forEach(function(c) {
-                                const name = (c.CountryName || '').trim();
-                                $sel.append(
-                                    `<option value="${name}" ${name.toLowerCase() === normalizedSaved ? 'selected' : ''}>${name}</option>`
-                                );
-                            });
-                        }
-                        fillCountrySelect('viewOriginCountrySelect', savedOriginCountry);
-                        fillCountrySelect('viewDestCountrySelect', savedDestCountry);
-                        bindCountrySearch('viewOriginCountrySearch', 'viewOriginCountrySelect');
-                        bindCountrySearch('viewDestCountrySearch', 'viewDestCountrySelect');
-                    },
-                    complete: oneDone
-                });
-                $.ajax({
-                    url: '{{ route('quotation.inco-terms') }}',
-                    type: 'GET',
-                    success: function(r) {
-                        const $sel = $('#viewIncoTermSelect').empty()
-                            .append('<option value="">-- Select --</option>');
-                        (r.success ? r.data : []).forEach(function(item) {
-                            const code = item.IncoTermCode || item.Code || '';
-                            const name = item.Name || code;
-                            $sel.append(
-                                `<option value="${code}" ${code === savedIncoTerm ? 'selected' : ''}>${code} — ${name}</option>`
-                            );
-                        });
-                    },
-                    complete: oneDone
-                });
-                $.ajax({
-                    url: '{{ route('quotation.lookup.serviceClasses') }}',
-                    type: 'GET',
-                    data: {
-                        filter: ''
-                    },
-                    success: function(classes) {
-                        const $sel = $('#viewServiceClassSelect').empty()
-                            .append('<option value="">-- Select --</option>');
-                        (Array.isArray(classes) ? classes : []).forEach(function(item) {
-                            const code = item.Code || '';
-                            const display = item.Name || item.Description || code;
-                            $sel.append(
-                                `<option value="${code}" ${code === savedServiceClass ? 'selected' : ''}>${display}</option>`
-                            );
-                        });
-                    },
-                    complete: oneDone
-                });
-            }
-
-            $('#viewShipmentEditBtn').on('click', function() {
-                viewShipmentSnapshot = {
-                    shipmentMode: $('#viewShipmentModeSelect').val() || savedShipmentMode,
-                    transportMode: $('#viewTransportModeSelect').val() || savedTransportMode,
-                    originCountry: $('#viewOriginCountrySelect').val() || savedOriginCountry,
-                    destCountry: $('#viewDestCountrySelect').val() || savedDestCountry,
-                    incoTerm: $('#viewIncoTermSelect').val() || savedIncoTerm,
-                    serviceClass: $('#viewServiceClassSelect').val() || savedServiceClass,
-                };
-                loadViewShipmentDropdowns(function() {
-                    $('#viewShipmentModeDisplay, #viewTransportModeDisplay, #viewIncoTermDisplay, #viewServiceClassDisplay')
-                        .addClass('d-none');
-                    $('#viewOriginCountryDisplay, #viewDestCountryDisplay').addClass('d-none');
-                    $('#viewShipmentModeSelect, #viewTransportModeSelect, #viewIncoTermSelect, #viewServiceClassSelect')
-                        .removeClass('d-none').prop('disabled', false);
-                    $('#viewOriginCountryEditWrap, #viewDestCountryEditWrap').removeClass('d-none');
-                    $('#viewShipmentEditBtn').hide();
-                    $('#viewShipmentSaveBtn, #viewShipmentCancelBtn').show();
-                });
-            });
-
-            $('#viewShipmentCancelBtn').on('click', function() {
-                $('#viewShipmentModeSelect').val(viewShipmentSnapshot.shipmentMode);
-                $('#viewTransportModeSelect').val(viewShipmentSnapshot.transportMode);
-                $('#viewOriginCountrySelect').val(viewShipmentSnapshot.originCountry);
-                $('#viewDestCountrySelect').val(viewShipmentSnapshot.destCountry);
-                $('#viewIncoTermSelect').val(viewShipmentSnapshot.incoTerm);
-                $('#viewServiceClassSelect').val(viewShipmentSnapshot.serviceClass);
-                $('#viewOriginCountrySearch, #viewDestCountrySearch').val('');
-                $('#viewShipmentModeSelect, #viewTransportModeSelect, #viewIncoTermSelect, #viewServiceClassSelect')
-                    .addClass('d-none').prop('disabled', true);
-                $('#viewOriginCountryEditWrap, #viewDestCountryEditWrap').addClass('d-none');
-                $('#viewShipmentModeDisplay, #viewTransportModeDisplay, #viewIncoTermDisplay, #viewServiceClassDisplay')
-                    .removeClass('d-none');
-                $('#viewOriginCountryDisplay, #viewDestCountryDisplay').removeClass('d-none');
-                $(this).hide();
-                $('#viewShipmentSaveBtn').hide();
-                $('#viewShipmentEditBtn').show();
-            });
-
-            $('#viewShipmentSaveBtn').on('click', function() {
-                const shipmentMode = $('#viewShipmentModeSelect').val();
-                const transportMode = $('#viewTransportModeSelect').val();
-                const originCountry = $('#viewOriginCountrySelect').val();
-                const destCountry = $('#viewDestCountrySelect').val();
-                const incoTerm = $('#viewIncoTermSelect').val();
-                const serviceClass = $('#viewServiceClassSelect').val();
-
-                if (!shipmentMode) {
-                    toastr.error('Please select a Shipment Mode.');
-                    return;
-                }
-                if (!transportMode) {
-                    toastr.error('Please select a Transport Mode.');
-                    return;
-                }
-                if (!originCountry) {
-                    toastr.error('Please select an Origin Country.');
-                    return;
-                }
-                if (!destCountry) {
-                    toastr.error('Please select a Destination Country.');
-                    return;
-                }
-                if (!incoTerm) {
-                    toastr.error('Please select an InCO Term.');
-                    return;
-                }
-                if (!serviceClass) {
-                    toastr.error('Please select a Service Class.');
-                    return;
-                }
-
-                const $btn = $(this);
-                $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Saving...');
-
-                $.ajax({
-                    url: '{{ route('quotation.shipment.save') }}',
-                    type: 'POST',
-                    data: {
-                        _token: '{{ csrf_token() }}',
-                        booking_no: bookingNo,
-                        shipment_mode: shipmentMode,
-                        transport_mode: transportMode,
-                        incoterm: incoTerm,
-                        origincountry: originCountry,
-                        destinationcountry: destCountry,
-                        service_class: serviceClass,
-                    },
-                    success: function(r) {
-                        if (!r.success) {
-                            toastr.error(r.message || 'Shipment save failed.');
-                            $btn.prop('disabled', false).html(
-                                '<i class="fas fa-save mr-1"></i> Save');
-                            return;
-                        }
-                        $('#viewShipmentModeDisplay').val(shipmentMode);
-                        $('#viewTransportModeDisplay').val($(
-                            '#viewTransportModeSelect option:selected').text().trim());
-                        $('#viewOriginCountryDisplay').val(originCountry);
-                        $('#viewDestCountryDisplay').val(destCountry);
-                        $('#viewIncoTermDisplay').val(incoTerm);
-                        $('#viewServiceClassDisplay').val(serviceClass);
-                        $('#viewShipmentModeSelect, #viewTransportModeSelect, #viewIncoTermSelect, #viewServiceClassSelect')
-                            .addClass('d-none').prop('disabled', true);
-                        $('#viewOriginCountryEditWrap, #viewDestCountryEditWrap').addClass(
-                            'd-none');
-                        $('#viewShipmentModeDisplay, #viewTransportModeDisplay, #viewIncoTermDisplay, #viewServiceClassDisplay')
-                            .removeClass('d-none');
-                        $('#viewOriginCountryDisplay, #viewDestCountryDisplay').removeClass(
-                            'd-none');
-                        $('#viewOriginCountrySearch, #viewDestCountrySearch').val('');
-                        $('#viewShipmentSaveBtn, #viewShipmentCancelBtn').hide();
-                        $('#viewShipmentEditBtn').show();
-                        toastr.success('Shipment details saved successfully.');
-                    },
-                    error: function(xhr) {
-                        toastr.error(xhr.responseJSON?.message ||
-                            'Unexpected error saving shipment details.');
-                    },
-                    complete: function() {
-                        $btn.prop('disabled', false).html(
-                            '<i class="fas fa-save mr-1"></i> Save');
-                    }
-                });
-            });
 
             // ============================================================
             // DUPLICATE — centered overlay card (existing button)
@@ -1260,9 +1709,40 @@
             });
 
             // ============================================================
-            // LOAD CHARGES ON PAGE LOAD
+            // LOAD CHARGES ON PAGE LOAD (merged view)
             // ============================================================
             if (bookingNo) loadChargesForView();
+
+            const CHARGE_CATEGORY_ORDER_VIEW = [
+                'Origin Charges', 'Freight', 'Customs Charges',
+                'Destination Charges', 'Delivery Charges'
+            ];
+
+            function categoryRankView(cat) {
+                const i = CHARGE_CATEGORY_ORDER_VIEW.indexOf(cat);
+                return i === -1 ? 99 : i;
+            }
+
+            function buildPairedRowsView(revenue, cost) {
+                const map = new Map();
+                revenue.forEach(function(r) {
+                    const k = r.pairKey || ('rev:' + r.id);
+                    if (!map.has(k)) map.set(k, {
+                        revenue: null,
+                        cost: null
+                    });
+                    map.get(k).revenue = r;
+                });
+                cost.forEach(function(c) {
+                    const k = c.pairKey || ('cost:' + c.id);
+                    if (!map.has(k)) map.set(k, {
+                        revenue: null,
+                        cost: null
+                    });
+                    map.get(k).cost = c;
+                });
+                return Array.from(map.values());
+            }
 
             function loadChargesForView() {
                 $.ajax({
@@ -1273,27 +1753,141 @@
                         quotation_id: '{{ $quotation->ID ?? '' }}'
                     },
                     beforeSend: function() {
-                        const spinner =
-                            '<tr><td colspan="7" class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>';
-                        $('#revenueChargesViewTable, #costChargesViewTable').html(spinner);
+                        $('#chargesTableBody').html(
+                            '<tr><td colspan="10" class="text-center text-muted py-3">' +
+                            '<i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>'
+                        );
                     },
                     success: function(response) {
                         if (response.success) {
-                            renderRevenueChargesView(response.revenue || []);
-                            renderCostChargesView(response.cost || []);
+                            renderChargesView(response.revenue || [], response.cost || []);
                             updateViewSummary(response.revenue || [], response.cost || []);
                         } else {
-                            const err =
-                                '<tr><td colspan="7" class="text-center text-danger">Failed to load charges</td></tr>';
-                            $('#revenueChargesViewTable, #costChargesViewTable').html(err);
+                            $('#chargesTableBody').html(
+                                '<tr><td colspan="10" class="text-center text-danger py-3">' +
+                                'Failed to load charges</td></tr>'
+                            );
                         }
                     },
                     error: function() {
-                        const err =
-                            '<tr><td colspan="7" class="text-center text-danger">Error loading charges</td></tr>';
-                        $('#revenueChargesViewTable, #costChargesViewTable').html(err);
+                        $('#chargesTableBody').html(
+                            '<tr><td colspan="10" class="text-center text-danger py-3">' +
+                            'Error loading charges</td></tr>'
+                        );
                     }
                 });
+            }
+
+            function renderChargesView(revenue, cost) {
+                const $tbody = $('#chargesTableBody').empty();
+                const pairs = buildPairedRowsView(revenue, cost);
+
+                let totalRevenue = 0,
+                    totalCost = 0;
+
+                if (!pairs.length) {
+                    $tbody.append(
+                        '<tr><td colspan="10" class="text-center text-muted py-3">No charges added</td></tr>'
+                    );
+                    $('#viewRevenueTotalHeaderAmount, #viewCostTotalHeaderAmount, #viewMarginTotalHeaderAmount')
+                        .text('0.00');
+                    return;
+                }
+
+                const byCategory = new Map();
+                pairs.forEach(function(p) {
+                    const cat = (p.revenue && p.revenue.category) ||
+                        (p.cost && p.cost.category) || 'Other';
+                    if (!byCategory.has(cat)) byCategory.set(cat, []);
+                    byCategory.get(cat).push(p);
+                });
+
+                const sortedCategories = Array.from(byCategory.keys())
+                    .sort((a, b) => categoryRankView(a) - categoryRankView(b));
+
+                sortedCategories.forEach(function(cat) {
+                    const catPairs = byCategory.get(cat);
+                    let catTotal = 0;
+                    const rowsHtml = [];
+
+                    catPairs.forEach(function(p) {
+                        const rev = p.revenue;
+                        const costRow = p.cost;
+
+                        const costAmt = costRow ? parseFloat(costRow.amtInBaseCurr || 0) : null;
+                        const sellAmt = rev ? parseFloat(rev.amtInBaseCurr || 0) : null;
+
+                        if (rev) totalRevenue += parseFloat(rev.amtInBaseCurr || 0);
+                        if (costRow) totalCost += parseFloat(costRow.amtInBaseCurr || 0);
+                        catTotal += (rev ? parseFloat(rev.amtInBaseCurr || 0) : 0);
+
+                        const primary = costRow || rev;
+
+                        const markupBadge = (costRow && parseFloat(costRow.increaseBy || 0) > 0) ?
+                            `<span class="badge-markup" title="Markup ${costRow.increaseBy}${costRow.increaseType === 'Percentage' ? '%' : ''}">
+                                <i class="fas fa-percent"></i>${costRow.increaseBy}${costRow.increaseType === 'Percentage' ? '%' : ''}
+                            </span>` : '';
+
+                        const basedOnCode = primary.basedOnCode || '';
+                        const uomCode = primary.uomCode || '';
+                        const currency = (costRow && costRow.chgCurr) ||
+                            (rev && rev.chgCurr) ||
+                            getBaseCurrency();
+
+                        const marginPct = (primary.margin != null && primary.margin !== '') ?
+                            parseFloat(primary.margin) : null;
+                        const marginText = marginPct === null ? '—' : marginPct.toFixed(2) + '%';
+                        const marginClass = marginPct === null ? '' :
+                            (marginPct < 0 ? 'charge-margin-neg' : 'charge-margin-pos');
+
+                        rowsHtml.push(`
+                            <tr class="charge-row" data-cat="${cat}">
+                                <td>
+                                    ${primary.chargeName || primary.chargeCode || ''}
+                                    ${markupBadge}
+                                </td>
+                                <td>${basedOnCode}</td>
+                                <td>${uomCode}</td>
+                                <td class="text-right">${parseFloat(primary.quantity || 0).toFixed(2)}</td>
+                                <td class="col-extra text-right">${costRow ? parseFloat(costRow.rate || 0).toFixed(2) : ''}</td>
+                                <td class="text-right">${costAmt !== null ? costAmt.toFixed(2) : ''}</td>
+                                <td class="col-extra text-right">${rev ? parseFloat(rev.rate || 0).toFixed(2) : ''}</td>
+                                <td class="text-right">${sellAmt !== null ? sellAmt.toFixed(2) : ''}</td>
+                                <td class="text-right ${marginClass}">${marginText}</td>
+                                <td class="col-extra">${currency}</td>
+                            </tr>
+                        `);
+                    });
+
+                    const catTotalText = catTotal.toFixed(2) + ' ' +
+                        (typeof SI_CURRENCY !== 'undefined' ? SI_CURRENCY : 'USD');
+
+                    $tbody.append(`
+                        <tr class="charge-group-band" data-cat="${cat}">
+                            <td colspan="10">
+                                <span class="charge-group-band-inner">
+                                    <i class="fas fa-caret-down charge-group-caret"></i>
+                                    <span class="charge-group-band-label">${cat}</span>
+                                    <span class="charge-group-band-total">${catTotalText}</span>
+                                </span>
+                            </td>
+                        </tr>
+                    `);
+
+                    rowsHtml.forEach(function(html) {
+                        $tbody.append(html);
+                    });
+                });
+
+                const headerMarginPct = totalRevenue > 0 ?
+                    ((totalRevenue - totalCost) / totalRevenue * 100) : 0;
+                $('#viewRevenueTotalHeaderAmount').text(totalRevenue.toFixed(2));
+                $('#viewCostTotalHeaderAmount').text(totalCost.toFixed(2));
+                $('#viewMarginTotalHeaderAmount').text(headerMarginPct.toFixed(2) + '%');
+
+                // Preserve Show more / Show less state
+                const expanded = $('.show-items-link[data-table="charges"]').data('expanded') || false;
+                $('#chargesTable').find('.col-extra').css('display', expanded ? 'table-cell' : 'none');
             }
 
             // ============================================================
@@ -1355,71 +1949,15 @@
                     const quoteNo = row.RequestedToQuoteNo || '';
 
                     $tbody.append(`
-            <tr>
-                <td>${officeName}</td>
-                <td>${quoteNo}</td>
-                <td>
-                    <span class="badge ${badgeClass}">${requestType}</span>
-                </td>
-            </tr>
-        `);
+                        <tr>
+                            <td>${officeName}</td>
+                            <td>${quoteNo}</td>
+                            <td>
+                                <span class="badge ${badgeClass}">${requestType}</span>
+                            </td>
+                        </tr>
+                    `);
                 });
-            }
-
-            function renderRevenueChargesView(charges) {
-                const tbody = $('#revenueChargesViewTable');
-                tbody.empty();
-                if (!charges.length) {
-                    tbody.append(
-                        '<tr><td colspan="7" class="text-center text-muted">No revenue charges found</td></tr>');
-                    $('#revenueTotalHeaderAmount').text('0.00');
-                    return;
-                }
-                let total = 0;
-                charges.forEach(function(c) {
-                    total += parseFloat(c.amtInBaseCurr || 0);
-                    tbody.append(`<tr>
-                        <td>${c.chargeName || c.chargeCode || ''}</td>
-                        <td class="text-right">${parseFloat(c.rate || 0).toFixed(2)}</td>
-                        <td class="text-right col-extra">${parseFloat(c.quantity || 0).toFixed(2)}</td>
-                        <td class="col-extra">${c.basedOnUOM || ''}</td>
-                        <td class="col-extra">${c.chgCurr || getBaseCurrency()}</td>
-                        <td class="text-right">${parseFloat(c.amtInChgCurr || 0).toFixed(2)}</td>
-                        <td class="text-right">${parseFloat(c.amtInBaseCurr || 0).toFixed(2)}</td>
-                    </tr>`);
-                });
-                $('#revenueTotalHeaderAmount').text(total.toFixed(2));
-                if (!$('.show-items-link[data-table="revenue"]').data('expanded')) {
-                    tbody.find('.col-extra').hide();
-                }
-            }
-
-            function renderCostChargesView(charges) {
-                const tbody = $('#costChargesViewTable');
-                tbody.empty();
-                if (!charges.length) {
-                    tbody.append(
-                        '<tr><td colspan="7" class="text-center text-muted">No cost charges found</td></tr>');
-                    $('#costTotalHeaderAmount').text('0.00');
-                    return;
-                }
-                let total = 0;
-                charges.forEach(function(c) {
-                    total += parseFloat(c.amtInBaseCurr || 0);
-                    tbody.append(`<tr>
-                        <td>${c.chargeName || c.chargeCode || ''}</td>
-                        <td class="text-right">${parseFloat(c.rate || 0).toFixed(2)}</td>
-                        <td class="text-right col-extra">${parseFloat(c.quantity || 0).toFixed(2)}</td>
-                        <td class="col-extra">${c.basedOnUOM || ''}</td>
-                        <td class="col-extra">${c.chgCurr || getBaseCurrency()}</td>
-                        <td class="text-right">${parseFloat(c.amtInChgCurr || 0).toFixed(2)}</td>
-                        <td class="text-right">${parseFloat(c.amtInBaseCurr || 0).toFixed(2)}</td>
-                    </tr>`);
-                });
-                $('#costTotalHeaderAmount').text(total.toFixed(2));
-                if (!$('.show-items-link[data-table="cost"]').data('expanded')) {
-                    tbody.find('.col-extra').hide();
-                }
             }
 
             function updateViewSummary(revenueCharges, costCharges) {
@@ -1475,6 +2013,291 @@
             loadViewEmailHistory();
 
             // ============================================================
+            // QUOTATION DOCUMENT — versions list (read-only, mirrors edit page)
+            // ============================================================
+            const VERSIONS_URL_VIEW = '{{ route('quotation.versions', $quotation->ID) }}';
+
+            function renderViewVersions(versions) {
+                const $container = $('#viewQuotationVersionsList').empty();
+
+                if (!versions || versions.length === 0) {
+                    $container.html('<p class="text-muted text-center mb-2">No versions generated yet.</p>');
+                    return;
+                }
+
+                let html = '';
+                versions.forEach(function(v) {
+                    const versionNo = v.version ?? v.Version ?? v.VersionNo ?? v.version_no ?? null;
+                    const versionLabel = v.label ?? v.Label ?? v.VersionLabel ?? ('Version ' + versionNo);
+                    const fileType = v.file_type ?? v.FileType ?? null;
+                    const displayLabel = fileType ?
+                        (versionLabel + ' (' + String(fileType).toUpperCase() + ')') :
+                        versionLabel;
+                    const versionUrl = v.url ?? v.Url ?? v.download_url ?? null;
+
+                    if (!versionNo) {
+                        console.warn('renderViewVersions: skipping entry — no version field', v);
+                        return;
+                    }
+
+                    const downloadUrl = versionUrl ??
+                        `/quotation/{{ $quotation->ID }}/download-pdf/${versionNo}`;
+
+                    const isXlsx = fileType && String(fileType).toUpperCase() === 'XLSX';
+
+                    html += `
+                        <div class="form-group row mb-1 align-items-center">
+                            <label class="col-sm-4 col-form-label">${displayLabel}</label>
+                            <div class="col-sm-8 d-flex align-items-center">
+                                <button type="button"
+                                    class="btn btn-sm btn-outline-primary btn-view-file mr-1"
+                                    data-url="${isXlsx ? downloadUrl : (downloadUrl + '?preview=1')}"
+                                    data-file-type="${(fileType || 'PDF').toUpperCase()}"
+                                    data-version="${versionNo}">
+                                    <i class="fas fa-eye mr-1"></i> View
+                                </button>
+                                <button type="button"
+                                    class="btn btn-sm btn-outline-primary btn-download-pdf"
+                                    data-url="${downloadUrl}"
+                                    data-version="${versionNo}">
+                                    <i class="fas fa-download mr-1"></i> Download
+                                </button>
+                                <span class="ml-2 text-success"
+                                    id="download-success-${versionNo}"
+                                    style="display:none; font-size:0.8rem;">
+                                    <i class="fas fa-check-circle mr-1"></i> Downloaded
+                                </span>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                $container.html(
+                    html || '<p class="text-muted text-center mb-2">No versions generated yet.</p>'
+                );
+            }
+
+            function loadViewVersions() {
+                $.ajax({
+                    url: VERSIONS_URL_VIEW,
+                    type: 'GET',
+                    success: function(response) {
+                        if (response.success) {
+                            renderViewVersions(response.versions ?? response.data ?? []);
+                        } else {
+                            $('#viewQuotationVersionsList').html(
+                                '<p class="text-danger text-center mb-2">Failed to load versions.</p>'
+                            );
+                        }
+                    },
+                    error: function() {
+                        $('#viewQuotationVersionsList').html(
+                            '<p class="text-danger text-center mb-2">Error loading versions.</p>'
+                        );
+                    }
+                });
+            }
+
+            loadViewVersions();
+
+            // ============================================================
+            // VIEW HANDLER — unified for PDF + Excel
+            // Branches on data-file-type so a single handler covers both.
+            // ============================================================
+            $(document).on('click', '.btn-view-file', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const $btn = $(this);
+                const url = $btn.data('url');
+                const fileType = String($btn.data('file-type') || '').toUpperCase();
+
+                // ── PDF (or any non-Excel) → new tab, browser renders it ──
+                if (fileType !== 'XLSX') {
+                    window.open(url, '_blank');
+                    return;
+                }
+
+                // ── Excel → fetch bytes + parse with SheetJS + render table ──
+                const $body = $('#excelPreviewBody');
+
+                $body.html(
+                    '<div class="text-center py-5">' +
+                    '<i class="fas fa-spinner fa-spin text-primary" style="font-size:1.5rem;"></i>' +
+                    '<p class="text-muted mt-2 mb-0">Loading Excel...</p>' +
+                    '</div>'
+                );
+                $('#excelPreviewModal').modal('show');
+
+                if (typeof XLSX === 'undefined') {
+                    $body.html(
+                        '<div class="alert alert-danger m-3">' +
+                        'Excel viewer failed to load. Please check your network connection and try again.' +
+                        '</div>'
+                    );
+                    return;
+                }
+
+                fetch(url, {
+                        credentials: 'same-origin',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                    .then(function(r) {
+                        if (!r.ok) throw new Error('HTTP ' + r.status);
+                        return r.arrayBuffer();
+                    })
+                    .then(function(buf) {
+                        const workbook = XLSX.read(buf, {
+                            type: 'array'
+                        });
+                        const firstSheetName = workbook.SheetNames[0];
+
+                        if (!firstSheetName) {
+                            $body.html(
+                                '<div class="alert alert-warning m-3">The workbook has no sheets.</div>'
+                            );
+                            return;
+                        }
+
+                        const sheet = workbook.Sheets[firstSheetName];
+
+                        // ── Trim the used range ───────────────────────────────────────
+                        // PhpSpreadsheet writes blank rows/cols after the last real cell,
+                        // which keeps !ref open and renders as a wall of empty cells.
+                        // Walk every populated cell and re-anchor !ref to the true last cell.
+                        if (sheet['!ref']) {
+                            const range = XLSX.utils.decode_range(sheet['!ref']);
+                            let maxR = range.s.r,
+                                maxC = range.s.c;
+
+                            Object.keys(sheet).forEach(function(key) {
+                                if (key[0] === '!') return;
+                                const cell = sheet[key];
+                                if (!cell || cell.v == null || cell.v === '') return;
+                                const addr = XLSX.utils.decode_cell(key);
+                                if (addr.r > maxR) maxR = addr.r;
+                                if (addr.c > maxC) maxC = addr.c;
+                            });
+
+                            sheet['!ref'] = XLSX.utils.encode_range({
+                                s: {
+                                    r: range.s.r,
+                                    c: range.s.c
+                                },
+                                e: {
+                                    r: maxR,
+                                    c: maxC
+                                },
+                            });
+                        }
+
+                        const html = XLSX.utils.sheet_to_html(sheet, {
+                            id: 'excel-sheet-preview'
+                        });
+                        $body.html(html);
+
+                        // ── Column widths: apply as max-widths ────────────────────────
+                        try {
+                            const cols = sheet['!cols'] || [];
+                            const $table = $body.find('table');
+                            if ($table.length && cols.length) {
+                                $table.find('tr').first().find('td').each(function(i) {
+                                    if (cols[i] && cols[i].wch) {
+                                        const px = Math.min(cols[i].wch * 7, 340);
+                                        $(this).css('max-width', px + 'px');
+                                    }
+                                });
+                            }
+                        } catch (_) {
+                            /* column-width hint is best-effort */
+                        }
+                    })
+                    .catch(function(err) {
+                        console.error('[Excel Preview] load failed:', err);
+                        $body.html(
+                            '<div class="alert alert-danger m-3">' +
+                            '<i class="fas fa-exclamation-triangle mr-2"></i>' +
+                            'Failed to load Excel preview: ' + (err.message || 'Unknown error') +
+                            '</div>'
+                        );
+                    });
+            });
+
+            // Cleanup on modal close
+            $('#excelPreviewModal').on('hidden.bs.modal', function() {
+                $('#excelPreviewBody').empty();
+            });
+
+            // Dismiss handlers — match the pattern used by every other modal on this page
+            $('#excelPreviewModal .close, #excelPreviewModal button[data-dismiss="modal"]').on('click',
+                function(e) {
+                    e.preventDefault();
+                    $('#excelPreviewModal').modal('hide');
+                });
+
+            function loadViewApprovalStatus() {
+                $('#viewApprovalEmpty, #viewApprovalContent, #viewApprovalUnavailable').hide();
+                $('#viewApprovalLoading').show();
+
+                $.ajax({
+                    url: '{{ route('quotation.approval.status', $quotation->ID ?? 0) }}',
+                    type: 'GET',
+                    success: function(response) {
+                        $('#viewApprovalLoading').hide();
+                        if (response.success && response.data && response.data.status) {
+                            renderViewApproval(response.data);
+                        } else if (response.message) {
+                            $('#viewApprovalUnavailableMsg').text(response.message);
+                            $('#viewApprovalUnavailable').show();
+                        } else {
+                            $('#viewApprovalEmpty').show();
+                        }
+                    },
+                    error: function(xhr) {
+                        $('#viewApprovalLoading').hide();
+                        $('#viewApprovalUnavailableMsg').text(xhr.responseJSON?.message ||
+                            'Unable to load approval status.');
+                        $('#viewApprovalUnavailable').show();
+                    }
+                });
+            }
+
+            function renderViewApproval(data) {
+                $('#viewApprovalEmpty, #viewApprovalUnavailable').hide();
+                $('#viewApprovalContent').show();
+
+                var badgeClass = data.status === 'Approved' ? 'badge-success' :
+                    data.status === 'Rejected' ? 'badge-danger' :
+                    data.status === 'Pending Approval' ? 'badge-warning' : 'badge-secondary';
+                $('#viewApprovalStatusBadge').removeClass().addClass('badge px-2 py-1 ' + badgeClass).text(data
+                    .status);
+
+                var pct = data.required > 0 ? Math.min(100, (data.approvedCount / data.required) * 100) : 0;
+                $('#viewApprovalProgressBar').css('width', pct + '%');
+                $('#viewApprovalProgressLabel').text(data.approvedCount + ' of ' + data.required + ' Approved');
+
+                var tbody = $('#viewApprovalApproverTable tbody').empty();
+                (data.approvers || []).forEach(function(a) {
+                    var badge = a.status === 'Approved' ? 'badge-success' :
+                        a.status === 'Rejected' ? 'badge-danger' : 'badge-secondary';
+                    tbody.append(`
+            <tr>
+                <td style="font-size:0.85rem;">${a.name}</td>
+                <td class="text-right">
+                    <span class="badge ${badge}" style="font-size:0.7rem;">${a.status}</span>
+                    ${a.date ? `<small class="text-muted ml-1">${a.date}</small>` : ''}
+                </td>
+            </tr>
+        `);
+                });
+            }
+
+            // Call on load
+            loadViewApprovalStatus();
+
+            // ============================================================
             // SHOW MORE / SHOW LESS
             // ============================================================
             $('.col-extra').hide();
@@ -1482,20 +2305,20 @@
             $('.show-items-link').on('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                const tableId = $(this).data('table');
-                const $table = tableId === 'revenue' ?
-                    $('#revenueChargesViewTable').closest('table') :
-                    $('#costChargesViewTable').closest('table');
+                const tableKey = $(this).data('table');
+                if (tableKey !== 'charges') return;
+
                 const isExpanded = $(this).data('expanded') || false;
-                if (isExpanded) {
-                    $table.find('.col-extra').hide();
-                    $(this).html('<i class="fas fa-columns mr-1"></i> Show more');
-                    $(this).data('expanded', false);
-                } else {
-                    $table.find('.col-extra').show();
-                    $(this).html('<i class="fas fa-columns mr-1"></i> Show Less');
-                    $(this).data('expanded', true);
-                }
+                const nowExpanded = !isExpanded;
+
+                $('#chargesTable').find('.col-extra')
+                    .css('display', nowExpanded ? 'table-cell' : 'none');
+
+                $(this)
+                    .data('expanded', nowExpanded)
+                    .html(nowExpanded ?
+                        '<i class="fas fa-columns mr-1"></i> Show less' :
+                        '<i class="fas fa-columns mr-1"></i> Show more');
             });
 
             // ============================================================
@@ -1527,6 +2350,13 @@
                     const isExpanded = $card.find('.card-body').is(':visible');
                     $card.find('.card-footer').toggle(isExpanded);
                 }, 0);
+            });
+
+            $(document).on('click', '.charge-group-band', function() {
+                const $band = $(this);
+                const cat = $band.data('cat');
+                const collapsed = $band.toggleClass('is-collapsed').hasClass('is-collapsed');
+                $('#chargesTableBody tr.charge-row[data-cat="' + cat + '"]').toggle(!collapsed);
             });
         }); // end document.ready
     </script>

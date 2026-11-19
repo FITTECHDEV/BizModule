@@ -12,9 +12,6 @@ use App\Http\Controllers\ShipmentReportController;
 use App\Http\Controllers\ScmProfitIntegrationController;
 use App\Http\Controllers\AdminController;
 
-
-
-
 use App\Models\Category;
 use App\Models\Office;
 use App\Models\User;
@@ -265,6 +262,9 @@ Route::group(['middleware' => ['auth', 'HtmlMinifier']], function () {
      */
     Route::get('offices/get-name', [App\Http\Controllers\OfficeController::class, 'getOfficeName'])->name(
         'office.get_name',
+    );
+    Route::post('/switch-office', [App\Http\Controllers\OfficeController::class, 'switchOffice'])->name(
+        'home.switch-office',
     );
     /**
      * MODULES
@@ -1298,6 +1298,7 @@ Route::middleware(['auth', 'can:approve-all-entity-request'])->group(function ()
     Route::get('/shipment-reprts/stats', [ShipmentReportController::class, 'getstats'])->name('shipment-reports.stats');
 });
 
+
 // ============================================================================
 // QUOTATION INTEGRATION ROUTES
 // ============================================================================
@@ -1577,6 +1578,11 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
         'bulkDeleteCharges',
     ])->name('quotation.charges.bulk-delete');
 
+    Route::post('/quotation/charges/bulk-save', [
+        App\Http\Controllers\QuotationController::class,
+        'bulkSaveCharges',
+    ])->name('quotation.charges.bulk-save');
+
     Route::post('/quotation/copy-charges/bulk', [
         App\Http\Controllers\QuotationController::class,
         'copyChargesBulk',
@@ -1591,21 +1597,6 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
         App\Http\Controllers\QuotationController::class,
         'getRequestOfficeHistory',
     ])->name('quotation.request-office-history');
-// 
-//     Route::get('/quotation/website-requests', [App\Http\Controllers\WebsiteQuotationController::class, 'index'])->name(
-//         'quotation.website-requests',
-//     );
-// 
-//     // WEBSITE QUOTATION REQUESTS
-//     // ============================================
-//     Route::get('/quotation/website-requests', [App\Http\Controllers\WebsiteQuotationController::class, 'index'])->name(
-//         'quotation.website-requests',
-//     );
-// 
-//     Route::get('/quotation/website-requests/portal', [
-//         App\Http\Controllers\WebsiteQuotationController::class,
-//         'portal',
-//     ])->name('quotation.website-requests.portal');
 
     Route::get('/quotation/sales-intelligence', [
         App\Http\Controllers\QuotationController::class,
@@ -1652,6 +1643,151 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
     ])
         ->name('quotation.approval.decision')
         ->middleware('auth');
+
+    // Route::get('quotation/contract-templates', [App\Http\Controllers\ContractTemplateController::class, 'index'])->name(
+    //     'quotation.contract-templates',
+    // );
+
+    Route::get('/quotation/{quotation}/contract-template', [
+        App\Http\Controllers\ContractTemplateController::class,
+        'edit',
+    ])->name('quotation.contract-template.edit');
+    // Route::post('/quotation/{quotation}/contract-template', [
+    //     App\Http\Controllers\ContractTemplateController::class,
+    //     'store',
+    // ])->name('quotation.contract-template.store');
+
+    Route::post('/quotation/{quotation}/contract-template', [
+        App\Http\Controllers\QuotationController::class,
+        'saveWorkbookCharges',
+    ])->name('quotation.contract-template.store');
+
+    Route::get('/quotation/{quotation}/contract-template/charges', [
+        App\Http\Controllers\ContractTemplateController::class,
+        'charges',
+    ])->name('quotation.contract-template.charges');
+
+    Route::get('/quotation/contract-template/{quotation}/list', [
+        App\Http\Controllers\ContractTemplateController::class,
+        'listContracts',
+    ])->name('quotation.contract-template.list');
+    
+    Route::prefix('contracts')
+        ->name('contracts.')
+        ->group(function () {
+            // ── 1. STATIC ROUTES (no dynamic parameters) ──
+            Route::get('/create', [App\Http\Controllers\ContractController::class, 'create'])->name('create');
+            Route::get('search-services', [App\Http\Controllers\ContractController::class, 'searchServices'])->name(
+                'search-services',
+            );
+            Route::get('new-draft', [App\Http\Controllers\ContractController::class, 'newDraft'])->name('new-draft');
+            Route::get('list', [App\Http\Controllers\ContractController::class, 'listContracts'])->name('list');
+
+            // ── 2. MASTER ROUTES (also static) ──
+            Route::prefix('masters')->group(function () {
+                Route::get('inco-terms', [App\Http\Controllers\ContractController::class, 'getIncoTerms']);
+                Route::get('countries', [App\Http\Controllers\ContractController::class, 'getCountries']);
+                Route::get('shipment-modes', [App\Http\Controllers\ContractController::class, 'getShipmentModes']);
+                Route::get('transport-modes', [App\Http\Controllers\ContractController::class, 'getTransportModes']);
+                Route::get('equipment-types', [App\Http\Controllers\ContractController::class, 'getEquipmentTypes']);
+                Route::get('charge-codes', [App\Http\Controllers\ContractController::class, 'getChargeCodes']);
+                Route::get('based-on', [App\Http\Controllers\ContractController::class, 'getBasedOnList']);
+                Route::get('based-on-uom', [App\Http\Controllers\ContractController::class, 'getBasedOnUOM']);
+                Route::get('currencies', [App\Http\Controllers\ContractController::class, 'getCurrencies']);
+                Route::get('exchange-rate', [App\Http\Controllers\ContractController::class, 'getExchangeRate']);
+                Route::get('locations', [App\Http\Controllers\ContractController::class, 'getLocations']);
+                Route::get('services', [App\Http\Controllers\ContractController::class, 'getServices']);
+                Route::get('processes', [App\Http\Controllers\ContractController::class, 'getProcesses']);
+                Route::get('shipment-types', [App\Http\Controllers\ContractController::class, 'getShipmentTypes']);
+                Route::get('movement-types', [App\Http\Controllers\ContractController::class, 'getMovementTypes']);
+                Route::get('charge-categories', [
+                    App\Http\Controllers\ContractController::class,
+                    'getChargeCategories',
+                ]);
+                Route::get('service-classes', [App\Http\Controllers\ContractController::class, 'getServiceClasses']);
+            });
+
+            Route::post('/{contract}/generate-quote/pdf', [
+                App\Http\Controllers\ContractController::class,
+                'generateQuotePdf',
+            ])->name('generate-quote.pdf');
+
+            Route::post('/{contract}/generate-quote/excel', [
+                App\Http\Controllers\ContractController::class,
+                'generateQuoteExcel',
+            ])->name('generate-quote.excel');
+
+            // ── 3. WILDCARD ROUTES (catch-all) ──
+            Route::get('/{contract}/view', [App\Http\Controllers\ContractController::class, 'showDetails'])->name(
+                'view',
+            );
+            Route::get('/{contract}/edit', [App\Http\Controllers\ContractController::class, 'edit'])->name('edit');
+            Route::put('/{contract}', [App\Http\Controllers\ContractController::class, 'updateHeader'])->name('update');
+            Route::delete('/{contract}', [App\Http\Controllers\ContractController::class, 'destroy'])->name('destroy');
+            Route::post('/{contract}/services', [App\Http\Controllers\ContractController::class, 'storeService'])->name(
+                'services.store',
+            );
+            Route::put('/{contract}/services/{serviceFilterId}', [
+                App\Http\Controllers\ContractController::class,
+                'updateService',
+            ])->name('services.update');
+            Route::delete('/{contract}/services/{serviceFilterId}', [
+                App\Http\Controllers\ContractController::class,
+                'destroyService',
+            ])->name('services.destroy');
+            Route::post('/{contract}/services/{serviceFilterId}/charges', [
+                App\Http\Controllers\ContractController::class,
+                'storeCharge',
+            ])->name('services.charges.store');
+            Route::put('/{contract}/services/{serviceFilterId}/charges/{chargeId}', [
+                App\Http\Controllers\ContractController::class,
+                'updateCharge',
+            ])->name('services.charges.update');
+            Route::delete('/{contract}/services/{serviceFilterId}/charges/{chargeId}', [
+                App\Http\Controllers\ContractController::class,
+                'destroyCharge',
+            ])->name('services.charges.destroy');
+            Route::post('/{contract}', [App\Http\Controllers\ContractController::class, 'store'])->name('store');
+            // ── Duplicate / Copy ──
+            Route::post('/{contract}/duplicate', [
+                App\Http\Controllers\ContractController::class,
+                'duplicateContract',
+            ])->name('duplicate');
+
+            Route::post('/{contract}/services/{serviceFilterId}/duplicate', [
+                App\Http\Controllers\ContractController::class,
+                'duplicateService',
+            ])->name('services.duplicate');
+            Route::get('/{contract}', [App\Http\Controllers\ContractController::class, 'show'])->name('show');
+            Route::get('/{contract}/services/{serviceFilterId}/formula-fields', [
+                App\Http\Controllers\ContractController::class,
+                'getFormulaFields',
+            ])->name('services.formula-fields');
+            Route::get('/{contract}/charges/display', [
+                App\Http\Controllers\ContractController::class,
+                'chargeDisplay',
+            ])->name('charges.display');
+
+            Route::get('/{contract}/services/{serviceFilterId}/charges/{chargeId}/workbook-display', [
+                App\Http\Controllers\ContractController::class,
+                'getChargeWorkbookDisplay',
+            ])->name('services.charges.workbook-display');
+        });
+
+    Route::get('/quotation/website-requests', [App\Http\Controllers\WebsiteQuotationController::class, 'index'])->name(
+        'quotation.website-requests',
+    );
+
+    // WEBSITE QUOTATION REQUESTS
+    // ============================================
+    Route::get('/quotation/website-requests', [App\Http\Controllers\WebsiteQuotationController::class, 'index'])->name(
+        'quotation.website-requests',
+    );
+
+    Route::get('/quotation/website-requests/portal', [
+        App\Http\Controllers\WebsiteQuotationController::class,
+        'portal',
+    ])->name('quotation.website-requests.portal');
 });
 
 // ============================================
@@ -1661,6 +1797,9 @@ Route::middleware(['auth', 'can:view-quotation'])->group(function () {
 // ============================================
 Route::post('/quotation/{id}/generate-pdf', [App\Http\Controllers\QuotationController::class, 'generatePdf'])->name(
     'quotation.generate-pdf',
+);
+Route::post('/quotation/{id}/generate-excel', [App\Http\Controllers\QuotationController::class, 'generateExcel'])->name(
+    'quotation.generate-excel',
 );
 Route::post('/quotation/{quoteno}/duplicate', [
     App\Http\Controllers\QuotationController::class,
@@ -1695,6 +1834,9 @@ Route::post('/quotation/booking-integration-response', [
     App\Http\Controllers\QuotationController::class,
     'handleBookingIntegrationResponse',
 ])->name('quotation.bookingIntegrationResponse');
+
+Route::get('/weight-note', [App\Http\Controllers\WeightNoteController::class, 'index'])->name('weight-note.index');
+
 
 // ============================================================================
 // LOGIN TRACKER SYSTEM ROUTES (User Activity Monitoring)
@@ -2058,33 +2200,32 @@ Route::post('/zra/update-invoice', [App\Http\Controllers\ZraController::class, '
 Route::get('/zra/re-trigger/{docNo}', [App\Http\Controllers\ZraController::class, 'reTrigger'])->middleware('auth');
 Route::get('/datatables/zra', [App\Http\Controllers\ZraController::class, 'datatable'])->middleware('auth');
 
-
 Route::get('/debug/find-company/{name}', function (string $name) {
     $pdo = DB::connection('pgsql')->getPdo();
- 
+
     // Find columns likely to hold a company/partner name
-    $cols = $pdo->query(
-        "SELECT table_name, column_name
+    $cols = $pdo
+        ->query(
+            "SELECT table_name, column_name
          FROM information_schema.columns
          WHERE table_schema = 'public'
            AND (column_name ILIKE '%company%' OR column_name ILIKE '%partner%name%')
-         ORDER BY table_name"
-    )->fetchAll(PDO::FETCH_ASSOC);
- 
+         ORDER BY table_name",
+        )
+        ->fetchAll(PDO::FETCH_ASSOC);
+
     $needle = '%' . $name . '%';
     $hits = [];
- 
+
     foreach ($cols as $c) {
         $table = $c['table_name'];
         $column = $c['column_name'];
- 
+
         try {
-            $stmt = $pdo->prepare(
-                "SELECT * FROM \"$table\" WHERE \"$column\" ILIKE ? LIMIT 5"
-            );
+            $stmt = $pdo->prepare("SELECT * FROM \"$table\" WHERE \"$column\" ILIKE ? LIMIT 5");
             $stmt->execute([$needle]);
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
- 
+
             if (count($rows) > 0) {
                 $hits[] = ['table' => $table, 'column' => $column, 'rows' => $rows];
             }
@@ -2092,12 +2233,13 @@ Route::get('/debug/find-company/{name}', function (string $name) {
             continue;
         }
     }
- 
+
     return response()->json([
         'success' => true,
-        'message' => count($hits) > 0
-            ? "Found matches in " . count($hits) . " table(s)"
-            : "No matches for '$name' in any company/partner name column",
+        'message' =>
+            count($hits) > 0
+                ? 'Found matches in ' . count($hits) . ' table(s)'
+                : "No matches for '$name' in any company/partner name column",
         'data' => [
             'search_term' => $name,
             'columns_checked' => $cols,

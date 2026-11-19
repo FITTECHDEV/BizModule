@@ -40,7 +40,7 @@ class ClientPartyController extends Controller
     public function __construct()
     {
         $this->middleware('auth');
-        $this->clientParty = new ClientParty;
+        $this->clientParty = new ClientParty();
     }
 
     /**
@@ -53,7 +53,7 @@ class ClientPartyController extends Controller
         $title = 'My Client Party Requests';
         $user = Auth::user();
         // authorization
-        if (! \request()->user()->can('view-client-party')) {
+        if (!\request()->user()->can('view-client-party')) {
             abort(403, 'You are not allowed to view this page.');
         }
 
@@ -64,7 +64,7 @@ class ClientPartyController extends Controller
 
     public function create()
     {
-        if (! \request()->user()->hasPermissionTo('request-client-party')) {
+        if (!\request()->user()->hasPermissionTo('request-client-party')) {
             abort(403, 'You are not allowed to view this page.');
         }
 
@@ -80,16 +80,19 @@ class ClientPartyController extends Controller
         $officeCode = $user->OfficeCode ?? null;
         Log::info('User OfficeCode in create:', ['userID' => $user->id, 'officeCode' => $officeCode]);
 
-        if (! empty($officeCode)) {
+        if (!empty($officeCode)) {
             try {
                 $response = DB::select(
                     'SET NOCOUNT ON;
                  DECLARE @OfficeCode AS VARCHAR(5);
                  EXEC [dbo].[sp_PaymentTerms] @OfficeCode = ?',
-                    [$officeCode]
+                    [$officeCode],
                 );
-                if (empty($response) || (isset($response[0]->Failed))) {
-                    Log::warning('sp_PaymentTerms returned no data or error', ['response' => $response, 'officeCode' => $officeCode]);
+                if (empty($response) || isset($response[0]->Failed)) {
+                    Log::warning('sp_PaymentTerms returned no data or error', [
+                        'response' => $response,
+                        'officeCode' => $officeCode,
+                    ]);
                 } else {
                     $payTerms = array_map(function ($term) {
                         return [
@@ -116,7 +119,17 @@ class ClientPartyController extends Controller
 
         return view(
             'client-party.create',
-            compact('payTerms', 'incoterms', 'countries', 'offices', 'currencyList', 'licenceTypes', 'tarrifs', 'debtors', 'vendors')
+            compact(
+                'payTerms',
+                'incoterms',
+                'countries',
+                'offices',
+                'currencyList',
+                'licenceTypes',
+                'tarrifs',
+                'debtors',
+                'vendors',
+            ),
         );
     }
 
@@ -131,7 +144,7 @@ class ClientPartyController extends Controller
 @Filteras Varchar(50)
                 Exec sp_PartyList
 @OfficeID= ?, @PartyType = ?, @Filter = ?',
-                [$query['officeID'], $type, $query['query']]
+                [$query['officeID'], $type, $query['query']],
             );
             $debtorVendors = [];
             if (count($response) > 0) {
@@ -162,7 +175,7 @@ class ClientPartyController extends Controller
             'SET NOCOUNT ON;
             Declare  @Filter as Varchar(50)
             Exec sp_CountryList @Filter = ?',
-            ['']
+            [''],
         );
         if (\request()->ajax()) {
             return response()->json($response);
@@ -181,7 +194,7 @@ class ClientPartyController extends Controller
 @Filteras Varchar(50)
                 Exec sp_StateList
 @country= ?, @Filter = ?',
-                [$request['country_code'], $request['query']]
+                [$request['country_code'], $request['query']],
             );
             $cities = [];
             if (count($response) > 0) {
@@ -210,7 +223,7 @@ class ClientPartyController extends Controller
             Exec sp_StateList
 @country= ?,
 @Filter= ?',
-            [$request['country_code'], $request['query']]
+            [$request['country_code'], $request['query']],
         );
         $provinces = [];
         if (count($response) > 0) {
@@ -243,7 +256,7 @@ class ClientPartyController extends Controller
             Exec sp_TariffList
 @office= ?,
 @officeID= ?',
-            ['Kenya - UPS', $query]
+            ['Kenya - UPS', $query],
         );
         if (\request()->ajax()) {
             return response()->json($response);
@@ -266,7 +279,7 @@ class ClientPartyController extends Controller
 @IncludeCountry= ?,
 @CountryCode= ?,
 @Filter= ?',
-            [$locationType, $request['includeCountry'], $request['includeCode'], $request['query']]
+            [$locationType, $request['includeCountry'], $request['includeCode'], $request['query']],
         );
         $locations = [];
         if (count($response) > 0) {
@@ -296,7 +309,7 @@ class ClientPartyController extends Controller
                 Declare @OfficeID as Uniqueidentifier
                 Exec [dbo].[sp_BaseOfficeCurrency]
 @officeID= ?',
-            [$query]
+            [$query],
         );
         $baseCurrency = [];
         if (count($response) > 0) {
@@ -327,13 +340,13 @@ class ClientPartyController extends Controller
                 Declare @OfficeID as Uniqueidentifier
                 Exec [dbo].[sp_EntityType]
 @OfficeCode= ?',
-            [$query]
+            [$query],
         );
         $v = [];
         $d = [];
         if (count($response) > 0) {
             foreach ($response as $key => $row) {
-                ($row->Type == 'Vendor') ? array_push($v, $row->Code) : array_push($d, $row->Code);
+                $row->Type == 'Vendor' ? array_push($v, $row->Code) : array_push($d, $row->Code);
             }
         }
 
@@ -344,16 +357,35 @@ class ClientPartyController extends Controller
     {
         $search = \request()->all()['query'];
         $results = ClientParty::where('OperationalEntityType', 'Client without Debtor or Vendor')
-            ->where('Name', 'LIKE', "%{$search}%")->pluck('Name');
+            ->where('Name', 'LIKE', "%{$search}%")
+            ->pluck('Name');
 
         return response()->json($results);
     }
 
     public function fetchClientDetails($companyName)
     {
-        $client = ClientParty::where('OperationalEntityType', 'Client without Debtor or Vendor')->where('Name', $companyName)->first();
+        $client = ClientParty::where('OperationalEntityType', 'Client without Debtor or Vendor')
+            ->where('Name', $companyName)
+            ->first();
         if ($client) {
-            $clientData = $client->only(['Name', 'Address_Line1', 'Address_CountryId', 'Address_CountryCode', 'Cont_Bch_PersonName_FirstName', 'Cont_Bch_PersonName_LastName', 'Cont_Bch_PhoneNumbers', 'Office', 'SalesMgrOfficeFunMapName', 'AccountMgrOfficeFunMapName', 'CreditLimitCurrencyCode', 'CreditDays', 'CreditLimit', 'LicenceTypeValue', 'LicenceTypeID']);
+            $clientData = $client->only([
+                'Name',
+                'Address_Line1',
+                'Address_CountryId',
+                'Address_CountryCode',
+                'Cont_Bch_PersonName_FirstName',
+                'Cont_Bch_PersonName_LastName',
+                'Cont_Bch_PhoneNumbers',
+                'Office',
+                'SalesMgrOfficeFunMapName',
+                'AccountMgrOfficeFunMapName',
+                'CreditLimitCurrencyCode',
+                'CreditDays',
+                'CreditLimit',
+                'LicenceTypeValue',
+                'LicenceTypeID',
+            ]);
 
             return response()->json($clientData);
         }
@@ -371,7 +403,7 @@ class ClientPartyController extends Controller
                 Declare @filter varchar(60)
                 Exec sp_ClientList
 @filter= ?',
-                [$query]
+                [$query],
             );
             if (count($response) > 0) {
                 foreach ($response as $resp) {
@@ -387,7 +419,8 @@ class ClientPartyController extends Controller
         } elseif ($type == 'local') {
             $results = ClientParty::select('name', 'Id', 'code')
                 ->where('OperationalEntityType', 'Client + Shipper + Consignee')
-                ->where('Name', 'LIKE', '%' . $query . '%')->get();
+                ->where('Name', 'LIKE', '%' . $query . '%')
+                ->get();
             if (count($results) > 0) {
                 foreach ($results as $resp) {
                     if (isset($resp->Id)) {
@@ -408,7 +441,7 @@ class ClientPartyController extends Controller
     {
         $response = DB::select(
             'SET NOCOUNT ON;
-                Exec sp_OfficeList'
+                Exec sp_OfficeList',
         );
         if (\request()->ajax()) {
             return response()->json($response);
@@ -421,7 +454,7 @@ class ClientPartyController extends Controller
     {
         $response = DB::select(
             'SET NOCOUNT ON;
-                Exec [dbo].[sp_LicenseType]'
+                Exec [dbo].[sp_LicenseType]',
         );
         if (\request()->ajax()) {
             return response()->json($response);
@@ -442,7 +475,7 @@ class ClientPartyController extends Controller
 @OfficeID= ?,
 @PartyType= ?,
 @Filter= ?',
-            [$request['officeID'], $request['partyType'], $request['query']]
+            [$request['officeID'], $request['partyType'], $request['query']],
         );
         $partyList = [];
         if (count($response) > 0) {
@@ -467,7 +500,7 @@ class ClientPartyController extends Controller
             Declare @Filter as Varchar(50)
             Exec [dbo].[sp_IncoTerms]
 @Filter= ?',
-            ['']
+            [''],
         );
 
         return $response;
@@ -532,15 +565,18 @@ class ClientPartyController extends Controller
                 'SET NOCOUNT ON;
              DECLARE @OfficeCode AS VARCHAR(5);
              EXEC [dbo].[sp_PaymentTerms] @OfficeCode = ?',
-                [$officeCode]
+                [$officeCode],
             );
 
-            $payTerms = empty($response) || (isset($response[0]->Failed)) ? [] : array_map(function ($term) {
-                return [
-                    'Id' => $term->Id,
-                    'CreditDays' => $term->Code, // Use Code as CreditDays
-                ];
-            }, $response);
+            $payTerms =
+                empty($response) || isset($response[0]->Failed)
+                    ? []
+                    : array_map(function ($term) {
+                        return [
+                            'Id' => $term->Id,
+                            'CreditDays' => $term->Code, // Use Code as CreditDays
+                        ];
+                    }, $response);
 
             Log::info('sp_PaymentTerms response:', ['payTerms' => $payTerms, 'officeCode' => $officeCode]);
 
@@ -570,7 +606,7 @@ class ClientPartyController extends Controller
         } else {
             $query = $var;
         }
-        if (! empty($query)) {
+        if (!empty($query)) {
             $response = DB::select(
                 'SET NOCOUNT ON;
                 Declare
@@ -579,7 +615,7 @@ class ClientPartyController extends Controller
                 Exec [dbo].[sp_CurrencyList]
 @OfficeID= ?,
 @Filter= ?',
-                [$query, '']
+                [$query, ''],
             );
         } else {
             $response = [];
@@ -601,7 +637,7 @@ class ClientPartyController extends Controller
 @OfficeID= ?,
 @PICType= ?,
 @Filter= ?',
-                [$query['officeID'], $var, $query['query']]
+                [$query['officeID'], $var, $query['query']],
             );
             $infos = [];
             if (count($response) > 0) {
@@ -631,7 +667,7 @@ class ClientPartyController extends Controller
 @OfficeID= ?,
 @PartyType= ?,
 @Filter= ?',
-            [$query['officeID'], $var, $query['query']]
+            [$query['officeID'], $var, $query['query']],
         );
         $list = [];
         if (count($response) > 0) {
@@ -700,10 +736,10 @@ class ClientPartyController extends Controller
              DECLARE @OutputJson NVARCHAR(MAX);
              EXEC [dbo].[sp_EntityMain] @InputJson = ?, @OutputJson = @OutputJson OUTPUT;
              SELECT @OutputJson AS OutputJson',
-                [$jsonInput]
+                [$jsonInput],
             );
 
-            if (empty($results) || ! isset($results[0]->OutputJson) || trim($results[0]->OutputJson) === '') {
+            if (empty($results) || !isset($results[0]->OutputJson) || trim($results[0]->OutputJson) === '') {
                 \Log::error('sp_EntityMain returned empty or null OutputJson', [
                     'sent_payload' => $jsonInput,
                 ]);
@@ -722,7 +758,7 @@ class ClientPartyController extends Controller
                 throw new \Exception('Invalid JSON response from stored procedure');
             }
 
-            if (! isset($output['Status'])) {
+            if (!isset($output['Status'])) {
                 \Log::error('Response missing "Status" field', [
                     'raw_output' => $rawOutput,
                     'sent_payload' => $jsonInput,
@@ -766,7 +802,7 @@ class ClientPartyController extends Controller
     {
         $user = $request->user();
 
-        if (! $user->can('request-client-party')) {
+        if (!$user->can('request-client-party')) {
             abort(403, 'You are not allowed to request client parties.');
         }
 
@@ -776,11 +812,16 @@ class ClientPartyController extends Controller
         // FORCE AccountingEntity whenever legal/accounting fields are present
         // This fixes the "form sends OperationalEntity but we have Debtor/Vendor" bug
         if (
-            $request->has('legalEntityType')
-            && !empty(trim($request->legalEntityType ?? ''))
-            && in_array(trim($request->legalEntityType), ['Debtor', 'Vendor', 'Debtor & Vendor', 'Only in D365 Debtor', 'Only in D365 Vendor'])
+            $request->has('legalEntityType') &&
+            !empty(trim($request->legalEntityType ?? '')) &&
+            in_array(trim($request->legalEntityType), [
+                'Debtor',
+                'Vendor',
+                'Debtor & Vendor',
+                'Only in D365 Debtor',
+                'Only in D365 Vendor',
+            ])
         ) {
-
             $operationType = 'AccountingEntity';
         }
 
@@ -790,7 +831,8 @@ class ClientPartyController extends Controller
             'operation_type' => $operationType,
             'party_entity_type' => $partyEntityType,
             'legal_entity_type' => $request->legalEntityType,
-            'has_accounting_fields' => $request->has('creditDays') || $request->has('maxCreditLimit') || $request->has('debtorType'),
+            'has_accounting_fields' =>
+                $request->has('creditDays') || $request->has('maxCreditLimit') || $request->has('debtorType'),
             'request_data' => $request->except(['_token', 'attachmentNames', 'attachmentDescription']),
         ]);
 
@@ -799,23 +841,22 @@ class ClientPartyController extends Controller
 
         // ClientCode only relevant for Client / Agent types
         $clientCode = $isClientType
-            ? ($request->clientCode ?? $request->companyCode ?? $request->otherCode ?? '')
+            ? $request->clientCode ?? ($request->companyCode ?? ($request->otherCode ?? ''))
             : '';
 
         // OtherPartyCode: for non-client types fall back to companyCode
         // (companyCode is always submitted via #companyCode hidden input)
-        $otherPartyCode = $request->otherCode
-            ?? ($isClientType ? null : ($request->companyCode ?? null))
-            ?? $request->clientCode
-            ?? '';
+        $otherPartyCode =
+            $request->otherCode ??
+            (($isClientType ? null : $request->companyCode ?? null) ?? ($request->clientCode ?? ''));
 
         \Log::info('Code resolution', [
-            'partyEntityType'  => $partyEntityType,
-            'isClientType'     => $isClientType,
-            'otherCode_raw'    => $request->otherCode,
-            'companyCode_raw'  => $request->companyCode,
-            'clientCode_raw'   => $request->clientCode,
-            'resolved_clientCode'     => $clientCode,
+            'partyEntityType' => $partyEntityType,
+            'isClientType' => $isClientType,
+            'otherCode_raw' => $request->otherCode,
+            'companyCode_raw' => $request->companyCode,
+            'clientCode_raw' => $request->clientCode,
+            'resolved_clientCode' => $clientCode,
             'resolved_otherPartyCode' => $otherPartyCode,
         ]);
 
@@ -823,7 +864,7 @@ class ClientPartyController extends Controller
             'OperationType' => $operationType,
             'Action' => 'Add',
             'SubmittedDatetime' => now()->format('YmdHis'),
-            'SubmittedBy' => $user->LoginID ?? $user->email ?? $user->full_name ?? 'system',
+            'SubmittedBy' => $user->LoginID ?? ($user->email ?? ($user->full_name ?? 'system')),
             'Name' => $request->companyName ?? trim($request->input('name', '')),
             'Address_Line1' => $request->addressLine1 ?? '',
             'Address_Line2' => $request->addressLine2 ?? '',
@@ -838,37 +879,33 @@ class ClientPartyController extends Controller
             'Cont_Bch_PersonName_LastName' => $request->lastName ?? '',
             'Cont_Bch_PhoneNumbers' => $request->phoneNo ?? '',
             'Cont_Bch_Email' => $request->contractEmail ?? '',
-            'OfficeCode' => $request->officeCode ?? $user->OfficeCode ?? '',
+            'OfficeCode' => $request->officeCode ?? ($user->OfficeCode ?? ''),
             'OperationalEntityType' => $partyEntityType,
             'ClientCode' => $clientCode,
             'OtherPartyCode' => $otherPartyCode,
         ];
 
         if ($operationType === 'AccountingEntity' || $request->has('legalEntityType')) {
-            $creditDaysValue = $request->creditDays !== '' && is_numeric($request->creditDays) ? $request->creditDays : '0';
+            $creditDaysValue =
+                $request->creditDays !== '' && is_numeric($request->creditDays) ? $request->creditDays : '0';
             // Fix: strip commas from credit limit before is_numeric check
             $rawCreditLimit = str_replace(',', '', $request->maxCreditLimit ?? '0');
-            $creditLimitValue = is_numeric($rawCreditLimit) && $rawCreditLimit !== ''
-                ? $rawCreditLimit
-                : '0';
+            $creditLimitValue = is_numeric($rawCreditLimit) && $rawCreditLimit !== '' ? $rawCreditLimit : '0';
 
             // Fix: fallback LicenceTypeCode to NIL if empty (overseas entity case)
-            $licenceTypeCode = !empty(trim($request->licenceTypeCode ?? ''))
-                ? $request->licenceTypeCode
-                : 'NIL';
+            $licenceTypeCode = !empty(trim($request->licenceTypeCode ?? '')) ? $request->licenceTypeCode : 'NIL';
 
             $payload = array_merge($payload, [
-                'LegalEntityType'        => $request->legalEntityType ?? '',
-                'CreditDays'             => $creditDaysValue,
-                'CreditLimit'            => $creditLimitValue,
+                'LegalEntityType' => $request->legalEntityType ?? '',
+                'CreditDays' => $creditDaysValue,
+                'CreditLimit' => $creditLimitValue,
                 'CreditLimitCurrencyCode' => $request->creditLimitCurrencyCode ?? '',
-                'BillingCurrencyCode'    => $request->billingCurrencyCode ?? '',
-                'BaseCurrencyCode'       => $request->baseCurrencyCode ?? '',
-                'LicenceTypeCode'        => $licenceTypeCode,   // ← NIL if empty
-                'LicenceTypeValue'       => $request->licenceTypeValue ?? '',
-                'DebtorType'             => $request->debtorType ?? '',
-                'VendorType'             => $request->vendorType ?? '',
-
+                'BillingCurrencyCode' => $request->billingCurrencyCode ?? '',
+                'BaseCurrencyCode' => $request->baseCurrencyCode ?? '',
+                'LicenceTypeCode' => $licenceTypeCode, // ← NIL if empty
+                'LicenceTypeValue' => $request->licenceTypeValue ?? '',
+                'DebtorType' => $request->debtorType ?? '',
+                'VendorType' => $request->vendorType ?? '',
             ]);
         }
         \Log::info('Payload prepared for SP', [
@@ -893,12 +930,14 @@ class ClientPartyController extends Controller
                 }
             }
 
-            if (! $requestNo) {
+            if (!$requestNo) {
                 \Log::error('Could not parse RequestNo from SP response', [
                     'remarks' => $response['Remarks'] ?? null,
                     'response' => $response,
                 ]);
-                throw new \Exception('Request submitted but could not retrieve request number. Please contact support.');
+                throw new \Exception(
+                    'Request submitted but could not retrieve request number. Please contact support.',
+                );
             }
 
             \Log::info('Entity request submitted successfully', [
@@ -913,7 +952,7 @@ class ClientPartyController extends Controller
                 ->whereIn('Status', ['PendingCountryLevelApproval', 'Submitted'])
                 ->first();
 
-            if (! $entityRecord) {
+            if (!$entityRecord) {
                 \Log::error('Request submitted but record not found in Cust_Entity table', [
                     'request_no' => $requestNo,
                     'office_code' => $payload['OfficeCode'],
@@ -921,7 +960,9 @@ class ClientPartyController extends Controller
                     'client_code' => $clientCode,
                     'other_party_code' => $otherPartyCode,
                 ]);
-                throw new \Exception("Request submitted successfully ({$requestNo}) but record not found in database. Please contact support.");
+                throw new \Exception(
+                    "Request submitted successfully ({$requestNo}) but record not found in database. Please contact support.",
+                );
             }
 
             \Log::info('Found entity record in Cust_Entity', [
@@ -935,7 +976,7 @@ class ClientPartyController extends Controller
                 $uploadedCount = 0;
 
                 foreach ($request->file('attachmentNames') as $index => $file) {
-                    if (! $file || ! $file->isValid()) {
+                    if (!$file || !$file->isValid()) {
                         \Log::warning('Invalid file upload skipped', ['index' => $index]);
 
                         continue;
@@ -952,10 +993,7 @@ class ClientPartyController extends Controller
 
                         // Upload to Azure
                         $azurePath = "Kenya/ClientParty/{$newName}";
-                        Storage::disk('azure')->put(
-                            $azurePath,
-                            file_get_contents(storage_path("app/{$localPath}"))
-                        );
+                        Storage::disk('azure')->put($azurePath, file_get_contents(storage_path("app/{$localPath}")));
 
                         // Create attachment record
                         DB::table('Cust_EntityAttachment')->insert([
@@ -995,7 +1033,8 @@ class ClientPartyController extends Controller
             }
 
             // Success response
-            return redirect()->back()
+            return redirect()
+                ->back()
                 ->with('swal_success_title', 'Success')
                 ->with('swal_success_text', "Entity Request No << {$requestNo} >> Successfully Submitted");
         } catch (\Exception $e) {
@@ -1006,20 +1045,20 @@ class ClientPartyController extends Controller
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            Alert::error('Error', $e->getMessage() ?: 'Failed to submit entity request. Please try again.')
-                ->persistent(true, false);
+            Alert::error('Error', $e->getMessage() ?: 'Failed to submit entity request. Please try again.')->persistent(
+                true,
+                false,
+            );
 
             return redirect()->back()->withInput();
         }
     }
 
-
     public function getOfficeNumberSeries($officeCode = null, $entityType = null)
     {
-
         try {
             // Add validation for required parameters
-            if (! $officeCode || ! $entityType) {
+            if (!$officeCode || !$entityType) {
                 Log::error('getOfficeNumberSeries: Missing required parameters', [
                     'officeCode' => $officeCode,
                     'entityType' => $entityType,
@@ -1071,8 +1110,6 @@ class ClientPartyController extends Controller
         }
     }
 
-
-
     /**
      * Preview/Download a specific attachment file
      *
@@ -1081,103 +1118,103 @@ class ClientPartyController extends Controller
      */
 
     public function preview($attachmentId)
-{
-    try {
-        $attachment = ClientPartyAttahment::where('ID', $attachmentId)->firstOrFail();
+    {
+        try {
+            $attachment = ClientPartyAttahment::where('ID', $attachmentId)->firstOrFail();
 
-        Log::info('Preview attachment request:', [
-            'attachmentId' => $attachmentId,
-            'fileName'     => $attachment->FileName,
-            'filePath'     => $attachment->FilePath,
-            'entityId'     => $attachment->CustEntityID,
-        ]);
+            Log::info('Preview attachment request:', [
+                'attachmentId' => $attachmentId,
+                'fileName' => $attachment->FileName,
+                'filePath' => $attachment->FilePath,
+                'entityId' => $attachment->CustEntityID,
+            ]);
 
-        $resolvedPath = null;
+            $resolvedPath = null;
 
-        // Helper: normalize filename for matching (strip non-safe characters)
-        $normalizeForMatch = function (string $name): string {
-            // Keep only letters, digits, dots, underscores, hyphens and spaces
-            $name = preg_replace('/[^A-Za-z0-9._\-\s]/u', '', $name);
-            return strtolower(trim(preg_replace('/\s+/', ' ', $name)));
-        };
+            // Helper: normalize filename for matching (strip non-safe characters)
+            $normalizeForMatch = function (string $name): string {
+                // Keep only letters, digits, dots, underscores, hyphens and spaces
+                $name = preg_replace('/[^A-Za-z0-9._\-\s]/u', '', $name);
+                return strtolower(trim(preg_replace('/\s+/', ' ', $name)));
+            };
 
-        // Step 1: Try exact DB path first
-        if (Storage::disk('azure')->exists($attachment->FilePath)) {
-            $resolvedPath = $attachment->FilePath;
-        } else {
-            // Step 2: List Azure folder and match by normalized name
-            $directory  = dirname($attachment->FilePath); // e.g. "Kenya/ClientParty"
-            $dbFilename = basename($attachment->FilePath);
+            // Step 1: Try exact DB path first
+            if (Storage::disk('azure')->exists($attachment->FilePath)) {
+                $resolvedPath = $attachment->FilePath;
+            } else {
+                // Step 2: List Azure folder and match by normalized name
+                $directory = dirname($attachment->FilePath); // e.g. "Kenya/ClientParty"
+                $dbFilename = basename($attachment->FilePath);
 
-            $azureFiles = Storage::disk('azure')->files($directory);
+                $azureFiles = Storage::disk('azure')->files($directory);
 
-            foreach ($azureFiles as $azureFile) {
-                $azureFilename = basename($azureFile);
+                foreach ($azureFiles as $azureFile) {
+                    $azureFilename = basename($azureFile);
 
-                $normalizedAzure = $normalizeForMatch($azureFilename);
-                $normalizedDb    = $normalizeForMatch($dbFilename);
+                    $normalizedAzure = $normalizeForMatch($azureFilename);
+                    $normalizedDb = $normalizeForMatch($dbFilename);
 
-                Log::info('Comparing filenames:', [
-                    'azureFile'       => $azureFile,
-                    'azureFilename'   => $azureFilename,
-                    'dbFilename'      => $dbFilename,
-                    'normalizedAzure' => $normalizedAzure,
-                    'normalizedDb'    => $normalizedDb,
-                ]);
+                    Log::info('Comparing filenames:', [
+                        'azureFile' => $azureFile,
+                        'azureFilename' => $azureFilename,
+                        'dbFilename' => $dbFilename,
+                        'normalizedAzure' => $normalizedAzure,
+                        'normalizedDb' => $normalizedDb,
+                    ]);
 
-                if ($normalizedAzure === $normalizedDb) {
-                    $resolvedPath = $azureFile;
-                    Log::info('Matched via normalization:', ['resolvedPath' => $resolvedPath]);
-                    break;
+                    if ($normalizedAzure === $normalizedDb) {
+                        $resolvedPath = $azureFile;
+                        Log::info('Matched via normalization:', ['resolvedPath' => $resolvedPath]);
+                        break;
+                    }
                 }
             }
-        }
 
-        if (!$resolvedPath) {
-            Log::error('File not found in Azure storage (tried exact and normalized match):', [
-                'filePath'     => $attachment->FilePath,
+            if (!$resolvedPath) {
+                Log::error('File not found in Azure storage (tried exact and normalized match):', [
+                    'filePath' => $attachment->FilePath,
+                    'attachmentId' => $attachmentId,
+                ]);
+                abort(404, 'File not found in storage');
+            }
+
+            $extension = strtolower(pathinfo($attachment->FileName, PATHINFO_EXTENSION));
+            $mimeType = $extension === 'pdf' ? 'application/pdf' : 'application/octet-stream';
+
+            Log::info('File retrieved successfully:', [
                 'attachmentId' => $attachmentId,
+                'fileName' => $attachment->FileName,
+                'resolvedPath' => $resolvedPath,
+                'mimeType' => $mimeType,
             ]);
-            abort(404, 'File not found in storage');
-        }
 
-        $extension = strtolower(pathinfo($attachment->FileName, PATHINFO_EXTENSION));
-        $mimeType  = $extension === 'pdf' ? 'application/pdf' : 'application/octet-stream';
+            // Proper Content-Disposition so browsers show Chinese filenames correctly
+            $disposition =
+                'inline; filename="' .
+                rawurlencode($attachment->FileName) .
+                '"; ' .
+                "filename*=UTF-8''" .
+                rawurlencode($attachment->FileName);
 
-        Log::info('File retrieved successfully:', [
-            'attachmentId' => $attachmentId,
-            'fileName'     => $attachment->FileName,
-            'resolvedPath' => $resolvedPath,
-            'mimeType'     => $mimeType,
-        ]);
-
-        // Proper Content-Disposition so browsers show Chinese filenames correctly
-        $disposition = 'inline; filename="' . rawurlencode($attachment->FileName) . '"; '
-                     . "filename*=UTF-8''" . rawurlencode($attachment->FileName);
-
-        return Storage::disk('azure')->download(
-            $resolvedPath,
-            $attachment->FileName,
-            [
-                'Content-Type'        => $mimeType,
+            return Storage::disk('azure')->download($resolvedPath, $attachment->FileName, [
+                'Content-Type' => $mimeType,
                 'Content-Disposition' => $disposition,
-            ]
-        );
-    } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-        Log::error('Attachment not found in database:', [
-            'attachmentId' => $attachmentId,
-            'error'        => $e->getMessage(),
-        ]);
-        return response()->json(['error' => 'Attachment not found'], 404);
-    } catch (\Exception $e) {
-        Log::error('Preview failed with exception:', [
-            'attachmentId' => $attachmentId,
-            'error'        => $e->getMessage(),
-            'trace'        => $e->getTraceAsString(),
-        ]);
-        return response()->json(['error' => 'Error retrieving file: ' . $e->getMessage()], 500);
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            Log::error('Attachment not found in database:', [
+                'attachmentId' => $attachmentId,
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json(['error' => 'Attachment not found'], 404);
+        } catch (\Exception $e) {
+            Log::error('Preview failed with exception:', [
+                'attachmentId' => $attachmentId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json(['error' => 'Error retrieving file: ' . $e->getMessage()], 500);
+        }
     }
-}
 
     // public function preview($attachmentId)
     // {
@@ -1442,21 +1479,41 @@ class ClientPartyController extends Controller
     //         ];
     //     }
     // }
+
     public function createLegalEntityType(string $type, array $post_data)
-    {
-        $debtor_url = env('DEBTOR_URL');
-        $vendor_url = env('VENDER_URL');
+{
+    $debtor_url = env('DEBTOR_URL');
+    $vendor_url = env('VENDER_URL');
 
-        $request_url = (strtolower($type) == 'vendor') ? $vendor_url : $debtor_url;
+    $request_url = (strtolower($type) == 'vendor') ? $vendor_url : $debtor_url;
 
-        Log::info('D365 API Request', [
-            'type' => $type,
-            'url' => $request_url,
-            'payload' => $post_data,
-        ]);
+    // D365 enforces max field lengths — truncate before sending to avoid HTTP 400s
+    $fieldMaxLengths = [
+        'address'  => 50,
+        'address2' => 50,
+    ];
 
-        $entityToken = $this->entityToken();
-        if (! $entityToken['status']) {
+    foreach ($fieldMaxLengths as $field => $maxLength) {
+        if (isset($post_data[$field]) && is_string($post_data[$field]) && mb_strlen($post_data[$field]) > $maxLength) {
+            Log::warning('D365 field truncated to fit max length', [
+                'field' => $field,
+                'original' => $post_data[$field],
+                'truncated' => mb_substr($post_data[$field], 0, $maxLength),
+            ]);
+
+            $post_data[$field] = mb_substr($post_data[$field], 0, $maxLength);
+        }
+    }
+
+    Log::info('D365 API Request', [
+        'type' => $type,
+        'url' => $request_url,
+        'payload' => $post_data,
+    ]);
+
+    $entityToken = $this->entityToken();
+    // ... rest unchanged
+        if (!$entityToken['status']) {
             Log::error('Failed to get D365 token');
 
             return [
@@ -1471,9 +1528,7 @@ class ClientPartyController extends Controller
         ]);
 
         try {
-            $response = Http::withToken($entityToken['token'])
-                ->timeout(30)
-                ->post($request_url, $post_data);
+            $response = Http::withToken($entityToken['token'])->timeout(30)->post($request_url, $post_data);
 
             Log::info('Legal Entity Creation Response', [
                 'status' => $response->status(),
@@ -1484,11 +1539,14 @@ class ClientPartyController extends Controller
 
             $responseBody = json_decode($response->body());
 
-            if (! $response->successful()) {
+            if (!$response->successful()) {
                 $errorMessage = 'HTTP Error ' . $response->status();
 
                 if (is_object($responseBody)) {
-                    if (property_exists($responseBody, 'responseDescription') && ! empty($responseBody->responseDescription)) {
+                    if (
+                        property_exists($responseBody, 'responseDescription') &&
+                        !empty($responseBody->responseDescription)
+                    ) {
                         $errorMessage = $responseBody->responseDescription; // ← moved first
                     } elseif (property_exists($responseBody, 'title')) {
                         $errorMessage = $responseBody->title;
@@ -1503,7 +1561,7 @@ class ClientPartyController extends Controller
                                 $validationErrors[] = $field . ': ' . implode(', ', $messages);
                             }
                         }
-                        if (! empty($validationErrors)) {
+                        if (!empty($validationErrors)) {
                             $errorMessage .= ' - ' . implode('; ', $validationErrors);
                         }
                     }
@@ -1523,7 +1581,7 @@ class ClientPartyController extends Controller
 
             if (is_object($responseBody)) {
                 if (property_exists($responseBody, 'status') && $responseBody->status === true) {
-                    if (property_exists($responseBody, 'responseCode') && ! empty($responseBody->responseCode)) {
+                    if (property_exists($responseBody, 'responseCode') && !empty($responseBody->responseCode)) {
                         Log::info('D365 Success', [
                             'type' => $type,
                             'responseCode' => $responseBody->responseCode,
@@ -1559,7 +1617,7 @@ class ClientPartyController extends Controller
                         'status' => false,
                         'error' => $errorMessage,
                     ];
-                } elseif (property_exists($responseBody, 'responseCode') && ! empty($responseBody->responseCode)) {
+                } elseif (property_exists($responseBody, 'responseCode') && !empty($responseBody->responseCode)) {
                     Log::info('D365 Success (fallback)', [
                         'type' => $type,
                         'responseCode' => $responseBody->responseCode,
@@ -1631,7 +1689,7 @@ class ClientPartyController extends Controller
     {
         $user = request()->user();
 
-        if (! $user->can('view-client-party')) {
+        if (!$user->can('view-client-party')) {
             abort(403, 'You are not allowed to view this page.');
         }
 
@@ -1639,7 +1697,11 @@ class ClientPartyController extends Controller
         $approve = false;
         $editForm = true;
 
-        if (($clientParty->Status == 'PendingCountryLevelApproval' || $clientParty->Status == 'PendingGroupLevelApproval') && ! $user->can('approve-entity-request')) {
+        if (
+            ($clientParty->Status == 'PendingCountryLevelApproval' ||
+                $clientParty->Status == 'PendingGroupLevelApproval') &&
+            !$user->can('approve-entity-request')
+        ) {
             alert()->warning('Warning !', 'Entity Pending Approval')->showConfirmButton();
 
             return redirect()->back();
@@ -1649,15 +1711,24 @@ class ClientPartyController extends Controller
             $editForm = false;
         }
 
-        if ((Auth::user()->Role != 1 && ($clientParty->Status == 'Not Submitted' || $clientParty->Status == 'Submitted')) && ! Auth::user()->can('create-client-party')) {
+        if (
+            Auth::user()->Role != 1 &&
+            ($clientParty->Status == 'Not Submitted' || $clientParty->Status == 'Submitted') &&
+            !Auth::user()->can('create-client-party')
+        ) {
             $editForm = false;
         }
 
-        if (Auth::user()->Role == 1 && ($clientParty->Status != 'Created')) {
+        if (Auth::user()->Role == 1 && $clientParty->Status != 'Created') {
             $editForm = true;
         }
 
-        if (url()->previous() == url('client-party/approve') || ($clientParty->Status == 'PendingCountryLevelApproval' || $clientParty->Status == 'PendingGroupLevelApproval' || $clientParty->Status == 'Submitted')) {
+        if (
+            url()->previous() == url('client-party/approve') ||
+            ($clientParty->Status == 'PendingCountryLevelApproval' ||
+                $clientParty->Status == 'PendingGroupLevelApproval' ||
+                $clientParty->Status == 'Submitted')
+        ) {
             $editForm = false;
             $approve = true;
         }
@@ -1667,7 +1738,9 @@ class ClientPartyController extends Controller
         $currencyList = $this->getCurrencyList($clientParty->OfficeID) ?: ['does not exist'];
 
         if ($clientParty->OfficeID && str_contains(json_encode($currencyList[0]), 'does not exist')) {
-            $scm_office_id = DB::select(DB::raw('SELECT SCMOfficeID FROM Cust_Office WHERE ID = ?', [$clientParty->OfficeID]));
+            $scm_office_id = DB::select(
+                DB::raw('SELECT SCMOfficeID FROM Cust_Office WHERE ID = ?', [$clientParty->OfficeID]),
+            );
             $currencyList = $this->getCurrencyList($scm_office_id[0]->SCMOfficeID ?? null);
         } else {
             $idX = Auth::user()->office->SCMOfficeID ?? null;
@@ -1675,24 +1748,27 @@ class ClientPartyController extends Controller
         }
 
         $licenceTypes = $this->getLicenceType();
-        $tarrifs = ($clientParty->Office == 'FIT - Kenya - UPS') ? $this->getTarrif($clientParty->OfficeID) : [];
+        $tarrifs = $clientParty->Office == 'FIT - Kenya - UPS' ? $this->getTarrif($clientParty->OfficeID) : [];
         $incoterms = $this->getIncoTerms();
         // Pass the officeCode from clientParty
         $payTerms = $this->getPaymentTermList($clientParty->OfficeCode);
 
-        return view('client-party.show', compact(
-            'approve',
-            'editForm',
-            'payTerms',
-            'incoterms',
-            'clientParty',
-            'countries',
-            'offices',
-            'currencyList',
-            'licenceTypes',
-            'tarrifs',
-            'type'
-        ));
+        return view(
+            'client-party.show',
+            compact(
+                'approve',
+                'editForm',
+                'payTerms',
+                'incoterms',
+                'clientParty',
+                'countries',
+                'offices',
+                'currencyList',
+                'licenceTypes',
+                'tarrifs',
+                'type',
+            ),
+        );
     }
     // 3
 
@@ -1704,7 +1780,7 @@ class ClientPartyController extends Controller
     public function edit(ClientParty $clientParty)
     {
         $user = Auth::user();
-        if (! $user->can('edit-client-party') && ! $user->can('approve-my-office-entity-request')) {
+        if (!$user->can('edit-client-party') && !$user->can('approve-my-office-entity-request')) {
             alert()->warning('Warning!', 'Unauthorized.')->showConfirmButton();
 
             return redirect()->back();
@@ -1742,348 +1818,356 @@ class ClientPartyController extends Controller
         }
     }
 
+    public function update(UpdateClientPartyRequest $request, $id)
+    {
+        $user = Auth::user();
 
-public function update(UpdateClientPartyRequest $request, $id)
-{
-    $user = Auth::user();
-
-    Log::info('=== UPDATE CONTROLLER START ===', [
-        'id'        => $id,
-        'user_id'   => $user?->Id,
-        'method'    => $request->method(),
-        'createBtn' => $request->input('createBtn'),
-        'all_input' => $request->except(['_token', '_method', 'attachmentNames', 'attachmentDescription']),
-        'ip'        => $request->ip(),
-    ]);
-
-    if (!$user->can('update-client-party')) {
-        Log::warning('Unauthorized access attempt', ['user_id' => $user?->Id, 'id' => $id]);
-        Alert::warning('Warning', 'Unauthorized.')->persistent(true, false);
-        return redirect()->back();
-    }
-
-    $entity = ClientParty::findOrFail($id);
-    $currentStatus = $entity->Status;
-
-    Log::info('Entity loaded successfully', [
-        'id'                => $id,
-        'code'              => $entity->Code,
-        'status'            => $currentStatus,
-        'legal_entity_type' => $entity->LegalEntityType,
-        'request_debtor'    => $entity->RequestforDebtor,
-        'request_vendor'    => $entity->RequestforVendor,
-    ]);
-
-    // ── Review branch: user correcting data, re-submit via SP ───────────
-    if ($currentStatus === 'Review') {
-        Log::info('Entity in Review - processing data update via SP');
-
-        $rawCreditLimit   = str_replace(',', '', $request->maxCreditLimit ?? '0');
-        $creditLimitValue = is_numeric($rawCreditLimit) && $rawCreditLimit !== '' ? $rawCreditLimit : '0';
-        $creditDaysValue  = is_numeric($request->creditDays) ? $request->creditDays : '0';
-        $licenceTypeCode  = !empty(trim($request->licenceTypeCode ?? '')) ? $request->licenceTypeCode : 'NIL';
-
-        $partyEntityType = $entity->OperationalEntityType ?? '';
-        $isClientType    = in_array($partyEntityType, ['Client', 'Agent / Forwarder']);
-
-        $otherPartyCode = $request->otherCode
-            ?? ($isClientType ? null : ($request->companyCode ?? null))
-            ?? $entity->OtherPartyCode
-            ?? '';
-
-        $clientCode = $isClientType
-            ? ($request->clientCode ?? $request->companyCode ?? $entity->ClientCode ?? '')
-            : '';
-
-        $payload = [
-            'OperationType'         => 'AccountingEntity',
-            'Action'                => 'Update',
-            'SubmittedDatetime'     => now()->format('YmdHis'),
-            'SubmittedBy'           => $user->LoginID ?? $user->full_name ?? 'system',
-            'OfficeCode'            => $entity->OfficeCode,
-            'OperationalEntityType' => $partyEntityType,
-            'LegalEntityType'       => $request->legalEntityType ?? $entity->LegalEntityType,
-            'ClientCode'            => $clientCode,
-            'OtherPartyCode'        => $otherPartyCode,
-            'BillingCurrencyCode'   => $request->billingCurrencyCode ?? $entity->BillingCurrencyCode,
-            'CreditDays'            => $creditDaysValue,
-            'CreditLimit'           => $creditLimitValue,
-            'LicenceTypeCode'       => $licenceTypeCode,
-            'LicenceTypeValue'      => $licenceTypeCode !== 'NIL'
-                                            ? ($request->licenceTypeValue ?? $entity->LicenceTypeValue ?? '')
-                                            : '',
-            'DebtorType'            => $request->debtorType ?? $entity->DebtorType ?? '',
-            'VendorType'            => $request->vendorType ?? $entity->VendorType ?? '',
-            'EntityID'              => $entity->Id,
-        ];
-
-        Log::info('Review update payload prepared', [
-            'entity_id'   => $entity->Id,
-            'code'        => $entity->Code,
-            'payload_json' => json_encode($payload),
+        Log::info('=== UPDATE CONTROLLER START ===', [
+            'id' => $id,
+            'user_id' => $user?->Id,
+            'method' => $request->method(),
+            'createBtn' => $request->input('createBtn'),
+            'all_input' => $request->except(['_token', '_method', 'attachmentNames', 'attachmentDescription']),
+            'ip' => $request->ip(),
         ]);
 
-        try {
-            $response = $this->executeJsonEntityProcedure($payload);
+        if (!$user->can('update-client-party')) {
+            Log::warning('Unauthorized access attempt', ['user_id' => $user?->Id, 'id' => $id]);
+            Alert::warning('Warning', 'Unauthorized.')->persistent(true, false);
+            return redirect()->back();
+        }
 
-            if (($response['Status'] ?? '') !== 'Success') {
-                $remark = $response['Remarks'][0]['Remark'] ?? 'Unknown error';
-                Log::error('Review update SP failed', [
-                    'remark' => $remark,
-                    'code'   => $entity->Code,
+        $entity = ClientParty::findOrFail($id);
+        $currentStatus = $entity->Status;
+
+        Log::info('Entity loaded successfully', [
+            'id' => $id,
+            'code' => $entity->Code,
+            'status' => $currentStatus,
+            'legal_entity_type' => $entity->LegalEntityType,
+            'request_debtor' => $entity->RequestforDebtor,
+            'request_vendor' => $entity->RequestforVendor,
+        ]);
+
+        // ── Review branch: user correcting data, re-submit via SP ───────────
+        if ($currentStatus === 'Review') {
+            Log::info('Entity in Review - processing data update via SP');
+
+            $rawCreditLimit = str_replace(',', '', $request->maxCreditLimit ?? '0');
+            $creditLimitValue = is_numeric($rawCreditLimit) && $rawCreditLimit !== '' ? $rawCreditLimit : '0';
+            $creditDaysValue = is_numeric($request->creditDays) ? $request->creditDays : '0';
+            $licenceTypeCode = !empty(trim($request->licenceTypeCode ?? '')) ? $request->licenceTypeCode : 'NIL';
+
+            $partyEntityType = $entity->OperationalEntityType ?? '';
+            $isClientType = in_array($partyEntityType, ['Client', 'Agent / Forwarder']);
+
+            $otherPartyCode =
+                $request->otherCode ??
+                (($isClientType ? null : $request->companyCode ?? null) ?? ($entity->OtherPartyCode ?? ''));
+
+            $clientCode = $isClientType
+                ? $request->clientCode ?? ($request->companyCode ?? ($entity->ClientCode ?? ''))
+                : '';
+
+            $payload = [
+                'OperationType' => 'AccountingEntity',
+                'Action' => 'Update',
+                'SubmittedDatetime' => now()->format('YmdHis'),
+                'SubmittedBy' => $user->LoginID ?? ($user->full_name ?? 'system'),
+                'OfficeCode' => $entity->OfficeCode,
+                'OperationalEntityType' => $partyEntityType,
+                'LegalEntityType' => $request->legalEntityType ?? $entity->LegalEntityType,
+                'ClientCode' => $clientCode,
+                'OtherPartyCode' => $otherPartyCode,
+                'BillingCurrencyCode' => $request->billingCurrencyCode ?? $entity->BillingCurrencyCode,
+                'CreditDays' => $creditDaysValue,
+                'CreditLimit' => $creditLimitValue,
+                'LicenceTypeCode' => $licenceTypeCode,
+                'LicenceTypeValue' =>
+                    $licenceTypeCode !== 'NIL' ? $request->licenceTypeValue ?? ($entity->LicenceTypeValue ?? '') : '',
+                'DebtorType' => $request->debtorType ?? ($entity->DebtorType ?? ''),
+                'VendorType' => $request->vendorType ?? ($entity->VendorType ?? ''),
+                'EntityID' => $entity->Id,
+            ];
+
+            Log::info('Review update payload prepared', [
+                'entity_id' => $entity->Id,
+                'code' => $entity->Code,
+                'payload_json' => json_encode($payload),
+            ]);
+
+            try {
+                $response = $this->executeJsonEntityProcedure($payload);
+
+                if (($response['Status'] ?? '') !== 'Success') {
+                    $remark = $response['Remarks'][0]['Remark'] ?? 'Unknown error';
+                    Log::error('Review update SP failed', [
+                        'remark' => $remark,
+                        'code' => $entity->Code,
+                    ]);
+                    Alert::error('Error', $remark)->persistent(true, false);
+                    return redirect()->back()->withInput();
+                }
+
+                Log::info('Review update succeeded - entity resubmitted', [
+                    'code' => $entity->Code,
+                    'status' => 'Submitted',
                 ]);
-                Alert::error('Error', $remark)->persistent(true, false);
+
+                return redirect()
+                    ->route('client-party.show', $id)
+                    ->with('swal_success_title', 'Success')
+                    ->with('swal_success_text', "Entity {$entity->Code} updated and resubmitted for approval.");
+            } catch (\Exception $e) {
+                Log::error('Review update exception', [
+                    'code' => $entity->Code,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+                Alert::error('Error', $e->getMessage())->persistent(true, false);
                 return redirect()->back()->withInput();
             }
-
-            Log::info('Review update succeeded - entity resubmitted', [
-                'code'   => $entity->Code,
-                'status' => 'Submitted',
-            ]);
-
-            return redirect()->route('client-party.show', $id)
-                ->with('swal_success_title', 'Success')
-                ->with('swal_success_text', "Entity {$entity->Code} updated and resubmitted for approval.");
-
-        } catch (\Exception $e) {
-            Log::error('Review update exception', [
-                'code'  => $entity->Code,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-            Alert::error('Error', $e->getMessage())->persistent(true, false);
-            return redirect()->back()->withInput();
         }
-    }
-    // ── End Review branch ────────────────────────────────────────────────
+        // ── End Review branch ────────────────────────────────────────────────
 
-    if (!isset($request->createBtn)) {
-        Log::info('No createBtn present - redirecting to show');
-        Alert::info('Info', 'Use Create/Approve for status changes.')->persistent(true, false);
-        return redirect()->route('client-party.show', $id);
-    }
+        if (!isset($request->createBtn)) {
+            Log::info('No createBtn present - redirecting to show');
+            Alert::info('Info', 'Use Create/Approve for status changes.')->persistent(true, false);
+            return redirect()->route('client-party.show', $id);
+        }
 
-    // Determine target status
-    $targetStatus = 'Created';
-    if ($currentStatus === 'PendingGroupLevelApproval') {
-        $targetStatus = 'PendingITVerification';
-    }
+        // Determine target status
+        $targetStatus = 'Created';
+        if ($currentStatus === 'PendingGroupLevelApproval') {
+            $targetStatus = 'PendingITVerification';
+        }
 
-    Log::info('Target status determined', ['from' => $currentStatus, 'to' => $targetStatus]);
+        Log::info('Target status determined', ['from' => $currentStatus, 'to' => $targetStatus]);
 
-    // Validate transition
-    $allowedTransitions = [
-        'PendingGroupLevelApproval' => ['PendingITVerification'],
-        'PendingITVerification'     => ['Created'],
-    ];
-
-    if (!isset($allowedTransitions[$currentStatus]) || !in_array($targetStatus, $allowedTransitions[$currentStatus])) {
-        Log::warning('Invalid status transition attempted', [
-            'current' => $currentStatus,
-            'target'  => $targetStatus,
-        ]);
-        Alert::error('Error', 'Invalid status transition from ' . $currentStatus)->persistent(true, false);
-        return redirect()->back();
-    }
-
-    // STEP 1: PendingGroupLevelApproval → PendingITVerification
-    if ($targetStatus === 'PendingITVerification') {
-        Log::info('Entering Group → IT Verification transition');
-
-        $payload = [
-            'OperationType'     => 'AccountingEntityUpdate',
-            'Action'            => 'Add',
-            'SubmittedDatetime' => now()->format('YmdHis'),
-            'SubmittedBy'       => $user->LoginID ?? $user->full_name ?? 'system',
-            'RequestNo'         => $entity->Code,
-            'Status'            => $targetStatus,
-            'Remark'            => $request->input('comment', 'Group level approved - pending IT verification'),
+        // Validate transition
+        $allowedTransitions = [
+            'PendingGroupLevelApproval' => ['PendingITVerification'],
+            'PendingITVerification' => ['Created'],
         ];
 
-        Log::info('Sending status update payload to SP', ['payload' => $payload]);
+        if (
+            !isset($allowedTransitions[$currentStatus]) ||
+            !in_array($targetStatus, $allowedTransitions[$currentStatus])
+        ) {
+            Log::warning('Invalid status transition attempted', [
+                'current' => $currentStatus,
+                'target' => $targetStatus,
+            ]);
+            Alert::error('Error', 'Invalid status transition from ' . $currentStatus)->persistent(true, false);
+            return redirect()->back();
+        }
+
+        // STEP 1: PendingGroupLevelApproval → PendingITVerification
+        if ($targetStatus === 'PendingITVerification') {
+            Log::info('Entering Group → IT Verification transition');
+
+            $payload = [
+                'OperationType' => 'AccountingEntityUpdate',
+                'Action' => 'Add',
+                'SubmittedDatetime' => now()->format('YmdHis'),
+                'SubmittedBy' => $user->LoginID ?? ($user->full_name ?? 'system'),
+                'RequestNo' => $entity->Code,
+                'Status' => $targetStatus,
+                'Remark' => $request->input('comment', 'Group level approved - pending IT verification'),
+            ];
+
+            Log::info('Sending status update payload to SP', ['payload' => $payload]);
+
+            try {
+                $response = $this->executeJsonEntityProcedure($payload);
+
+                Log::info('Status update SP response', [
+                    'status' => $response['Status'] ?? 'missing',
+                    'remarks' => $response['Remarks'] ?? [],
+                ]);
+
+                if ($response['Status'] !== 'Success') {
+                    $remark = $response['Remarks'][0]['Remark'] ?? 'Unknown error';
+                    Log::error('Status update failed', ['remark' => $remark]);
+                    throw new \Exception('SP failed: ' . $remark);
+                }
+
+                Log::info('Group → IT transition completed successfully');
+
+                return redirect()
+                    ->route('client-party.show', $id)
+                    ->with('swal_success_title', 'Success')
+                    ->with('swal_success_text', 'Entity moved to Pending IT Verification');
+            } catch (\Exception $e) {
+                Log::error('Group → IT transition failed', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+                Alert::error('Error', $e->getMessage())->persistent(true, false);
+                return redirect()->back();
+            }
+        }
+
+        // STEP 2: PendingITVerification → Created (final creation)
+        if ($currentStatus !== 'PendingITVerification') {
+            Log::warning('Invalid final transition - not in PendingITVerification');
+            Alert::error('Error', 'Can only finalize from Pending IT Verification')->persistent(true, false);
+            return redirect()->back();
+        }
+
+        Log::info('Entering FINAL CREATION STEP (PendingITVerification → Created)');
+
+        $isAccounting = !empty($entity->LegalEntityType) || $entity->RequestforDebtor || $entity->RequestforVendor;
+        if (!$isAccounting) {
+            Log::warning('Entity is not accounting type - skipping creation');
+            Alert::error('Error', 'This is not an accounting entity')->persistent(true, false);
+            return redirect()->back();
+        }
+
+        $d365Results = [];
+
+        // Debtor creation
+        if ($entity->RequestforDebtor || stripos($entity->LegalEntityType, 'debtor') !== false) {
+            Log::info('Starting Debtor D365 creation');
+
+            try {
+                $debtorPayload = $this->buildD365Payload($entity, 'debtor');
+
+                Log::info('Debtor payload built - sending to D365', [
+                    'no_series' => $debtorPayload['NoSeries'] ?? 'MISSING',
+                    'office' => $debtorPayload['office'] ?? 'unknown',
+                ]);
+
+                $d365Response = $this->createLegalEntityType('debtor', $debtorPayload);
+
+                Log::info('Debtor D365 API response', [
+                    'status' => $d365Response['status'] ?? 'missing',
+                    'response_code' => $d365Response['responseCode'] ?? null,
+                ]);
+
+                if (!$d365Response['status'] || empty($d365Response['responseCode'])) {
+                    $d365Error =
+                        $d365Response['error'] ?? ($d365Response['responseDescription'] ?? 'Unknown D365 error');
+                    Log::error('Debtor D365 creation failed', ['error' => $d365Error]);
+                    return redirect()
+                        ->back()
+                        ->withInput()
+                        ->with('swal_error_title', 'Debtor Creation Failed')
+                        ->with('swal_error_text', $d365Error);
+                }
+
+                $d365Results['debtor'] = $d365Response['responseCode'];
+                Log::info('Debtor created in D365', ['code' => $d365Results['debtor']]);
+            } catch (\Exception $e) {
+                Log::error('Debtor D365 exception', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+                Alert::error('D365 Exception (Debtor)', $e->getMessage())->persistent(true, false);
+                return redirect()->back();
+            }
+        } else {
+            Log::info('Debtor processing skipped (not requested)');
+        }
+
+        // Vendor creation
+        if ($entity->RequestforVendor || stripos($entity->LegalEntityType, 'vendor') !== false) {
+            Log::info('Starting Vendor D365 creation');
+
+            try {
+                $vendorPayload = $this->buildD365Payload($entity, 'vendor');
+
+                Log::info('Vendor payload built - sending to D365', [
+                    'no_series' => $vendorPayload['NoSeries'] ?? 'MISSING',
+                    'office' => $vendorPayload['office'] ?? 'unknown',
+                ]);
+
+                $d365Response = $this->createLegalEntityType('vendor', $vendorPayload);
+
+                Log::info('Vendor D365 API response', [
+                    'status' => $d365Response['status'] ?? 'missing',
+                    'response_code' => $d365Response['responseCode'] ?? null,
+                ]);
+
+                if (!$d365Response['status'] || empty($d365Response['responseCode'])) {
+                    $d365Error =
+                        $d365Response['error'] ?? ($d365Response['responseDescription'] ?? 'Unknown D365 error');
+                    Log::error('Vendor D365 creation failed', ['error' => $d365Error]);
+                    return redirect()
+                        ->back()
+                        ->withInput()
+                        ->with('swal_error_title', 'Vendor Creation Failed')
+                        ->with('swal_error_text', $d365Error);
+                }
+
+                $d365Results['vendor'] = $d365Response['responseCode'];
+                Log::info('Vendor created in D365', ['code' => $d365Results['vendor']]);
+            } catch (\Exception $e) {
+                Log::error('Vendor D365 exception', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+                Alert::error('D365 Exception (Vendor)', $e->getMessage())->persistent(true, false);
+                return redirect()->back();
+            }
+        } else {
+            Log::info('Vendor processing skipped (not requested)');
+        }
+
+        // Final SP payload
+        $payload = [
+            'OperationType' => 'AccountingEntityCreation',
+            'Action' => 'Add',
+            'SubmittedDatetime' => now()->format('YmdHis'),
+            'SubmittedBy' => $user->LoginID ?? ($user->full_name ?? 'system'),
+            'RequestNo' => $entity->Code,
+            'Status' => 'Create',
+            'Remark' => $request->input('comment', 'Final creation from update'),
+            'LicenceTypeCode' => !empty(trim($entity->LicenceTypeCode ?? '')) ? $entity->LicenceTypeCode : 'NIL',
+            'LicenceTypeValue' => !empty(trim($entity->LicenceTypeValue ?? '')) ? $entity->LicenceTypeValue : 'NIL',
+        ];
+
+        if (isset($d365Results['debtor'])) {
+            $payload['DebtorNo'] = $d365Results['debtor'];
+        }
+        if (isset($d365Results['vendor'])) {
+            $payload['VendorNo'] = $d365Results['vendor'];
+        }
+
+        Log::info('Final SP payload prepared', ['payload' => $payload]);
 
         try {
+            Log::info('Calling SP for final creation');
             $response = $this->executeJsonEntityProcedure($payload);
 
-            Log::info('Status update SP response', [
-                'status'  => $response['Status'] ?? 'missing',
+            Log::info('Final SP response', [
+                'status' => $response['Status'] ?? 'missing',
                 'remarks' => $response['Remarks'] ?? [],
             ]);
 
             if ($response['Status'] !== 'Success') {
                 $remark = $response['Remarks'][0]['Remark'] ?? 'Unknown error';
-                Log::error('Status update failed', ['remark' => $remark]);
+                Log::error('Final SP returned failure', ['remark' => $remark]);
                 throw new \Exception('SP failed: ' . $remark);
             }
 
-            Log::info('Group → IT transition completed successfully');
+            Log::info('FINAL CREATION SUCCESS');
 
-            return redirect()->route('client-party.show', $id)
+            return redirect()
+                ->route('client-party.index')
                 ->with('swal_success_title', 'Success')
-                ->with('swal_success_text', 'Entity moved to Pending IT Verification');
-
+                ->with('swal_success_text', 'Entity created successfully');
         } catch (\Exception $e) {
-            Log::error('Group → IT transition failed', [
+            Log::error('Final creation failed', [
                 'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString(),
             ]);
             Alert::error('Error', $e->getMessage())->persistent(true, false);
             return redirect()->back();
         }
     }
-
-    // STEP 2: PendingITVerification → Created (final creation)
-    if ($currentStatus !== 'PendingITVerification') {
-        Log::warning('Invalid final transition - not in PendingITVerification');
-        Alert::error('Error', 'Can only finalize from Pending IT Verification')->persistent(true, false);
-        return redirect()->back();
-    }
-
-    Log::info('Entering FINAL CREATION STEP (PendingITVerification → Created)');
-
-    $isAccounting = !empty($entity->LegalEntityType) || $entity->RequestforDebtor || $entity->RequestforVendor;
-    if (!$isAccounting) {
-        Log::warning('Entity is not accounting type - skipping creation');
-        Alert::error('Error', 'This is not an accounting entity')->persistent(true, false);
-        return redirect()->back();
-    }
-
-    $d365Results = [];
-
-    // Debtor creation
-    if ($entity->RequestforDebtor || stripos($entity->LegalEntityType, 'debtor') !== false) {
-        Log::info('Starting Debtor D365 creation');
-
-        try {
-            $debtorPayload = $this->buildD365Payload($entity, 'debtor');
-
-            Log::info('Debtor payload built - sending to D365', [
-                'no_series' => $debtorPayload['NoSeries'] ?? 'MISSING',
-                'office'    => $debtorPayload['office'] ?? 'unknown',
-            ]);
-
-            $d365Response = $this->createLegalEntityType('debtor', $debtorPayload);
-
-            Log::info('Debtor D365 API response', [
-                'status'        => $d365Response['status'] ?? 'missing',
-                'response_code' => $d365Response['responseCode'] ?? null,
-            ]);
-
-            if (!$d365Response['status'] || empty($d365Response['responseCode'])) {
-                $d365Error = $d365Response['error'] ?? $d365Response['responseDescription'] ?? 'Unknown D365 error';
-                Log::error('Debtor D365 creation failed', ['error' => $d365Error]);
-                return redirect()->back()->withInput()
-                    ->with('swal_error_title', 'Debtor Creation Failed')
-                    ->with('swal_error_text', $d365Error);
-            }
-
-            $d365Results['debtor'] = $d365Response['responseCode'];
-            Log::info('Debtor created in D365', ['code' => $d365Results['debtor']]);
-
-        } catch (\Exception $e) {
-            Log::error('Debtor D365 exception', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-            Alert::error('D365 Exception (Debtor)', $e->getMessage())->persistent(true, false);
-            return redirect()->back();
-        }
-    } else {
-        Log::info('Debtor processing skipped (not requested)');
-    }
-
-    // Vendor creation
-    if ($entity->RequestforVendor || stripos($entity->LegalEntityType, 'vendor') !== false) {
-        Log::info('Starting Vendor D365 creation');
-
-        try {
-            $vendorPayload = $this->buildD365Payload($entity, 'vendor');
-
-            Log::info('Vendor payload built - sending to D365', [
-                'no_series' => $vendorPayload['NoSeries'] ?? 'MISSING',
-                'office'    => $vendorPayload['office'] ?? 'unknown',
-            ]);
-
-            $d365Response = $this->createLegalEntityType('vendor', $vendorPayload);
-
-            Log::info('Vendor D365 API response', [
-                'status'        => $d365Response['status'] ?? 'missing',
-                'response_code' => $d365Response['responseCode'] ?? null,
-            ]);
-
-            if (!$d365Response['status'] || empty($d365Response['responseCode'])) {
-                $d365Error = $d365Response['error'] ?? $d365Response['responseDescription'] ?? 'Unknown D365 error';
-                Log::error('Vendor D365 creation failed', ['error' => $d365Error]);
-                return redirect()->back()->withInput()
-                    ->with('swal_error_title', 'Vendor Creation Failed')
-                    ->with('swal_error_text', $d365Error);
-            }
-
-            $d365Results['vendor'] = $d365Response['responseCode'];
-            Log::info('Vendor created in D365', ['code' => $d365Results['vendor']]);
-
-        } catch (\Exception $e) {
-            Log::error('Vendor D365 exception', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-            Alert::error('D365 Exception (Vendor)', $e->getMessage())->persistent(true, false);
-            return redirect()->back();
-        }
-    } else {
-        Log::info('Vendor processing skipped (not requested)');
-    }
-
-    // Final SP payload
-    $payload = [
-        'OperationType'     => 'AccountingEntityCreation',
-        'Action'            => 'Add',
-        'SubmittedDatetime' => now()->format('YmdHis'),
-        'SubmittedBy'       => $user->LoginID ?? $user->full_name ?? 'system',
-        'RequestNo'         => $entity->Code,
-        'Status'            => 'Create',
-        'Remark'            => $request->input('comment', 'Final creation from update'),
-        'LicenceTypeCode'   => !empty(trim($entity->LicenceTypeCode ?? ''))  ? $entity->LicenceTypeCode  : 'NIL',
-        'LicenceTypeValue'  => !empty(trim($entity->LicenceTypeValue ?? '')) ? $entity->LicenceTypeValue : 'NIL',
-    ];
-
-    if (isset($d365Results['debtor'])) $payload['DebtorNo'] = $d365Results['debtor'];
-    if (isset($d365Results['vendor'])) $payload['VendorNo'] = $d365Results['vendor'];
-
-    Log::info('Final SP payload prepared', ['payload' => $payload]);
-
-    try {
-        Log::info('Calling SP for final creation');
-        $response = $this->executeJsonEntityProcedure($payload);
-
-        Log::info('Final SP response', [
-            'status'  => $response['Status'] ?? 'missing',
-            'remarks' => $response['Remarks'] ?? [],
-        ]);
-
-        if ($response['Status'] !== 'Success') {
-            $remark = $response['Remarks'][0]['Remark'] ?? 'Unknown error';
-            Log::error('Final SP returned failure', ['remark' => $remark]);
-            throw new \Exception('SP failed: ' . $remark);
-        }
-
-        Log::info('FINAL CREATION SUCCESS');
-
-        return redirect()->route('client-party.index')
-            ->with('swal_success_title', 'Success')
-            ->with('swal_success_text', 'Entity created successfully');
-
-    } catch (\Exception $e) {
-        Log::error('Final creation failed', [
-            'error' => $e->getMessage(),
-            'file'  => $e->getFile(),
-            'line'  => $e->getLine(),
-            'trace' => $e->getTraceAsString(),
-        ]);
-        Alert::error('Error', $e->getMessage())->persistent(true, false);
-        return redirect()->back();
-    }
-}
 
     // public function update(UpdateClientPartyRequest $request, $id)
     // {
@@ -2313,7 +2397,6 @@ public function update(UpdateClientPartyRequest $request, $id)
     //     $payload['LicenceTypeCode']  = !empty(trim($entity->LicenceTypeCode ?? ''))  ? $entity->LicenceTypeCode  : 'NIL';
     //     $payload['LicenceTypeValue'] = !empty(trim($entity->LicenceTypeValue ?? '')) ? $entity->LicenceTypeValue : 'NIL';
 
-
     //     Log::info('Final SP payload prepared', ['payload' => $payload]);
 
     //     try {
@@ -2348,19 +2431,19 @@ public function update(UpdateClientPartyRequest $request, $id)
     //     }
     // }
 
-
     // In your update() controller, replace both D365 error blocks with this helper approach
     // Add this private method to the controller:
 
     private function d365ErrorAlert(string $type, array $response): void
     {
-        $error = $response['error'] ?? $response['responseDescription'] ?? 'Unknown D365 error';
+        $error = $response['error'] ?? ($response['responseDescription'] ?? 'Unknown D365 error');
 
         $hints = [
-            'VAT Registration'  => '⚠ A vendor/debtor with this VAT/TIN already exists in D365. Verify the registration number before proceeding.',
-            'already exists'    => '⚠ A duplicate record was detected in D365.',
-            'authenticate'      => '⚠ D365 authentication failed. Contact IT to check the API credentials.',
-            'Unexpected'        => '⚠ D365 returned an unrecognised response. Contact IT to investigate.',
+            'VAT Registration' =>
+                '⚠ A vendor/debtor with this VAT/TIN already exists in D365. Verify the registration number before proceeding.',
+            'already exists' => '⚠ A duplicate record was detected in D365.',
+            'authenticate' => '⚠ D365 authentication failed. Contact IT to check the API credentials.',
+            'Unexpected' => '⚠ D365 returned an unrecognised response. Contact IT to investigate.',
         ];
 
         $hint = '';
@@ -2373,19 +2456,22 @@ public function update(UpdateClientPartyRequest $request, $id)
 
         $label = ucfirst($type); // "Vendor" or "Debtor"
 
-        $html = '
+        $html =
+            '
         <div style="text-align:left;font-size:14px;line-height:1.5">
-            <p><strong>' . $label . ' could not be created in D365.</strong></p>
-            <p style="color:#e74c3c;margin-top:4px;">' . e($error) . '</p>'
-            . $hint .
+            <p><strong>' .
+            $label .
+            ' could not be created in D365.</strong></p>
+            <p style="color:#e74c3c;margin-top:4px;">' .
+            e($error) .
+            '</p>' .
+            $hint .
             '</div>';
 
         Alert::error('D365 ' . $label . ' Error', $html)
             ->html()
             ->persistent(true, false);
     }
-
-
 
     /**
      * Build D365 payload for Customer/Vendor creation
@@ -2400,13 +2486,15 @@ public function update(UpdateClientPartyRequest $request, $id)
         $officeCode = $entity->OfficeCode ?? 'KE';
 
         // Get number series from database
-        $noSeries = $this->getOfficeNumberSeries(
-            $officeCode,
-            $type === 'debtor' ? 'Debtor' : 'Vendor'
-        );
+        $noSeries = $this->getOfficeNumberSeries($officeCode, $type === 'debtor' ? 'Debtor' : 'Vendor');
 
         if ($noSeries === null) {
-            throw new \Exception('No series number configured for ' . ($type === 'debtor' ? 'Debtor' : 'Vendor') . ' in office ' . $officeCode);
+            throw new \Exception(
+                'No series number configured for ' .
+                    ($type === 'debtor' ? 'Debtor' : 'Vendor') .
+                    ' in office ' .
+                    $officeCode,
+            );
         }
 
         // Determine party type based on environment
@@ -2418,13 +2506,12 @@ public function update(UpdateClientPartyRequest $request, $id)
         $vat = strtoupper(trim($entity->LicenceTypeValue ?? ''));
 
         return [
-            'office' => ($officeCode === 'UPS') ? 'KE' : $officeCode,
+            'office' => $officeCode === 'UPS' ? 'KE' : $officeCode,
             'partyType' => $partyType,
             'no' => '',
             'name' => $entity->Name ?? 'Unknown',
-            'postingGroup' => $type === 'debtor'
-                ? ($entity->DebtorType ?? 'CASHCUSTOM')
-                : ($entity->VendorType ?? 'DOMESTIC'),
+            'postingGroup' =>
+                $type === 'debtor' ? $entity->DebtorType ?? 'CASHCUSTOM' : $entity->VendorType ?? 'DOMESTIC',
             'vatRegistrationNo' => in_array($vat, ['NILL', 'NIL', 'N/A', 'NONE']) ? '-' : ($vat ?: '-'),
             'postCode' => $entity->Address_Pin ?? '',
             'address' => $entity->Address_Line1 ?? 'Nairobi',
@@ -2440,8 +2527,7 @@ public function update(UpdateClientPartyRequest $request, $id)
             'paymentTermsCode' => (string) ($entity->CreditDays ?? '0'),
             'creditLimitLCY' => max(1, intval($entity->CreditLimit ?? 0)),
             'contactPersonName' => trim(
-                ($entity->Cont_Bch_PersonName_FirstName ?? '') . ' ' .
-                    ($entity->Cont_Bch_PersonName_LastName ?? '')
+                ($entity->Cont_Bch_PersonName_FirstName ?? '') . ' ' . ($entity->Cont_Bch_PersonName_LastName ?? ''),
             ),
             'contactPersonEmailAddress' => $entity->Cont_Bch_Email ?? '',
             'contactPersonPhoneNo' => $entity->Cont_Bch_PhoneNumbers ?? '',
@@ -2457,7 +2543,7 @@ public function update(UpdateClientPartyRequest $request, $id)
         $requestID = $request->input('requestID');
 
         // Validate requestID format (UUID)
-        if (! preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $requestID)) {
+        if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $requestID)) {
             Log::warning('Invalid RequestID format:', ['RequestID' => $requestID]);
 
             return ['success' => false, 'error' => 'Invalid Request ID format'];
@@ -2465,7 +2551,7 @@ public function update(UpdateClientPartyRequest $request, $id)
 
         // Check permissions and OperatioEntityType
         $entity = DB::table('Cust_entity')->where('Id', $requestID)->first();
-        if (! $entity) {
+        if (!$entity) {
             Log::error('❌ STEP 3: Entity Not Found', ['requestID' => $requestID]);
 
             return [
@@ -2477,7 +2563,10 @@ public function update(UpdateClientPartyRequest $request, $id)
             ];
         }
 
-        if (! Auth::user()->can('create-client-party-SCM') && $entity->OperatioEntityType !== 'Client without Debtor or Vendor') {
+        if (
+            !Auth::user()->can('create-client-party-SCM') &&
+            $entity->OperatioEntityType !== 'Client without Debtor or Vendor'
+        ) {
             Log::warning('SCM Permission Denied:', [
                 'UserID' => Auth::user()->Id,
                 'Permissions' => Auth::user()->getAllPermissions()->pluck('name')->toArray(),
@@ -2503,11 +2592,11 @@ public function update(UpdateClientPartyRequest $request, $id)
             @OtherID= @OtherID OUTPUT;
              SELECT @Status AS Status, @Remark AS Remark, @ClientCode AS ClientCode,
                 @ClientIDAS ClientID, @OtherCode AS OtherCode, @OtherID AS OtherID',
-                [$requestID]
+                [$requestID],
             );
 
             // Check if results are valid
-            if (! empty($results) && isset($results[0])) {
+            if (!empty($results) && isset($results[0])) {
                 $result = (array) $results[0];
 
                 // Log success
@@ -2585,7 +2674,7 @@ public function update(UpdateClientPartyRequest $request, $id)
      */
     public function destroy($clientParty)
     {
-        if (! Auth::user()->can('delete-entity-request')) {
+        if (!Auth::user()->can('delete-entity-request')) {
             alert()->warning('Warning !', 'Unauthorised.')->showConfirmButton();
 
             return redirect()->back();
@@ -2596,12 +2685,12 @@ public function update(UpdateClientPartyRequest $request, $id)
     {
         $user = Auth::user();
 
-        if (! $user->can('approve-entity-request') && ! $user->can('create-client-party')) {
+        if (!$user->can('approve-entity-request') && !$user->can('create-client-party')) {
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
         }
 
         $id = request()->input('id');
-        $level = request()->input('level');   // usually 'Rejected'
+        $level = request()->input('level'); // usually 'Rejected'
         $reason = request()->input('reason', 'No reason provided');
 
         $entity = ClientParty::findOrFail($id);
@@ -2610,7 +2699,7 @@ public function update(UpdateClientPartyRequest $request, $id)
             'OperationType' => 'OperationalEntityUpdate',
             'Action' => 'Add',
             'SubmittedDatetime' => now()->format('YmdHis'),
-            'SubmittedBy' => $user->LoginID ?? $user->email ?? $user->full_name ?? 'system',
+            'SubmittedBy' => $user->LoginID ?? ($user->email ?? ($user->full_name ?? 'system')),
             'RequestNo' => $entity->Code,
             'Status' => $level,
             'Remark' => $reason,
@@ -2644,10 +2733,13 @@ public function update(UpdateClientPartyRequest $request, $id)
                 'error' => $e->getMessage(),
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage() ?: 'Failed to reject entity',
-            ], 422);
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => $e->getMessage() ?: 'Failed to reject entity',
+                ],
+                422,
+            );
         }
     }
 
@@ -2655,7 +2747,7 @@ public function update(UpdateClientPartyRequest $request, $id)
     {
         $user = Auth::user();
 
-        if (! $user->can('approve-entity-request')) {
+        if (!$user->can('approve-entity-request')) {
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
         }
 
@@ -2664,23 +2756,26 @@ public function update(UpdateClientPartyRequest $request, $id)
 
         // Allowed statuses for approval
         $allowedStatuses = [
-            'Submitted',                        // Operational
-            'PendingCountryLevelApproval',      // Accounting initial
-            'PendingGroupLevelApproval',        // Accounting after country
-            'PendingITVerification',            // Accounting final pending → ready for creation
+            'Submitted', // Operational
+            'PendingCountryLevelApproval', // Accounting initial
+            'PendingGroupLevelApproval', // Accounting after country
+            'PendingITVerification', // Accounting final pending → ready for creation
         ];
 
-        if (! in_array($entity->Status, $allowedStatuses)) {
+        if (!in_array($entity->Status, $allowedStatuses)) {
             \Log::warning('Attempt to approve entity in invalid status', [
                 'entity_id' => $id,
                 'code' => $entity->Code ?? 'unknown',
                 'current_status' => $entity->Status,
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => "This entity is not ready for approval. Current: {$entity->Status}",
-            ], 422);
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => "This entity is not ready for approval. Current: {$entity->Status}",
+                ],
+                422,
+            );
         }
 
         // Detect accounting entity
@@ -2699,7 +2794,7 @@ public function update(UpdateClientPartyRequest $request, $id)
 
         $hasAccountingFields = false;
         foreach ($accountingIndicators as $field) {
-            if (! empty($entity->$field)) {
+            if (!empty($entity->$field)) {
                 $hasAccountingFields = true;
                 break;
             }
@@ -2707,13 +2802,10 @@ public function update(UpdateClientPartyRequest $request, $id)
 
         // Decide operation type and status
         $operationType = 'OperationalEntityCreation'; // default for operational
-        $statusToSet = 'Create';                    // default for final
+        $statusToSet = 'Create'; // default for final
 
         if ($hasAccountingFields) {
-            $intermediateStatuses = [
-                'PendingCountryLevelApproval',
-                'PendingGroupLevelApproval',
-            ];
+            $intermediateStatuses = ['PendingCountryLevelApproval', 'PendingGroupLevelApproval'];
 
             if (in_array($entity->Status, $intermediateStatuses)) {
                 // Intermediate approval → status update
@@ -2721,20 +2813,26 @@ public function update(UpdateClientPartyRequest $request, $id)
 
                 $statusToSet = $request->input('status');
 
-                if (! $statusToSet) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'New status is required for intermediate approval.',
-                    ], 422);
+                if (!$statusToSet) {
+                    return response()->json(
+                        [
+                            'success' => false,
+                            'message' => 'New status is required for intermediate approval.',
+                        ],
+                        422,
+                    );
                 }
 
                 $allowedUpdate = ['PendingGroupLevelApproval', 'Review', 'Rejected', 'PendingITVerification'];
 
-                if (! in_array($statusToSet, $allowedUpdate)) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Invalid status for update. Allowed: ' . implode(', ', $allowedUpdate),
-                    ], 422);
+                if (!in_array($statusToSet, $allowedUpdate)) {
+                    return response()->json(
+                        [
+                            'success' => false,
+                            'message' => 'Invalid status for update. Allowed: ' . implode(', ', $allowedUpdate),
+                        ],
+                        422,
+                    );
                 }
             } else {
                 // Final accounting creation
@@ -2748,7 +2846,7 @@ public function update(UpdateClientPartyRequest $request, $id)
             'OperationType' => $operationType,
             'Action' => 'Add',
             'SubmittedDatetime' => now()->format('YmdHis'),
-            'SubmittedBy' => $user->LoginID ?? $user->full_name ?? 'system',
+            'SubmittedBy' => $user->LoginID ?? ($user->full_name ?? 'system'),
             'RequestNo' => $entity->Code,
             'Status' => $statusToSet,
             'Remark' => $request->input('comment', 'Approved by ' . ($user->full_name ?? 'system')),
@@ -2767,11 +2865,16 @@ public function update(UpdateClientPartyRequest $request, $id)
                 'result' => $scmResult,
             ]);
 
-            if (! $scmResult['success'] || $scmResult['data']['Status'] !== 'Success') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'D365 creation failed: ' . ($scmResult['data']['Remark'] ?? $scmResult['error'] ?? 'Unknown error'),
-                ], 500);
+            if (!$scmResult['success'] || $scmResult['data']['Status'] !== 'Success') {
+                return response()->json(
+                    [
+                        'success' => false,
+                        'message' =>
+                            'D365 creation failed: ' .
+                            ($scmResult['data']['Remark'] ?? ($scmResult['error'] ?? 'Unknown error')),
+                    ],
+                    500,
+                );
             }
 
             // Extract DebtorNo / VendorNo
@@ -2805,11 +2908,13 @@ public function update(UpdateClientPartyRequest $request, $id)
                 'remarks' => $response['Remarks'] ?? [],
             ]);
 
-            $remarks = collect($response['Remarks'] ?? [])
-                ->flatten()
-                ->map(fn($v) => is_array($v) ? json_encode($v, JSON_UNESCAPED_SLASHES) : (string) $v)
-                ->filter()
-                ->implode(' • ') ?: 'Operation completed';
+            $remarks =
+                collect($response['Remarks'] ?? [])
+                    ->flatten()
+                    ->map(fn($v) => is_array($v) ? json_encode($v, JSON_UNESCAPED_SLASHES) : (string) $v)
+                    ->filter()
+                    ->implode(' • ') ?:
+                'Operation completed';
 
             $success = ($response['Status'] ?? 'Failed') === 'Success';
 
@@ -2828,10 +2933,13 @@ public function update(UpdateClientPartyRequest $request, $id)
                 'error' => $e->getMessage(),
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage() ?: 'Finalization failed – check logs',
-            ], 422);
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => $e->getMessage() ?: 'Finalization failed – check logs',
+                ],
+                422,
+            );
         }
     }
 
@@ -2885,7 +2993,7 @@ public function update(UpdateClientPartyRequest $request, $id)
     {
         $user = Auth::user();
 
-        if (! $user->can('approve-entity-request')) {
+        if (!$user->can('approve-entity-request')) {
             Alert::warning('Warning!', 'You are not authorised to view this page. Contact Admin')->showConfirmButton();
 
             return redirect()->route('home');
@@ -2894,16 +3002,16 @@ public function update(UpdateClientPartyRequest $request, $id)
         // Calculate counts for info boxes
         $counts = [
             'not_submitted' => ClientParty::where('Status', 'Not Submitted')
-                ->when(! $user->can('approve-all-entity-request'), fn($q) => $q->where('OfficeCode', $user->OfficeCode))
+                ->when(!$user->can('approve-all-entity-request'), fn($q) => $q->where('OfficeCode', $user->OfficeCode))
                 ->count(),
             'pending_country' => ClientParty::where('Status', 'PendingCountryLevelApproval')
-                ->when(! $user->can('approve-all-entity-request'), fn($q) => $q->where('OfficeCode', $user->OfficeCode))
+                ->when(!$user->can('approve-all-entity-request'), fn($q) => $q->where('OfficeCode', $user->OfficeCode))
                 ->count(),
             'pending_group' => ClientParty::where('Status', 'PendingGroupLevelApproval')
-                ->when(! $user->can('approve-all-entity-request'), fn($q) => $q->where('OfficeCode', $user->OfficeCode))
+                ->when(!$user->can('approve-all-entity-request'), fn($q) => $q->where('OfficeCode', $user->OfficeCode))
                 ->count(),
             'submitted' => ClientParty::where('Status', 'Submitted')
-                ->when(! $user->can('approve-all-entity-request'), fn($q) => $q->where('OfficeCode', $user->OfficeCode))
+                ->when(!$user->can('approve-all-entity-request'), fn($q) => $q->where('OfficeCode', $user->OfficeCode))
                 ->count(),
             'all_pending' => ClientParty::whereIn('Status', [
                 'Not Submitted',
@@ -2911,7 +3019,7 @@ public function update(UpdateClientPartyRequest $request, $id)
                 'PendingCountryLevelApproval',
                 'PendingGroupLevelApproval',
             ])
-                ->when(! $user->can('approve-all-entity-request'), fn($q) => $q->where('OfficeCode', $user->OfficeCode))
+                ->when(!$user->can('approve-all-entity-request'), fn($q) => $q->where('OfficeCode', $user->OfficeCode))
                 ->count(),
         ];
 
@@ -2920,8 +3028,10 @@ public function update(UpdateClientPartyRequest $request, $id)
 
     public function deleteFile($id)
     {
-        if (! Auth::user()->can('create-client-party-SCM')) {
-            alert()->warning('Warning !', 'You are not authorised to veiw this page. Contact Admin')->showConfirmButton();
+        if (!Auth::user()->can('create-client-party-SCM')) {
+            alert()
+                ->warning('Warning !', 'You are not authorised to veiw this page. Contact Admin')
+                ->showConfirmButton();
 
             return redirect()->route('home');
         }
@@ -2974,7 +3084,7 @@ public function update(UpdateClientPartyRequest $request, $id)
      SELECT @Status AS Status,
             @Remark AS Remark,
             @IsDuplicate AS IsDuplicate;',
-                [$officeCode, $partyType, $licenseNo]
+                [$officeCode, $partyType, $licenseNo],
             );
 
             if (empty($results)) {
@@ -3045,7 +3155,7 @@ public function update(UpdateClientPartyRequest $request, $id)
             $entityType = Request::get('entityType');
             $query = Request::get('query', '');
 
-            if (! $entityType) {
+            if (!$entityType) {
                 return response()->json(['error' => 'Entity type is required'], 400);
             }
 
@@ -3060,8 +3170,15 @@ public function update(UpdateClientPartyRequest $request, $id)
             }
 
             // Handle structured error response
-            if ($results && count($results) > 0 && isset($results[0]->Name) && strpos($results[0]->Name, 'Failed') === 0) {
-                \Log::error('sp_EntitySearchList failed for entityType: ' . $entityType . ', Error: ' . $results[0]->Name);
+            if (
+                $results &&
+                count($results) > 0 &&
+                isset($results[0]->Name) &&
+                strpos($results[0]->Name, 'Failed') === 0
+            ) {
+                \Log::error(
+                    'sp_EntitySearchList failed for entityType: ' . $entityType . ', Error: ' . $results[0]->Name,
+                );
 
                 return response()->json(['error' => $results[0]->Name], 500);
             }
@@ -3084,7 +3201,12 @@ public function update(UpdateClientPartyRequest $request, $id)
 
             return response()->json($companies);
         } catch (QueryException $e) {
-            \Log::error('Error executing sp_EntitySearchList for entityType: ' . ($entityType ?? 'unknown') . ', SQL Error: ' . $e->getMessage());
+            \Log::error(
+                'Error executing sp_EntitySearchList for entityType: ' .
+                    ($entityType ?? 'unknown') .
+                    ', SQL Error: ' .
+                    $e->getMessage(),
+            );
 
             return response()->json(['error' => 'Failed to fetch companies: ' . $e->getMessage()], 500);
         }
@@ -3092,13 +3214,11 @@ public function update(UpdateClientPartyRequest $request, $id)
 
     public function getCompanyDetails()
     {
-
         try {
-
             $entityType = Request::get('entityType');
             $companyId = Request::get('companyId');
 
-            if (! $entityType || ! $companyId) {
+            if (!$entityType || !$companyId) {
                 return response()->json(['error' => 'Entity type and company ID are required'], 400);
             }
 
@@ -3107,14 +3227,33 @@ public function update(UpdateClientPartyRequest $request, $id)
 
             // Handle string-based error
             if ($results && is_array($results) && count($results) > 0 && is_string($results[0])) {
-                \Log::error('tityAddressDetails failed for entityType: ' . $entityType . ', companyId: ' . $companyId . ', Error: ' . $results[0]);
+                \Log::error(
+                    'tityAddressDetails failed for entityType: ' .
+                        $entityType .
+                        ', companyId: ' .
+                        $companyId .
+                        ', Error: ' .
+                        $results[0],
+                );
 
                 return response()->json(['error' => $results[0]], 500);
             }
 
             // Handle structured error
-            if ($results && count($results) > 0 && isset($results[0]->Name) && strpos($results[0]->Name, 'Failed') === 0) {
-                \Log::error('sp_EntityAddressDetails failed for entityType: ' . $entityType . ', companyId: ' . $companyId . ', Error: ' . $results[0]->Name);
+            if (
+                $results &&
+                count($results) > 0 &&
+                isset($results[0]->Name) &&
+                strpos($results[0]->Name, 'Failed') === 0
+            ) {
+                \Log::error(
+                    'sp_EntityAddressDetails failed for entityType: ' .
+                        $entityType .
+                        ', companyId: ' .
+                        $companyId .
+                        ', Error: ' .
+                        $results[0]->Name,
+                );
 
                 return response()->json(['error' => $results[0]->Name], 500);
             }
@@ -3122,20 +3261,34 @@ public function update(UpdateClientPartyRequest $request, $id)
             // Map results to form fields
             $details = array_map(function ($item) {
                 // Use Address_CountryId if available
-                $countryId = property_exists($item, 'Address_CountryId') && $item->Address_CountryId ? $item->Address_CountryId : null;
-                $countryCode = property_exists($item, 'CountryCode2') && $item->CountryCode2 ? $item->CountryCode2 : (property_exists($item, 'CountryCode') ? $item->CountryCode : null);
-                $countryName = property_exists($item, 'CountryName2') && $item->CountryName2 ? $item->CountryName2 : (property_exists($item, 'CountryName') ? $item->CountryName : null);
+                $countryId =
+                    property_exists($item, 'Address_CountryId') && $item->Address_CountryId
+                        ? $item->Address_CountryId
+                        : null;
+                $countryCode =
+                    property_exists($item, 'CountryCode2') && $item->CountryCode2
+                        ? $item->CountryCode2
+                        : (property_exists($item, 'CountryCode')
+                            ? $item->CountryCode
+                            : null);
+                $countryName =
+                    property_exists($item, 'CountryName2') && $item->CountryName2
+                        ? $item->CountryName2
+                        : (property_exists($item, 'CountryName')
+                            ? $item->CountryName
+                            : null);
 
                 // Optional: Validate countryId using Cust_Country if needed
-                if ($countryCode && ! $countryId) {
+                if ($countryCode && !$countryId) {
                     try {
-                        $country = DB::selectOne(
-                            'SELECT CountryID FROM dbo.Cust_Country WHERE CountryCode = ?',
-                            [$countryCode]
-                        );
+                        $country = DB::selectOne('SELECT CountryID FROM dbo.Cust_Country WHERE CountryCode = ?', [
+                            $countryCode,
+                        ]);
                         $countryId = $country ? $country->CountryID : null;
                     } catch (QueryException $e) {
-                        \Log::warning('Failed to fetch CountryID for code: ' . $countryCode . ', Error: ' . $e->getMessage());
+                        \Log::warning(
+                            'Failed to fetch CountryID for code: ' . $countryCode . ', Error: ' . $e->getMessage(),
+                        );
                         $countryId = null;
                     }
                 }
@@ -3158,18 +3311,27 @@ public function update(UpdateClientPartyRequest $request, $id)
                     'countryCode' => $countryCode,
                     'countryName' => $countryName,
                     'phoneNo' => property_exists($item, 'Cont_Bch_PhoneNumbers')
-                        ? ($item->Cont_Bch_PhoneNumbers !== '-' ? $item->Cont_Bch_PhoneNumbers : null)
+                        ? ($item->Cont_Bch_PhoneNumbers !== '-'
+                            ? $item->Cont_Bch_PhoneNumbers
+                            : null)
                         : (property_exists($item, 'Contact_PhoneNumbers')
-                            ? ($item->Contact_PhoneNumbers !== '-' ? $item->Contact_PhoneNumbers : null)
+                            ? ($item->Contact_PhoneNumbers !== '-'
+                                ? $item->Contact_PhoneNumbers
+                                : null)
                             : null),
 
                     'contractEmail' => property_exists($item, 'Cont_Bch_Email')
-                        ? ($item->Cont_Bch_Email !== '-' ? $item->Cont_Bch_Email : null)
+                        ? ($item->Cont_Bch_Email !== '-'
+                            ? $item->Cont_Bch_Email
+                            : null)
                         : (property_exists($item, 'Contact_Email')
                             ? $item->Contact_Email
                             : null),
                     'contactId' => property_exists($item, 'ContactId') ? $item->ContactId : null,
-                    'addressType' => property_exists($item, 'Cont_Bch_PhoneNumbers') && $item->Cont_Bch_PhoneNumbers ? $item->Cont_Bch_PhoneNumbers : null,
+                    'addressType' =>
+                        property_exists($item, 'Cont_Bch_PhoneNumbers') && $item->Cont_Bch_PhoneNumbers
+                            ? $item->Cont_Bch_PhoneNumbers
+                            : null,
                     'firstName' => property_exists($item, 'Cont_Bch_PersonName_FirstName')
                         ? $item->Cont_Bch_PersonName_FirstName
                         : (property_exists($item, 'Contact_PersonName_FirstName')
@@ -3182,7 +3344,9 @@ public function update(UpdateClientPartyRequest $request, $id)
                             ? $item->Contact_PersonName_LastName
                             : null),
                     'department' => property_exists($item, 'Cont_Bch_Dept')
-                        ? ($item->Cont_Bch_Dept !== '-' ? $item->Cont_Bch_Dept : null)
+                        ? ($item->Cont_Bch_Dept !== '-'
+                            ? $item->Cont_Bch_Dept
+                            : null)
                         : null,
                 ];
 
@@ -3191,19 +3355,35 @@ public function update(UpdateClientPartyRequest $request, $id)
 
             // Return empty if no results
             if (empty($details)) {
-                \Log::warning('sp_EntityAddressDetails returned no results for entityType: ' . $entityType . ', companyId: ' . $companyId);
+                \Log::warning(
+                    'sp_EntityAddressDetails returned no results for entityType: ' .
+                        $entityType .
+                        ', companyId: ' .
+                        $companyId,
+                );
 
                 return response()->json([]);
             }
 
             // Select primary address (main:1 if available, else first)
-            $primaryDetail = array_reduce($details, function ($carry, $item) {
-                return $item['addressType'] && strpos($item['addressType'], 'main:1') !== false ? $item : $carry;
-            }, $details[0]);
+            $primaryDetail = array_reduce(
+                $details,
+                function ($carry, $item) {
+                    return $item['addressType'] && strpos($item['addressType'], 'main:1') !== false ? $item : $carry;
+                },
+                $details[0],
+            );
 
             return response()->json($primaryDetail);
         } catch (QueryException $e) {
-            \Log::error('Error executing sp_EntityAddressDetails for entityType: ' . ($entityType ?? 'unknown') . ', companyId: ' . ($companyId ?? 'unknown') . ', SQL Error: ' . $e->getMessage());
+            \Log::error(
+                'Error executing sp_EntityAddressDetails for entityType: ' .
+                    ($entityType ?? 'unknown') .
+                    ', companyId: ' .
+                    ($companyId ?? 'unknown') .
+                    ', SQL Error: ' .
+                    $e->getMessage(),
+            );
 
             return response()->json(['error' => 'Failed to fetch company details: ' . $e->getMessage()], 500);
         }
@@ -3218,10 +3398,10 @@ public function update(UpdateClientPartyRequest $request, $id)
             $companyDetails = DB::select(
                 'SET NOCOUNT ON;
              EXEC [dbo].[tityAddressDetails] @PartyType = ?, @PartyID = ?',
-                [$partyEntityType, $companyId]
+                [$partyEntityType, $companyId],
             );
 
-            if (! empty($companyDetails) && isset($companyDetails[0])) {
+            if (!empty($companyDetails) && isset($companyDetails[0])) {
                 return response()->json([
                     'success' => true,
                     'data' => (array) $companyDetails[0],
@@ -3232,7 +3412,9 @@ public function update(UpdateClientPartyRequest $request, $id)
                 return response()->json(['success' => false]);
             }
         } catch (\Illuminate\Database\QueryException $e) {
-            Log::error('Failed to query sp_EntityAddressDetails for companyId: ' . $companyId . ', Error: ' . $e->getMessage());
+            Log::error(
+                'Failed to query sp_EntityAddressDetails for companyId: ' . $companyId . ', Error: ' . $e->getMessage(),
+            );
 
             return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }

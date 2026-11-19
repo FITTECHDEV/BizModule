@@ -1345,6 +1345,12 @@ class AzureUserManagementController extends Controller
 
                 foreach ($roleAssignments as $roleData) {
                     try {
+                        // Skip if this exact role/office assignment already exists
+                        if ($this->assignmentExists($userPrincipalName, $roleData)) {
+                            Log::info('⊘ Role assignment already exists — skipped', ['role_data' => $roleData]);
+                            continue;
+                        }
+
                         $mappingId = DB::connection('sqlsrv')->selectOne('SELECT NEWID() as newId')->newId;
 
                         DB::connection('sqlsrv')
@@ -1417,6 +1423,11 @@ class AzureUserManagementController extends Controller
 
                 foreach ($functionAssignments as $funcData) {
                     try {
+                        if ($this->functionAssignmentExists($userPrincipalName, $funcData)) {
+                            Log::info('⊘ Function assignment already exists — skipped', ['func_data' => $funcData]);
+                            continue;
+                        }
+
                         $functionId = DB::connection('sqlsrv')->selectOne('SELECT NEWID() as newId')->newId;
 
                         DB::connection('sqlsrv')
@@ -2396,6 +2407,46 @@ class AzureUserManagementController extends Controller
                         422,
                     );
                 }
+
+                // ====================================================================
+                // STEP 8.5: De-duplicate roles within this submission
+                // ====================================================================
+                $seenRoleKeys = [];
+                $dedupedRoles = [];
+
+                foreach ($validatedRoles as $roleData) {
+                    $key = implode('|', [$roleData['application_id'], $roleData['role_id'], $roleData['location_id']]);
+
+                    if (isset($seenRoleKeys[$key])) {
+                        Log::info('⊘ Duplicate role in submission — skipped', ['role_data' => $roleData]);
+                        continue;
+                    }
+
+                    $seenRoleKeys[$key] = true;
+                    $dedupedRoles[] = $roleData;
+                }
+
+                $validatedRoles = $dedupedRoles;
+
+                // ====================================================================
+                // STEP 8.6: De-duplicate functions within this submission
+                // ====================================================================
+                $seenFunctionKeys = [];
+                $dedupedFunctions = [];
+
+                foreach ($validatedFunctions as $funcData) {
+                    $key = implode('|', [$funcData['application_id'], $funcData['function_id']]);
+
+                    if (isset($seenFunctionKeys[$key])) {
+                        Log::info('⊘ Duplicate function in submission — skipped', ['func_data' => $funcData]);
+                        continue;
+                    }
+
+                    $seenFunctionKeys[$key] = true;
+                    $dedupedFunctions[] = $funcData;
+                }
+
+                $validatedFunctions = $dedupedFunctions;
 
                 // ====================================================================
                 // STEP 9-10: Insert roles and functions
@@ -5262,6 +5313,20 @@ class AzureUserManagementController extends Controller
     }
 
     /**
+     * Check if a function assignment already exists (prevent duplicates)
+     */
+    private function functionAssignmentExists(string $userPrincipalName, array $assignment): bool
+    {
+        return DB::connection('sqlsrv')
+            ->table('Azure_Application_UserFunction')
+            ->where('user_id', $userPrincipalName)
+            ->where('application_id', $assignment['application_id'])
+            ->where('FunctionID', $assignment['function_id'])
+            ->where('IsActive', 1)
+            ->where('IsDelete', 0)
+            ->exists();
+    }
+    /**
      * Verify that referenced master data exists
      *
      * @return array ['valid' => bool, 'errors' => array]
@@ -5579,6 +5644,17 @@ class AzureUserManagementController extends Controller
 
                 // ALWAYS insert roles to mapping table
                 foreach ($moduleData['roles'] as $role) {
+                    $lookup = [
+                        'application_id' => $moduleData['module_id'],
+                        'role_id' => $role['id'],
+                        'location_id' => $office->Id,
+                    ];
+
+                    if ($this->assignmentExists($user->userPrincipalName, $lookup)) {
+                        Log::info('⊘ Role assignment already exists — skipped', $lookup);
+                        continue;
+                    }
+
                     $mappingId = DB::connection('sqlsrv')->selectOne('SELECT NEWID() as newId')->newId;
 
                     DB::connection('sqlsrv')
@@ -5606,6 +5682,16 @@ class AzureUserManagementController extends Controller
                 // If SCM module, insert functions separately (NOT combined with roles)
                 if ($hasFunctions) {
                     foreach ($moduleData['functions'] as $function) {
+                        $funcLookup = [
+                            'application_id' => $moduleData['module_id'],
+                            'function_id' => $function['id'],
+                        ];
+
+                        if ($this->functionAssignmentExists($user->userPrincipalName, $funcLookup)) {
+                            Log::info('⊘ Function assignment already exists — skipped', $funcLookup);
+                            continue;
+                        }
+
                         $functionRecordId = DB::connection('sqlsrv')->selectOne('SELECT NEWID() as newId')->newId;
 
                         DB::connection('sqlsrv')

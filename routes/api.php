@@ -3,6 +3,7 @@
 use App\Http\Controllers\API\v1\Auth\LoginController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\OdooController;
 
 /*
 |--------------------------------------------------------------------------
@@ -23,5 +24,7 @@ Route::group(['prefix'=>'v1/auth/'], function(){
 //    Route::get('login', [LoginController::class, 'login']);
 });
 
+Route::post('/odoo/quotation', [OdooController::class, 'createQuotation'])
+    ->middleware('throttle:60,1');
 
 
